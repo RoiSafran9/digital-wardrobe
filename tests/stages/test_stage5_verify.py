@@ -40,6 +40,15 @@ async def test_fail_on_color_shift(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_raises_clear_error_on_unreadable_generated_image(tmp_path):
+    crop_path = str(tmp_path / "crop.png")
+    _solid_color_image(crop_path, (203, 192, 255))
+    gen_path_missing = str(tmp_path / "missing.png")  # never written
+    with pytest.raises(ValueError, match="cannot read image"):
+        await run(crop_path, gen_path_missing, _facts(), 1)
+
+
+@pytest.mark.asyncio
 async def test_fail_on_missing_expected_text(tmp_path):
     crop_path = str(tmp_path / "crop.png")
     gen_path = str(tmp_path / "gen.png")

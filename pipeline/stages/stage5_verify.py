@@ -9,6 +9,8 @@ COLOR_DISTANCE_THRESHOLD = 20.0
 
 def _mean_lab(image_path: str):
     img = cv2.imread(image_path)
+    if img is None:
+        raise ValueError(f"cannot read image: {image_path}")
     rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) / 255.0
     lab = rgb2lab(rgb)
     return lab.reshape(-1, 3).mean(axis=0)
@@ -22,6 +24,8 @@ def _color_distance(crop_path: str, generated_path: str) -> float:
 
 def _ocr_text(image_path: str) -> str:
     img = cv2.imread(image_path)
+    if img is None:
+        raise ValueError(f"cannot read image: {image_path}")
     return pytesseract.image_to_string(img).strip()
 
 

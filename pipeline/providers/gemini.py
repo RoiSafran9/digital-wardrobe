@@ -1,11 +1,12 @@
 import json
 import time
 from google import genai
+from google.genai import types
 from pipeline.config import require_env
-from pipeline.types import DetectedItem, ItemFacts
+from pipeline.types import DetectedItemWithFacts, ItemFacts
 from pipeline.run_log import RunLogger
 
-MODEL_VISION = "gemini-2.5-flash"
+MODEL_VISION = "gemini-3.1-flash-lite"
 MODEL_IMAGE = "gemini-2.5-flash-image"
 
 PROMPTS_DIR = __file__.rsplit("/providers/", 1)[0] + "/prompts"
@@ -28,44 +29,25 @@ class GeminiProvider:
                              latency_ms=(time.monotonic() - start) * 1000,
                              status=status, error=error)
 
-    async def detect_items(self, image_path: str) -> list[DetectedItem]:
+    async def detect_items_with_facts(self, image_path: str) -> list[DetectedItemWithFacts]:
         start = time.monotonic()
         try:
             with open(image_path, "rb") as f:
                 image_bytes = f.read()
-            prompt = _read_prompt("stage1_detect_v1.txt")
+            prompt = _read_prompt("stage1_detect_facts_v1.txt")
             response = self.client.models.generate_content(
                 model=MODEL_VISION,
                 contents=[{"inline_data": {"mime_type": "image/jpeg", "data": image_bytes}}, prompt],
+                config=types.GenerateContentConfig(response_mime_type="application/json",
+                                                    response_schema=list[DetectedItemWithFacts]),
             )
             raw = json.loads(response.text)
-            items = [DetectedItem.model_validate(i) for i in raw]
-            self._log("stage1_detect", "v1", start, "ok")
+            items = [DetectedItemWithFacts.model_validate(i) for i in raw]
+            self._log("stage1_detect_facts", "v1", start, "ok")
             return items
         except Exception as e:
-            self._log("stage1_detect", "v1", start, "error", str(e))
+            self._log("stage1_detect_facts", "v1", start, "error", str(e))
             raise
-
-    async def extract_facts(self, crop_path: str, context_path: str | None) -> ItemFacts:
-        start = time.monotonic()
-        try:
-            with open(crop_path, "rb") as f:
-                crop_bytes = f.read()
-            prompt = _read_prompt("stage3_facts_v1.txt")
-            response = self.client.models.generate_content(
-                model=MODEL_VISION,
-                contents=[{"inline_data": {"mime_type": "image/jpeg", "data": crop_bytes}}, prompt],
-            )
-            raw = json.loads(response.text)
-            facts = ItemFacts.model_validate(raw)
-            self._log("stage3_facts", "v1", start, "ok")
-            return facts
-        except Exception as e:
-            self._log("stage3_facts", "v1", start, "error", str(e))
-            raise
-
-    async def judge(self, crop_path: str, generated_path: str, facts: ItemFacts) -> list[str]:
-        raise NotImplementedError("judge is implemented by ClaudeProvider (must differ from generator)")
 
     async def generate(self, crop_path: str, facts: ItemFacts, violations: list[str] | None) -> str:
         start = time.monotonic()

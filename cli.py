@@ -6,18 +6,12 @@ from pipeline.config import require_env
 from pipeline.orchestrator import run_photo, Providers
 from pipeline.run_log import RunLogger
 from pipeline.providers.gemini import GeminiProvider
-from pipeline.providers.replicate_sam import ReplicateSamProvider
-from pipeline.providers.claude import ClaudeProvider
 
 
 def build_providers(logger: RunLogger) -> Providers:
     require_env("GEMINI_API_KEY")
-    require_env("ANTHROPIC_API_KEY")
-    require_env("REPLICATE_API_TOKEN")
     gemini = GeminiProvider(logger)
-    claude = ClaudeProvider(logger)
-    segment = ReplicateSamProvider(logger)
-    return Providers(vision=gemini, segment=segment, imagegen=gemini, judge=claude)
+    return Providers(vision=gemini, imagegen=gemini)
 
 
 def main(photos_dir: str, output_root: str = "runs") -> str:

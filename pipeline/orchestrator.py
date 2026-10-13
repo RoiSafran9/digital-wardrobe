@@ -2,30 +2,28 @@ import asyncio
 import os
 import shutil
 from dataclasses import dataclass
-from pipeline.providers.base import VisionProvider, SegmentProvider, ImageGenProvider
+from pipeline.providers.base import VisionProvider, ImageGenProvider
 from pipeline.run_log import RunLogger
 from pipeline.stages import (
-    stage0_quality, stage1_detect, stage2_segment, stage3_facts,
-    stage4_generate, stage5_verify, stage6_score,
+    stage0_quality, stage1_detect_facts, crop_item, stage4_generate, stage5_verify, stage6_score,
 )
+from pipeline.types import as_item_facts
 
 
 @dataclass
 class Providers:
     vision: VisionProvider
-    segment: SegmentProvider
     imagegen: ImageGenProvider
-    judge: VisionProvider  # must be a different model/provider than `vision`'s generate path
 
 
 async def _run_item(image_path: str, item, item_dir: str, providers: Providers,
                      logger: RunLogger, max_attempts: int):
     os.makedirs(item_dir, exist_ok=True)
-    segment_result = await stage2_segment.run(image_path, item, providers.segment)
+    crop_path = crop_item.crop(image_path, item.box)
     crop_dest = os.path.join(item_dir, "crop.png")
-    shutil.copy(segment_result.crop_path, crop_dest)
+    shutil.copy(crop_path, crop_dest)
 
-    facts = await stage3_facts.run(crop_dest, image_path, providers.vision)
+    facts = as_item_facts(item)
     with open(os.path.join(item_dir, "facts.json"), "w") as f:
         f.write(facts.model_dump_json(indent=2))
 
@@ -38,18 +36,20 @@ async def _run_item(image_path: str, item, item_dir: str, providers: Providers,
         except Exception:
             verification = None
             break
-        verification = await stage5_verify.run(crop_dest, generated_path, facts, attempt, providers.judge)
+        verification = await stage5_verify.run(crop_dest, generated_path, facts, attempt)
         if verification.status == "pass":
             break
         violations = verification.violations
 
-    if generated_path and os.path.exists(generated_path):
-        shutil.copy(generated_path, os.path.join(item_dir, "generated.png"))
+    generated_dest = os.path.join(item_dir, "generated.png")
+    if generated_path and os.path.exists(generated_path) and generated_path != generated_dest:
+        shutil.copy(generated_path, generated_dest)
     if verification:
         with open(os.path.join(item_dir, "verification.json"), "w") as f:
             f.write(verification.model_dump_json(indent=2))
 
-    result = stage6_score.run(verification, segment_result.visible_fraction, max_attempts)
+    visible_fraction = stage1_detect_facts.visible_fraction(item)
+    result = stage6_score.run(verification, visible_fraction, max_attempts)
     with open(os.path.join(item_dir, "result.json"), "w") as f:
         f.write(result.model_dump_json(indent=2))
 
@@ -62,7 +62,7 @@ async def run_photo(image_path: str, output_dir: str, providers: Providers,
     if quality.status == "retake":
         return {"quality": quality, "items": [], "failed": []}
 
-    included_items = await stage1_detect.run(image_path, providers.vision)
+    included_items = await stage1_detect_facts.run(image_path, providers.vision)
     if not included_items:
         return {"quality": quality, "items": [], "failed": []}
 

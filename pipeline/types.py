@@ -14,24 +14,23 @@ class QualityCheckResult(BaseModel):
     reason: Literal["blurry", "too_dark", "low_resolution"] | None = None
 
 
-class DetectedItem(BaseModel):
-    box: BBox
-    category: str
-    included: bool
-    exclusion_reason: str | None = None
-
-
-class SegmentResult(BaseModel):
-    mask_path: str
-    crop_path: str
-    visible_fraction: float
-    occluded_by: list[int] = []
-
-
 class FactField(BaseModel):
     value: str | list[str]
     confidence: float
     basis: Literal["observed", "inferred"]
+
+
+class DetectedItemWithFacts(BaseModel):
+    box: BBox
+    included: bool
+    exclusion_reason: str | None = None
+    category: FactField
+    colors: FactField
+    pattern: FactField
+    visible_text: FactField
+    trims: FactField
+    visible_parts: FactField
+    occluded_parts: FactField
 
 
 class ItemFacts(BaseModel):
@@ -42,6 +41,12 @@ class ItemFacts(BaseModel):
     trims: FactField
     visible_parts: FactField
     occluded_parts: FactField
+
+
+def as_item_facts(item: DetectedItemWithFacts) -> ItemFacts:
+    return ItemFacts(category=item.category, colors=item.colors, pattern=item.pattern,
+                      visible_text=item.visible_text, trims=item.trims,
+                      visible_parts=item.visible_parts, occluded_parts=item.occluded_parts)
 
 
 class VerificationResult(BaseModel):

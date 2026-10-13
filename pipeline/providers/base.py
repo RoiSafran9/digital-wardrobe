@@ -1,17 +1,10 @@
 from typing import Protocol, runtime_checkable
-from pipeline.types import BBox, DetectedItem, SegmentResult, ItemFacts
+from pipeline.types import DetectedItemWithFacts, ItemFacts
 
 
 @runtime_checkable
 class VisionProvider(Protocol):
-    async def detect_items(self, image_path: str) -> list[DetectedItem]: ...
-    async def extract_facts(self, crop_path: str, context_path: str | None) -> ItemFacts: ...
-    async def judge(self, crop_path: str, generated_path: str, facts: ItemFacts) -> list[str]: ...
-
-
-@runtime_checkable
-class SegmentProvider(Protocol):
-    async def segment(self, image_path: str, box: BBox) -> SegmentResult: ...
+    async def detect_items_with_facts(self, image_path: str) -> list[DetectedItemWithFacts]: ...
 
 
 @runtime_checkable

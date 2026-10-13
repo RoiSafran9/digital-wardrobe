@@ -1,0 +1,9 @@
+You are analyzing a photo of clothing items laid on a bed or floor for a digital wardrobe app.
+
+Return every candidate clothing item visible in the photo as a JSON list. For each item:
+- box: pixel bounding box {x, y, width, height}
+- category: one short word (t-shirt, shorts, dress, sandal, jacket, etc.)
+- included: true only if the item is laid on the capture surface (bed/floor), fully in frame, and is clothing (not an accessory)
+- exclusion_reason: if included is false, state why (e.g. "worn on feet", "accessory", "cut off by frame edge", "not clothing")
+
+Exclude: items being worn by a person, accessories (sunglasses, jewelry), non-clothing objects, items cut off by the frame edge.

@@ -29,3 +29,22 @@ def test_main_processes_each_photo(tmp_path, monkeypatch):
 
     assert mock_run.await_count == 2
     assert run_id
+
+def test_main_continues_after_one_photo_fails(tmp_path, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
+    monkeypatch.setenv("REPLICATE_API_TOKEN", "k")
+    photos_dir = tmp_path / "photos"
+    photos_dir.mkdir()
+    (photos_dir / "a.jpg").write_bytes(b"fake")
+    (photos_dir / "b.jpg").write_bytes(b"fake")
+
+    with patch("cli.build_providers") as mock_build, \
+         patch("cli.run_photo", new_callable=AsyncMock) as mock_run:
+        mock_build.return_value = object()
+        mock_run.side_effect = [ValueError("cannot read image: a.jpg"),
+                                 {"quality": None, "items": [], "failed": []}]
+        run_id = main(str(photos_dir), str(tmp_path / "runs"))
+
+    assert mock_run.await_count == 2
+    assert run_id

@@ -37,7 +37,11 @@ def main(photos_dir: str, output_root: str = "runs") -> str:
             photo_path = os.path.join(photos_dir, photo)
             photo_name = os.path.splitext(photo)[0]
             output_dir = os.path.join(run_dir, photo_name)
-            await run_photo(photo_path, output_dir, providers, logger)
+            try:
+                await run_photo(photo_path, output_dir, providers, logger)
+            except Exception as e:
+                logger.log(stage="cli", model="n/a", prompt_version="v1",
+                            latency_ms=0.0, status="error", error=f"{photo}: {e}")
 
     asyncio.run(_run_all())
     return run_id

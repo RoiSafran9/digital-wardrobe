@@ -1,8 +1,12 @@
 import asyncio
 import os
+import sys
 import tempfile
 import time
 import streamlit as st
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from pipeline.run_log import RunLogger
 from cli import build_providers
 from pipeline.orchestrator import run_photo

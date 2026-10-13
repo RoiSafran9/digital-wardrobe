@@ -1,0 +1,10 @@
+Generate this exact clothing item laid flat, fully visible, on a pure white background,
+as if photographed for a catalog.
+
+Binding facts you MUST NOT change in visible regions:
+{facts_block}
+
+Only the occluded parts listed above may be completed/inferred. Every visible detail
+(colors, text, trims, pattern) must match the input crop exactly — no added trim,
+no changed text, no altered colors.
+{violations_block}

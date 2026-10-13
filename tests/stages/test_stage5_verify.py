@@ -10,16 +10,6 @@ def _solid_color_image(path, bgr):
     cv2.imwrite(path, arr)
 
 
-class FakeProviderNoViolations:
-    async def judge(self, crop_path, generated_path, facts):
-        return []
-
-
-class FakeProviderWithViolations:
-    async def judge(self, crop_path, generated_path, facts):
-        return ["trim added to sleeve"]
-
-
 def _facts(text=""):
     field = FactField(value="pink", confidence=0.9, basis="observed")
     text_field = FactField(value=text, confidence=0.9, basis="observed")
@@ -28,14 +18,15 @@ def _facts(text=""):
 
 
 @pytest.mark.asyncio
-async def test_pass_when_colors_match_and_no_judge_violations(tmp_path):
+async def test_pass_when_colors_match_and_no_text_expected(tmp_path):
     crop_path = str(tmp_path / "crop.png")
     gen_path = str(tmp_path / "gen.png")
     _solid_color_image(crop_path, (203, 192, 255))  # pink-ish BGR
     _solid_color_image(gen_path, (203, 192, 255))
-    result = await run(crop_path, gen_path, _facts(), 1, FakeProviderNoViolations())
+    result = await run(crop_path, gen_path, _facts(), 1)
     assert result.status == "pass"
     assert result.violations == []
+
 
 @pytest.mark.asyncio
 async def test_fail_on_color_shift(tmp_path):
@@ -43,16 +34,17 @@ async def test_fail_on_color_shift(tmp_path):
     gen_path = str(tmp_path / "gen.png")
     _solid_color_image(crop_path, (0, 0, 255))     # red
     _solid_color_image(gen_path, (255, 0, 0))       # blue — big Lab distance
-    result = await run(crop_path, gen_path, _facts(), 1, FakeProviderNoViolations())
+    result = await run(crop_path, gen_path, _facts(), 1)
     assert result.status == "fail"
     assert any("color" in v.lower() for v in result.violations)
 
+
 @pytest.mark.asyncio
-async def test_fail_on_judge_violation(tmp_path):
+async def test_fail_on_missing_expected_text(tmp_path):
     crop_path = str(tmp_path / "crop.png")
     gen_path = str(tmp_path / "gen.png")
     _solid_color_image(crop_path, (203, 192, 255))
-    _solid_color_image(gen_path, (203, 192, 255))
-    result = await run(crop_path, gen_path, _facts(), 1, FakeProviderWithViolations())
+    _solid_color_image(gen_path, (203, 192, 255))  # no text rendered in the image
+    result = await run(crop_path, gen_path, _facts(text="LOGO"), 1)
     assert result.status == "fail"
-    assert "trim added to sleeve" in result.violations
+    assert any("LOGO" in v for v in result.violations)

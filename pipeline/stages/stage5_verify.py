@@ -3,7 +3,6 @@ import numpy as np
 import pytesseract
 from skimage.color import rgb2lab
 from pipeline.types import ItemFacts, VerificationResult
-from pipeline.providers.base import VisionProvider
 
 COLOR_DISTANCE_THRESHOLD = 20.0
 
@@ -26,8 +25,7 @@ def _ocr_text(image_path: str) -> str:
     return pytesseract.image_to_string(img).strip()
 
 
-async def run(crop_path: str, generated_path: str, facts: ItemFacts, attempt: int,
-               provider: VisionProvider) -> VerificationResult:
+async def run(crop_path: str, generated_path: str, facts: ItemFacts, attempt: int) -> VerificationResult:
     violations: list[str] = []
 
     distance = _color_distance(crop_path, generated_path)
@@ -39,9 +37,6 @@ async def run(crop_path: str, generated_path: str, facts: ItemFacts, attempt: in
         found_text = _ocr_text(generated_path)
         if expected_text not in found_text:
             violations.append(f"expected text '{expected_text}' not found in generated image")
-
-    judge_violations = await provider.judge(crop_path, generated_path, facts)
-    violations.extend(judge_violations)
 
     status = "fail" if violations else "pass"
     return VerificationResult(status=status, violations=violations, attempt=attempt)

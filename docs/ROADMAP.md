@@ -5,7 +5,8 @@
 - [x] Define draft MVP and proposed architecture
 - [x] Confirm home browsing: two-column Photo Grid + horizontal category chips
 - [x] Confirm Bottom Navigation: Wardrobe | Add | Account
-- [ ] Finalize Add Item workflow, visual tokens and remaining screen map (Modern & Playful approved)
+- [x] Confirm Photo First entry for Add Item
+- [ ] Finalize post-photo form layout, Save/Cancel transitions, visual tokens and remaining screen map (Modern & Playful approved)
 - [ ] Connect Claude Code to the same repository
 
 ## Phase 1 — App foundation

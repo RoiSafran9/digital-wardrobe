@@ -10,7 +10,7 @@ Status: **Draft / screen planning** · Updated: 2026-10-15
 - Nine predefined categories; category filtering is part of the MVP.
 - **Home layout confirmed:** My Wardrobe shows a two-column photo grid plus horizontally scrollable filter chips (All + nine categories), with in-place filtering. Category-first browsing is not part of MVP.
 - **Navigation confirmed:** persistent Bottom Navigation with **Wardrobe | Add | Account**. No floating add button or header-only Settings navigation.
-- **Add Item flow confirmed:** Photo First. Choose Take Photo or Choose from Library before displaying the item details form.
+- **Add Item flow confirmed:** Photo First → vision AI suggestion → Single Review/Edit Form → explicit Save Item. No obligatory manual entry if AI identifies a valid category.
 
 ## Proposed screens (for review, not yet approved)
 
@@ -32,13 +32,15 @@ Status: **Draft / screen planning** · Updated: 2026-10-15
 - Each card: photo plus optional name (or category fallback).
 - Empty wardrobe, empty filter, loading and retry states.
 
-### 4. Add Item (bottom navigation destination; Photo First confirmed)
+### 4. Add Item (confirmed: Photo First + AI-first + Single Form)
 - Enter via the **Add** bottom-tab action; retain the three-tab navigation model.
-- **First show the source choice:** Take Photo or Choose from Library. Request permissions contextually, and handle cancelled selection and denied permissions.
-- **After one image is chosen:** display a preview of that exact image, with an option to retake/reselect it.
-- Show the required category selector and optional Item Name, Color, Brand, Notes. Whether these fields appear on one form or as a step-by-step flow is still undecided.
-- Enable Save only with a photo and category. Show uploading/loading/error/retry states; do not discard form data on a transient error.
-- Cancel/back with unsaved-change protection when needed; behavior following successful Save still to be specified.
+- First show **Take Photo** and **Choose from Library**; handle permissions and cancellation.
+- After selecting exactly one image, immediately show a preview and **Analyzing your item…** while a vision model suggests metadata.
+- On the **single scrollable review screen**, present an editable Category (one of the nine predefined values), Color and optional Item Name. Brand may be suggested only if clearly supported by visible evidence; otherwise leave it blank. Notes is user-entered only.
+- The user may replace the photo and manually edit or clear any optional suggestion; no obligatory typing when AI suggests a valid category.
+- If the analysis fails/returns invalid data, show Retry + manual Category selection (category is required for saving, even though manual selection is not normally required).
+- The user explicitly presses **Save Item**. Disabled until there is one image and a valid category; handle saving and upload errors without losing the draft.
+- Cancel/back requires appropriate draft-discard protection; exact save/cancel destination is still to be decided.
 
 ### 5. Item Details
 - Large photo, category, optional metadata, created date.
@@ -77,22 +79,26 @@ The tab bar should use clear icons and readable English labels, accommodate iPho
 ## Add Item entry decision (confirmed)
 **Photo First** is approved. Tapping Add shows Take Photo / Choose from Library, and the item details form follows after an image has been chosen. Form First was not selected for MVP.
 
-## Next UI decision: post-photo item details layout (not yet approved)
-**Option A — Single Form (recommended):** Following photo selection, show the photo preview, required category selector, optional fields and Save in one scrollable screen. Fewest steps.
+## Add Item completion layout (confirmed)
+**Single Review/Edit Form** is approved. After Photo First and AI analysis, show one scrollable screen with image preview, editable AI suggestions and Save Item. No multi-step metadata wizard and no compulsory manual form completion when a valid category has been suggested.
 
-**Option B — Step-by-Step:** Following photo selection, ask for required category in a short step, then show the optional fields and Save in a subsequent step. More guidance, but more navigation.
+## Next UI decision: after Save Item (not yet approved)
+**Option A — Return to Wardrobe:** After a successful save, switch to Wardrobe, show the newly saved item, and provide a brief success indication. Most efficient when cataloging many items.
 
-Both preserve Photo First, one image and category required, the same optional fields, and the three bottom tabs.
+**Option B — Open Item Details:** After a successful save, navigate directly to the saved item's detail page; the user can inspect or edit it, then return to Wardrobe.
+
+Both require an explicit Save Item action and preserve the same AI-first review/edit flow.
 
 ## Screen-level acceptance
 - Users can locate Add Item and Account quickly from the persistent labeled bottom bar.
-- Choosing a photo precedes the item details form, and users can replace the selected image before saving.
+- Choosing a photo triggers AI analysis before the single review/edit form, and users can replace the selected image before saving.
+- An AI-inferred category/color can be edited, and an AI failure still allows manual category selection and saving.
 - No optional field is required to save a clothing item.
 - Filter by any of the nine predefined categories.
 - Only the signed-in user's wardrobe is visible.
 - Verification, network failure, camera/photo permissions, upload failure, empty and delete-confirmation states are accounted for.
 
 ## Open screen questions
-- Add Item post-photo layout: one form versus step-by-step; save/cancel transitions.
+- After-save destination: return to Wardrobe versus open Item Details; cancel/draft-discard behavior.
 - Palette, typography and spacing tokens.
 - OTP code versus magic link as the primary verification method.

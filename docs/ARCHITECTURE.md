@@ -2,7 +2,7 @@
 Status: **Proposed**, not yet implemented · Updated: 2026-10-15
 
 ## Guiding principles
-iPhone-first, easy iteration, minimal operational overhead, private by default, and GitHub as the code/documentation source of truth.
+iPhone-first, easy iteration, minimal operational overhead, private by default, **multiple isolated user accounts from V1**, and GitHub as the code/documentation source of truth.
 
 ## Proposed components
 - Client: Expo / React Native with TypeScript and Expo Router.
@@ -10,6 +10,9 @@ iPhone-first, easy iteration, minimal operational overhead, private by default, 
 - Data/auth/storage: Supabase Auth, PostgreSQL and a **private** Supabase Storage bucket.
 - Release: EAS Build for iOS → App Store Connect → TestFlight.
 - No custom application server in MVP unless needed for security-sensitive operations.
+
+## Account tenancy model
+**Confirmed product requirement:** multiple independent users in MVP. Each account owns a private wardrobe. Supabase Auth identifies the active user, and both database rows and Storage objects must be user-scoped. Cross-user sharing and public clothing galleries are out of scope.
 
 ## Data model (proposal)
 `wardrobe_items`

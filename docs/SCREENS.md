@@ -10,6 +10,7 @@ Status: **Draft / screen planning** · Updated: 2026-10-15
 - Nine predefined categories; category filtering is part of the MVP.
 - **Home layout confirmed:** My Wardrobe shows a two-column photo grid plus horizontally scrollable filter chips (All + nine categories), with in-place filtering. Category-first browsing is not part of MVP.
 - **Navigation confirmed:** persistent Bottom Navigation with **Wardrobe | Add | Account**. No floating add button or header-only Settings navigation.
+- **Add Item flow confirmed:** Photo First. Choose Take Photo or Choose from Library before displaying the item details form.
 
 ## Proposed screens (for review, not yet approved)
 
@@ -31,13 +32,13 @@ Status: **Draft / screen planning** · Updated: 2026-10-15
 - Each card: photo plus optional name (or category fallback).
 - Empty wardrobe, empty filter, loading and retry states.
 
-### 4. Add Item (bottom navigation destination)
+### 4. Add Item (bottom navigation destination; Photo First confirmed)
 - Enter via the **Add** bottom-tab action; retain the three-tab navigation model.
-- Start with photo source: Take Photo or Choose from Library.
-- Preview exactly one selected image; allow retake/reselect.
-- Required category selector; optional Item Name, Color, Brand, Notes.
-- Save action with uploading/loading/error feedback.
-- Cancel/back with unsaved-change protection when needed.
+- **First show the source choice:** Take Photo or Choose from Library. Request permissions contextually, and handle cancelled selection and denied permissions.
+- **After one image is chosen:** display a preview of that exact image, with an option to retake/reselect it.
+- Show the required category selector and optional Item Name, Color, Brand, Notes. Whether these fields appear on one form or as a step-by-step flow is still undecided.
+- Enable Save only with a photo and category. Show uploading/loading/error/retry states; do not discard form data on a transient error.
+- Cancel/back with unsaved-change protection when needed; behavior following successful Save still to be specified.
 
 ### 5. Item Details
 - Large photo, category, optional metadata, created date.
@@ -73,21 +74,25 @@ Status: **Draft / screen planning** · Updated: 2026-10-15
 
 The tab bar should use clear icons and readable English labels, accommodate iPhone safe areas and maintain appropriate touch targets.
 
-## Next UI decision: Add Item workflow (not yet approved)
-**Option A — Photo First (recommended):** Opening Add offers camera or photo library first; after selecting an image, show the category and optional metadata form with a preview.
+## Add Item entry decision (confirmed)
+**Photo First** is approved. Tapping Add shows Take Photo / Choose from Library, and the item details form follows after an image has been chosen. Form First was not selected for MVP.
 
-**Option B — Form First:** Opening Add shows a form with required empty photo and category slots immediately; the user may choose when to add a photo.
+## Next UI decision: post-photo item details layout (not yet approved)
+**Option A — Single Form (recommended):** Following photo selection, show the photo preview, required category selector, optional fields and Save in one scrollable screen. Fewest steps.
 
-Both require one photo and one category before saving, with optional Item Name, Color, Brand and Notes.
+**Option B — Step-by-Step:** Following photo selection, ask for required category in a short step, then show the optional fields and Save in a subsequent step. More guidance, but more navigation.
+
+Both preserve Photo First, one image and category required, the same optional fields, and the three bottom tabs.
 
 ## Screen-level acceptance
 - Users can locate Add Item and Account quickly from the persistent labeled bottom bar.
+- Choosing a photo precedes the item details form, and users can replace the selected image before saving.
 - No optional field is required to save a clothing item.
 - Filter by any of the nine predefined categories.
 - Only the signed-in user's wardrobe is visible.
 - Verification, network failure, camera/photo permissions, upload failure, empty and delete-confirmation states are accounted for.
 
 ## Open screen questions
-- Add Item workflow: photo-first versus form-first, and save/cancel transitions.
+- Add Item post-photo layout: one form versus step-by-step; save/cancel transitions.
 - Palette, typography and spacing tokens.
 - OTP code versus magic link as the primary verification method.

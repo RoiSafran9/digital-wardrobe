@@ -10,7 +10,8 @@
 - [x] Confirm AI-generated full-garment representative images (not original camera photos) in Wardrobe
 - [x] Confirm after-save success: return to Wardrobe, reveal new item and show success message
 - [x] Confirm generated-image background: solid white (#FFFFFF), non-transparent
-- [ ] Decide source-photo retention and quality/fidelity requirements
+- [x] Decide original source-photo retention: keep privately with each item for future regeneration
+- [ ] Define detailed output image quality/fidelity acceptance requirements
 - [ ] Finalize cancel/discard handling, visual tokens and remaining screen map (Modern & Playful approved)
 - [ ] Connect Claude Code to the same repository
 
@@ -19,17 +20,17 @@
 - [ ] Establish navigation, UI primitives and theme
 - [ ] Configure Supabase project and environment example
 - [ ] Choose image generation/editing and metadata-vision model(s), secure inference endpoint, limits and photo privacy/retention safeguards
-- [ ] Create schema, private bucket and RLS policies
+- [ ] Create schema with separate `source_image_path` and `display_image_path`, private Storage, user-scoped RLS/policies and paired-asset deletion
 
 ## Phase 2 — Working wardrobe MVP
 - [ ] Sign-in and session persistence
-- [ ] Camera/photo-library picker and image upload
+- [ ] Camera/photo-library picker and **private upload of original and generated photos**
 - [ ] Generate full-length garment catalog image from source photo (**solid white background, no alpha**), with regeneration and fidelity review
 - [ ] Vision AI category/color/name suggestions with editable Single Review Form and safe manual-category fallback
 - [ ] Clothing item creation and image grid
 - [ ] Post-save Wardrobe refresh, new-item visibility and brief success feedback; preserve draft on failed save
 - [ ] Category filters
-- [ ] Item detail, edit and delete
+- [ ] Item detail, edit and delete (including cleanup of both source and generated images)
 - [ ] Error/empty/loading states and security validation
 
 ## Phase 3 — iPhone release
@@ -39,7 +40,7 @@
 - [ ] Install and complete personal acceptance testing
 
 ## Post-MVP ideas (not committed)
-Advanced AI wardrobe search; outfit creation; outfit recommendations; weather/context-based suggestions. **Normalized AI-generated garment images and basic item/category/color suggestions are part of MVP.**
+Regeneration of **already-saved** items using retained originals (timing TBD); advanced AI wardrobe search; outfit creation; outfit recommendations; weather/context-based suggestions. **Private retention of originals, normalized AI-generated garment images and basic metadata suggestions are part of MVP.**
 
 ## Workflow
 One issue or scoped task per branch. Pull request → review → merge. Record material changes to the PRD and architecture in the same pull request.

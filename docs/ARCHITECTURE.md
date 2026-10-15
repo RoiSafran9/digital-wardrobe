@@ -11,6 +11,11 @@ iPhone-first, easy iteration, minimal operational overhead, private by default, 
 - Release: EAS Build for iOS → App Store Connect → TestFlight.
 - No custom application server in MVP unless needed for security-sensitive operations.
 
+## UI implementation guidance
+The confirmed visual direction is **Modern & Playful**, while specific colors and navigation remain open. Build a small central theme/tokens layer for palette, typography, radius and spacing so that styling can evolve consistently. Aim for friendly rounded components, a restrained playful accent palette, accessible contrast and touch sizes, and a photo-first item grid. Avoid prematurely choosing a UI framework solely for its visual style.
+
+The proposed screen inventory and navigation decisions live in [docs/SCREENS.md](SCREENS.md). Treat its unapproved proposals as planning notes, not implementation requirements.
+
 ## Account tenancy model
 **Confirmed product requirement:** multiple independent users in MVP. Each account owns a private wardrobe. Supabase Auth identifies the active user, and both database rows and Storage objects must be user-scoped. Cross-user sharing and public clothing galleries are out of scope.
 

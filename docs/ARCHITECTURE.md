@@ -71,7 +71,17 @@ docs/                # requirements and decisions
 3. Obtain AI suggestions through the authenticated server-side vision handler using private image access, and let the user edit the suggestions on one review screen.
 4. If AI fails, allow manual Category selection. Saving still requires a valid Category and the photo.
 5. Upon **Save Item**, create an item UUID and commit the validated photo to private storage at `<user-id>/<item-id>/primary.jpg`, then write the item's category and optional fields. Handle partial write/upload failure by cleanup or retry.
-6. Display the saved item with authenticated access/short-lived signed URLs; ensure any inference-only temporary image is removed.
+6. After **both** the private image and metadata are durably saved, invalidate/refetch the signed-in user's wardrobe list, navigate to the **Wardrobe** tab and ensure the new item is visible (reset category filter to All if necessary; position/scroll to newly created item). Show a brief non-blocking success message.
+7. Clear the in-memory Add draft only after success and reset it to its initial Photo First state for the next use. Disable repeated Save actions during an in-flight request and use a stable client-generated item UUID or another idempotency strategy to avoid duplicate entries on retries.
+8. If upload or metadata persistence fails, remain in Add with the photo/edits preserved; show a retryable error and do not claim success. Cleanup orphaned photo uploads or reconcile partial failures. Remove any inference-only temporary image according to retention policy.
+9. Display saved photos through authenticated access/short-lived signed URLs.
+
+## Save-success UI/data consistency
+- Success means the committed database item and its required private image can be fetched by the authenticated owner; only then report success.
+- The tab navigation must support returning from Add to Wardrobe. Keep any active filter from hiding the newly added item (switch to All when needed).
+- Refresh the wardrobe query/cache, show the new item prominently and use a short, non-blocking success indicator.
+- Restore the Add screen to its clean Photo First state after successful save, but preserve the unsaved photo and suggested/edited metadata during failed submissions and retries.
+- Confirm no duplicate item is created by rapid taps or a retry after an ambiguous network response.
 
 ## Quality gates
 - TypeScript checking, linting, minimal unit tests for data helpers.

@@ -7,12 +7,12 @@ A private, personal iPhone wardrobe catalog built with **Expo / React Native / T
 ## MVP
 
 - Sign in to a private wardrobe
-- Add a clothing item using camera or photo library; vision AI proposes category, color and a descriptive name, with optional user corrections on a single review screen
+- Add a clothing item from a source photo; AI generates a **separate, fully spread-out garment image on white/transparent background** for the catalog and suggests category/color/name; the user reviews and may regenerate or correct suggestions before saving
 - Browse a photo-first grid and filter by category
 - View and edit item details (category, color, brand, notes)
 - Delete clothing items
 
-**AI image recognition and editable metadata suggestions ARE part of MVP.** Automatic background removal, outfit recommendations and social features are later.
+**AI-generated standardized garment imagery and editable metadata suggestions ARE part of MVP.** The original photo is the input and **not the image displayed in the wardrobe**. Outfit recommendations and social features are later.
 
 ## Project source of truth
 
@@ -26,7 +26,7 @@ GitHub is the authoritative source for **code and project decisions**. User clot
 
 ## Intended stack (proposed)
 
-Expo (React Native + TypeScript), Expo Router, Supabase (Auth/Postgres/private Storage plus a secure server-side vision inference endpoint), and EAS Build → App Store Connect → TestFlight.
+Expo (React Native + TypeScript), Expo Router, Supabase (Auth/Postgres/private Storage plus secure server-side **image generation/editing and vision metadata** inference), and EAS Build → App Store Connect → TestFlight.
 
 ## Working agreement
 

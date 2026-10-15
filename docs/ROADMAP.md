@@ -7,7 +7,8 @@
 - [x] Confirm Bottom Navigation: Wardrobe | Add | Account
 - [x] Confirm Photo First entry for Add Item
 - [x] Confirm AI-first metadata suggestion and Single Review/Edit Form after photo selection
-- [ ] Finalize after-save/cancel transitions, visual tokens and remaining screen map (Modern & Playful approved)
+- [x] Confirm after-save success: return to Wardrobe, reveal new item and show success message
+- [ ] Finalize cancel/discard handling, visual tokens and remaining screen map (Modern & Playful approved)
 - [ ] Connect Claude Code to the same repository
 
 ## Phase 1 — App foundation
@@ -22,6 +23,7 @@
 - [ ] Camera/photo-library picker and image upload
 - [ ] Vision AI category/color/name suggestions with editable Single Review Form and safe manual fallback
 - [ ] Clothing item creation and image grid
+- [ ] Post-save Wardrobe refresh, new-item visibility and brief success feedback; preserve draft on failed save
 - [ ] Category filters
 - [ ] Item detail, edit and delete
 - [ ] Error/empty/loading states and security validation

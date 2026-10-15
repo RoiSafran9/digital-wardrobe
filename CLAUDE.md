@@ -14,6 +14,7 @@ Read `AGENTS.md` first. It contains the shared rules for **all** AI coding agent
 - Work in feature branches and open PRs rather than pushing to main.
 - After code changes run available type checks, lint/tests, and describe any checks that could not run.
 - **AI garment image generation IS part of MVP**: source camera/gallery photo → secure image editing/generation that reconstructs a neatly laid-out full garment on a **solid white (#FFFFFF), non-transparent background** → preview the **generated image** with editable category/color/name suggestions → allow Regenerate/Retake and explicit Save Item → show the generated image in Wardrobe. Never present the original input image as the saved catalog image. Avoid fabricated distinctive details and explain uncertainty of unseen portions.
+- Every saved garment must have **two private files and two associated paths**: retained `source_image_path` (original) and `display_image_path` (AI-generated). Wardrobe and Item Details render only `display_image_path`. Both are owner-restricted; on item deletion clean up both. Saving confirms both objects and metadata; preserve the original for future regeneration, even if a saved-item Regenerate feature is deferred.
 - The metadata stage must validate category, keep uncertain brands blank, allow manual category correction, and block saving if **image generation** fails. Run AI from an authenticated server-side handler; keep secrets out of the app and private input/output images protected.
 - Defer other AI features such as outfit recommendations until after MVP.
 

@@ -26,8 +26,15 @@ Item creation must not require the user to fill any optional field. A missing na
 ## Item photography
 **Decision: One photo per clothing item in MVP.** The user can take or select one image per item, see a preview, and replace it when editing the item. A multi-image gallery, back/detail shots and additional photo slots are out of scope for V1. The data architecture should allow a later expansion to multiple images without disrupting the item catalog.
 
+## Add Item experience (confirmed: Photo First)
+- Tapping the **Add** bottom tab first presents two photo-source actions: **Take Photo** and **Choose from Library**.
+- After capturing or selecting one photo, show a preview, a required Category selector, and optional Item Name, Color, Brand and Notes.
+- Users can retake or replace the photo before saving; the app requests camera/photo permissions only when needed.
+- Save is enabled only after a photo and a category are selected. Handle cancelled selection, denied permission, upload failure and retries without silently losing entered information.
+- The choice between showing all metadata on one screen versus step-by-step entry remains open, along with precise save/cancel transitions.
+
 ## Primary journey
-Open app → sign in → empty state → add item → choose/take photo → choose category (required) → optionally enter item name/color/brand/notes → save → item appears in grid → tap to view/edit/delete.
+Open app → sign in → My Wardrobe → tap Add → Take Photo / Choose from Library → see photo preview → choose category (required) → optionally enter name/color/brand/notes → save → new item appears in Wardrobe → tap to view/edit/delete.
 
 ## Authentication and account model
 **Decision: Authentication and multiple independent user accounts are required in V1.** Each registered user gets a distinct private, cloud-backed wardrobe. A returning user must be able to sign in and recover their wardrobe on a compatible iPhone. Users can only view, create, edit, and delete their own items and photos. No wardrobe sharing or social features in MVP.
@@ -70,7 +77,7 @@ The concrete palette, type scale and component specifications remain open. **Bot
 - Each clothing card prioritizes the photo and may show an optional item name, falling back to its category if no name was entered.
 - Provide helpful empty-wardrobe and empty-filter states, including an obvious way to add an item.
 - A persistent bottom navigation provides **Wardrobe**, **Add**, and **Account** destinations. Wardrobe is the landing tab; Add opens the item creation flow; Account contains account information and sign-out.
-- Exact theme colors, form layout, Add-screen behavior on cancel/save, and sorting remain UI details to finalize. See [Screen map](SCREENS.md).
+- Exact theme colors, one-form versus step-by-step metadata layout, Add-screen behavior on cancel/save, and sorting remain UI details to finalize. See [Screen map](SCREENS.md).
 
 ## Primary navigation (confirmed)
 - Use a **bottom tab bar** with three clearly labeled entries in this order: **Wardrobe | Add | Account**.
@@ -91,11 +98,12 @@ AI clothing identification, automatic cutouts/background removal, look/outfit ge
 - Sign-in and sign-out work with email verification; sessions remain signed in across app restarts unless signed out or expired.
 - My Wardrobe loads as a two-column grid with All selected by default; a category chip filters in place and returns only matching items, without changing screens.
 - A persistent bottom bar provides labeled Wardrobe, Add and Account destinations; users can reach item creation and account/sign-out without a floating add button or header-only settings navigation.
+- On the Add tab, the first action is choosing Take Photo or Choose from Library; only after a photo is chosen is the item detail form presented with a single-photo preview.
 - Basic loading, empty, retry and delete-confirmation states work.
 - No secrets or customer images are stored in Git.
 
 ## Open decisions
-- Exact visual palette, component specifications, and Add Item screen flow and transitions (see [Screen map](SCREENS.md)).
+- Exact visual palette, component specifications, one-form versus step-by-step Add Item details, and save/cancel transitions (see [Screen map](SCREENS.md)).
 - Whether the login UX should prioritize email code, magic link, or both.
 
 ## Product metrics (small beta cohort initially)

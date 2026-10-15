@@ -10,8 +10,8 @@ Initial target: the product owner plus a small group of other testers, each with
 ## MVP scope
 1. Authentication is required from V1 using passwordless email sign-in (email OTP and/or magic link). The user signs into a personal account before accessing their private cloud wardrobe.
 2. Add an item with exactly one primary photo from the camera or photo library; preview and save.
-3. Browse a photo-led, scrollable wardrobe grid.
-4. Filter by category; optionally search by brand/color if easy.
+3. Browse all clothing in My Wardrobe using a two-column, photo-led, scrollable grid.
+4. Filter the same grid with a horizontally scrollable row of category chips: All (default) plus the nine predefined categories. Selecting a chip filters the grid in place, without navigating to another screen.
 5. Item details: photo and category (required), plus item name, color, brand and notes (optional); show the automatically recorded creation date.
 6. Edit metadata and delete item with confirmation.
 7. Persist metadata and image in the cloud and reload after app restart.
@@ -62,6 +62,15 @@ Each clothing item belongs to one of these categories. Categories are fixed in M
 
 The concrete palette, type scale, component specifications and navigation structure are **proposals to review**, not yet approved. See [Screen map](SCREENS.md).
 
+## My Wardrobe home (confirmed)
+- The authenticated landing screen is **My Wardrobe**.
+- Show a two-column photo grid of the user's own clothing items, using Modern & Playful rounded item cards.
+- Provide a horizontally scrollable category-filter chip row: **All** selected by default, then the nine predefined categories.
+- Only one category chip is active at a time. Selecting another category updates the existing grid in place (no category-specific sub-screen).
+- Each clothing card prioritizes the photo and may show an optional item name, falling back to its category if no name was entered.
+- Provide helpful empty-wardrobe and empty-filter states, including an obvious way to add an item.
+- The placement of **Add Item** and **Settings**, exact theme colors and sorting behavior remain open UI decisions. See [Screen map](SCREENS.md).
+
 ## Non-goals for MVP
 AI clothing identification, automatic cutouts/background removal, look/outfit generation, weather suggestions, sharing, purchasing, calendar, complex tagging, and multi-image items.
 
@@ -71,11 +80,12 @@ AI clothing identification, automatic cutouts/background removal, look/outfit ge
 - Saved entries appear after force quitting and reopening the app, and after signing back into the same account.
 - Test with at least two separate accounts: neither can read, change, delete, or retrieve the other's wardrobe records or private photos.
 - Sign-in and sign-out work with email verification; sessions remain signed in across app restarts unless signed out or expired.
+- My Wardrobe loads as a two-column grid with All selected by default; a category chip filters in place and returns only matching items, without changing screens.
 - Basic loading, empty, retry and delete-confirmation states work.
 - No secrets or customer images are stored in Git.
 
 ## Open decisions
-- Exact visual palette, component specifications and primary wardrobe screen layout/navigation (see [Screen map](SCREENS.md)).
+- Exact visual palette, component specifications and Add Item / Account navigation controls (see [Screen map](SCREENS.md)).
 - Whether the login UX should prioritize email code, magic link, or both.
 
 ## Product metrics (small beta cohort initially)

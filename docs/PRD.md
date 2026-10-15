@@ -12,15 +12,22 @@ Initial target: the product owner plus a small group of other testers, each with
 2. Add an item with exactly one primary photo from the camera or photo library; preview and save.
 3. Browse a photo-led, scrollable wardrobe grid.
 4. Filter by category; optionally search by brand/color if easy.
-5. Item details: photo, category, color, brand, notes and created date.
+5. Item details: photo and category (required), plus item name, color, brand and notes (optional); show the automatically recorded creation date.
 6. Edit metadata and delete item with confirmation.
 7. Persist metadata and image in the cloud and reload after app restart.
+
+## Clothing item fields (confirmed for MVP)
+**Required:** Photo (exactly one per item), Category (exactly one of the nine predefined categories).
+
+**Optional:** Item Name (free text), Color, Brand, Notes (free text).
+
+Item creation must not require the user to fill any optional field. A missing name must not block listing or viewing an item; the UI may fall back to the category as a label. Size, Season, custom tags and other clothing attributes are outside MVP. Item ID, owner ID and timestamps are system-managed rather than user-entered fields.
 
 ## Item photography
 **Decision: One photo per clothing item in MVP.** The user can take or select one image per item, see a preview, and replace it when editing the item. A multi-image gallery, back/detail shots and additional photo slots are out of scope for V1. The data architecture should allow a later expansion to multiple images without disrupting the item catalog.
 
 ## Primary journey
-Open app → sign in → empty state → add item → choose/take photo → choose category (required) → optional color/brand/notes → save → item appears in grid → tap to view/edit/delete.
+Open app → sign in → empty state → add item → choose/take photo → choose category (required) → optionally enter item name/color/brand/notes → save → item appears in grid → tap to view/edit/delete.
 
 ## Authentication and account model
 **Decision: Authentication and multiple independent user accounts are required in V1.** Each registered user gets a distinct private, cloud-backed wardrobe. A returning user must be able to sign in and recover their wardrobe on a compatible iPhone. Users can only view, create, edit, and delete their own items and photos. No wardrobe sharing or social features in MVP.
@@ -49,7 +56,7 @@ Each clothing item belongs to one of these categories. Categories are fixed in M
 AI clothing identification, automatic cutouts/background removal, look/outfit generation, weather suggestions, sharing, purchasing, calendar, complex tagging, and multi-image items.
 
 ## Acceptance criteria
-- Add via both supported image sources on a real iPhone; enforce one photo per item and support replacing that photo.
+- Add via both supported image sources on a real iPhone; enforce one photo and one category per item, support replacing the photo, and allow all optional metadata fields to be left empty.
 - Clear permission/error states, including cancelled picker, upload failure and offline state.
 - Saved entries appear after force quitting and reopening the app, and after signing back into the same account.
 - Test with at least two separate accounts: neither can read, change, delete, or retrieve the other's wardrobe records or private photos.
@@ -58,7 +65,8 @@ AI clothing identification, automatic cutouts/background removal, look/outfit ge
 - No secrets or customer images are stored in Git.
 
 ## Open decisions
-- Visual direction and prioritization of optional brand/color fields.
+- Visual direction (layout, typography, colors, navigation).
+- Whether the login UX should prioritize email code, magic link, or both.
 
 ## Product metrics (small beta cohort initially)
 First item saved, number of saved items, successful save rate, time to find a garment. Do not add third-party analytics until needed and disclosed.

@@ -9,10 +9,10 @@ Initial target: the product owner plus a small group of other testers, each with
 
 ## MVP scope
 1. Authentication is required from V1 using passwordless email sign-in (email OTP and/or magic link). The user signs into a personal account before accessing their private cloud wardrobe.
-2. Add an item with exactly one primary photo from the camera or photo library; preview and save.
+2. Add an item by taking or selecting exactly one photo. A vision-capable AI model analyzes the photo and pre-fills relevant metadata; the user can review/edit suggestions and save without manually filling in a form when AI succeeds.
 3. Browse all clothing in My Wardrobe using a two-column, photo-led, scrollable grid.
 4. Filter the same grid with a horizontally scrollable row of category chips: All (default) plus the nine predefined categories. Selecting a chip filters the grid in place, without navigating to another screen.
-5. Item details: photo and category (required), plus item name, color, brand and notes (optional); show the automatically recorded creation date.
+5. Item details: photo and category (required in saved data), plus item name, color, brand and notes (optional); show the automatically recorded creation date. AI can suggest category, color and a descriptive item name, and only a clearly visible brand; notes remain user-entered.
 6. Edit metadata and delete item with confirmation.
 7. Persist metadata and image in the cloud and reload after app restart.
 
@@ -21,20 +21,21 @@ Initial target: the product owner plus a small group of other testers, each with
 
 **Optional:** Item Name (free text), Color, Brand, Notes (free text).
 
-Item creation must not require the user to fill any optional field. A missing name must not block listing or viewing an item; the UI may fall back to the category as a label. Size, Season, custom tags and other clothing attributes are outside MVP. Item ID, owner ID and timestamps are system-managed rather than user-entered fields.
+**User input required:** one clothing photo. **Saved data required:** a valid category, normally inferred by AI, but selected manually if AI cannot provide a valid suggestion. All other fields may be blank. AI suggestions must be editable before saving and after saving. A missing name must not block listing or viewing an item; the UI may fall back to its category. Size, Season, custom tags and other clothing attributes are outside MVP. Item ID, owner ID and timestamps are system-managed rather than user-entered fields.
 
 ## Item photography
 **Decision: One photo per clothing item in MVP.** The user can take or select one image per item, see a preview, and replace it when editing the item. A multi-image gallery, back/detail shots and additional photo slots are out of scope for V1. The data architecture should allow a later expansion to multiple images without disrupting the item catalog.
 
-## Add Item experience (confirmed: Photo First)
-- Tapping the **Add** bottom tab first presents two photo-source actions: **Take Photo** and **Choose from Library**.
-- After capturing or selecting one photo, show a preview, a required Category selector, and optional Item Name, Color, Brand and Notes.
-- Users can retake or replace the photo before saving; the app requests camera/photo permissions only when needed.
-- Save is enabled only after a photo and a category are selected. Handle cancelled selection, denied permission, upload failure and retries without silently losing entered information.
-- The choice between showing all metadata on one screen versus step-by-step entry remains open, along with precise save/cancel transitions.
+## Add Item experience (confirmed: Photo First → AI suggestions → Single Review Screen)
+- Tapping the **Add** bottom tab first presents **Take Photo** and **Choose from Library**.
+- After a photo is taken or selected, show the image and an **Analyzing your item…** state while a vision-capable AI model suggests **Category**, **Color** and an optional descriptive **Item Name**. Suggest **Brand** only when reliably identifiable from visible evidence; never invent one. **Notes** are never auto-generated in MVP.
+- Use a single scrollable **review/edit screen**, not a compulsory manual metadata form or multi-step wizard. Pre-filled suggestions are shown directly; the user can edit any field or replace the photo. The user does not need to type when the AI supplies a valid category.
+- Saved items require one photo and one valid category from the nine predefined options. If AI fails, times out, is uncertain, or returns an invalid category, provide Retry and a manual Category selector so adding a garment remains possible.
+- Saving should require an explicit **Save Item** action after preview/review; AI analysis alone must not create a permanent item. Handle permission, processing, upload and network errors without silently losing a draft.
+- Upload/analysis privacy disclosures, exact loading presentation, save/cancel transitions and AI service/provider remain implementation decisions.
 
 ## Primary journey
-Open app → sign in → My Wardrobe → tap Add → Take Photo / Choose from Library → see photo preview → choose category (required) → optionally enter name/color/brand/notes → save → new item appears in Wardrobe → tap to view/edit/delete.
+Open app → sign in → My Wardrobe → tap Add → Take Photo / Choose from Library → AI analyzes photo → preview pre-filled category/color/name (brand only if supported) → optionally edit any suggestion → Save Item → new item appears in Wardrobe → tap to view/edit/delete. On AI failure, allow manual category selection and saving.
 
 ## Authentication and account model
 **Decision: Authentication and multiple independent user accounts are required in V1.** Each registered user gets a distinct private, cloud-backed wardrobe. A returning user must be able to sign in and recover their wardrobe on a compatible iPhone. Users can only view, create, edit, and delete their own items and photos. No wardrobe sharing or social features in MVP.
@@ -77,7 +78,7 @@ The concrete palette, type scale and component specifications remain open. **Bot
 - Each clothing card prioritizes the photo and may show an optional item name, falling back to its category if no name was entered.
 - Provide helpful empty-wardrobe and empty-filter states, including an obvious way to add an item.
 - A persistent bottom navigation provides **Wardrobe**, **Add**, and **Account** destinations. Wardrobe is the landing tab; Add opens the item creation flow; Account contains account information and sign-out.
-- Exact theme colors, one-form versus step-by-step metadata layout, Add-screen behavior on cancel/save, and sorting remain UI details to finalize. See [Screen map](SCREENS.md).
+- Exact theme colors, AI loading/error UI, Add-screen behavior on cancel/save, and sorting remain UI details to finalize. The single review/edit form is confirmed. See [Screen map](SCREENS.md).
 
 ## Primary navigation (confirmed)
 - Use a **bottom tab bar** with three clearly labeled entries in this order: **Wardrobe | Add | Account**.
@@ -88,22 +89,25 @@ The concrete palette, type scale and component specifications remain open. **Bot
 - The precise navigation implementation of the Add flow (tab screen versus modal launched from the central action), cancellation and save transitions remain to be refined in screen design.
 
 ## Non-goals for MVP
-AI clothing identification, automatic cutouts/background removal, look/outfit generation, weather suggestions, sharing, purchasing, calendar, complex tagging, and multi-image items.
+Automatic background removal, look/outfit generation, weather suggestions, sharing, purchasing, calendar, complex tagging, and multi-image items. **AI clothing recognition and metadata suggestions ARE included in MVP.**
 
 ## Acceptance criteria
-- Add via both supported image sources on a real iPhone; enforce one photo and one category per item, support replacing the photo, and allow all optional metadata fields to be left empty.
+- Add via both supported image sources on a real iPhone; require one photo, derive a valid category via AI or manual fallback, support replacing the photo, and allow all optional metadata fields to be left empty.
+- AI analyzes an image and pre-fills category and color when identifiable, plus a descriptive name where useful; users can correct suggestions on the single review screen and are never required to type when a valid category was inferred.
+- If AI is unavailable, uncertain or incorrect, users can retry and/or set a category manually before saving; invalid suggestions and unverified brand names are not silently accepted.
 - Clear permission/error states, including cancelled picker, upload failure and offline state.
 - Saved entries appear after force quitting and reopening the app, and after signing back into the same account.
 - Test with at least two separate accounts: neither can read, change, delete, or retrieve the other's wardrobe records or private photos.
 - Sign-in and sign-out work with email verification; sessions remain signed in across app restarts unless signed out or expired.
 - My Wardrobe loads as a two-column grid with All selected by default; a category chip filters in place and returns only matching items, without changing screens.
 - A persistent bottom bar provides labeled Wardrobe, Add and Account destinations; users can reach item creation and account/sign-out without a floating add button or header-only settings navigation.
-- On the Add tab, the first action is choosing Take Photo or Choose from Library; only after a photo is chosen is the item detail form presented with a single-photo preview.
+- On the Add tab, photo selection comes first, followed by AI analysis and one screen with the image, editable suggestions and Save Item; never auto-save solely because analysis completed.
 - Basic loading, empty, retry and delete-confirmation states work.
 - No secrets or customer images are stored in Git.
 
 ## Open decisions
-- Exact visual palette, component specifications, one-form versus step-by-step Add Item details, and save/cancel transitions (see [Screen map](SCREENS.md)).
+- Exact visual palette, component specifications, AI processing states and save/cancel transitions (see [Screen map](SCREENS.md)).
+- Model/provider choice, image processing privacy notices, operational costs and fallback details.
 - Whether the login UX should prioritize email code, magic link, or both.
 
 ## Product metrics (small beta cohort initially)

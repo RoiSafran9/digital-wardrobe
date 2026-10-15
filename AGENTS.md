@@ -13,6 +13,7 @@ This repository is the **single source of truth** for Digital Wardrobe code, con
 - TypeScript-first, Expo-native conventions; prefer simple solutions over speculative abstraction.
 - Never commit passwords, service role tokens, Apple signing keys, secrets, private clothing photos or generated bundles.
 - Respect owner-specific database and storage permissions and validate policies.
+- AI clothing recognition is in MVP: invoke the vision model through authenticated server-side code, validate suggestions, keep brand empty if uncertain and preserve the manual correction/fallback path. Never expose model credentials or publicize wardrobe photos.
 - Add tests and explicit verification notes for behavior changes.
 - Update PRD, architecture or roadmap when changing an agreed requirement or design.
 - Summarize files changed, tests run, open questions and limitations in the PR description.

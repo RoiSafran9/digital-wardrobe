@@ -60,7 +60,7 @@ Each clothing item belongs to one of these categories. Categories are fixed in M
 - Clear English typography, readable contrast, consistent spacing, generous iPhone touch targets.
 - Avoid decorative UI that slows down adding or finding a garment.
 
-The concrete palette, type scale, component specifications and navigation structure are **proposals to review**, not yet approved. See [Screen map](SCREENS.md).
+The concrete palette, type scale and component specifications remain open. **Bottom Navigation with Wardrobe, Add and Account is confirmed for V1.** See [Screen map](SCREENS.md).
 
 ## My Wardrobe home (confirmed)
 - The authenticated landing screen is **My Wardrobe**.
@@ -69,7 +69,16 @@ The concrete palette, type scale, component specifications and navigation struct
 - Only one category chip is active at a time. Selecting another category updates the existing grid in place (no category-specific sub-screen).
 - Each clothing card prioritizes the photo and may show an optional item name, falling back to its category if no name was entered.
 - Provide helpful empty-wardrobe and empty-filter states, including an obvious way to add an item.
-- The placement of **Add Item** and **Settings**, exact theme colors and sorting behavior remain open UI decisions. See [Screen map](SCREENS.md).
+- A persistent bottom navigation provides **Wardrobe**, **Add**, and **Account** destinations. Wardrobe is the landing tab; Add opens the item creation flow; Account contains account information and sign-out.
+- Exact theme colors, form layout, Add-screen behavior on cancel/save, and sorting remain UI details to finalize. See [Screen map](SCREENS.md).
+
+## Primary navigation (confirmed)
+- Use a **bottom tab bar** with three clearly labeled entries in this order: **Wardrobe | Add | Account**.
+- **Wardrobe** displays the two-column catalog and horizontal category chips. It is the default authenticated destination.
+- **Add** is the primary entry point for creating a clothing item, with a photo and category required.
+- **Account** contains signed-in user information and sign-out, replacing the proposed header-only Settings destination.
+- Item Details and Edit Item are secondary screens accessible from Wardrobe; they do not receive new bottom tabs.
+- The precise navigation implementation of the Add flow (tab screen versus modal launched from the central action), cancellation and save transitions remain to be refined in screen design.
 
 ## Non-goals for MVP
 AI clothing identification, automatic cutouts/background removal, look/outfit generation, weather suggestions, sharing, purchasing, calendar, complex tagging, and multi-image items.
@@ -81,11 +90,12 @@ AI clothing identification, automatic cutouts/background removal, look/outfit ge
 - Test with at least two separate accounts: neither can read, change, delete, or retrieve the other's wardrobe records or private photos.
 - Sign-in and sign-out work with email verification; sessions remain signed in across app restarts unless signed out or expired.
 - My Wardrobe loads as a two-column grid with All selected by default; a category chip filters in place and returns only matching items, without changing screens.
+- A persistent bottom bar provides labeled Wardrobe, Add and Account destinations; users can reach item creation and account/sign-out without a floating add button or header-only settings navigation.
 - Basic loading, empty, retry and delete-confirmation states work.
 - No secrets or customer images are stored in Git.
 
 ## Open decisions
-- Exact visual palette, component specifications and Add Item / Account navigation controls (see [Screen map](SCREENS.md)).
+- Exact visual palette, component specifications, and Add Item screen flow and transitions (see [Screen map](SCREENS.md)).
 - Whether the login UX should prioritize email code, magic link, or both.
 
 ## Product metrics (small beta cohort initially)

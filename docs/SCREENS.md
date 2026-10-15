@@ -38,7 +38,7 @@ Status: **Draft / screen planning** · Updated: 2026-10-15
 - First show **Take Photo** and **Choose from Library**; handle permissions and cancellation.
 - After choosing a source photo, display a clear **Generating your wardrobe image…** processing state while AI generates a new image of the garment laid out in full on a **solid white (#FFFFFF) background, with no transparency**, and suggests metadata.
 - On the **single scrollable review screen**, prominently show the **generated garment image**, not the source photo. Present an editable Category (one of nine), Color and optional Item Name; Brand only if identifiable from visible evidence, Notes only if entered by user.
-- The user can **Regenerate image** or **Retake/Choose Another Source Photo** and manually edit/clear any optional suggestion. Image completion of hidden regions may be approximate; display must be reviewed as a generated representation, not an exact reproduction.
+- **Before Save Item**, the user can **Regenerate image** from the selected source photo or **Retake/Choose Another Source Photo**, and manually edit/clear any optional suggestion. Regenerate only updates the unsaved preview, not the saved wardrobe. Image completion of hidden regions may be approximate.
 - If metadata analysis fails, show Retry + manual Category selection. If **image generation fails**, show Retry/Retake and block Save until a generated representative image is available. Never silently switch to the unprocessed source as the item image.
 - The user explicitly presses **Save Item** after seeing the generated result. Disabled until a **generated representative image** and a valid category are available. Prevent duplicate submits and retain the draft on failure.
 - **After successful persistence:** reset the Add draft, switch to the Wardrobe tab, reveal the new item in the grid (choose All if a category filter would hide it), and display a short success message.
@@ -46,7 +46,7 @@ Status: **Draft / screen planning** · Updated: 2026-10-15
 
 ### 5. Item Details
 - Large **generated representative garment image** (not source camera photo), category, optional metadata, created date.
-- Edit and Delete actions; confirm destructive deletion. Delete also removes the retained private original source image and the generated display image. A saved-item regeneration control is not yet approved.
+- Edit and Delete actions; confirm destructive deletion. Delete also removes the retained private original source image and the generated display image. **Do not show Regenerate for saved items in MVP.**
 - Graceful display when optional fields are absent.
 
 ### 6. Edit Item
@@ -95,7 +95,7 @@ On save failure remain in the Add review screen, retain the image and edits, and
 ## Original source photo retention (confirmed)
 - Save the **original photo privately, separately from the generated white-background image** and associate both with the garment.
 - Do not display the original in Wardrobe tiles or as the default Item Details photo.
-- Keeping the original supports future AI **Regenerate from Original** without a new picture; whether to provide this button on already-saved items in the MVP is still undecided.
+- Keeping the original supports future AI **Regenerate from Original** without a new picture. **This control is explicitly deferred until after MVP**; regeneration is available only before the first save.
 - Deleting an item removes **both** images; a brief privacy notice should explain that the original photo is stored for future regeneration.
 
 ## Other open visual decision
@@ -106,13 +106,14 @@ Choose an accessible **Modern & Playful** palette (background/surface, primary a
 - Choosing a source photo triggers AI image generation and metadata analysis before review; the user sees the generated full-garment preview and can regenerate or change the source before saving.
 - An AI-inferred category/color can be edited. On metadata-only failure manual category selection allows saving **only if the generated image succeeded**; image-generation failures require Retry/Retake.
 - On successful Save Item, return to Wardrobe, show the new item and a short success notice even if a filter was active. On failure, the Add draft remains editable and no success notice appears.
+- On the unsaved Add preview, Regenerate yields another draft image without saving; after Save, Item Details and Edit Item have no Regenerate action.
 - No optional field is required to save a clothing item.
 - Filter by any of the nine predefined categories.
 - Only the signed-in user's wardrobe is visible.
 - Verification, network failure, camera/photo permissions, upload failure, empty and delete-confirmation states are accounted for.
 
 ## Open screen questions
-- Whether regeneration from retained originals is offered on saved Item Details in MVP or later; generation quality requirements and user re-generation controls.
+- Generated-image fidelity and whether/how to compare the generated preview with the original source image during pre-save review.
 - Palette, typography and spacing tokens.
 - Cancel/draft-discard behavior and precise success-message presentation.
 - OTP code versus magic link as the primary verification method.

@@ -21,8 +21,8 @@ The screen inventory and confirmed tab labels live in [docs/SCREENS.md](SCREENS.
 - The wardrobe representation is **not the original camera/photo-library image**. AI must produce a distinct, full-garment, neatly spread / flat-lay style image isolated against a **uniform solid white (#FFFFFF) background, without transparency**.
 - Input may be folded, partly hidden or photographed at an angle. The model may **estimate** occluded shapes while aiming to keep actual garment characteristics faithful; completion is not an exact reconstruction. Avoid invented patterns/logos, color shifts and hallucinated embellishments.
 - Preview the **generated** image before saving and offer **Regenerate** and **Retake / Choose Different Photo**. If generation fails, block Save until a generated image is available; do not silently use the input photo as the wardrobe display.
-- The **one image per item** requirement refers to one final generated/catalog image in the grid/details, not to the existence of a transient private source/reference photo during processing.
-- Private source-photo retention (temporary-only vs optionally retaining for future regeneration) is **not yet decided**. Default implementation should minimize retention; do not make source photo public. Use separate private object keys and lifecycle/cleanup policies if temporary storage is required.
+- The **one visible image per item** requirement refers to one final AI-generated image in the grid/details, while an **original source photo is also persistently retained** in separate private storage for future regeneration.
+- **Confirmed:** keep the original uploaded photo **persistently** with the item in private cloud storage, not only in temporary AI-processing storage. Access must be restricted to its owner. Keep original and generated images at distinct private storage paths; delete both when item is deleted. Temporary intermediate images that are not linked to a saved item must still be cleaned up.
 - Image output must have a **solid white (#FFFFFF) background** and no alpha channel. Validate on generated samples; if the provider produces off-white/transparent pixels, normalize or composite to white (without damaging light garment edges), then verify the result. Output encoding (JPEG/PNG/WebP), size and quality targets remain to be selected.
 
 ## Image generation + vision metadata processing pipeline (MVP requirement)
@@ -31,7 +31,7 @@ The screen inventory and confirmed tab labels live in [docs/SCREENS.md](SCREENS.
 3. Authenticate/authorize caller, validate image type/size, apply abuse/rate/cost controls; call a **source-image-conditioned image editing/generation model** to produce a separate garment display image with the whole item flat/fully visible against **solid white (#FFFFFF), with no transparency**, and consistent padding. It may estimate unseen parts but must not intentionally invent distinguishable branding/details.
 4. In parallel or sequentially, call a vision-capable metadata model or a supported structured extraction step; validate `{ category, color, item_name, brand }` against the nine approved categories. Brand null unless supported by evidence; Notes not generated.
 5. Return references for the **generated** preview and metadata suggestions (plus generation status/errors). Review screen shows the generated photo first, editable fields and Regenerate/Retake; original is not the default display.
-6. Metadata-only failure → manual Category selection; **image generation failure → Retry/Retake and no Save**. Explicit Save Item commits exactly one generated image plus validated item metadata. No auto-save.
+6. Metadata-only failure → manual Category selection; **image generation failure → Retry/Retake and no Save**. Explicit Save Item commits the **retained original source**, exactly one **generated catalog image**, and validated item metadata, linked to the same item. No auto-save.
 7. The preview/generated output must remain private (temporary object with TTL or secured transmission); clean up unsaved, superseded and abandoned generations according to retention policy.
 
 **Privacy/operations:** Document that images may be processed by the chosen AI service and account for consent/transparency, processing retention, per-request costs and quotas. Never expose AI provider credentials to the client. AI failures must not block manual category fallback. Provider, model, performance budgets and temporary-image cleanup implementation are deferred decisions.
@@ -48,19 +48,20 @@ The screen inventory and confirmed tab labels live in [docs/SCREENS.md](SCREENS.
 - `color` text nullable
 - `brand` text nullable
 - `notes` text nullable
-- `display_image_path` text not null (**AI-generated** full-garment representative image shown in Wardrobe/Details; private storage object key, never public URL)
+- `source_image_path` text not null (**original user-supplied photo**, stored privately for future re-generation; never used as wardrobe thumbnail)
+- `display_image_path` text not null (**AI-generated** full-garment representative image shown in Wardrobe/Details; separate private storage object key, never public URL)
 - `created_at` and `updated_at` timestamptz
 
-**Confirmed item fields:** the user supplies one source photo for creation. Every saved item has exactly **one AI-generated display image** and one category. Item Name, Color, Brand and Notes are optional/nullable. IDs and timestamps are system-managed. Do not add Size or Season in MVP. Validate categories consistently client- and server-side.
+**Confirmed item fields:** each saved item stores a retained **original source photo** and exactly **one AI-generated display image** (separate paths) plus one category. Item Name, Color, Brand and Notes are optional/nullable. IDs and timestamps are system-managed. Do not add Size or Season in MVP. Validate categories consistently client- and server-side.
 
-The user's source photo **must not be the catalog image**. If original photos are ever stored, they require separate private storage keys/fields, an explicit retention policy, and must not render in Wardrobe. Whether to retain them is an open decision. Keep the generated image at `display_image_path`; a future multi-image gallery can introduce `item_images` without changing the primary display contract.
+The user's original source photo **is retained privately** at `source_image_path`, never rendered in Wardrobe. The generated catalog image is separately stored at `display_image_path`. Suggested object keys in private Storage: `<user-id>/<item-id>/source.<ext>` and `<user-id>/<item-id>/display.<ext>`, or equivalent separate private buckets. Keep their association with the same item. Deletion of that item must remove both objects; orphan cleanup/retry should handle partially completed deletions. A future multi-image gallery can introduce `item_images` without changing this contract.
 
 ## Privacy and security boundaries
 - Enable and test RLS: user can SELECT, INSERT, UPDATE and DELETE only rows with `user_id = auth.uid()`.
-- Store images in a private bucket, scoped to user-specific prefixes with Storage access policies.
+- Store **both original and generated** photos in private object storage, scoped by authenticated user ID and item ID with appropriate Storage access policies. Original-photo access should be limited to the owner and authorized backend jobs; generated images are likewise private.
 - Read images through authenticated downloads or short-lived signed URLs; don't persist permanent public URLs.
 - Client only uses public project URL and publishable/anon key with correctly configured RLS. Never embed Supabase service-role keys or Apple credentials in the app.
-- Protect against orphaned images during edits/deletions; design deletion behavior and failure recovery explicitly.
+- Retain original photos while the item exists so future regeneration is possible. On item deletion, delete **both source and display images** and reconcile partial failures/orphans; item replacement must never accidentally orphan old assets. Explain source retention in a user-facing privacy notice.
 - Keep `.env*` secrets out of git; include a safe `.env.example` at implementation time.
 
 ## Suggested project layout (once scaffolded)
@@ -79,13 +80,13 @@ docs/                # requirements and decisions
 2. Validate/compress source, keep an ephemeral draft and send to authorized server-side AI processing.
 3. Generate a **new** full-garment, nicely laid-out representative image with a **solid white (#FFFFFF) background**, and infer metadata; keep output preview private.
 4. Show **generated output** and editable suggested fields on one review screen; support Regenerate or Retake. If metadata fails, allow manual Category. If the display image cannot be generated, **block Save** and show Retry/Retake.
-5. Upon explicit **Save Item**, use stable item ID and persist **generated** image under `<user-id>/<item-id>/display.<ext>` in the user's private storage. Write `display_image_path`, category and optional fields; handle partial failure and idempotent retries.
-6. After both generated image and metadata persist, refresh Wardrobe list, navigate to Wardrobe, reveal new item (select All if needed), and show brief success indication.
+5. Upon explicit **Save Item**, use a stable item ID and persist **both** the original source photo at `<user-id>/<item-id>/source.<ext>` and generated image at `<user-id>/<item-id>/display.<ext>` in private storage. Write **both** `source_image_path` and `display_image_path` along with category and optional fields. Handle partial multi-object writes, idempotent retries and orphan cleanup.
+6. After **source photo, generated image and metadata** all persist, refresh Wardrobe list, navigate to Wardrobe, reveal new item (select All if needed), and show brief success indication.
 7. Reset Add draft only on confirmed success. On failure preserve reference, generated preview and edits for retry; prevent double-submit.
-8. Clean temporary input/output assets from AI processing according to data retention choices and garbage collection. Display only `display_image_path` through authenticated download/signed URLs.
+8. Clean up **unsaved temporary** input/output assets and superseded generated previews according to a bounded lifecycle. **Do not clean up the original linked to a successfully saved item** until item deletion or an explicit future source-deletion feature. Display only `display_image_path` in the Wardrobe UI; any original-image access must be authenticated/authorized.
 
 ## Save-success UI/data consistency
-- Success means the committed database item and its required private **AI-generated** display image can be fetched by the authenticated owner; only then report success.
+- Success means the committed database item, **private retained source photo** and private **AI-generated display image** are all saved and accessible to their authorized owner; only then report success.
 - The tab navigation must support returning from Add to Wardrobe. Keep any active filter from hiding the newly added item (switch to All when needed).
 - Refresh the wardrobe query/cache, show the new item prominently and use a short, non-blocking success indicator.
 - Restore the Add screen to its clean Photo First state after successful save, but preserve the unsaved photo and suggested/edited metadata during failed submissions and retries.
@@ -96,10 +97,11 @@ docs/                # requirements and decisions
 - Manual iOS device tests for camera, gallery, permissions, auth, offline/error states, image refresh, and item deletion.
 - Test AI outputs for valid category mapping, missing/uncertain fields, unsupported brands, corrupt responses, timeouts, server errors, abuse limits and manual category fallback.
 - Test **image generation** on folded, hung, cropped and partly obscured clothes; ensure full garment framing, faithful colors/visible patterns, **consistent solid-white background without alpha**, no fabricated logos, generated-image-only Wardrobe rendering, user regeneration, and save prevention when generation fails. Evaluate white/light garments for lost outlines, harsh masking or altered fabric detail.
-- Ensure Supabase RLS is tested using two distinct accounts before external testers.
+- Ensure Supabase RLS and private object Storage policies are tested using two distinct accounts for **both source and display paths** before external testers.
+- Confirm deletion removes both private image types (including retry/cleanup after partial failure) and does not break other users' items.
 
 ## iOS delivery
 Use EAS development builds for testing, and a production/distribution profile for TestFlight submission. Requires Apple Developer Program membership and App Store Connect setup; review signing, bundle identifier and EAS credentials when implementation begins.
 
 ## Deferred architectural decisions
-Exact OTP-versus-magic-link UX, Expo SDK version, styling library, **image generation/editing model and metadata vision provider(s)**, output encoding/resolution and white-background normalization approach, image processing fidelity criteria, source-photo retention, inference-time private transfer and temporary retention, request cost limits, cache/offline behavior and localization strategy. Choose these before implementation and update this document.
+Exact OTP-versus-magic-link UX, Expo SDK version, styling library, **image generation/editing model and metadata vision provider(s)**, output encoding/resolution and white-background normalization approach, image processing fidelity criteria, **user-facing retention disclosure and optional future original-photo deletion controls**, inference-time private transfer and temporary intermediate retention, request cost limits, cache/offline behavior and localization strategy. Choose these before implementation and update this document.

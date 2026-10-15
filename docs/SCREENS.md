@@ -6,7 +6,7 @@ Status: **Draft / screen planning** · Updated: 2026-10-15
 - Visual direction: **Modern & Playful**. Light surfaces, friendly rounded components, restrained playful accent colors, photo-first imagery and accessible text/controls. Detailed tokens are not finalized.
 - Passwordless email authentication (OTP and/or magic link; exact verification UX TBD).
 - Multiple accounts with isolated, private cloud wardrobes.
-- One source photo required to begin. One **AI-generated full-garment catalog image** and category required to save; optional item name, color, brand and notes. The original is not shown as the wardrobe image.
+- One original source photo is required and **retained privately after Save**, alongside one distinct **AI-generated full-garment catalog image** and category; optional item name, color, brand and notes. Only the generated photo is shown in Wardrobe.
 - Nine predefined categories; category filtering is part of the MVP.
 - **Home layout confirmed:** My Wardrobe shows a two-column photo grid plus horizontally scrollable filter chips (All + nine categories), with in-place filtering. Category-first browsing is not part of MVP.
 - **Navigation confirmed:** persistent Bottom Navigation with **Wardrobe | Add | Account**. No floating add button or header-only Settings navigation.
@@ -46,7 +46,7 @@ Status: **Draft / screen planning** · Updated: 2026-10-15
 
 ### 5. Item Details
 - Large **generated representative garment image** (not source camera photo), category, optional metadata, created date.
-- Edit and Delete actions; confirm destructive deletion.
+- Edit and Delete actions; confirm destructive deletion. Delete also removes the retained private original source image and the generated display image. A saved-item regeneration control is not yet approved.
 - Graceful display when optional fields are absent.
 
 ### 6. Edit Item
@@ -92,10 +92,11 @@ On save failure remain in the Add review screen, retain the image and edits, and
 ## Generated image background (confirmed)
 **Solid white (#FFFFFF)** for every generated representative clothing image. No transparent background. The full garment should be centered, completely in frame with consistent breathing room; no hands, hangers, props, mannequins or distracting scenery. Preserve original visible garment features and avoid fabricated details. A subtle border or shadow around an item card may help white garments stand out against the white generated background.
 
-## Next product decision: source photo retention (not yet approved)
-**Option A — Temporary input:** use the original source image during generation/review and discard it once the item is saved successfully and any required temporary processing has completed.
-**Option B — Keep private original:** store the source photo in a separate private location (never shown as catalog image), associated with the item so users can regenerate later without taking a new photo.
-Both options keep **only the generated white-background image** visible in My Wardrobe.
+## Original source photo retention (confirmed)
+- Save the **original photo privately, separately from the generated white-background image** and associate both with the garment.
+- Do not display the original in Wardrobe tiles or as the default Item Details photo.
+- Keeping the original supports future AI **Regenerate from Original** without a new picture; whether to provide this button on already-saved items in the MVP is still undecided.
+- Deleting an item removes **both** images; a brief privacy notice should explain that the original photo is stored for future regeneration.
 
 ## Other open visual decision
 Choose an accessible **Modern & Playful** palette (background/surface, primary accent, secondary accent, text and states). Avoid excessive accents; keep generated garment photos visually primary.
@@ -111,7 +112,7 @@ Choose an accessible **Modern & Playful** palette (background/surface, primary a
 - Verification, network failure, camera/photo permissions, upload failure, empty and delete-confirmation states are accounted for.
 
 ## Open screen questions
-- Source photo retention (discard after save versus keep privately for later regeneration); generation quality and user re-generation controls.
+- Whether regeneration from retained originals is offered on saved Item Details in MVP or later; generation quality requirements and user re-generation controls.
 - Palette, typography and spacing tokens.
 - Cancel/draft-discard behavior and precise success-message presentation.
 - OTP code versus magic link as the primary verification method.

@@ -6,18 +6,21 @@
 - [x] Confirm home browsing: two-column Photo Grid + horizontal category chips
 - [x] Confirm Bottom Navigation: Wardrobe | Add | Account
 - [x] Confirm Photo First entry for Add Item
-- [ ] Finalize post-photo form layout, Save/Cancel transitions, visual tokens and remaining screen map (Modern & Playful approved)
+- [x] Confirm AI-first metadata suggestion and Single Review/Edit Form after photo selection
+- [ ] Finalize after-save/cancel transitions, visual tokens and remaining screen map (Modern & Playful approved)
 - [ ] Connect Claude Code to the same repository
 
 ## Phase 1 — App foundation
 - [ ] Scaffold Expo + TypeScript + Expo Router
 - [ ] Establish navigation, UI primitives and theme
 - [ ] Configure Supabase project and environment example
+- [ ] Choose vision model/provider, authenticated inference endpoint and cost/privacy safeguards
 - [ ] Create schema, private bucket and RLS policies
 
 ## Phase 2 — Working wardrobe MVP
 - [ ] Sign-in and session persistence
 - [ ] Camera/photo-library picker and image upload
+- [ ] Vision AI category/color/name suggestions with editable Single Review Form and safe manual fallback
 - [ ] Clothing item creation and image grid
 - [ ] Category filters
 - [ ] Item detail, edit and delete
@@ -30,7 +33,7 @@
 - [ ] Install and complete personal acceptance testing
 
 ## Post-MVP ideas (not committed)
-Background removal; AI category/color suggestions; wardrobe search; outfit creation; outfit recommendations; weather/context-based suggestions.
+Background removal; advanced AI wardrobe search; outfit creation; outfit recommendations; weather/context-based suggestions. Basic AI item/category/color suggestions are part of MVP.
 
 ## Workflow
 One issue or scoped task per branch. Pull request → review → merge. Record material changes to the PRD and architecture in the same pull request.

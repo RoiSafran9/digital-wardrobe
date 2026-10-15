@@ -20,8 +20,7 @@ class FactField(BaseModel):
     basis: Literal["observed", "inferred"]
 
 
-class DetectedItemWithFacts(BaseModel):
-    box: BBox
+class DetectionFields(BaseModel):
     included: bool
     exclusion_reason: str | None = None
     category: FactField
@@ -31,6 +30,10 @@ class DetectedItemWithFacts(BaseModel):
     trims: FactField
     visible_parts: FactField
     occluded_parts: FactField
+
+
+class DetectedItemWithFacts(DetectionFields):
+    box: BBox
 
 
 class ItemFacts(BaseModel):

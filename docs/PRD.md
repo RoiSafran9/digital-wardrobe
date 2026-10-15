@@ -32,7 +32,9 @@ Initial target: the product owner plus a small group of other testers, each with
 - Use a single scrollable **review/edit screen**, not a compulsory manual metadata form or multi-step wizard. Pre-filled suggestions are shown directly; the user can edit any field or replace the photo. The user does not need to type when the AI supplies a valid category.
 - Saved items require one photo and one valid category from the nine predefined options. If AI fails, times out, is uncertain, or returns an invalid category, provide Retry and a manual Category selector so adding a garment remains possible.
 - Saving should require an explicit **Save Item** action after preview/review; AI analysis alone must not create a permanent item. Handle permission, processing, upload and network errors without silently losing a draft.
-- Upload/analysis privacy disclosures, exact loading presentation, save/cancel transitions and AI service/provider remain implementation decisions.
+- **After Save Item succeeds:** navigate back to the **Wardrobe** tab, show the newly saved item in the two-column grid, and display a brief non-blocking success message (e.g. "Item added to your wardrobe"). If an active category filter would hide it, select **All** (and reset any conflicting view state) so the item is visible. Put the new item at or near the top of the grid and scroll into view when needed.
+- Clear the Add Item draft and reset its initial Photo First state **only after** the image and item metadata are durably saved. During save, prevent duplicate submissions; on failure stay in the review form with the image and edits intact and offer Retry. Never show success before the backend confirms persistence.
+- Upload/analysis privacy disclosures, exact loading presentation, **cancel/discard behavior**, and AI service/provider remain implementation decisions.
 
 ## Primary journey
 Open app → sign in → My Wardrobe → tap Add → Take Photo / Choose from Library → AI analyzes photo → preview pre-filled category/color/name (brand only if supported) → optionally edit any suggestion → Save Item → new item appears in Wardrobe → tap to view/edit/delete. On AI failure, allow manual category selection and saving.
@@ -78,7 +80,7 @@ The concrete palette, type scale and component specifications remain open. **Bot
 - Each clothing card prioritizes the photo and may show an optional item name, falling back to its category if no name was entered.
 - Provide helpful empty-wardrobe and empty-filter states, including an obvious way to add an item.
 - A persistent bottom navigation provides **Wardrobe**, **Add**, and **Account** destinations. Wardrobe is the landing tab; Add opens the item creation flow; Account contains account information and sign-out.
-- Exact theme colors, AI loading/error UI, Add-screen behavior on cancel/save, and sorting remain UI details to finalize. The single review/edit form is confirmed. See [Screen map](SCREENS.md).
+- Exact theme colors, AI loading/error UI, Add-screen cancel/discard behavior, and general sorting remain UI details to finalize. Post-save return to Wardrobe and new item visibility are confirmed. See [Screen map](SCREENS.md).
 
 ## Primary navigation (confirmed)
 - Use a **bottom tab bar** with three clearly labeled entries in this order: **Wardrobe | Add | Account**.
@@ -86,7 +88,7 @@ The concrete palette, type scale and component specifications remain open. **Bot
 - **Add** is the primary entry point for creating a clothing item, with a photo and category required.
 - **Account** contains signed-in user information and sign-out, replacing the proposed header-only Settings destination.
 - Item Details and Edit Item are secondary screens accessible from Wardrobe; they do not receive new bottom tabs.
-- The precise navigation implementation of the Add flow (tab screen versus modal launched from the central action), cancellation and save transitions remain to be refined in screen design.
+- The precise navigation implementation of the Add flow (tab screen versus modal launched from the central action) and cancellation/discard behavior remain to be refined; **successful Save Item always returns to Wardrobe**, showing the new item and a success message.
 
 ## Non-goals for MVP
 Automatic background removal, look/outfit generation, weather suggestions, sharing, purchasing, calendar, complex tagging, and multi-image items. **AI clothing recognition and metadata suggestions ARE included in MVP.**
@@ -102,11 +104,12 @@ Automatic background removal, look/outfit generation, weather suggestions, shari
 - My Wardrobe loads as a two-column grid with All selected by default; a category chip filters in place and returns only matching items, without changing screens.
 - A persistent bottom bar provides labeled Wardrobe, Add and Account destinations; users can reach item creation and account/sign-out without a floating add button or header-only settings navigation.
 - On the Add tab, photo selection comes first, followed by AI analysis and one screen with the image, editable suggestions and Save Item; never auto-save solely because analysis completed.
+- After successful item persistence, navigate to Wardrobe, ensure the new item is visible despite any previously active filter, and show a brief success indication; do not discard draft or report success on failed saves.
 - Basic loading, empty, retry and delete-confirmation states work.
 - No secrets or customer images are stored in Git.
 
 ## Open decisions
-- Exact visual palette, component specifications, AI processing states and save/cancel transitions (see [Screen map](SCREENS.md)).
+- Exact visual palette, component specifications, AI processing states and cancel/discard transitions (save-success behavior is approved; see [Screen map](SCREENS.md)).
 - Model/provider choice, image processing privacy notices, operational costs and fallback details.
 - Whether the login UX should prioritize email code, magic link, or both.
 

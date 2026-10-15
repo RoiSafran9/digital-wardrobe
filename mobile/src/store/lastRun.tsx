@@ -1,11 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
-
-type RunResponse = {
-  run_id: string;
-  quality: unknown;
-  items: unknown[];
-  failed: string[];
-};
+import type { RunResponse } from "../api/types";
 
 type LastRunContextValue = {
   lastRun: RunResponse | null;

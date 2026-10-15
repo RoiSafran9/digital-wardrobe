@@ -8,7 +8,7 @@ Give each registered user a reliable, beautiful, private visual inventory of clo
 Initial target: the product owner plus a small group of other testers, each with their own account and private wardrobe. Success is being able to photograph existing clothing and later find it quickly without opening the physical wardrobe.
 
 ## MVP scope
-1. Authentication is required from V1: the user signs into a personal account before accessing their private cloud wardrobe (exact sign-in method TBD).
+1. Authentication is required from V1 using passwordless email sign-in (email OTP and/or magic link). The user signs into a personal account before accessing their private cloud wardrobe.
 2. Add an item with exactly one primary photo from the camera or photo library; preview and save.
 3. Browse a photo-led, scrollable wardrobe grid.
 4. Filter by category; optionally search by brand/color if easy.
@@ -23,7 +23,9 @@ Initial target: the product owner plus a small group of other testers, each with
 Open app → sign in → empty state → add item → choose/take photo → choose category (required) → optional color/brand/notes → save → item appears in grid → tap to view/edit/delete.
 
 ## Authentication and account model
-**Decision: Authentication and multiple independent user accounts are required in V1.** Each registered user gets a distinct private, cloud-backed wardrobe. A returning user must be able to sign in and recover their wardrobe on a compatible iPhone. Users can only view, create, edit, and delete their own items and photos. No wardrobe sharing or social features in MVP. Authentication provider and sign-in UX are still to be decided.
+**Decision: Authentication and multiple independent user accounts are required in V1.** Each registered user gets a distinct private, cloud-backed wardrobe. A returning user must be able to sign in and recover their wardrobe on a compatible iPhone. Users can only view, create, edit, and delete their own items and photos. No wardrobe sharing or social features in MVP.
+
+**Sign-in decision:** passwordless email authentication using **email OTP and/or magic link** (implemented with Supabase Auth). Users enter an email address and verify ownership with a time-limited code or email link. Sign in with Apple and password-based sign-in are not part of the MVP. The exact choice of code, link, or both in the UI will be finalized during implementation. Support session persistence and sign-out.
 
 ## Language and localization
 The MVP interface is **English-only**. Use English for screen titles, navigation labels, category names, forms, and user-facing messages. Additional languages are out of scope for V1.
@@ -39,11 +41,11 @@ AI clothing identification, automatic cutouts/background removal, look/outfit ge
 - Clear permission/error states, including cancelled picker, upload failure and offline state.
 - Saved entries appear after force quitting and reopening the app, and after signing back into the same account.
 - Test with at least two separate accounts: neither can read, change, delete, or retrieve the other's wardrobe records or private photos.
+- Sign-in and sign-out work with email verification; sessions remain signed in across app restarts unless signed out or expired.
 - Basic loading, empty, retry and delete-confirmation states work.
 - No secrets or customer images are stored in Git.
 
 ## Open decisions
-- Which sign-in experience for V1: email magic link/OTP, Sign in with Apple, or both?
 - Visual direction and prioritization of optional brand/color fields.
 
 ## Product metrics (small beta cohort initially)

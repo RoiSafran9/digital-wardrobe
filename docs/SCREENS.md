@@ -36,7 +36,7 @@ Status: **Draft / screen planning** · Updated: 2026-10-15
 ### 4. Add Item (confirmed: Photo First + AI-first + Single Form)
 - Enter via the **Add** bottom-tab action; retain the three-tab navigation model.
 - First show **Take Photo** and **Choose from Library**; handle permissions and cancellation.
-- After choosing a source photo, display a clear **Generating your wardrobe image…** processing state while AI generates a new image of the garment laid out in full on a white/transparent background and suggests metadata.
+- After choosing a source photo, display a clear **Generating your wardrobe image…** processing state while AI generates a new image of the garment laid out in full on a **solid white (#FFFFFF) background, with no transparency**, and suggests metadata.
 - On the **single scrollable review screen**, prominently show the **generated garment image**, not the source photo. Present an editable Category (one of nine), Color and optional Item Name; Brand only if identifiable from visible evidence, Notes only if entered by user.
 - The user can **Regenerate image** or **Retake/Choose Another Source Photo** and manually edit/clear any optional suggestion. Image completion of hidden regions may be approximate; display must be reviewed as a generated representation, not an exact reproduction.
 - If metadata analysis fails, show Retry + manual Category selection. If **image generation fails**, show Retry/Retake and block Save until a generated representative image is available. Never silently switch to the unprocessed source as the item image.
@@ -89,10 +89,13 @@ The tab bar should use clear icons and readable English labels, accommodate iPho
 
 On save failure remain in the Add review screen, retain the image and edits, and show an actionable error/retry. Never show success prematurely or create duplicate items from repeated Save taps.
 
-## Next UI decision: generated image background (not yet approved)
-**Option A — White background:** Generate consistent full-length flat-lay garment images on a solid white background.
-**Option B — Transparent background:** Generate isolated garment images with alpha transparency and use a consistent app card background.
-Both preserve the requirement that AI creates the **full item representation** and does not show the source photo in the wardrobe.
+## Generated image background (confirmed)
+**Solid white (#FFFFFF)** for every generated representative clothing image. No transparent background. The full garment should be centered, completely in frame with consistent breathing room; no hands, hangers, props, mannequins or distracting scenery. Preserve original visible garment features and avoid fabricated details. A subtle border or shadow around an item card may help white garments stand out against the white generated background.
+
+## Next product decision: source photo retention (not yet approved)
+**Option A — Temporary input:** use the original source image during generation/review and discard it once the item is saved successfully and any required temporary processing has completed.
+**Option B — Keep private original:** store the source photo in a separate private location (never shown as catalog image), associated with the item so users can regenerate later without taking a new photo.
+Both options keep **only the generated white-background image** visible in My Wardrobe.
 
 ## Other open visual decision
 Choose an accessible **Modern & Playful** palette (background/surface, primary accent, secondary accent, text and states). Avoid excessive accents; keep generated garment photos visually primary.
@@ -108,7 +111,7 @@ Choose an accessible **Modern & Playful** palette (background/surface, primary a
 - Verification, network failure, camera/photo permissions, upload failure, empty and delete-confirmation states are accounted for.
 
 ## Open screen questions
-- White vs transparent generated-image background; generation output quality and user re-generation controls.
+- Source photo retention (discard after save versus keep privately for later regeneration); generation quality and user re-generation controls.
 - Palette, typography and spacing tokens.
 - Cancel/draft-discard behavior and precise success-message presentation.
 - OTP code versus magic link as the primary verification method.

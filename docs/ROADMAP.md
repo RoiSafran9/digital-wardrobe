@@ -9,7 +9,8 @@
 - [x] Confirm AI-first metadata suggestion and Single Review/Edit Form after photo selection
 - [x] Confirm AI-generated full-garment representative images (not original camera photos) in Wardrobe
 - [x] Confirm after-save success: return to Wardrobe, reveal new item and show success message
-- [ ] Decide generated-image background (white vs transparent), source-photo retention and quality/fidelity requirements
+- [x] Confirm generated-image background: solid white (#FFFFFF), non-transparent
+- [ ] Decide source-photo retention and quality/fidelity requirements
 - [ ] Finalize cancel/discard handling, visual tokens and remaining screen map (Modern & Playful approved)
 - [ ] Connect Claude Code to the same repository
 
@@ -23,7 +24,7 @@
 ## Phase 2 — Working wardrobe MVP
 - [ ] Sign-in and session persistence
 - [ ] Camera/photo-library picker and image upload
-- [ ] Generate full-length garment catalog image from source photo (white/transparent background), with regeneration and fidelity review
+- [ ] Generate full-length garment catalog image from source photo (**solid white background, no alpha**), with regeneration and fidelity review
 - [ ] Vision AI category/color/name suggestions with editable Single Review Form and safe manual-category fallback
 - [ ] Clothing item creation and image grid
 - [ ] Post-save Wardrobe refresh, new-item visibility and brief success feedback; preserve draft on failed save

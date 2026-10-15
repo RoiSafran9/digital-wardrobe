@@ -30,8 +30,20 @@ Open app → sign in → empty state → add item → choose/take photo → choo
 ## Language and localization
 The MVP interface is **English-only**. Use English for screen titles, navigation labels, category names, forms, and user-facing messages. Additional languages are out of scope for V1.
 
-## Proposed categories (editable later)
-Tops, bottoms, dresses/one-pieces, outerwear, shoes, accessories, other. Category labels may be localized.
+## Clothing categories (confirmed for MVP)
+The MVP has exactly these **nine predefined categories**, shown in English in the category picker and wardrobe filters:
+
+1. T-Shirts
+2. Shirts
+3. Sweaters & Hoodies
+4. Pants
+5. Shorts
+6. Jackets & Coats
+7. Shoes
+8. Accessories
+9. Dresses & Skirts
+
+Each clothing item belongs to one of these categories. Categories are fixed in MVP; user-created categories and subcategories may be explored after V1.
 
 ## Non-goals for MVP
 AI clothing identification, automatic cutouts/background removal, look/outfit generation, weather suggestions, sharing, purchasing, calendar, complex tagging, and multi-image items.

@@ -14,10 +14,10 @@ Initial target: the product owner plus a small group of other testers, each with
 4. Filter the same grid with a horizontally scrollable row of category chips: All (default) plus the nine predefined categories. Selecting a chip filters the grid in place, without navigating to another screen.
 5. Item details: **generated wardrobe image** and category (required), plus item name, color, brand and notes (optional); show the automatically recorded creation date. AI suggests category, color and descriptive name, and only a reliably visible brand; notes remain user-entered.
 6. Edit metadata and delete item with confirmation.
-7. Persist metadata and image in the cloud and reload after app restart.
+7. Persist metadata, the **private original source photo**, and the separate **AI-generated catalog image** in the cloud, with each belonging exclusively to the signed-in user. Restore the catalog after app restart.
 
 ## Clothing item fields (confirmed for MVP)
-**Required:** One user-provided **source photo** to start creation; one **AI-generated normalized display image** and one category (from the nine predefined values) for every saved item. The source photo is *not* the catalog/display image.
+**Required:** One user-provided **source photo** and one **AI-generated normalized display image** are stored separately for every saved item, plus one category (from the nine predefined values). The source photo is *not* the catalog/display image.
 
 **Optional:** Item Name (free text), Color, Brand, Notes (free text).
 
@@ -31,7 +31,9 @@ Initial target: the product owner plus a small group of other testers, each with
 - **Confirmed background:** solid white (#FFFFFF), without alpha transparency. Center the complete garment with consistent margins and preserve its actual contours. The app may add a subtle card border or shadow **outside** the generated image so white garments remain distinguishable.
 - Show the generated result for review **before Save Item**. The user may **Regenerate**, **Retake/Choose Another Photo**, or correct suggested fields. Reconstruction of unseen regions is a plausible estimate, **not guaranteed to match the real garment**; do not misrepresent it as an exact photograph.
 - If image generation fails or yields an unacceptable result, keep the draft and offer Retry / source replacement. **Do not silently save the unprocessed source photo in the wardrobe**. Saving requires one generated representative image and a category.
-- MVP supports one generated representative image per item; multi-view galleries remain post-MVP. Handling/retention of original source photos in private storage is an **open privacy/product decision**, separate from the visible one-image rule.
+- **Confirmed source retention:** retain the original user-uploaded photo privately in the cloud, separately from the generated image, linked to the same garment. This allows future AI regeneration without taking the photo again. Retention is tied to the item's lifetime, not limited to an AI-processing TTL; deleting an item deletes its retained original and generated image.
+- **One image visible in wardrobe:** each item has only one AI-generated catalog/display image in the grid and item details; keeping an original for future processing does not turn the MVP into a multi-image gallery. The original is never visible to other users or used as the wardrobe thumbnail.
+- Regenerating **before initial Save Item** remains part of the MVP. Whether to expose **Regenerate** on an already-saved item in MVP or a later release is a separate product decision.
 
 ## Add Item experience (confirmed: Photo First → AI image generation + suggestions → Single Review Screen)
 - Tapping the **Add** bottom tab first presents **Take Photo** and **Choose from Library**.
@@ -40,7 +42,7 @@ Initial target: the product owner plus a small group of other testers, each with
 - Saved items require one **successfully generated display image** and one valid category from the nine predefined options. If metadata recognition fails, offer Retry or manual Category selection; if **image generation** fails, require regeneration or replacement of source before Save.
 - Saving requires an explicit **Save Item** after preview/review of the newly generated image. AI processing alone must not create a permanent item. Handle camera permissions, processing, upload and network errors without silently losing the draft.
 - **After Save Item succeeds:** navigate back to the **Wardrobe** tab, show the newly saved item in the two-column grid, and display a brief non-blocking success message (e.g. "Item added to your wardrobe"). If an active category filter would hide it, select **All** (and reset any conflicting view state) so the item is visible. Put the new item at or near the top of the grid and scroll into view when needed.
-- Clear the Add Item draft and reset its initial Photo First state **only after** the image and item metadata are durably saved. During save, prevent duplicate submissions; on failure stay in the review form with the image and edits intact and offer Retry. Never show success before the backend confirms persistence.
+- Clear the Add Item draft and reset its initial Photo First state **only after** the **original source photo, generated image and item metadata** are durably saved. During save, prevent duplicate submissions; on failure stay in the review form with the image and edits intact and offer Retry. Never show success before the backend confirms persistence.
 - Upload/analysis privacy disclosures, exact loading presentation, **cancel/discard behavior**, and AI service/provider remain implementation decisions.
 
 ## Primary journey
@@ -113,12 +115,14 @@ Look/outfit generation, weather suggestions, sharing, purchasing, calendar, comp
 - On the Add tab, source photo selection comes first, followed by **AI image generation and metadata analysis** and one review screen with the **generated garment image**, editable suggestions, Regenerate/Retake and Save Item; never auto-save solely because processing completed.
 - After successful item persistence, navigate to Wardrobe, ensure the new item is visible despite any previously active filter, and show a brief success indication; do not discard draft or report success on failed saves.
 - The grid and Item Details always use the generated representative image; test fully laid-out garment framing, **uniform white (#FFFFFF) background with no transparency**, and preservation of visible colors/patterns/details on varied folded/partially obscured source photos. Flag uncertain reconstruction as potentially inaccurate and allow user review/regeneration.
+- Each saved garment retains its original source photo separately, private to its owner. After signing in on another device, the retained original remains associated with the garment for future regeneration. Deleting an item removes both source and generated images, and a different account cannot access either asset.
 - Basic loading, empty, retry and delete-confirmation states work.
 - No secrets or customer images are stored in Git.
 
 ## Open decisions
 - Exact visual palette, component specifications, AI processing states and cancel/discard transitions (save-success behavior is approved; see [Screen map](SCREENS.md)).
-- AI image generation/editing and vision provider choices, source-image privacy/retention, regeneration costs, quality acceptance checks and error behavior.
+- AI image generation/editing and vision provider choices, **clear user-facing notice that original photos are retained privately**, regeneration costs, quality acceptance checks and error behavior.
+- Whether on-demand regeneration of an **already-saved** garment will be implemented in V1 or after the MVP; retention now ensures the original remains available either way.
 - Output format/resolution and approach to ensuring true white edges/background are implementation details; the **solid-white background requirement is confirmed**.
 - Whether the login UX should prioritize email code, magic link, or both.
 

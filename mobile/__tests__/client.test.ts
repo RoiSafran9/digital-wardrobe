@@ -1,8 +1,26 @@
+import { File } from "expo-file-system";
 import { postRun, getItems } from "../src/api/client";
+
+jest.mock("expo-file-system", () => ({
+  File: jest.fn().mockImplementation((uri: string) => ({ uri, name: "fake.jpg", type: "image/jpeg" })),
+}));
 
 describe("postRun", () => {
   afterEach(() => {
     (global.fetch as jest.Mock).mockReset();
+    jest.restoreAllMocks();
+  });
+
+  test("uploads the photo as an expo-file-system File, not an RN {uri} object", async () => {
+    // Expo's global fetch (expo/fetch) rejects RN-style {uri, name, type} FormData parts.
+    const appendSpy = jest.spyOn(FormData.prototype, "append");
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+
+    await postRun("file:///fake.jpg");
+
+    expect(File).toHaveBeenCalledWith("file:///fake.jpg");
+    const fileInstance = (File as unknown as jest.Mock).mock.results[0].value;
+    expect(appendSpy).toHaveBeenCalledWith("photo", fileInstance);
   });
 
   test("parses a successful run response", async () => {

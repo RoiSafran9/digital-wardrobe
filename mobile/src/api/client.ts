@@ -1,3 +1,4 @@
+import { File } from "expo-file-system";
 import type { RunResponse, ItemsResponse, ApiError } from "./types";
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.1.238:8000";
@@ -12,12 +13,9 @@ async function parseJsonOrThrow<T>(response: Response): Promise<T> {
 }
 
 export async function postRun(photoUri: string): Promise<RunResponse> {
+  // Expo's global fetch rejects RN-style {uri, name, type} parts; File is a Blob it can read.
   const formData = new FormData();
-  formData.append("photo", {
-    uri: photoUri,
-    name: "photo.jpg",
-    type: "image/jpeg",
-  } as any);
+  formData.append("photo", new File(photoUri));
 
   let response: Response;
   try {

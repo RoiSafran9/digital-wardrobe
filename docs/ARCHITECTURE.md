@@ -18,12 +18,15 @@ iPhone-first, easy iteration, minimal operational overhead, private by default, 
 `wardrobe_items`
 - `id` UUID primary key
 - `user_id` UUID not null references `auth.users`
-- `category` text not null
+- `category` text not null (validated against the nine MVP categories)
+- `item_name` text nullable (user-facing optional clothing name)
 - `color` text nullable
 - `brand` text nullable
 - `notes` text nullable
-- `image_path` text not null (storage object key, not a public URL)
+- `image_path` text not null (one required photo per item; storage object key, not a public URL)
 - `created_at` and `updated_at` timestamptz
+
+**Confirmed item fields:** the user must supply exactly one photo and one category. Item Name, Color, Brand and Notes are optional and nullable in storage. IDs and timestamps are system-managed. Do not add Size or Season fields in MVP. Use an explicit shared category list (currently nine categories) so client validation and database constraints agree.
 
 Start with a single image per item. Preserve the ability to introduce a separate `item_images` table later.
 

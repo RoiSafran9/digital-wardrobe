@@ -1,5 +1,5 @@
 import { File } from "expo-file-system";
-import { postRun, getItems } from "../src/api/client";
+import { postRun, getItems, imageUrl, API_BASE_URL } from "../src/api/client";
 
 jest.mock("expo-file-system", () => ({
   File: jest.fn().mockImplementation((uri: string) => ({ uri, name: "fake.jpg", type: "image/jpeg" })),
@@ -62,5 +62,13 @@ describe("getItems", () => {
   test("throws a readable message when the network request fails", async () => {
     global.fetch = jest.fn().mockRejectedValue(new TypeError("Network request failed"));
     await expect(getItems()).rejects.toThrow("can't reach server");
+  });
+});
+
+describe("imageUrl", () => {
+  test("prefixes the server address and encodes spaces in the path", () => {
+    expect(imageUrl("/images/r1/My Photo/item_0/generated.png")).toBe(
+      `${API_BASE_URL}/images/r1/My%20Photo/item_0/generated.png`
+    );
   });
 });

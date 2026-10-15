@@ -23,7 +23,11 @@ export default function CaptureScreen() {
 
     const result = fromCamera
       ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
-      : await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
+      : await ImagePicker.launchImageLibraryAsync({
+          quality: 0.8,
+          // iOS gallery photos are HEIC; the backend can only decode JPEG/PNG.
+          preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+        });
 
     if (result.canceled || result.assets.length === 0) {
       return;

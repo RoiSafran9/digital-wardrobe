@@ -1,6 +1,8 @@
 import React from "react";
 import { render, screen } from "@testing-library/react-native";
+import { Image } from "react-native";
 import { ItemCard } from "../src/components/ItemCard";
+import { API_BASE_URL } from "../src/api/client";
 import type { RunItem } from "../src/api/types";
 
 const baseItem: RunItem = {
@@ -36,4 +38,10 @@ test("shows retake instruction when present", () => {
 test("omits retake instruction when absent", () => {
   render(<ItemCard item={baseItem} />);
   expect(screen.queryByText(/Shoot it alone/)).toBeNull();
+});
+
+test("loads the generated image from the server, not a bare relative path", () => {
+  render(<ItemCard item={baseItem} />);
+  const image = screen.UNSAFE_getByType(Image);
+  expect(image.props.source.uri).toBe(`${API_BASE_URL}/images/r1/p1/item_0/generated.png`);
 });

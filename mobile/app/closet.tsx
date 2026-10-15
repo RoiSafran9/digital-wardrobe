@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import { FlatList, Image, Pressable, RefreshControl, Modal, View } from "react-native";
-import { getItems } from "../src/api/client";
+import { getItems, imageUrl } from "../src/api/client";
 import { ItemCard } from "../src/components/ItemCard";
 import type { ClosetItem } from "../src/api/types";
 
@@ -14,9 +15,12 @@ export default function ClosetScreen() {
     setItems(response.items);
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // Tabs stay mounted, so reload on every focus to pick up items from new runs.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   async function onRefresh() {
     setRefreshing(true);
@@ -33,7 +37,7 @@ export default function ClosetScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         renderItem={({ item }) => (
           <Pressable testID={`thumb-${item.run_id}-${item.item_id}`} onPress={() => setSelected(item)}>
-            <Image source={{ uri: item.generated_url }} style={{ width: 100, height: 100 }} />
+            <Image source={{ uri: imageUrl(item.generated_url) }} style={{ width: 100, height: 100 }} />
           </Pressable>
         )}
       />

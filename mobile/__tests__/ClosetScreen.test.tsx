@@ -1,9 +1,19 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react-native";
 import ClosetScreen from "../app/closet";
 import { getItems } from "../src/api/client";
 
 jest.mock("../src/api/client");
+
+// Tabs stay mounted, so the closet must reload whenever its tab regains focus.
+let focusCallback: (() => void) | null = null;
+jest.mock("expo-router", () => ({
+  useFocusEffect: (cb: () => void) => {
+    const { useEffect } = require("react");
+    focusCallback = cb;
+    useEffect(() => cb(), [cb]);
+  },
+}));
 const mockedGetItems = getItems as jest.Mock;
 
 const fakeItem = {
@@ -37,4 +47,11 @@ test("tapping a thumbnail opens the detail view", async () => {
   const thumb = await screen.findByTestId("thumb-r1-item_0");
   fireEvent.press(thumb);
   expect(await screen.findByText("Great")).toBeTruthy();
+});
+
+test("reloads items every time the closet tab regains focus", async () => {
+  render(<ClosetScreen />);
+  await waitFor(() => expect(mockedGetItems).toHaveBeenCalledTimes(1));
+  await act(async () => focusCallback!());
+  expect(mockedGetItems).toHaveBeenCalledTimes(2);
 });

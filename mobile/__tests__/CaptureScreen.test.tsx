@@ -57,3 +57,18 @@ test("uploads the picked photo and shows an error message on failure", async () 
 
   await waitFor(() => screen.getByText("can't reach server — check WiFi/IP"));
 });
+
+test("asks the library picker for a JPEG-compatible file so HEIC photos upload", async () => {
+  // The backend cannot decode HEIC, which is what iOS gallery photos are by default.
+  mockedPicker.requestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true } as any);
+  mockedPicker.launchImageLibraryAsync.mockResolvedValue({ canceled: true, assets: [] } as any);
+  renderScreen();
+
+  fireEvent.press(screen.getByText("Pick From Library"));
+
+  await waitFor(() =>
+    expect(mockedPicker.launchImageLibraryAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ preferredAssetRepresentationMode: "compatible" })
+    )
+  );
+});

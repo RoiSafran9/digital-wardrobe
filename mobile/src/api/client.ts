@@ -35,3 +35,8 @@ export async function getItems(): Promise<ItemsResponse> {
   }
   return parseJsonOrThrow<ItemsResponse>(response);
 }
+
+// The API returns image paths relative to itself; React Native needs a full URL.
+export function imageUrl(path: string): string {
+  return API_BASE_URL + encodeURI(path);
+}

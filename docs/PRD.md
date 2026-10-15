@@ -19,6 +19,9 @@ Initial target: the product owner, using their own iPhone. Success is being able
 ## Primary journey
 Open app → sign in → empty state → add item → choose/take photo → choose category (required) → optional color/brand/notes → save → item appears in grid → tap to view/edit/delete.
 
+## Language and localization
+The MVP interface is **English-only**. Use English for screen titles, navigation labels, category names, forms, and user-facing messages. Additional languages are out of scope for V1.
+
 ## Proposed categories (editable later)
 Tops, bottoms, dresses/one-pieces, outerwear, shoes, accessories, other. Category labels may be localized.
 
@@ -34,7 +37,6 @@ AI clothing identification, automatic cutouts/background removal, look/outfit ge
 - No secrets or customer images are stored in Git.
 
 ## Open decisions
-- Primary interface language: Hebrew, English, or both?
 - Does MVP require authentication, or should first run be single-user with simple sign-in?
 - Is one photo per item enough for V1?
 - Is the initial catalog strictly personal, or should multiple accounts be supported soon?

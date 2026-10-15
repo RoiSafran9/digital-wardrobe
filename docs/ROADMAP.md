@@ -3,7 +3,8 @@
 ## Phase 0 — Foundation (current)
 - [x] Create private repository
 - [x] Define draft MVP and proposed architecture
-- [ ] Confirm screen map, home layout and visual tokens (Modern & Playful direction approved)
+- [x] Confirm home browsing: two-column Photo Grid + horizontal category chips
+- [ ] Finalize screen navigation, visual tokens and remaining screen map (Modern & Playful approved)
 - [ ] Connect Claude Code to the same repository
 
 ## Phase 1 — App foundation

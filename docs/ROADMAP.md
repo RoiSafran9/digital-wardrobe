@@ -12,6 +12,7 @@
 - [x] Confirm generated-image background: solid white (#FFFFFF), non-transparent
 - [x] Decide original source-photo retention: keep privately with each item for future regeneration
 - [x] Confirm Regenerate is available **before the first Save Item only**; saved-item Regenerate is post-MVP
+- [x] Confirm pre-save Review comparison: **Generated default / Original toggle**, without changing saved catalog image
 - [ ] Define detailed output image quality/fidelity acceptance requirements
 - [ ] Finalize cancel/discard handling, visual tokens and remaining screen map (Modern & Playful approved)
 - [ ] Connect Claude Code to the same repository
@@ -26,7 +27,7 @@
 ## Phase 2 — Working wardrobe MVP
 - [ ] Sign-in and session persistence
 - [ ] Camera/photo-library picker and **private upload of original and generated photos**
-- [ ] Generate full-length garment catalog image from source photo (**solid white background, no alpha**), with **pre-save-only regeneration** and fidelity review
+- [ ] Generate full-length garment catalog image from source photo (**solid white background, no alpha**), with **pre-save-only regeneration**, **Original / Generated comparison** and fidelity review
 - [ ] Vision AI category/color/name suggestions with editable Single Review Form and safe manual-category fallback
 - [ ] Clothing item creation and image grid
 - [ ] Post-save Wardrobe refresh, new-item visibility and brief success feedback; preserve draft on failed save

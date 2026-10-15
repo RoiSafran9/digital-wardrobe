@@ -8,22 +8,31 @@ iPhone-first, easy iteration, minimal operational overhead, private by default, 
 - Client: Expo / React Native with TypeScript and Expo Router.
 - Image capture/selection: Expo ImagePicker (camera permissions as needed).
 - Data/auth/storage: Supabase Auth, PostgreSQL and a **private** Supabase Storage bucket.
-- AI enrichment: a **vision-capable model** invoked via an authenticated server-side endpoint (e.g. Supabase Edge Function). Exact provider/model is TBD; no provider secrets in the mobile app.
+- AI image creation **and** metadata enrichment: authenticated server-side orchestration (e.g. Supabase Edge Function) invoking an **image editing/generation model** that accepts a source photograph, plus a vision-capable model or equivalent structured metadata step. Model/provider(s) TBD. No provider secrets in the mobile app.
 - Release: EAS Build for iOS → App Store Connect → TestFlight.
 - No custom application server in MVP unless needed for security-sensitive operations.
 
 ## UI implementation guidance
 The confirmed visual direction is **Modern & Playful**, with a confirmed **Wardrobe | Add | Account** bottom tab navigator; specific colors remain open. Build a small central theme/tokens layer for palette, typography, radius and spacing so that styling can evolve consistently. Aim for friendly rounded components, a restrained playful accent palette, accessible contrast and touch sizes, and a **confirmed two-column, photo-first item grid**. Use a **horizontal, single-select chip row** for All (default) and the nine categories, filtering the existing grid in place rather than routing to category screens. Keep filter state distinct from remote data access and always scope queries to the signed-in user. Avoid prematurely choosing a UI framework solely for its visual style.
 
-The screen inventory and confirmed tab labels live in [docs/SCREENS.md](SCREENS.md). Use Expo Router's tab navigation for **Wardrobe | Add | Account** (or an equivalent accessible bottom-tab implementation); keep unauthenticated routes outside the tab group and Item Details/Edit as secondary routes. **Photo First → AI-first → Single Review Form is confirmed:** entering Add presents Take Photo / Choose from Library; after selection, retain the draft photo, invoke AI analysis, and show an image preview plus editable suggested metadata on **one scrollable screen**. Request camera/photo permissions only when needed. Preserve drafts during retries. The model analysis may require sending image bytes or a short-lived private reference to the backend before the user confirms Save; **do not create a permanent wardrobe item before the explicit Save Item action**. Clear temporary uploads according to a bounded retention policy. Respect iPhone safe areas.
+The screen inventory and confirmed tab labels live in [docs/SCREENS.md](SCREENS.md). Use Expo Router's tab navigation for **Wardrobe | Add | Account** (or an equivalent accessible bottom-tab implementation); keep unauthenticated routes outside the tab group and Item Details/Edit as secondary routes. **Photo First → AI-generated representative image + AI metadata → Single Review Form is confirmed:** entering Add presents Take Photo / Choose from Library; after selection, retain the source photo temporarily, generate a new fully laid-out garment image with isolated background and infer metadata, and show the **generated image** plus editable suggested metadata on one scrollable screen. Request camera/photo permissions only when needed. Preserve drafts during retries. The model analysis may require sending image bytes or a short-lived private reference to the backend before the user confirms Save; **do not create a permanent wardrobe item before the explicit Save Item action**. Clear temporary uploads according to a bounded retention policy. Respect iPhone safe areas.
 
-## Vision metadata suggestion pipeline (MVP requirement)
-1. The authenticated client selects/takes one photo and displays a preview.
-2. The client sends the image over TLS to an authenticated server-side handler (e.g. Supabase Edge Function), using a secure upload method or short-lived private reference; avoid public image URLs.
-3. The handler validates the caller, image size/type and abuse/rate limits, then invokes a **vision-capable AI model** using server-held credentials.
-4. Require a strictly validated structured response such as `{ category, color, item_name, brand }`. The category must match one of the nine approved choices. Treat every returned value as an untrusted suggestion, not ground truth. Color/name may be omitted if uncertain; **brand must be null unless reliably visible**. Do not fabricate notes.
-5. Populate the client's single review/edit screen with suggestions. The user can correct all fields; on failure or an unrecognized category, offer Retry and a manual Category selector.
-6. Only on explicit Save Item, persist the validated category, optional metadata and the single photo in the user's private wardrobe. Do not silently save on inference success.
+## AI-generated catalog image (confirmed MVP requirement)
+- The wardrobe representation is **not the original camera/photo-library image**. AI must produce a distinct, full-garment, neatly spread / flat-lay style image isolated against **white or transparent background** (background still TBD).
+- Input may be folded, partly hidden or photographed at an angle. The model may **estimate** occluded shapes while aiming to keep actual garment characteristics faithful; completion is not an exact reconstruction. Avoid invented patterns/logos, color shifts and hallucinated embellishments.
+- Preview the **generated** image before saving and offer **Regenerate** and **Retake / Choose Different Photo**. If generation fails, block Save until a generated image is available; do not silently use the input photo as the wardrobe display.
+- The **one image per item** requirement refers to one final generated/catalog image in the grid/details, not to the existence of a transient private source/reference photo during processing.
+- Private source-photo retention (temporary-only vs optionally retaining for future regeneration) is **not yet decided**. Default implementation should minimize retention; do not make source photo public. Use separate private object keys and lifecycle/cleanup policies if temporary storage is required.
+- Confirm supported alpha transparency capabilities of the chosen model before selecting an output format; do not claim white/transparent output is both available without testing.
+
+## Image generation + vision metadata processing pipeline (MVP requirement)
+1. Authenticated client captures/selects one **source/reference photo**.
+2. Validate and securely send source bytes or a short-lived private object reference to a server-side handler (e.g. Supabase Edge Function). Do not expose public image URLs.
+3. Authenticate/authorize caller, validate image type/size, apply abuse/rate/cost controls; call a **source-image-conditioned image editing/generation model** to produce a separate garment display image with the whole item flat/fully visible and isolated background. It may estimate unseen parts but must not intentionally invent distinguishable branding/details.
+4. In parallel or sequentially, call a vision-capable metadata model or a supported structured extraction step; validate `{ category, color, item_name, brand }` against the nine approved categories. Brand null unless supported by evidence; Notes not generated.
+5. Return references for the **generated** preview and metadata suggestions (plus generation status/errors). Review screen shows the generated photo first, editable fields and Regenerate/Retake; original is not the default display.
+6. Metadata-only failure → manual Category selection; **image generation failure → Retry/Retake and no Save**. Explicit Save Item commits exactly one generated image plus validated item metadata. No auto-save.
+7. The preview/generated output must remain private (temporary object with TTL or secured transmission); clean up unsaved, superseded and abandoned generations according to retention policy.
 
 **Privacy/operations:** Document that images may be processed by the chosen AI service and account for consent/transparency, processing retention, per-request costs and quotas. Never expose AI provider credentials to the client. AI failures must not block manual category fallback. Provider, model, performance budgets and temporary-image cleanup implementation are deferred decisions.
 
@@ -39,12 +48,12 @@ The screen inventory and confirmed tab labels live in [docs/SCREENS.md](SCREENS.
 - `color` text nullable
 - `brand` text nullable
 - `notes` text nullable
-- `image_path` text not null (one required photo per item; storage object key, not a public URL)
+- `display_image_path` text not null (**AI-generated** full-garment representative image shown in Wardrobe/Details; private storage object key, never public URL)
 - `created_at` and `updated_at` timestamptz
 
-**Confirmed item fields:** the user must supply exactly one photo and one category. Item Name, Color, Brand and Notes are optional and nullable in storage. IDs and timestamps are system-managed. Do not add Size or Season fields in MVP. Use an explicit shared category list (currently nine categories) so client validation and database constraints agree.
+**Confirmed item fields:** the user supplies one source photo for creation. Every saved item has exactly **one AI-generated display image** and one category. Item Name, Color, Brand and Notes are optional/nullable. IDs and timestamps are system-managed. Do not add Size or Season in MVP. Validate categories consistently client- and server-side.
 
-Start with a single image per item. Preserve the ability to introduce a separate `item_images` table later.
+The user's source photo **must not be the catalog image**. If original photos are ever stored, they require separate private storage keys/fields, an explicit retention policy, and must not render in Wardrobe. Whether to retain them is an open decision. Keep the generated image at `display_image_path`; a future multi-image gallery can introduce `item_images` without changing the primary display contract.
 
 ## Privacy and security boundaries
 - Enable and test RLS: user can SELECT, INSERT, UPDATE and DELETE only rows with `user_id = auth.uid()`.
@@ -66,18 +75,17 @@ docs/                # requirements and decisions
 ```
 
 ## Add and upload flow (proposal)
-1. Request photo/camera permission when needed and select/take one image.
-2. Preview and validate/compress the image. Keep a transient draft.
-3. Obtain AI suggestions through the authenticated server-side vision handler using private image access, and let the user edit the suggestions on one review screen.
-4. If AI fails, allow manual Category selection. Saving still requires a valid Category and the photo.
-5. Upon **Save Item**, create an item UUID and commit the validated photo to private storage at `<user-id>/<item-id>/primary.jpg`, then write the item's category and optional fields. Handle partial write/upload failure by cleanup or retry.
-6. After **both** the private image and metadata are durably saved, invalidate/refetch the signed-in user's wardrobe list, navigate to the **Wardrobe** tab and ensure the new item is visible (reset category filter to All if necessary; position/scroll to newly created item). Show a brief non-blocking success message.
-7. Clear the in-memory Add draft only after success and reset it to its initial Photo First state for the next use. Disable repeated Save actions during an in-flight request and use a stable client-generated item UUID or another idempotency strategy to avoid duplicate entries on retries.
-8. If upload or metadata persistence fails, remain in Add with the photo/edits preserved; show a retryable error and do not claim success. Cleanup orphaned photo uploads or reconcile partial failures. Remove any inference-only temporary image according to retention policy.
-9. Display saved photos through authenticated access/short-lived signed URLs.
+1. Request permission when needed, then capture/select one **source** image.
+2. Validate/compress source, keep an ephemeral draft and send to authorized server-side AI processing.
+3. Generate a **new** full-garment, nicely laid-out representative image with a white/transparent background, and infer metadata; keep output preview private.
+4. Show **generated output** and editable suggested fields on one review screen; support Regenerate or Retake. If metadata fails, allow manual Category. If the display image cannot be generated, **block Save** and show Retry/Retake.
+5. Upon explicit **Save Item**, use stable item ID and persist **generated** image under `<user-id>/<item-id>/display.<ext>` in the user's private storage. Write `display_image_path`, category and optional fields; handle partial failure and idempotent retries.
+6. After both generated image and metadata persist, refresh Wardrobe list, navigate to Wardrobe, reveal new item (select All if needed), and show brief success indication.
+7. Reset Add draft only on confirmed success. On failure preserve reference, generated preview and edits for retry; prevent double-submit.
+8. Clean temporary input/output assets from AI processing according to data retention choices and garbage collection. Display only `display_image_path` through authenticated download/signed URLs.
 
 ## Save-success UI/data consistency
-- Success means the committed database item and its required private image can be fetched by the authenticated owner; only then report success.
+- Success means the committed database item and its required private **AI-generated** display image can be fetched by the authenticated owner; only then report success.
 - The tab navigation must support returning from Add to Wardrobe. Keep any active filter from hiding the newly added item (switch to All when needed).
 - Refresh the wardrobe query/cache, show the new item prominently and use a short, non-blocking success indicator.
 - Restore the Add screen to its clean Photo First state after successful save, but preserve the unsaved photo and suggested/edited metadata during failed submissions and retries.
@@ -86,11 +94,12 @@ docs/                # requirements and decisions
 ## Quality gates
 - TypeScript checking, linting, minimal unit tests for data helpers.
 - Manual iOS device tests for camera, gallery, permissions, auth, offline/error states, image refresh, and item deletion.
-- Test AI outputs for valid category mapping, missing/uncertain fields, unsupported brands, corrupt responses, timeouts, server errors, abuse limits and manual fallback.
+- Test AI outputs for valid category mapping, missing/uncertain fields, unsupported brands, corrupt responses, timeouts, server errors, abuse limits and manual category fallback.
+- Test **image generation** on folded, hung, cropped and partly obscured clothes; ensure full garment framing, faithful colors/visible patterns, consistent isolation, no fabricated logos, generated-image-only Wardrobe rendering, user regeneration, and save prevention when generation fails.
 - Ensure Supabase RLS is tested using two distinct accounts before external testers.
 
 ## iOS delivery
 Use EAS development builds for testing, and a production/distribution profile for TestFlight submission. Requires Apple Developer Program membership and App Store Connect setup; review signing, bundle identifier and EAS credentials when implementation begins.
 
 ## Deferred architectural decisions
-Exact OTP-versus-magic-link UX, Expo SDK version, styling library, vision model/provider, image processing configuration, inference-time private transfer and temporary retention, request budget, cache/offline behavior and localization strategy. Choose these during implementation and update this document.
+Exact OTP-versus-magic-link UX, Expo SDK version, styling library, **image generation/editing model and metadata vision provider(s)**, output background (**white versus transparent**), supported output formats, image processing fidelity criteria, source-photo retention, inference-time private transfer and temporary retention, request cost limits, cache/offline behavior and localization strategy. Choose these before implementation and update this document.

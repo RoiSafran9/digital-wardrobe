@@ -7,12 +7,12 @@ A private, personal iPhone wardrobe catalog built with **Expo / React Native / T
 ## MVP
 
 - Sign in to a private wardrobe
-- Add a clothing item from a source photo; AI generates a **separate, fully spread-out garment image on a solid white background** for the catalog and suggests category/color/name; the user reviews and may regenerate or correct suggestions before saving
+- Add a clothing item from a source photo; AI generates a **separate, fully spread-out garment image on a solid white background** for the catalog and suggests category/color/name; the user reviews and may regenerate or correct suggestions **before first save only**
 - Browse a photo-first grid and filter by category
 - View and edit item details (category, color, brand, notes)
 - Delete clothing items
 
-**AI-generated standardized garment imagery and editable metadata suggestions ARE part of MVP.** Each item retains **two separate private images**: the original source photo (for future regeneration) and the AI-generated white-background catalog image. **Only the generated image is displayed in the wardrobe.** Outfit recommendations and social features are later.
+**AI-generated standardized garment imagery and editable metadata suggestions ARE part of MVP.** Each item retains **two separate private images**: the original source photo (for future regeneration) and the AI-generated white-background catalog image. **Only the generated image is displayed in the wardrobe.** Regenerate from a saved item is deferred until after MVP; only unsaved previews can be regenerated in V1. Outfit recommendations and social features are later.
 
 ## Project source of truth
 

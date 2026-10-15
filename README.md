@@ -12,7 +12,7 @@ A private, personal iPhone wardrobe catalog built with **Expo / React Native / T
 - View and edit item details (category, color, brand, notes)
 - Delete clothing items
 
-**AI-generated standardized garment imagery and editable metadata suggestions ARE part of MVP.** The original photo is the input and **not the image displayed in the wardrobe**. Outfit recommendations and social features are later.
+**AI-generated standardized garment imagery and editable metadata suggestions ARE part of MVP.** Each item retains **two separate private images**: the original source photo (for future regeneration) and the AI-generated white-background catalog image. **Only the generated image is displayed in the wardrobe.** Outfit recommendations and social features are later.
 
 ## Project source of truth
 

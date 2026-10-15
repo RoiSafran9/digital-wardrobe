@@ -52,6 +52,16 @@ The MVP has exactly these **nine predefined categories**, shown in English in th
 
 Each clothing item belongs to one of these categories. Categories are fixed in MVP; user-created categories and subcategories may be explored after V1.
 
+## Visual design direction (confirmed)
+**Modern & Playful** is the visual identity for V1. Prioritize a friendly, contemporary fashion-catalog feel rather than a strictly minimal or luxury editorial aesthetic:
+- Image-led, uncluttered wardrobe browsing; garment photography stays the focus.
+- Soft, light neutral surfaces with a restrained set of lively accent colors (exact palette TBD).
+- Rounded cards, controls, and category chips; inviting micro-interactions with accessible motion.
+- Clear English typography, readable contrast, consistent spacing, generous iPhone touch targets.
+- Avoid decorative UI that slows down adding or finding a garment.
+
+The concrete palette, type scale, component specifications and navigation structure are **proposals to review**, not yet approved. See [Screen map](SCREENS.md).
+
 ## Non-goals for MVP
 AI clothing identification, automatic cutouts/background removal, look/outfit generation, weather suggestions, sharing, purchasing, calendar, complex tagging, and multi-image items.
 
@@ -65,7 +75,7 @@ AI clothing identification, automatic cutouts/background removal, look/outfit ge
 - No secrets or customer images are stored in Git.
 
 ## Open decisions
-- Visual direction (layout, typography, colors, navigation).
+- Exact visual palette, component specifications and primary wardrobe screen layout/navigation (see [Screen map](SCREENS.md)).
 - Whether the login UX should prioritize email code, magic link, or both.
 
 ## Product metrics (small beta cohort initially)

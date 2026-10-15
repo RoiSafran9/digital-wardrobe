@@ -12,7 +12,7 @@ iPhone-first, easy iteration, minimal operational overhead, private by default, 
 - No custom application server in MVP unless needed for security-sensitive operations.
 
 ## UI implementation guidance
-The confirmed visual direction is **Modern & Playful**, while specific colors and navigation remain open. Build a small central theme/tokens layer for palette, typography, radius and spacing so that styling can evolve consistently. Aim for friendly rounded components, a restrained playful accent palette, accessible contrast and touch sizes, and a photo-first item grid. Avoid prematurely choosing a UI framework solely for its visual style.
+The confirmed visual direction is **Modern & Playful**, while specific colors and primary navigation remain open. Build a small central theme/tokens layer for palette, typography, radius and spacing so that styling can evolve consistently. Aim for friendly rounded components, a restrained playful accent palette, accessible contrast and touch sizes, and a **confirmed two-column, photo-first item grid**. Use a **horizontal, single-select chip row** for All (default) and the nine categories, filtering the existing grid in place rather than routing to category screens. Keep filter state distinct from remote data access and always scope queries to the signed-in user. Avoid prematurely choosing a UI framework solely for its visual style.
 
 The proposed screen inventory and navigation decisions live in [docs/SCREENS.md](SCREENS.md). Treat its unapproved proposals as planning notes, not implementation requirements.
 

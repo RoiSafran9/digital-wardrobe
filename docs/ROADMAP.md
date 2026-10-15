@@ -7,7 +7,9 @@
 - [x] Confirm Bottom Navigation: Wardrobe | Add | Account
 - [x] Confirm Photo First entry for Add Item
 - [x] Confirm AI-first metadata suggestion and Single Review/Edit Form after photo selection
+- [x] Confirm AI-generated full-garment representative images (not original camera photos) in Wardrobe
 - [x] Confirm after-save success: return to Wardrobe, reveal new item and show success message
+- [ ] Decide generated-image background (white vs transparent), source-photo retention and quality/fidelity requirements
 - [ ] Finalize cancel/discard handling, visual tokens and remaining screen map (Modern & Playful approved)
 - [ ] Connect Claude Code to the same repository
 
@@ -15,13 +17,14 @@
 - [ ] Scaffold Expo + TypeScript + Expo Router
 - [ ] Establish navigation, UI primitives and theme
 - [ ] Configure Supabase project and environment example
-- [ ] Choose vision model/provider, authenticated inference endpoint and cost/privacy safeguards
+- [ ] Choose image generation/editing and metadata-vision model(s), secure inference endpoint, limits and photo privacy/retention safeguards
 - [ ] Create schema, private bucket and RLS policies
 
 ## Phase 2 — Working wardrobe MVP
 - [ ] Sign-in and session persistence
 - [ ] Camera/photo-library picker and image upload
-- [ ] Vision AI category/color/name suggestions with editable Single Review Form and safe manual fallback
+- [ ] Generate full-length garment catalog image from source photo (white/transparent background), with regeneration and fidelity review
+- [ ] Vision AI category/color/name suggestions with editable Single Review Form and safe manual-category fallback
 - [ ] Clothing item creation and image grid
 - [ ] Post-save Wardrobe refresh, new-item visibility and brief success feedback; preserve draft on failed save
 - [ ] Category filters
@@ -35,7 +38,7 @@
 - [ ] Install and complete personal acceptance testing
 
 ## Post-MVP ideas (not committed)
-Background removal; advanced AI wardrobe search; outfit creation; outfit recommendations; weather/context-based suggestions. Basic AI item/category/color suggestions are part of MVP.
+Advanced AI wardrobe search; outfit creation; outfit recommendations; weather/context-based suggestions. **Normalized AI-generated garment images and basic item/category/color suggestions are part of MVP.**
 
 ## Workflow
 One issue or scoped task per branch. Pull request → review → merge. Record material changes to the PRD and architecture in the same pull request.

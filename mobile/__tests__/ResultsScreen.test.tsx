@@ -4,6 +4,8 @@ import ResultsScreen from "../app/results";
 import { LastRunProvider, useLastRun } from "../src/store/lastRun";
 import type { RunResponse } from "../src/api/types";
 
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+
 function Setter({ run }: { run: RunResponse }) {
   const { setLastRun } = useLastRun();
   React.useEffect(() => {

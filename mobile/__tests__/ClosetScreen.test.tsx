@@ -8,6 +8,7 @@ jest.mock("../src/api/client");
 // Tabs stay mounted, so the closet must reload whenever its tab regains focus.
 let focusCallback: (() => void) | null = null;
 jest.mock("expo-router", () => ({
+  useRouter: () => ({ push: jest.fn() }),
   useFocusEffect: (cb: () => void) => {
     const { useEffect } = require("react");
     focusCallback = cb;
@@ -31,6 +32,12 @@ const fakeItem = {
   generated_url: "/images/r1/p1/item_0/generated.png",
 };
 
+const fakeShorts = {
+  ...fakeItem,
+  item_id: "item_1",
+  facts: { ...fakeItem.facts, category: { value: "shorts", confidence: 0.9, basis: "observed" } },
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockedGetItems.mockResolvedValue({ items: [fakeItem] });
@@ -47,6 +54,33 @@ test("tapping a thumbnail opens the detail view", async () => {
   const thumb = await screen.findByTestId("thumb-r1-item_0");
   fireEvent.press(thumb);
   expect(await screen.findByText("Great")).toBeTruthy();
+});
+
+test("the detail sheet's close button returns to the grid", async () => {
+  render(<ClosetScreen />);
+  fireEvent.press(await screen.findByTestId("thumb-r1-item_0"));
+  fireEvent.press(await screen.findByLabelText("Close"));
+  await waitFor(() => expect(screen.queryByLabelText("Close")).toBeNull());
+});
+
+test("category pills filter the grid", async () => {
+  mockedGetItems.mockResolvedValue({ items: [fakeItem, fakeShorts] });
+  render(<ClosetScreen />);
+  expect(await screen.findByTestId("thumb-r1-item_1")).toBeTruthy();
+  expect(screen.getByText("2 pieces")).toBeTruthy();
+
+  fireEvent.press(screen.getByRole("button", { name: "Shorts" }));
+  await waitFor(() => expect(screen.queryByTestId("thumb-r1-item_0")).toBeNull());
+  expect(screen.getByTestId("thumb-r1-item_1")).toBeTruthy();
+
+  fireEvent.press(screen.getByRole("button", { name: "All" }));
+  expect(await screen.findByTestId("thumb-r1-item_0")).toBeTruthy();
+});
+
+test("shows an inviting empty state when the closet is empty", async () => {
+  mockedGetItems.mockResolvedValue({ items: [] });
+  render(<ClosetScreen />);
+  expect(await screen.findByText("Your closet is empty")).toBeTruthy();
 });
 
 test("reloads items every time the closet tab regains focus", async () => {

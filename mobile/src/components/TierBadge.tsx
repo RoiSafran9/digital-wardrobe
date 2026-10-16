@@ -1,18 +1,13 @@
 import React from "react";
 import { Text, View } from "react-native";
 import type { Tier } from "../api/types";
-
-const TIER_STYLE: Record<Tier, { color: string; label: string }> = {
-  high: { color: "#2e7d32", label: "Great" },
-  medium: { color: "#f9a825", label: "OK" },
-  low: { color: "#c62828", label: "Retake" },
-};
+import { TIER_STYLE, radius } from "../theme";
 
 export function TierBadge({ tier }: { tier: Tier }) {
-  const { color, label } = TIER_STYLE[tier];
+  const { label, bg, fg } = TIER_STYLE[tier];
   return (
-    <View style={{ backgroundColor: color, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
-      <Text style={{ color: "white", fontWeight: "bold" }}>{label}</Text>
+    <View style={{ backgroundColor: bg, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3 }}>
+      <Text style={{ color: fg, fontSize: 12, fontWeight: "500" }}>{label}</Text>
     </View>
   );
 }

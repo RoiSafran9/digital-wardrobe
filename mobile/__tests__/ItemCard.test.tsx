@@ -26,8 +26,8 @@ const baseItem: RunItem = {
 test("shows tier badge and facts", () => {
   render(<ItemCard item={baseItem} />);
   expect(screen.getByText("Great")).toBeTruthy();
-  expect(screen.getByText(/shirt/)).toBeTruthy();
-  expect(screen.getByText(/blue/)).toBeTruthy();
+  expect(screen.getByText("Shirt")).toBeTruthy();
+  expect(screen.getByText("Blue")).toBeTruthy();
 });
 
 test("shows retake instruction when present", () => {

@@ -28,7 +28,7 @@ test("shows a permission-denied message and never uploads when permission is ref
   mockedPicker.requestCameraPermissionsAsync.mockResolvedValue({ granted: false } as any);
   renderScreen();
 
-  fireEvent.press(screen.getByText("Take Photo"));
+  fireEvent.press(screen.getByText("Take photo"));
 
   await waitFor(() => screen.getByText(/permission denied/i));
   expect(mockedPostRun).not.toHaveBeenCalled();
@@ -39,7 +39,7 @@ test("does nothing when the user cancels the picker", async () => {
   mockedPicker.launchImageLibraryAsync.mockResolvedValue({ canceled: true, assets: [] } as any);
   renderScreen();
 
-  fireEvent.press(screen.getByText("Pick From Library"));
+  fireEvent.press(screen.getByText("Choose from library"));
 
   await waitFor(() => expect(mockedPostRun).not.toHaveBeenCalled());
 });
@@ -53,7 +53,7 @@ test("uploads the picked photo and shows an error message on failure", async () 
   mockedPostRun.mockRejectedValue(new Error("can't reach server — check WiFi/IP"));
 
   renderScreen();
-  fireEvent.press(screen.getByText("Pick From Library"));
+  fireEvent.press(screen.getByText("Choose from library"));
 
   await waitFor(() => screen.getByText("can't reach server — check WiFi/IP"));
 });
@@ -64,7 +64,7 @@ test("asks the library picker for a JPEG-compatible file so HEIC photos upload",
   mockedPicker.launchImageLibraryAsync.mockResolvedValue({ canceled: true, assets: [] } as any);
   renderScreen();
 
-  fireEvent.press(screen.getByText("Pick From Library"));
+  fireEvent.press(screen.getByText("Choose from library"));
 
   await waitFor(() =>
     expect(mockedPicker.launchImageLibraryAsync).toHaveBeenCalledWith(

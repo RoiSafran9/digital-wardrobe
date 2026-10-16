@@ -34,10 +34,10 @@ class FakeVision:
 
 
 class FakeImageGen:
-    async def generate(self, crop_path, facts, violations):
+    async def generate(self, crop_path, facts, violations, complete_edges=False):
         raise AssertionError("not used")
 
-    async def generate_back(self, crop_path, front_image_path, facts, violations):
+    async def generate_back(self, crop_path, front_image_path, facts, violations, complete_edges=False):
         out = crop_path.replace(".png", "_generated.png")
         shutil.copy(crop_path, out)
         return out
@@ -114,13 +114,11 @@ def test_back_for_missing_item_is_404(client, tmp_path):
     assert _post_back(client, "/items/run1/photo1/item_7/back").status_code == 404
 
 
-def test_back_photo_cut_off_by_frame_is_400_with_instruction(tmp_path, monkeypatch):
+def test_back_photo_touching_the_frame_is_still_added(tmp_path, monkeypatch):
     app, client = _client(tmp_path, monkeypatch, cut_off=True)
     try:
         _write_front(tmp_path)
-        response = _post_back(client)
-        assert response.status_code == 400
-        assert "step back" in response.json()["error"]
-        assert not os.path.exists(tmp_path / "run1" / "photo1" / "item_0" / "back")
+        assert _post_back(client).status_code == 200
+        assert os.path.exists(tmp_path / "run1" / "photo1" / "item_0" / "back" / "generated.png")
     finally:
         app.dependency_overrides.clear()

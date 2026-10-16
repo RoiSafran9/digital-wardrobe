@@ -31,7 +31,7 @@ class FakeVision:
 
 
 class FakeImageGen:
-    async def generate(self, crop_path, facts, violations):
+    async def generate(self, crop_path, facts, violations, complete_edges=False):
         gen_path = crop_path.replace("crop.png", "generated.png")
         _write_ok_photo(gen_path)
         return gen_path
@@ -84,7 +84,7 @@ async def test_generate_failure_all_retries_tiers_low(tmp_path):
     item = _item()
 
     class FailingImageGen:
-        async def generate(self, crop_path, facts, violations):
+        async def generate(self, crop_path, facts, violations, complete_edges=False):
             raise RuntimeError("image gen API error")
 
     providers = Providers(vision=FakeVision([item]), imagegen=FailingImageGen())
@@ -107,7 +107,7 @@ async def test_medium_tier_when_item_mostly_occluded(tmp_path):
 
 
 class FakeImageGenOnWhite:
-    async def generate(self, crop_path, facts, violations):
+    async def generate(self, crop_path, facts, violations, complete_edges=False):
         gen_path = crop_path.replace("crop.png", "generated.png")
         img = np.full((300, 300, 3), 255, dtype=np.uint8)
         img[80:220, 60:240] = (90, 60, 40)
@@ -134,17 +134,19 @@ async def test_run_photo_writes_transparent_cutout_next_to_generated(tmp_path):
 
 class CountingImageGen:
     def __init__(self):
-        self.calls = 0
+        self.calls = []
 
-    async def generate(self, crop_path, facts, violations):
-        self.calls += 1
+    async def generate(self, crop_path, facts, violations, complete_edges=False):
+        self.calls.append(complete_edges)
         gen_path = crop_path.replace("crop.png", "generated.png")
-        _write_ok_photo(gen_path)
+        img = np.full((300, 300, 3), 255, dtype=np.uint8)
+        img[80:220, 60:240] = (90, 60, 40)
+        cv2.imwrite(gen_path, img)
         return gen_path
 
 
 @pytest.mark.asyncio
-async def test_item_cut_off_by_frame_skips_generation_and_asks_for_retake(tmp_path):
+async def test_item_touching_the_frame_is_completed_not_rejected(tmp_path):
     import os
     photo_path = str(tmp_path / "photo.png")
     _write_ok_photo(photo_path)
@@ -156,11 +158,14 @@ async def test_item_cut_off_by_frame_skips_generation_and_asks_for_retake(tmp_pa
 
     result = await run_photo(photo_path, str(tmp_path / "out"), providers, logger)
 
-    assert imagegen.calls == 0
-    item_result = result["items"][0]["result"]
-    assert item_result.tier == "low"
-    assert "frame" in item_result.retake_instruction
-    item_dir = tmp_path / "out" / "item_0"
-    assert os.path.exists(item_dir / "crop.png")
-    assert os.path.exists(item_dir / "result.json")
-    assert not os.path.exists(item_dir / "generated.png")
+    assert imagegen.calls and all(imagegen.calls)          # generated, asked to complete the edges
+    assert os.path.exists(tmp_path / "out" / "item_0" / "generated.png")
+
+
+def test_scoring_marks_frame_touching_items_ok_with_a_soft_tip():
+    from pipeline.stages import stage6_score
+    from pipeline.types import VerificationResult
+    passed = VerificationResult(status="pass", violations=[], attempt=1)
+    result = stage6_score.run(passed, 1.0, 2, cut_off=True)
+    assert result.tier == "medium"
+    assert "step back" in result.retake_instruction

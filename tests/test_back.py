@@ -35,11 +35,11 @@ class FakeImageGen:
     def __init__(self):
         self.back_calls = []
 
-    async def generate(self, crop_path, facts, violations):
+    async def generate(self, crop_path, facts, violations, complete_edges=False):
         raise AssertionError("front generation must not run for a back photo")
 
-    async def generate_back(self, crop_path, front_image_path, facts, violations):
-        self.back_calls.append((crop_path, front_image_path, facts))
+    async def generate_back(self, crop_path, front_image_path, facts, violations, complete_edges=False):
+        self.back_calls.append((crop_path, front_image_path, facts, complete_edges))
         out = crop_path.replace(".png", "_generated.png")
         cv2.imwrite(out, cv2.imread(crop_path))
         return out
@@ -71,12 +71,13 @@ async def test_back_photo_is_cropped_generated_against_the_front_and_saved(setup
 
 
 @pytest.mark.asyncio
-async def test_back_photo_cut_off_by_frame_is_rejected(setup):
+async def test_back_photo_touching_the_frame_is_completed(setup):
     photo, front, out, logger = setup
+    gen = FakeImageGen()
     vision = FakeVision([_item("hoodie", BBox(x=0, y=0, width=900, height=900), cut_off=True)])
-    with pytest.raises(BackPhotoRejected, match="step back"):
-        await run_back(photo, front, out, Providers(vision=vision, imagegen=FakeImageGen()), logger)
-    assert not os.path.exists(out)
+    await run_back(photo, front, out, Providers(vision=vision, imagegen=gen), logger)
+    assert gen.back_calls[0][3] is True
+    assert os.path.exists(os.path.join(out, "generated.png"))
 
 
 @pytest.mark.asyncio

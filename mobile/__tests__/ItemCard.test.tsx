@@ -7,6 +7,7 @@ import type { RunItem } from "../src/api/types";
 
 const baseItem: RunItem = {
   item_id: "item_0",
+  photo_name: "p1",
   tier: "high",
   reason: "ok",
   retake_instruction: null,
@@ -44,4 +45,10 @@ test("loads the generated image from the server, not a bare relative path", () =
   render(<ItemCard item={baseItem} />);
   const image = screen.UNSAFE_getByType(Image);
   expect(image.props.source.uri).toBe(`${API_BASE_URL}/images/r1/p1/item_0/generated.png`);
+});
+
+test("a soft tip on an OK item is not presented as a retake", () => {
+  render(<ItemCard item={{ ...baseItem, tier: "medium", retake_instruction: "For a cleaner result, step back" }} />);
+  expect(screen.getByText(/For a cleaner result/)).toBeTruthy();
+  expect(screen.queryByText(/Retake:/)).toBeNull();
 });

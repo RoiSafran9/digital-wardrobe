@@ -6,10 +6,11 @@ import { ItemCard } from "../src/components/ItemCard";
 import { ItemSheet } from "../src/components/ItemSheet";
 import { PillButton } from "../src/components/PillButton";
 import { useLastRun } from "../src/store/lastRun";
+import type { ClosetItem } from "../src/api/types";
 import { colors, fonts } from "../src/theme";
 
 export default function ResultsScreen() {
-  const { lastRun } = useLastRun();
+  const { lastRun, setLastRun } = useLastRun();
   const router = useRouter();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
@@ -30,11 +31,21 @@ export default function ResultsScreen() {
     );
   }
 
+  // New items are already in the closet, so address them the same way (run + photo + item).
+  const run = lastRun;
+  const items: ClosetItem[] = run.items.map((item) => ({ ...item, run_id: run.run_id }));
+  const replaceItem = (updated: ClosetItem) =>
+    setLastRun({ ...run, items: run.items.map((i) => (i.item_id === updated.item_id && i.photo_name === updated.photo_name ? { ...i, ...updated } : i)) });
+  const removeItem = (removed: ClosetItem) => {
+    setSelectedIndex(null);
+    setLastRun({ ...run, items: run.items.filter((i) => !(i.item_id === removed.item_id && i.photo_name === removed.photo_name)) });
+  };
+
   const count = lastRun.items.length;
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <FlatList
-        data={lastRun.items}
+        data={items}
         keyExtractor={(item) => item.item_id}
         contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 28 }}
         ListHeaderComponent={
@@ -45,7 +56,9 @@ export default function ResultsScreen() {
             </Text>
           </View>
         }
-        renderItem={({ item, index }) => <ItemCard item={item} onPress={() => setSelectedIndex(index)} />}
+        renderItem={({ item, index }) => (
+          <ItemCard item={item} onPress={() => setSelectedIndex(index)} onUpdated={replaceItem} />
+        )}
         ListFooterComponent={
           <View style={{ gap: 12 }}>
             {lastRun.failed.length > 0 ? (
@@ -57,7 +70,13 @@ export default function ResultsScreen() {
           </View>
         }
       />
-      <ItemSheet items={lastRun.items} index={selectedIndex} onClose={() => setSelectedIndex(null)} />
+      <ItemSheet
+        items={items}
+        index={selectedIndex}
+        onClose={() => setSelectedIndex(null)}
+        onUpdated={replaceItem}
+        onDeleted={removeItem}
+      />
     </SafeAreaView>
   );
 }

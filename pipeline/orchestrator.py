@@ -27,19 +27,14 @@ async def _run_item(image_path: str, item, item_dir: str, providers: Providers,
     with open(os.path.join(item_dir, "facts.json"), "w") as f:
         f.write(facts.model_dump_json(indent=2))
 
-    if item.cut_off_by_frame:
-        # Inventing the missing part gave unusable results; ask for a retake and skip paid generation.
-        result = stage6_score.cut_off(stage1_detect_facts.visible_fraction(item))
-        with open(os.path.join(item_dir, "result.json"), "w") as f:
-            f.write(result.model_dump_json(indent=2))
-        return {"facts": facts, "verification": None, "result": result}
-
     verification = None
     generated_path = None
     violations: list[str] | None = None
     for attempt in range(1, max_attempts + 2):
         try:
-            generated_path = await stage4_generate.run(crop_dest, facts, violations, providers.imagegen)
+            # Items running past the photo edge are completed rather than rejected.
+            generated_path = await stage4_generate.run(crop_dest, facts, violations, providers.imagegen,
+                                                        complete_edges=item.cut_off_by_frame)
         except Exception:
             verification = None
             break
@@ -60,7 +55,7 @@ async def _run_item(image_path: str, item, item_dir: str, providers: Providers,
             f.write(verification.model_dump_json(indent=2))
 
     visible_fraction = stage1_detect_facts.visible_fraction(item)
-    result = stage6_score.run(verification, visible_fraction, max_attempts)
+    result = stage6_score.run(verification, visible_fraction, max_attempts, cut_off=item.cut_off_by_frame)
     with open(os.path.join(item_dir, "result.json"), "w") as f:
         f.write(result.model_dump_json(indent=2))
 

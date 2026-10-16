@@ -8,7 +8,6 @@ import shutil
 from pipeline.orchestrator import Providers
 from pipeline.run_log import RunLogger
 from pipeline.stages import crop_item, cutout, stage0_quality, stage1_detect_facts, stage5_verify, stage6_score
-from pipeline.stages.stage6_score import CUT_OFF_RETAKE
 from pipeline.types import ItemFacts, as_item_facts
 
 QUALITY_MESSAGES = {
@@ -37,8 +36,6 @@ async def run_back(photo_path: str, front_image_path: str, output_dir: str, prov
         raise BackPhotoRejected("no garment found — lay the item flat, back side up")
     # The user photographs one item's back; extra things in frame are smaller.
     item = max(detected, key=lambda d: d.box.width * d.box.height)
-    if item.cut_off_by_frame:
-        raise BackPhotoRejected(CUT_OFF_RETAKE)
 
     os.makedirs(output_dir, exist_ok=True)
     crop_dest = os.path.join(output_dir, "crop.png")
@@ -52,7 +49,8 @@ async def run_back(photo_path: str, front_image_path: str, output_dir: str, prov
     violations: list[str] | None = None
     for attempt in range(1, max_attempts + 2):
         try:
-            generated_path = await providers.imagegen.generate_back(crop_dest, front_image_path, facts, violations)
+            generated_path = await providers.imagegen.generate_back(
+                crop_dest, front_image_path, facts, violations, complete_edges=item.cut_off_by_frame)
         except Exception:
             verification = None
             break
@@ -69,7 +67,7 @@ async def run_back(photo_path: str, front_image_path: str, output_dir: str, prov
     if generated_path != generated_dest:
         shutil.copy(generated_path, generated_dest)
     cutout.run(generated_dest, os.path.join(output_dir, "cutout.png"))
-    result = stage6_score.run(verification, 1.0, max_attempts)
+    result = stage6_score.run(verification, 1.0, max_attempts, cut_off=item.cut_off_by_frame)
     with open(os.path.join(output_dir, "result.json"), "w") as f:
         f.write(result.model_dump_json(indent=2))
     return facts

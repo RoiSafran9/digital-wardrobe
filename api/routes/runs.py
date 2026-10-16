@@ -67,7 +67,7 @@ async def create_run(
         item_id, item_result, facts = loaded
         crop_url, generated_url = image_urls(run_id, photo_name, item_id)
         items_out.append(RunItemOut(
-            item_id=item_id, tier=item_result.tier, reason=item_result.reason,
+            item_id=item_id, photo_name=photo_name, tier=item_result.tier, reason=item_result.reason,
             retake_instruction=item_result.retake_instruction, facts=facts,
             crop_url=crop_url, generated_url=generated_url,
             cutout_url=cutout_url(item_dir, run_id, photo_name, item_id),

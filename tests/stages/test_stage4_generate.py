@@ -4,7 +4,7 @@ from pipeline.types import ItemFacts, FactField
 
 
 class FakeImageGen:
-    async def generate(self, crop_path, facts, violations):
+    async def generate(self, crop_path, facts, violations, complete_edges=False):
         return "generated.png"
 
 

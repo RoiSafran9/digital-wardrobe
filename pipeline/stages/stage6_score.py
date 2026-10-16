@@ -1,16 +1,12 @@
 from pipeline.types import VerificationResult, ItemResult
 
 VISIBLE_FRACTION_MEDIUM_THRESHOLD = 0.6
-CUT_OFF_RETAKE = "Part of this piece is outside the photo — step back so the whole piece fits in the frame"
-
-
-def cut_off(visible_fraction: float) -> ItemResult:
-    return ItemResult(tier="low", reason="cut off by the photo frame; not generated",
-                       retake_instruction=CUT_OFF_RETAKE, visible_fraction=visible_fraction)
+# Non-blocking tip for items that ran past the photo edge and were completed by the model.
+CUT_OFF_TIP = "For a cleaner result, step back so the whole piece fits in the frame"
 
 
 def run(verification: VerificationResult | None, visible_fraction: float,
-        max_attempts: int) -> ItemResult:
+        max_attempts: int, cut_off: bool = False) -> ItemResult:
     if verification is None or (verification.status == "fail" and verification.attempt >= max_attempts + 1):
         return ItemResult(
             tier="low",
@@ -25,5 +21,8 @@ def run(verification: VerificationResult | None, visible_fraction: float,
             retake_instruction=None,
             visible_fraction=visible_fraction,
         )
+    if cut_off:
+        return ItemResult(tier="medium", reason="ran past the photo edge; completed by the model",
+                           retake_instruction=CUT_OFF_TIP, visible_fraction=visible_fraction)
     return ItemResult(tier="high", reason="verification passed, fully visible",
                        retake_instruction=None, visible_fraction=visible_fraction)

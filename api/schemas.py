@@ -38,6 +38,7 @@ class QualityOut(BaseModel):
 
 class RunItemOut(BaseModel):
     item_id: str
+    photo_name: str
     tier: Literal["high", "medium", "low"]
     reason: str
     retake_instruction: str | None = None

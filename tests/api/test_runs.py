@@ -34,7 +34,7 @@ class FakeVision:
 
 
 class FakeImageGen:
-    async def generate(self, crop_path, facts, violations):
+    async def generate(self, crop_path, facts, violations, complete_edges=False):
         gen_path = crop_path.replace("crop.png", "generated.png")
         shutil.copy(crop_path, gen_path)
         return gen_path
@@ -63,7 +63,8 @@ def test_post_runs_returns_items_with_image_urls(client):
     assert item["tier"] == "high"
     assert item["crop_url"].endswith("/item_0/crop.png")
     assert item["generated_url"].endswith("/item_0/generated.png")
-    assert "cutout_url" in item  # null here: a noise image has no clean background to remove
+    assert "cutout_url" in item
+    assert item["photo_name"] == "photo"  # lets the app add a back right after capture  # null here: a noise image has no clean background to remove
     assert body["failed"] == []
 
 

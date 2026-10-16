@@ -1,14 +1,15 @@
 import React, { useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { addBack, deleteItem } from "../api/client";
-import { pickPhoto } from "../photoPicker";
+import { deleteItem } from "../api/client";
+import { useAddBack } from "../useAddBack";
 import { PillButton } from "./PillButton";
 import type { ClosetItem, RunItem } from "../api/types";
 import { addedLabel, asList, capitalize, colors, fonts, radius } from "../theme";
 import { ColorSwatches } from "./ColorSwatches";
 import { GarmentImage } from "./GarmentImage";
 import { ItemEditForm } from "./ItemEditForm";
+import { RetakeNote } from "./RetakeNote";
 import { TierBadge } from "./TierBadge";
 
 type Item = RunItem | ClosetItem;
@@ -202,41 +203,13 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
   const added = "run_id" in item ? addedLabel(item.run_id) : null;
   const back = isClosetItem(item) ? item.back ?? null : null;
   const [side, setSide] = useState<"front" | "back">("front");
-  const [uploading, setUploading] = useState(false);
-  const [backError, setBackError] = useState<string | null>(null);
+  const closetItem = isClosetItem(item) ? item : null;
+  const { ask: askForBack, uploading, error: backError } = useAddBack(
+    closetItem,
+    onUpdated && ((updated) => { onUpdated(updated); setSide("back"); }),
+    onBusy,
+  );
   const showBack = side === "back" && back !== null;
-
-  async function uploadBack(fromCamera: boolean) {
-    if (!isClosetItem(item) || !onUpdated) return;
-    setBackError(null);
-    let uri: string | null;
-    try {
-      uri = await pickPhoto(fromCamera);
-    } catch (e) {
-      setBackError(e instanceof Error ? e.message : "couldn't open the camera");
-      return;
-    }
-    if (!uri) return;
-    setUploading(true);
-    onBusy?.(true);
-    try {
-      onUpdated(await addBack(item, uri));
-      setSide("back");
-    } catch (e) {
-      setBackError(e instanceof Error ? e.message : "couldn't add the back");
-    } finally {
-      setUploading(false);
-      onBusy?.(false);
-    }
-  }
-
-  function askForBack() {
-    Alert.alert("Add the back", "Lay the item flat, back side up, with all of it in the frame.", [
-      { text: "Take photo", onPress: () => uploadBack(true) },
-      { text: "Choose from library", onPress: () => uploadBack(false) },
-      { text: "Cancel", style: "cancel" },
-    ]);
-  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -294,9 +267,7 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
         </View>
 
         {"retake_instruction" in item && item.retake_instruction ? (
-          <View style={{ marginTop: 20, backgroundColor: colors.dangerBg, borderRadius: 14, padding: 14 }}>
-            <Text style={{ color: colors.danger, fontSize: 14 }}>{item.retake_instruction}</Text>
-          </View>
+          <RetakeNote tier={item.tier} text={item.retake_instruction} />
         ) : null}
 
         {onRemove ? (

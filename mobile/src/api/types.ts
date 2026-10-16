@@ -18,6 +18,7 @@ export type ItemFacts = {
 
 export type RunItem = {
   item_id: string;
+  photo_name: string;
   tier: Tier;
   reason: string;
   retake_instruction: string | null;

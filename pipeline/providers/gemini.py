@@ -27,6 +27,14 @@ class _RawDetection(DetectionFields):
     box_2d: list[int]
 
 
+EDGES_BLOCK = """The photo cuts this garment off at its edge (for example a sleeve tip or the hem runs past
+the frame). Complete those parts as a plain continuation of what is visible — sleeves to their
+natural cuffs, the full hem — inferring their length from the garment type and the visible part.
+Do not invent pockets, zips, prints or trims in the completed areas.
+
+"""
+
+
 # A box this close to the photo edge (on the 0-1000 scale) means the garment runs past it.
 FRAME_EDGE_MARGIN = 5
 
@@ -84,16 +92,18 @@ class GeminiProvider:
             self._log("stage1_detect_facts", MODEL_VISION, "v4", start, "error", str(e))
             raise
 
-    async def generate(self, crop_path: str, facts: ItemFacts, violations: list[str] | None) -> str:
+    async def generate(self, crop_path: str, facts: ItemFacts, violations: list[str] | None,
+                       complete_edges: bool = False) -> str:
         start = time.monotonic()
         try:
             with open(crop_path, "rb") as f:
                 crop_bytes = f.read()
-            template = _read_prompt("stage4_generate_v4.txt")
+            template = _read_prompt("stage4_generate_v5.txt")
             violations_block = ("\nPrevious attempt violations to fix:\n" + "\n".join(violations)
                                  if violations else "")
             prompt = template.format(facts_block=facts.model_dump_json(indent=2),
-                                      violations_block=violations_block)
+                                      violations_block=violations_block,
+                                      edges_block=EDGES_BLOCK if complete_edges else "")
             response = self.client.models.generate_content(
                 model=MODEL_IMAGE,
                 contents=[{"inline_data": {"mime_type": "image/png", "data": crop_bytes}}, prompt],
@@ -102,25 +112,26 @@ class GeminiProvider:
             image_bytes = response.candidates[0].content.parts[0].inline_data.data
             with open(out_path, "wb") as f:
                 f.write(image_bytes)
-            self._log("stage4_generate", MODEL_IMAGE, "v4", start, "ok")
+            self._log("stage4_generate", MODEL_IMAGE, "v5", start, "ok")
             return out_path
         except Exception as e:
-            self._log("stage4_generate", MODEL_IMAGE, "v4", start, "error", str(e))
+            self._log("stage4_generate", MODEL_IMAGE, "v5", start, "error", str(e))
             raise
 
     async def generate_back(self, crop_path: str, front_image_path: str, facts: ItemFacts,
-                            violations: list[str] | None) -> str:
+                            violations: list[str] | None, complete_edges: bool = False) -> str:
         start = time.monotonic()
         try:
             with open(crop_path, "rb") as f:
                 crop_bytes = f.read()
             with open(front_image_path, "rb") as f:
                 front_bytes = f.read()
-            template = _read_prompt("stage4_generate_back_v1.txt")
+            template = _read_prompt("stage4_generate_back_v2.txt")
             violations_block = ("\nPrevious attempt violations to fix:\n" + "\n".join(violations)
                                  if violations else "")
             prompt = template.format(facts_block=facts.model_dump_json(indent=2),
-                                      violations_block=violations_block)
+                                      violations_block=violations_block,
+                                      edges_block=EDGES_BLOCK if complete_edges else "")
             response = self.client.models.generate_content(
                 model=MODEL_IMAGE,
                 contents=[
@@ -136,8 +147,8 @@ class GeminiProvider:
                                if p.inline_data is not None)
             with open(out_path, "wb") as f:
                 f.write(image_bytes)
-            self._log("stage4_generate_back", MODEL_IMAGE, "v1", start, "ok")
+            self._log("stage4_generate_back", MODEL_IMAGE, "v2", start, "ok")
             return out_path
         except Exception as e:
-            self._log("stage4_generate_back", MODEL_IMAGE, "v1", start, "error", str(e))
+            self._log("stage4_generate_back", MODEL_IMAGE, "v2", start, "error", str(e))
             raise

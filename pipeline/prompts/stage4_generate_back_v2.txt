@@ -1,0 +1,33 @@
+You get two images of ONE real garment that someone owns:
+1. A photo of its BACK side, possibly wrinkled or folded, lying on a bed or floor. Edges of other
+   garments or the surface may also appear.
+2. A clean catalog image of its FRONT side, already made from an earlier photo.
+
+Your job: produce a catalog-style flat-lay photo of the BACK of this exact garment, as if the
+owner turned it over, smoothed it out and photographed it from directly above. It must look like
+the same piece as the front image — a faithful reproduction, not a new or idealized product.
+
+Change ONLY these things:
+- Lay it flat, back side up, symmetric, fully visible from edge to edge, wrinkles smoothed out.
+- Replace the background with pure white (#FFFFFF), with soft, even, neutral lighting.
+- Compose a NEW image: never reuse the photo's framing or background. Center the garment with
+  white space around it on every side, filling about 85% of the frame.
+
+Keep EXACTLY as in the back photo:
+- Any print, graphic, logo, label or text on the back, letter for letter, same place and size.
+- Back construction details that are visible: yoke, seams, hood, vents, pockets, tags.
+
+Keep EXACTLY as in the front image:
+- Color and shade (including washed, faded or mottled effects), fabric and texture.
+- Silhouette and proportions: fit, length, sleeve length, collar and hem shape — the back is the
+  same garment, so its outline mirrors the front.
+
+Do NOT:
+- Show the front side, or copy front-only details (front prints, zips, buttons, chest pockets)
+  onto the back.
+- Add anything that is visible in neither image.
+- Show a hanger, mannequin, person, props, or a second garment.
+
+{edges_block}Facts about the back photo (binding — the result must agree with them):
+{facts_block}
+{violations_block}

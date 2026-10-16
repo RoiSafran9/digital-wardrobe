@@ -3,5 +3,5 @@ from pipeline.providers.base import ImageGenProvider
 
 
 async def run(crop_path: str, facts: ItemFacts, violations: list[str] | None,
-               provider: ImageGenProvider) -> str:
-    return await provider.generate(crop_path, facts, violations)
+               provider: ImageGenProvider, complete_edges: bool = False) -> str:
+    return await provider.generate(crop_path, facts, violations, complete_edges=complete_edges)

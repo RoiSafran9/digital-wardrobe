@@ -86,3 +86,8 @@ test("removing asks for confirmation and deletes only after confirming", async (
   await waitFor(() => expect(onDeleted).toHaveBeenCalledWith(item));
   expect(mockedDelete).toHaveBeenCalledWith(item);
 });
+
+test("the edit control is labelled, not just an icon", () => {
+  render(<ItemSheet items={[item]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
+  expect(screen.getByText("Edit")).toBeTruthy();
+});

@@ -7,16 +7,17 @@ export const colors = {
   sunken: "#F0ECE5",
   ink: "#1D1B18",
   inkSoft: "#5C564D",
-  muted: "#8A847A",
+  muted: "#6A645A",  // 4.5:1+ on paper, surface and sunken
   line: "#E4DED4",
   lineStrong: "#CFC8BC",
   danger: "#9A3B26",
   dangerBg: "#F6E4DD",
 };
 
+// Fraunces, loaded at startup in app/_layout.tsx: a warm editorial serif for titles.
 export const fonts = {
-  // Built-in serif on iOS; Android falls back to its system serif.
-  serif: "Georgia",
+  serif: "Fraunces_400Regular",
+  serifItalic: "Fraunces_400Regular_Italic",
 };
 
 export const radius = { tile: 18, pill: 999 };

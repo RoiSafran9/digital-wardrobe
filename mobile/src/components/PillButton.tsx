@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius } from "../theme";
+import { EASE_OUT } from "./FadeIn";
 
 type Props = {
   label: string;
@@ -16,16 +17,16 @@ export function PillButton({ label, onPress, variant = "secondary", icon, disabl
   const primary = variant === "primary";
   const fg = primary ? colors.paper : colors.ink;
 
-  // Quick press-in, springy release: feels tactile without drawing attention.
-  const pressTo = (value: number) =>
-    Animated.spring(scale, { toValue: value, useNativeDriver: true, speed: 40, bounciness: value === 1 ? 6 : 0 }).start();
+  // Press lands at once (100ms); release springs back with only a hint of bounce.
+  const pressIn = () => Animated.timing(scale, { toValue: 0.97, duration: 100, easing: EASE_OUT, useNativeDriver: true }).start();
+  const pressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 4 }).start();
 
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      onPressIn={() => pressTo(0.97)}
-      onPressOut={() => pressTo(1)}
+      onPressIn={pressIn}
+      onPressOut={pressOut}
       disabled={disabled}
     >
       <Animated.View

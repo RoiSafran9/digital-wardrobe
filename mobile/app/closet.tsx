@@ -6,6 +6,8 @@ import { getItems } from "../src/api/client";
 import { GarmentImage } from "../src/components/GarmentImage";
 import { ItemSheet } from "../src/components/ItemSheet";
 import { PillButton } from "../src/components/PillButton";
+import { JustAdded } from "../src/components/JustAdded";
+import { FadeIn } from "../src/components/FadeIn";
 import type { ClosetItem } from "../src/api/types";
 import { asList, capitalize, colors, fonts, radius } from "../src/theme";
 
@@ -52,9 +54,10 @@ export default function ClosetScreen() {
   const header = (
     <View style={{ paddingTop: 8, paddingBottom: 16 }}>
       <Text style={{ fontFamily: fonts.serif, fontSize: 34, color: colors.ink }}>Your closet</Text>
-      <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
+      <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2, marginBottom: 20 }}>
         {items.length === 1 ? "1 piece" : `${items.length} pieces`}
       </Text>
+      <JustAdded onClosetChanged={load} />
       {items.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }} contentContainerStyle={{ gap: 8 }}>
           {categories.map((name) => {
@@ -102,10 +105,12 @@ export default function ClosetScreen() {
           ) : null
         }
         renderItem={({ item, index }) => (
+          // The collection lays itself out: short stagger, capped so long closets don't wait.
+          <FadeIn delay={Math.min(index, 8) * 40} offset={8} duration={260} style={{ flex: 1 / 2 }}>
           <Pressable
             testID={`thumb-${item.run_id}-${item.item_id}`}
             onPress={() => setSelectedIndex(index)}
-            style={({ pressed }) => ({ flex: 1 / 2, marginBottom: 18, transform: [{ scale: pressed ? 0.97 : 1 }] })}
+            style={({ pressed }) => ({ marginBottom: 22, transform: [{ scale: pressed ? 0.97 : 1 }] })}
           >
             <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: "100%", aspectRatio: 0.85 }} />
             <Text style={{ color: colors.ink, fontSize: 14, marginTop: 8 }}>{categoryOf(item)}</Text>
@@ -113,6 +118,7 @@ export default function ClosetScreen() {
               {asList(item.facts.colors.value).map(capitalize).join(", ")}
             </Text>
           </Pressable>
+          </FadeIn>
         )}
       />
       {/* Swipes through the grid as currently filtered. */}

@@ -72,3 +72,10 @@ test("asks the library picker for a JPEG-compatible file so HEIC photos upload",
     )
   );
 });
+
+test("explains how to shoot before the first photo", () => {
+  renderScreen();
+  expect(screen.getByText("Lay it flat")).toBeTruthy();
+  expect(screen.getByText("Shoot from above")).toBeTruthy();
+  expect(screen.getByText("A few at once works")).toBeTruthy();
+});

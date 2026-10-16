@@ -1,6 +1,15 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react-native";
-import ClosetScreen from "../app/closet";
+import ClosetScreenBase from "../app/closet";
+import { LastRunProvider } from "../src/store/lastRun";
+
+function ClosetScreen() {
+  return (
+    <LastRunProvider>
+      <ClosetScreenBase />
+    </LastRunProvider>
+  );
+}
 import { getItems, deleteItem } from "../src/api/client";
 import { Alert } from "react-native";
 

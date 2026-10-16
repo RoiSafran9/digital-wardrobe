@@ -3,7 +3,7 @@ import type { RunResponse } from "../api/types";
 
 type LastRunContextValue = {
   lastRun: RunResponse | null;
-  setLastRun: (run: RunResponse) => void;
+  setLastRun: (run: RunResponse | null) => void;
 };
 
 const LastRunContext = createContext<LastRunContextValue | undefined>(undefined);

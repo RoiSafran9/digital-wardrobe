@@ -1,4 +1,5 @@
 import { Tabs } from "expo-router";
+import { useFonts, Fraunces_400Regular, Fraunces_400Regular_Italic } from "@expo-google-fonts/fraunces";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import type { ColorValue } from "react-native";
@@ -12,6 +13,10 @@ function tabIcon(name: IconName) {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({ Fraunces_400Regular, Fraunces_400Regular_Italic });
+  if (!fontsLoaded) {
+    return null;  // a blink at launch beats titles reflowing from a fallback face
+  }
   return (
     <LastRunProvider>
       <StatusBar style="dark" />
@@ -25,7 +30,6 @@ export default function RootLayout() {
         }}
       >
         <Tabs.Screen name="index" options={{ title: "Add", tabBarIcon: tabIcon("camera-outline") }} />
-        <Tabs.Screen name="results" options={{ title: "New", tabBarIcon: tabIcon("sparkles-outline") }} />
         <Tabs.Screen name="closet" options={{ title: "Closet", tabBarIcon: tabIcon("grid-outline") }} />
       </Tabs>
     </LastRunProvider>

@@ -1,12 +1,13 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Alert, FlatList, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { deleteItem } from "../api/client";
 import { useAddBack } from "../useAddBack";
-import { PillButton } from "./PillButton";
-import type { ClosetItem, RunItem } from "../api/types";
+import { BACK_STEPS, KEEP_OPEN, ProcessingStatus } from "./ProcessingStatus";
+import type { BackView, ClosetItem, RunItem } from "../api/types";
 import { addedLabel, asList, capitalize, colors, fonts, radius } from "../theme";
 import { ColorSwatches } from "./ColorSwatches";
+import { FadeIn } from "./FadeIn";
 import { GarmentImage } from "./GarmentImage";
 import { ItemEditForm } from "./ItemEditForm";
 import { RetakeNote } from "./RetakeNote";
@@ -84,7 +85,7 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted }: Omit<Props,
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surface }}>
+    <View style={{ flex: 1, backgroundColor: colors.paper }}>
       <View
         style={{
           flexDirection: "row", justifyContent: "space-between", alignItems: "center",
@@ -100,13 +101,14 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted }: Omit<Props,
               accessibilityRole="button"
               accessibilityLabel="Edit"
               onPress={() => setEditing(true)}
-              hitSlop={12}
+              hitSlop={8}
               style={({ pressed }) => ({
-                width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center",
-                backgroundColor: colors.sunken, transform: [{ scale: pressed ? 0.92 : 1 }],
+                height: 36, borderRadius: 18, flexDirection: "row", alignItems: "center", gap: 6,
+                paddingHorizontal: 14, backgroundColor: colors.sunken, transform: [{ scale: pressed ? 0.95 : 1 }],
               })}
             >
-              <Ionicons name="pencil" size={17} color={colors.ink} />
+              <Ionicons name="pencil" size={15} color={colors.ink} />
+              <Text style={{ color: colors.ink, fontSize: 14 }}>Edit</Text>
             </Pressable>
           ) : null}
         <Pressable
@@ -143,6 +145,7 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted }: Omit<Props,
           <View style={{ width }}>
             {editing && index === current && isClosetItem(item) ? (
               <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 4, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
+                <FadeIn duration={180}>
                 <ItemEditForm
                   item={item}
                   onCancel={() => setEditing(false)}
@@ -151,6 +154,7 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted }: Omit<Props,
                     onUpdated?.(updated);
                   }}
                 />
+                </FadeIn>
               </ScrollView>
             ) : (
               <SheetContent
@@ -167,24 +171,36 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted }: Omit<Props,
   );
 }
 
-function SideToggle({ side, onChange }: { side: "front" | "back"; onChange: (s: "front" | "back") => void }) {
+// Front and back as small tiles under the garment: tap to switch; an empty back tile adds one.
+function SideStrip({ item, back, side, onChange, onAddBack }: {
+  item: Item;
+  back: BackView | null;
+  side: "front" | "back";
+  onChange: (s: "front" | "back") => void;
+  onAddBack?: () => void;
+}) {
+  const tile = (selected: boolean) => ({
+    width: 60, height: 60, borderRadius: 14, alignItems: "center" as const, justifyContent: "center" as const,
+    borderWidth: selected ? 1.5 : 1, borderColor: selected ? colors.ink : colors.line,
+  });
   return (
-    <View style={{ flexDirection: "row", alignSelf: "center", marginTop: 12, backgroundColor: colors.sunken, borderRadius: radius.pill, padding: 3 }}>
-      {(["front", "back"] as const).map((name) => {
-        const on = name === side;
-        return (
-          <Pressable
-            key={name}
-            accessibilityRole="button"
-            accessibilityLabel={capitalize(name)}
-            accessibilityState={{ selected: on }}
-            onPress={() => onChange(name)}
-            style={{ paddingHorizontal: 18, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: on ? colors.surface : "transparent" }}
-          >
-            <Text style={{ color: on ? colors.ink : colors.muted, fontSize: 13 }}>{capitalize(name)}</Text>
-          </Pressable>
-        );
-      })}
+    <View style={{ flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 14 }}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Front" accessibilityState={{ selected: side === "front" }}
+        onPress={() => onChange("front")} style={tile(side === "front")}>
+        <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: 48, height: 48 }} />
+      </Pressable>
+      {back ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Back" accessibilityState={{ selected: side === "back" }}
+          onPress={() => onChange("back")} style={tile(side === "back")}>
+          <GarmentImage path={back.generated_url} cutoutPath={back.cutout_url} style={{ width: 48, height: 48 }} />
+        </Pressable>
+      ) : onAddBack ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Add back photo" onPress={onAddBack}
+          style={({ pressed }) => ({ ...tile(false), borderStyle: "dashed", borderColor: colors.lineStrong, transform: [{ scale: pressed ? 0.95 : 1 }] })}>
+          <Ionicons name="add" size={18} color={colors.ink} />
+          <Text style={{ color: colors.ink, fontSize: 11, marginTop: 1 }}>Back</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -214,22 +230,20 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 12, paddingBottom: 48 }}>
-        {showBack ? (
-          <GarmentImage key="back" path={back.generated_url} cutoutPath={back.cutout_url} tile={colors.paper} style={{ width: "100%", aspectRatio: 1 }} />
-        ) : (
-          <GarmentImage key="front" path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} tile={colors.paper} style={{ width: "100%", aspectRatio: 1 }} />
-        )}
-        {back ? <SideToggle side={side} onChange={setSide} /> : null}
-        {!back && onUpdated && isClosetItem(item) ? (
-          <View style={{ marginTop: 14 }}>
-            {uploading ? (
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 14 }}>
-                <ActivityIndicator color={colors.ink} />
-                <Text style={{ color: colors.inkSoft, fontSize: 14 }}>Pressing the back… up to a minute</Text>
-              </View>
-            ) : (
-              <PillButton label="Add back photo" icon="camera-reverse-outline" onPress={askForBack} />
-            )}
+        {/* Same garment turning over: a quick crossfade, not a hard cut. */}
+        <FadeIn key={side} scaleFrom={0.98} duration={200}>
+          {showBack ? (
+            <GarmentImage path={back.generated_url} cutoutPath={back.cutout_url} style={{ width: "100%", aspectRatio: 1 }} />
+          ) : (
+            <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: "100%", aspectRatio: 1 }} />
+          )}
+        </FadeIn>
+        {back || (onUpdated && closetItem) ? (
+          <SideStrip item={item} back={back} side={side} onChange={setSide} onAddBack={!back && onUpdated && closetItem && !uploading ? askForBack : undefined} />
+        ) : null}
+        {uploading ? (
+          <View style={{ paddingVertical: 18 }}>
+            <ProcessingStatus steps={BACK_STEPS} note={KEEP_OPEN} estimateSeconds={30} />
           </View>
         ) : null}
         {backError ? <Text style={{ color: colors.danger, fontSize: 14, marginTop: 10, textAlign: "center" }}>{backError}</Text> : null}

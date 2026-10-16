@@ -38,12 +38,12 @@ describe("postRun", () => {
       json: async () => ({ error: "no photo provided" }),
     });
 
-    await expect(postRun("file:///fake.jpg")).rejects.toThrow("no photo provided");
+    await expect(postRun("file:///fake.jpg")).rejects.toThrow("No photo provided");
   });
 
   test("throws a readable message when the network request fails", async () => {
     global.fetch = jest.fn().mockRejectedValue(new TypeError("Network request failed"));
-    await expect(postRun("file:///fake.jpg")).rejects.toThrow("can't reach server");
+    await expect(postRun("file:///fake.jpg")).rejects.toThrow("Can't reach your wardrobe server");
   });
 });
 
@@ -61,7 +61,7 @@ describe("getItems", () => {
 
   test("throws a readable message when the network request fails", async () => {
     global.fetch = jest.fn().mockRejectedValue(new TypeError("Network request failed"));
-    await expect(getItems()).rejects.toThrow("can't reach server");
+    await expect(getItems()).rejects.toThrow("Can't reach your wardrobe server");
   });
 });
 
@@ -95,7 +95,7 @@ describe("updateItem", () => {
 
   test("throws the server's validation message", async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 400, json: async () => ({ error: "category can't be empty" }) });
-    await expect(updateItem(closetItem, { category: " " })).rejects.toThrow("category can't be empty");
+    await expect(updateItem(closetItem, { category: " " })).rejects.toThrow("Category can't be empty");
   });
 });
 
@@ -110,7 +110,7 @@ describe("deleteItem", () => {
 
   test("throws a readable message when the server is unreachable", async () => {
     global.fetch = jest.fn().mockRejectedValue(new TypeError("Network request failed"));
-    await expect(deleteItem(closetItem)).rejects.toThrow("can't reach server");
+    await expect(deleteItem(closetItem)).rejects.toThrow("Can't reach your wardrobe server");
   });
 });
 
@@ -131,6 +131,6 @@ describe("addBack", () => {
 
   test("passes the server's retake instruction through", async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 400, json: async () => ({ error: "step back so the whole piece fits" }) });
-    await expect(addBack(closetItem, "file:///back.jpg")).rejects.toThrow("step back");
+    await expect(addBack(closetItem, "file:///back.jpg")).rejects.toThrow(/step back/i);
   });
 });

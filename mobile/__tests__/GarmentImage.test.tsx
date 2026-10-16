@@ -29,3 +29,13 @@ test("falls back to the photo crop for retake items that were never generated", 
   fireEvent(screen.UNSAFE_getByType(Image), "error");
   expect(screen.UNSAFE_getByType(Image).props.source.uri).toBe(`${API_BASE_URL}${crop}`);
 });
+
+test("a cutout floats on the page: no tile behind it", () => {
+  render(<GarmentImage path={generated} cutoutPath={cutout} testID="garment" />);
+  expect(screen.getByTestId("garment")).toHaveStyle({ backgroundColor: "transparent" });
+});
+
+test("non-cutout images keep a tile so their white background reads as intentional", () => {
+  render(<GarmentImage path={generated} cutoutPath={null} testID="garment" />);
+  expect(screen.getByTestId("garment")).not.toHaveStyle({ backgroundColor: "transparent" });
+});

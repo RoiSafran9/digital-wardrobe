@@ -10,6 +10,7 @@ class ClosetItemOut(BaseModel):
     facts: ItemFacts
     crop_url: str
     generated_url: str
+    cutout_url: str | None = None
 
 
 class ItemsResponse(BaseModel):
@@ -29,6 +30,7 @@ class RunItemOut(BaseModel):
     facts: ItemFacts
     crop_url: str
     generated_url: str
+    cutout_url: str | None = None
 
 
 class RunResponse(BaseModel):

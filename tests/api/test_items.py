@@ -69,3 +69,16 @@ def test_newest_item_listed_first(client, tmp_path):
     items = response.json()["items"]
     assert items[0]["run_id"] == "run2"
     assert items[1]["run_id"] == "run1"
+
+
+def test_cutout_url_is_null_without_a_cutout_file(client, tmp_path):
+    _write_item(tmp_path, "run1", "photo1", "item_0")
+    item = client.get("/items").json()["items"][0]
+    assert item["cutout_url"] is None
+
+
+def test_cutout_url_points_at_the_cutout_when_it_exists(client, tmp_path):
+    item_dir = _write_item(tmp_path, "run1", "photo1", "item_0")
+    (item_dir / "cutout.png").write_bytes(b"png")
+    item = client.get("/items").json()["items"][0]
+    assert item["cutout_url"] == "/images/run1/photo1/item_0/cutout.png"

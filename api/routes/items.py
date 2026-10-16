@@ -2,7 +2,7 @@ import glob
 import os
 from fastapi import APIRouter
 from api.config import runs_dir
-from api.item_loader import load_item, image_urls
+from api.item_loader import load_item, image_urls, cutout_url
 from api.schemas import ClosetItemOut, ItemsResponse
 
 router = APIRouter()
@@ -27,5 +27,6 @@ def list_items() -> ItemsResponse:
         items.append(ClosetItemOut(
             run_id=run_id, item_id=item_id, tier=result.tier, facts=facts,
             crop_url=crop_url, generated_url=generated_url,
+            cutout_url=cutout_url(item_dir, run_id, photo_name, item_id),
         ))
     return ItemsResponse(items=items)

@@ -49,3 +49,10 @@ def test_rejects_path_traversal_in_filename(client, tmp_path):
 def test_missing_file_returns_404(client, tmp_path):
     response = client.get("/images/nope/nope/nope/crop.png")
     assert response.status_code == 404
+
+
+def test_serves_cutout_png(client, tmp_path):
+    _write_item_image(tmp_path, "run1", "photo1", "item_0", "cutout.png")
+    response = client.get("/images/run1/photo1/item_0/cutout.png")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"

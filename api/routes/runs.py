@@ -7,7 +7,7 @@ from typing import Callable
 from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import JSONResponse
 from api.config import runs_dir
-from api.item_loader import load_item, image_urls
+from api.item_loader import load_item, image_urls, cutout_url
 from api.schemas import RunResponse, RunItemOut, QualityOut
 from cli import build_providers
 from pipeline.orchestrator import run_photo, Providers
@@ -70,6 +70,7 @@ async def create_run(
             item_id=item_id, tier=item_result.tier, reason=item_result.reason,
             retake_instruction=item_result.retake_instruction, facts=facts,
             crop_url=crop_url, generated_url=generated_url,
+            cutout_url=cutout_url(item_dir, run_id, photo_name, item_id),
         ))
 
     return RunResponse(

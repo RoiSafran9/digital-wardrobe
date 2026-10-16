@@ -4,9 +4,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { imageUrl } from "../api/client";
 import { colors, radius } from "../theme";
 
-// A garment on its own tile; shows a quiet hanger placeholder if the image is missing.
-export function GarmentImage({ path, style, tile = colors.surface }: { path: string; style?: ViewStyle; tile?: string }) {
-  const [failed, setFailed] = useState(false);
+type Props = {
+  path: string;
+  // Transparent-background version; preferred so the garment sits directly on the tile.
+  cutoutPath?: string | null;
+  style?: ViewStyle;
+  tile?: string;
+};
+
+// A garment on its own tile. Falls back cutout → white-background image → hanger placeholder.
+export function GarmentImage({ path, cutoutPath, style, tile = colors.surface }: Props) {
+  const sources = cutoutPath ? [cutoutPath, path] : [path];
+  const [attempt, setAttempt] = useState(0);
+  const current = sources[attempt];
+
   return (
     <View
       style={[
@@ -14,15 +25,16 @@ export function GarmentImage({ path, style, tile = colors.surface }: { path: str
         style,
       ]}
     >
-      {failed ? (
-        <Ionicons name="shirt-outline" size={32} color={colors.lineStrong} />
-      ) : (
+      {current ? (
         <Image
-          source={{ uri: imageUrl(path) }}
-          onError={() => setFailed(true)}
+          key={current}
+          source={{ uri: imageUrl(current) }}
+          onError={() => setAttempt((a) => a + 1)}
           resizeMode="contain"
-          style={{ width: "88%", height: "88%" }}
+          style={{ width: "84%", height: "84%" }}
         />
+      ) : (
+        <Ionicons name="shirt-outline" size={32} color={colors.lineStrong} />
       )}
     </View>
   );

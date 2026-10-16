@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pipeline.providers.base import VisionProvider, ImageGenProvider
 from pipeline.run_log import RunLogger
 from pipeline.stages import (
-    stage0_quality, stage1_detect_facts, crop_item, stage4_generate, stage5_verify, stage6_score,
+    stage0_quality, stage1_detect_facts, crop_item, cutout, stage4_generate, stage5_verify, stage6_score,
 )
 from pipeline.types import as_item_facts
 
@@ -44,6 +44,9 @@ async def _run_item(image_path: str, item, item_dir: str, providers: Providers,
     generated_dest = os.path.join(item_dir, "generated.png")
     if generated_path and os.path.exists(generated_path) and generated_path != generated_dest:
         shutil.copy(generated_path, generated_dest)
+    if os.path.exists(generated_dest):
+        # Local, free; off the event loop so concurrent items keep moving.
+        await asyncio.to_thread(cutout.run, generated_dest, os.path.join(item_dir, "cutout.png"))
     if verification:
         with open(os.path.join(item_dir, "verification.json"), "w") as f:
             f.write(verification.model_dump_json(indent=2))

@@ -98,7 +98,7 @@ function SheetContent({ item }: { item: Item }) {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 12, paddingBottom: 48 }}>
-        <GarmentImage path={item.generated_url} tile={colors.paper} style={{ width: "100%", aspectRatio: 1 }} />
+        <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} tile={colors.paper} style={{ width: "100%", aspectRatio: 1 }} />
 
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
           <Text style={{ fontFamily: fonts.serif, fontSize: 30, color: colors.ink, flexShrink: 1 }}>

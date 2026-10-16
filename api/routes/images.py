@@ -5,7 +5,7 @@ from api.config import runs_dir
 
 router = APIRouter()
 
-ALLOWED_FILENAMES = {"crop.png", "generated.png"}
+ALLOWED_FILENAMES = {"crop.png", "generated.png", "cutout.png"}
 
 
 @router.get("/images/{run_id}/{photo_name}/{item_id}/{filename}")

@@ -63,6 +63,7 @@ def test_post_runs_returns_items_with_image_urls(client):
     assert item["tier"] == "high"
     assert item["crop_url"].endswith("/item_0/crop.png")
     assert item["generated_url"].endswith("/item_0/generated.png")
+    assert "cutout_url" in item  # null here: a noise image has no clean background to remove
     assert body["failed"] == []
 
 

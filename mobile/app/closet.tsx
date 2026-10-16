@@ -103,7 +103,7 @@ export default function ClosetScreen() {
             onPress={() => setSelectedIndex(index)}
             style={({ pressed }) => ({ flex: 1 / 2, marginBottom: 18, transform: [{ scale: pressed ? 0.97 : 1 }] })}
           >
-            <GarmentImage path={item.generated_url} style={{ width: "100%", aspectRatio: 0.85 }} />
+            <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} style={{ width: "100%", aspectRatio: 0.85 }} />
             <Text style={{ color: colors.ink, fontSize: 14, marginTop: 8 }}>{categoryOf(item)}</Text>
             <Text style={{ color: colors.muted, fontSize: 12, marginTop: 1 }} numberOfLines={1}>
               {asList(item.facts.colors.value).map(capitalize).join(", ")}

@@ -104,3 +104,29 @@ async def test_medium_tier_when_item_mostly_occluded(tmp_path):
     logger = RunLogger(str(tmp_path / "run_log.jsonl"))
     result = await run_photo(photo_path, str(tmp_path / "out"), providers, logger)
     assert result["items"][0]["result"].tier == "medium"
+
+
+class FakeImageGenOnWhite:
+    async def generate(self, crop_path, facts, violations):
+        gen_path = crop_path.replace("crop.png", "generated.png")
+        img = np.full((300, 300, 3), 255, dtype=np.uint8)
+        img[80:220, 60:240] = (90, 60, 40)
+        cv2.imwrite(gen_path, img)
+        return gen_path
+
+
+@pytest.mark.asyncio
+async def test_run_photo_writes_transparent_cutout_next_to_generated(tmp_path):
+    import os
+    from PIL import Image
+    photo_path = str(tmp_path / "photo.png")
+    _write_ok_photo(photo_path)
+    providers = Providers(vision=FakeVision([_item()]), imagegen=FakeImageGenOnWhite())
+    logger = RunLogger(str(tmp_path / "run_log.jsonl"))
+
+    await run_photo(photo_path, str(tmp_path / "out"), providers, logger)
+
+    item_dir = tmp_path / "out" / "item_0"
+    assert os.path.exists(item_dir / "generated.png")
+    cut = Image.open(item_dir / "cutout.png")
+    assert cut.mode == "RGBA"

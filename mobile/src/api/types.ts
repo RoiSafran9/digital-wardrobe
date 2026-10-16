@@ -24,6 +24,7 @@ export type RunItem = {
   facts: ItemFacts;
   crop_url: string;
   generated_url: string;
+  cutout_url?: string | null;
 };
 
 export type RunResponse = {
@@ -40,6 +41,7 @@ export type ClosetItem = {
   facts: ItemFacts;
   crop_url: string;
   generated_url: string;
+  cutout_url?: string | null;
 };
 
 export type ItemsResponse = {

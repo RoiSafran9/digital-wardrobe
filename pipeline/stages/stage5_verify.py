@@ -78,6 +78,7 @@ def _text_found(image_path: str, expected: str) -> bool:
 
 async def run(crop_path: str, generated_path: str, facts: ItemFacts, attempt: int) -> VerificationResult:
     violations: list[str] = []
+    notes: list[str] = []
 
     distance = _color_distance(crop_path, generated_path)
     if distance > COLOR_DISTANCE_THRESHOLD:
@@ -85,8 +86,10 @@ async def run(crop_path: str, generated_path: str, facts: ItemFacts, attempt: in
 
     expected_text = facts.visible_text.value
     if expected_text:
+        # Local OCR misses most real prints, so a miss is only noted; it must not
+        # cost a retake rating or another paid generation.
         if not _text_found(generated_path, expected_text):
-            violations.append(f"expected text '{expected_text}' not found in generated image")
+            notes.append(f"expected text '{expected_text}' not found by OCR")
 
     status = "fail" if violations else "pass"
-    return VerificationResult(status=status, violations=violations, attempt=attempt)
+    return VerificationResult(status=status, violations=violations, attempt=attempt, notes=notes)

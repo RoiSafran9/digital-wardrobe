@@ -49,14 +49,16 @@ async def test_raises_clear_error_on_unreadable_generated_image(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_fail_on_missing_expected_text(tmp_path):
+async def test_missing_text_is_noted_but_does_not_fail(tmp_path):
+    # Local OCR can't read most real prints, so a miss must not trigger retakes or regeneration.
     crop_path = str(tmp_path / "crop.png")
     gen_path = str(tmp_path / "gen.png")
     _solid_color_image(crop_path, (203, 192, 255))
     _solid_color_image(gen_path, (203, 192, 255))  # no text rendered in the image
     result = await run(crop_path, gen_path, _facts(text="LOGO"), 1)
-    assert result.status == "fail"
-    assert any("LOGO" in v for v in result.violations)
+    assert result.status == "pass"
+    assert result.violations == []
+    assert any("LOGO" in n for n in result.notes)
 
 
 NAVY = (90, 40, 30)          # BGR
@@ -110,6 +112,7 @@ async def test_finds_vertical_text_by_rotating(tmp_path, monkeypatch):
     monkeypatch.setattr(stage5_verify.pytesseract, "image_to_string", lambda img: next(reads, ""))
     result = await run(crop_path, gen_path, _facts(text="DEFT"), 1)
     assert result.status == "pass", result.violations
+    assert result.notes == []
 
 
 @pytest.mark.asyncio
@@ -121,3 +124,4 @@ async def test_text_match_ignores_case_and_spaces(tmp_path, monkeypatch):
     monkeypatch.setattr(stage5_verify.pytesseract, "image_to_string", lambda img: "d e f t")
     result = await run(crop_path, gen_path, _facts(text="DEFT"), 1)
     assert result.status == "pass", result.violations
+    assert result.notes == []

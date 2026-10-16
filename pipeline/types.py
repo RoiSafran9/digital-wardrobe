@@ -56,6 +56,8 @@ class VerificationResult(BaseModel):
     status: Literal["pass", "fail"]
     violations: list[str]
     attempt: int
+    # Informational only: never fails the check or triggers regeneration.
+    notes: list[str] = []
 
 
 class ItemResult(BaseModel):

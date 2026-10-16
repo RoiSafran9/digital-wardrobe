@@ -57,3 +57,67 @@ async def test_fail_on_missing_expected_text(tmp_path):
     result = await run(crop_path, gen_path, _facts(text="LOGO"), 1)
     assert result.status == "fail"
     assert any("LOGO" in v for v in result.violations)
+
+
+NAVY = (90, 40, 30)          # BGR
+LIGHT_DENIM = (200, 170, 130)
+BED_WHITE = (245, 245, 245)
+BED_STRIPE = (200, 200, 200)
+
+
+def _pile_crop(path):
+    # Navy garment in the middle, a neighbouring light-blue garment on the left,
+    # striped bedding everywhere else — what a crop from a pile looks like.
+    img = np.full((200, 200, 3), BED_WHITE, dtype=np.uint8)
+    img[::8] = BED_STRIPE
+    img[:, :50] = LIGHT_DENIM
+    img[40:170, 70:180] = NAVY
+    cv2.imwrite(path, img)
+
+
+def _garment_on_white(path, bgr):
+    img = np.full((200, 200, 3), 255, dtype=np.uint8)
+    img[50:150, 60:140] = bgr  # garment surrounded by lots of white, like real output
+    cv2.imwrite(path, img)
+
+
+@pytest.mark.asyncio
+async def test_pile_crop_passes_when_garment_color_matches(tmp_path):
+    crop_path, gen_path = str(tmp_path / "crop.png"), str(tmp_path / "gen.png")
+    _pile_crop(crop_path)
+    _garment_on_white(gen_path, NAVY)
+    result = await run(crop_path, gen_path, _facts(), 1)
+    assert result.status == "pass", result.violations
+
+
+@pytest.mark.asyncio
+async def test_pile_crop_still_fails_on_a_real_color_shift(tmp_path):
+    crop_path, gen_path = str(tmp_path / "crop.png"), str(tmp_path / "gen.png")
+    _pile_crop(crop_path)
+    _garment_on_white(gen_path, (40, 40, 200))  # red garment: not in the crop
+    result = await run(crop_path, gen_path, _facts(), 1)
+    assert result.status == "fail"
+    assert any("color" in v.lower() for v in result.violations)
+
+
+@pytest.mark.asyncio
+async def test_finds_vertical_text_by_rotating(tmp_path, monkeypatch):
+    from pipeline.stages import stage5_verify
+    crop_path, gen_path = str(tmp_path / "crop.png"), str(tmp_path / "gen.png")
+    _solid_color_image(crop_path, (203, 192, 255))
+    _solid_color_image(gen_path, (203, 192, 255))
+    reads = iter(["", "DEFT\n", ""])  # upright, rotated clockwise, counter-clockwise
+    monkeypatch.setattr(stage5_verify.pytesseract, "image_to_string", lambda img: next(reads, ""))
+    result = await run(crop_path, gen_path, _facts(text="DEFT"), 1)
+    assert result.status == "pass", result.violations
+
+
+@pytest.mark.asyncio
+async def test_text_match_ignores_case_and_spaces(tmp_path, monkeypatch):
+    from pipeline.stages import stage5_verify
+    crop_path, gen_path = str(tmp_path / "crop.png"), str(tmp_path / "gen.png")
+    _solid_color_image(crop_path, (203, 192, 255))
+    _solid_color_image(gen_path, (203, 192, 255))
+    monkeypatch.setattr(stage5_verify.pytesseract, "image_to_string", lambda img: "d e f t")
+    result = await run(crop_path, gen_path, _facts(text="DEFT"), 1)
+    assert result.status == "pass", result.violations

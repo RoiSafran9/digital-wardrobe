@@ -53,7 +53,7 @@ export default function CaptureScreen() {
     <SafeAreaView edges={["top"]} style={styles.screen}>
       <Text style={styles.eyebrow}>My wardrobe</Text>
       <Text style={styles.title}>Add a piece</Text>
-      <Text style={styles.body}>Lay one item flat and snap it. We'll turn it into a clean catalog shot.</Text>
+      <Text style={styles.body}>Lay out a piece, or a few side by side, and snap it. Each one becomes a clean catalog shot.</Text>
 
       <View style={styles.stage}>
         {loading ? (

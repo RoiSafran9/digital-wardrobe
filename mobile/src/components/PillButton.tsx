@@ -2,7 +2,7 @@ import React, { useRef } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 import { Icon, type IconName } from "./Icon";
 import { colors, radius } from "../theme";
-import { EASE_OUT } from "./FadeIn";
+import { EASE_OUT } from "../motion/Rise";
 
 type Props = {
   label: string;

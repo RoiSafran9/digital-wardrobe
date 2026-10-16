@@ -7,7 +7,7 @@ import { BACK_STEPS, KEEP_OPEN, ProcessingStatus } from "./ProcessingStatus";
 import type { BackView, ClosetItem, RunItem } from "../api/types";
 import { addedLabel, asList, capitalize, colors, radius } from "../theme";
 import { ColorSwatches } from "./ColorSwatches";
-import { FadeIn } from "./FadeIn";
+import { Rise } from "../motion/Rise";
 import { GarmentImage } from "./GarmentImage";
 import { ItemEditForm } from "./ItemEditForm";
 import { RetakeNote } from "./RetakeNote";
@@ -173,7 +173,7 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
           <View style={{ width }}>
             {editing && index === current && isClosetItem(item) ? (
               <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 4, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
-                <FadeIn duration={180}>
+                <Rise distance={0}>
                 <ItemEditForm
                   item={item}
                   onCancel={() => setEditing(false)}
@@ -182,7 +182,7 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
                     onUpdated?.(updated);
                   }}
                 />
-                </FadeIn>
+                </Rise>
               </ScrollView>
             ) : (
               <SheetContent
@@ -259,13 +259,13 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 12, paddingBottom: 48 }}>
         {/* Same garment turning over: a quick crossfade, not a hard cut. */}
-        <FadeIn key={side} scaleFrom={0.98} duration={200}>
+        <Rise key={side} distance={0}>
           {showBack ? (
             <GarmentImage path={back.generated_url} cutoutPath={back.cutout_url} style={{ width: "100%", aspectRatio: 1 }} />
           ) : (
             <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: "100%", aspectRatio: 1 }} />
           )}
-        </FadeIn>
+        </Rise>
         {back || (onUpdated && closetItem) ? (
           <SideStrip item={item} back={back} side={side} onChange={setSide} onAddBack={!back && onUpdated && closetItem && !uploading ? askForBack : undefined} />
         ) : null}

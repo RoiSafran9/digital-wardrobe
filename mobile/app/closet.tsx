@@ -7,7 +7,7 @@ import { GarmentImage } from "../src/components/GarmentImage";
 import { ItemSheet } from "../src/components/ItemSheet";
 import { PillButton } from "../src/components/PillButton";
 import { JustAdded } from "../src/components/JustAdded";
-import { FadeIn } from "../src/components/FadeIn";
+import { Rise } from "../src/motion/Rise";
 import type { ClosetItem } from "../src/api/types";
 import { asList, capitalize, colors, hitSlopFor, radius } from "../src/theme";
 
@@ -107,7 +107,7 @@ export default function ClosetScreen() {
         }
         renderItem={({ item, index }) => (
           // The collection lays itself out: short stagger, capped so long closets don't wait.
-          <FadeIn delay={Math.min(index, 8) * 40} offset={8} duration={260} style={{ flex: 1 / 2 }}>
+          <Rise delay={Math.min(index, 8) * 30} style={{ flex: 1 / 2 }}>
           <Pressable
             testID={`thumb-${item.run_id}-${item.item_id}`}
             onPress={() => setSelectedIndex(index)}
@@ -119,7 +119,7 @@ export default function ClosetScreen() {
               {asList(item.facts.colors.value).map(capitalize).join(", ")}
             </Text>
           </Pressable>
-          </FadeIn>
+          </Rise>
         )}
       />
       {/* Swipes through the grid as currently filtered. */}

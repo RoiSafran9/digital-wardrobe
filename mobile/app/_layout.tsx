@@ -16,14 +16,15 @@ export default function RootLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: colors.label,
+          tabBarActiveTintColor: colors.tint,
           tabBarInactiveTintColor: colors.secondaryLabel,
-          tabBarStyle: { backgroundColor: colors.background, borderTopColor: colors.separator },
+          tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.separator },
           tabBarLabelStyle: { fontSize: 11 },
         }}
       >
-        <Tabs.Screen name="index" options={{ title: "Add", tabBarIcon: tabIcon("camera") }} />
+        <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: tabIcon("home") }} />
         <Tabs.Screen name="closet" options={{ title: "Closet", tabBarIcon: tabIcon("closet") }} />
+        <Tabs.Screen name="add" options={{ title: "Add", tabBarIcon: tabIcon("camera") }} />
       </Tabs>
     </LastRunProvider>
   );

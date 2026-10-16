@@ -6,7 +6,6 @@ import { getItems } from "../src/api/client";
 import { GarmentImage } from "../src/components/GarmentImage";
 import { ItemSheet } from "../src/components/ItemSheet";
 import { PillButton } from "../src/components/PillButton";
-import { JustAdded } from "../src/components/JustAdded";
 import { Rise } from "../src/motion/Rise";
 import type { ClosetItem } from "../src/api/types";
 import { categoryOf } from "../src/categories";
@@ -54,7 +53,6 @@ export default function ClosetScreen() {
       <Text style={{ color: colors.secondaryLabel, fontSize: 13, marginTop: 2, marginBottom: 20 }}>
         {items.length === 1 ? "1 piece" : `${items.length} pieces`}
       </Text>
-      <JustAdded onClosetChanged={load} />
       {items.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }} contentContainerStyle={{ gap: 8 }}>
           {categories.map((name) => {

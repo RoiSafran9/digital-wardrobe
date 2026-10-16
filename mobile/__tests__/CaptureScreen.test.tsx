@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
-import CaptureScreen from "../app/index";
+import CaptureScreen from "../app/add";
 import { LastRunProvider } from "../src/store/lastRun";
 import * as ImagePicker from "expo-image-picker";
 import { postRun } from "../src/api/client";

@@ -6,6 +6,7 @@ import type { SFSymbol } from "sf-symbols-typescript";
 
 // SF Symbols on iOS (they match the system type and weight); Ionicons only as fallback.
 const ICONS = {
+  home: { sf: "house", ion: "home-outline" },
   camera: { sf: "camera", ion: "camera-outline" },
   cameraBack: { sf: "camera.rotate", ion: "camera-reverse-outline" },
   pencil: { sf: "pencil", ion: "pencil" },

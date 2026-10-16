@@ -1,103 +1,152 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Icon, type IconName } from "../src/components/Icon";
-import { pickPhoto } from "../src/photoPicker";
-import { useRouter } from "expo-router";
-import { postRun } from "../src/api/client";
-import { useLastRun } from "../src/store/lastRun";
+import { useFocusEffect, useRouter } from "expo-router";
+import { getItems } from "../src/api/client";
+import type { ClosetItem } from "../src/api/types";
+import { closetStats } from "../src/closetStats";
+import { GarmentImage } from "../src/components/GarmentImage";
+import { ItemSheet } from "../src/components/ItemSheet";
+import { JustAdded } from "../src/components/JustAdded";
 import { PillButton } from "../src/components/PillButton";
 import { CAPTURE_STEPS, KEEP_OPEN, ProcessingStatus } from "../src/components/ProcessingStatus";
-import { colors, radius } from "../src/theme";
+import { CountUp } from "../src/motion/CountUp";
+import { Marquee } from "../src/motion/Marquee";
+import { PressScale } from "../src/motion/PressScale";
+import { Rise } from "../src/motion/Rise";
+import { colors, hitSlopFor, radius, type } from "../src/theme";
+import { useCapture } from "../src/useCapture";
 
-const TIPS: { icon: IconName; label: string; detail: string }[] = [
-  { icon: "flat", label: "Lay it flat", detail: "On a bed or the floor, front side up" },
-  { icon: "above", label: "Shoot from above", detail: "Keep the whole piece in the frame" },
-  { icon: "several", label: "A few at once works", detail: "Side by side; each becomes its own piece" },
-];
+const TILE = 96;
 
-export default function CaptureScreen() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { setLastRun } = useLastRun();
-  const router = useRouter();
-
-  async function pickAndUpload(fromCamera: boolean) {
-    setError(null);
-    let uri: string | null;
-    try {
-      uri = await pickPhoto(fromCamera);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "couldn't open the camera");
-      return;
-    }
-    if (!uri) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const run = await postRun(uri);
-      setLastRun(run);
-      router.push("/closet");  // new pieces show under "Just added" at the top
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "upload failed");
-    } finally {
-      setLoading(false);
-    }
-  }
-
+function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <SafeAreaView edges={["top"]} style={styles.screen}>
-      <Text style={styles.title}>Add a piece</Text>
-      <Text style={styles.body}>Each piece becomes a clean catalog shot in your closet.</Text>
-
-      <View style={styles.stage}>
-        {loading ? (
-          <ProcessingStatus steps={CAPTURE_STEPS} note={KEEP_OPEN} />
-        ) : (
-          <View style={{ gap: 18 }}>
-            {TIPS.map((tip) => (
-              <View key={tip.label} style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                <Icon name={tip.icon} size={22} color={colors.secondaryLabel} />
-                <View>
-                  <Text style={styles.tipLabel}>{tip.label}</Text>
-                  <Text style={styles.tipDetail}>{tip.detail}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-      </View>
-
-      {error ? (
-        <View style={styles.errorBox}>
-          <Icon name="alert" size={18} color={colors.destructive} />
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
-
-      <View style={{ gap: 10 }}>
-        <PillButton label="Take photo" variant="primary" icon="camera" onPress={() => pickAndUpload(true)} disabled={loading} />
-        <PillButton label="Choose from library" onPress={() => pickAndUpload(false)} disabled={loading} />
-      </View>
-    </SafeAreaView>
+    <View accessible accessibilityLabel={label} style={{ flex: 1, backgroundColor: colors.card, borderRadius: radius.card, padding: 14 }}>
+      <CountUp value={value} style={{ ...type.title2, color: colors.label }} />
+      <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 2 }}>{label}</Text>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 24, paddingBottom: 24 },
-  title: { fontSize: 42, lineHeight: 48, color: colors.label, marginTop: 20 },
-  body: { color: colors.secondaryLabel, fontSize: 15, lineHeight: 22, marginTop: 10 },
-  tipLabel: { color: colors.label, fontSize: 15 },
-  tipDetail: { color: colors.secondaryLabel, fontSize: 13, marginTop: 2 },
-  stage: {
-    flex: 1, marginVertical: 24, borderRadius: radius.tile, borderWidth: 1.5, borderStyle: "dashed",
-    borderColor: colors.separatorStrong, alignItems: "center", justifyContent: "center",
-  },
-  errorBox: {
-    flexDirection: "row", gap: 8, alignItems: "flex-start", backgroundColor: colors.destructiveBg,
-    borderRadius: 14, padding: 12, marginBottom: 14,
-  },
-  errorText: { color: colors.destructive, fontSize: 14, flex: 1 },
-});
+export default function HomeScreen() {
+  const router = useRouter();
+  const { capture, loading, error: captureError } = useCapture();
+  const [items, setItems] = useState<ClosetItem[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [open, setOpen] = useState<{ list: ClosetItem[]; index: number } | null>(null);
+
+  const load = useCallback(async () => {
+    setLoadError(null);
+    try {
+      setItems((await getItems()).items);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Couldn't load your closet.");
+    } finally {
+      setLoaded(true);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const stats = useMemo(() => closetStats(items, new Date()), [items]);
+  const rowA = items.filter((_, i) => i % 2 === 0);
+  const rowB = items.filter((_, i) => i % 2 === 1);
+  const empty = loaded && !loadError && items.length === 0;
+
+  const garment = (list: ClosetItem[]) => (item: ClosetItem, index: number) => (
+    <PressScale accessibilityRole="button" accessibilityLabel={`Open ${item.facts.category.value}`} onPress={() => setOpen({ list, index })}>
+      <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: TILE, height: TILE + 12 }} tile={colors.card} />
+    </PressScale>
+  );
+
+  return (
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
+          <Text accessibilityRole="header" style={{ ...type.largeTitle, color: colors.label }}>Wardrobe</Text>
+          {items.length > 0 ? (
+            <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 2 }}>
+              {stats.pieces === 1 ? "1 piece" : `${stats.pieces} pieces`} · {stats.addedThisWeek} added this week
+            </Text>
+          ) : null}
+        </View>
+
+        {loadError ? (
+          <View style={{ margin: 20, padding: 16, borderRadius: radius.card, backgroundColor: colors.destructiveBg, gap: 10 }}>
+            <Text style={{ ...type.subhead, color: colors.destructive }}>{loadError}</Text>
+            <PillButton label="Try again" onPress={load} />
+          </View>
+        ) : null}
+
+        {items.length > 0 ? (
+          <View style={{ marginTop: 18, gap: 10 }}>
+            <Marquee items={rowA} itemWidth={TILE} renderItem={garment(rowA)} testID="row-a" />
+            {rowB.length ? <Marquee items={rowB} itemWidth={TILE} renderItem={garment(rowB)} reverse speed={14} testID="row-b" /> : null}
+          </View>
+        ) : null}
+
+        <View style={{ paddingHorizontal: 20 }}>
+          {empty ? (
+            <Rise style={{ marginTop: 28 }}>
+              <Text style={{ ...type.title2, color: colors.label }}>Start your closet</Text>
+              <Text style={{ ...type.body, color: colors.secondaryLabel, marginTop: 6 }}>
+                Photograph a piece, or a few side by side. Each one becomes a clean catalog shot.
+              </Text>
+            </Rise>
+          ) : null}
+
+          {items.length > 0 ? (
+            <Rise style={{ flexDirection: "row", gap: 10, marginTop: 20 }}>
+              <Stat label="Pieces" value={stats.pieces} />
+              <Stat label="Categories" value={stats.categories.length} />
+              <Stat label="Colors" value={stats.colors} />
+            </Rise>
+          ) : null}
+
+          <View style={{ marginTop: 20, gap: 10 }}>
+            {loading ? (
+              <View style={{ backgroundColor: colors.card, borderRadius: radius.card, paddingVertical: 24 }}>
+                <ProcessingStatus steps={CAPTURE_STEPS} note={KEEP_OPEN} />
+              </View>
+            ) : (
+              <>
+                <PillButton label="Take photo" variant="primary" icon="camera" onPress={() => capture(true)} />
+                <PillButton label="Choose from library" onPress={() => capture(false)} />
+              </>
+            )}
+            {captureError ? <Text style={{ ...type.footnote, color: colors.destructive }}>{captureError}</Text> : null}
+          </View>
+
+          <View style={{ marginTop: 28 }}>
+            <JustAdded onClosetChanged={load} />
+          </View>
+
+          {stats.categories.length > 0 ? (
+            <View style={{ marginTop: 8 }}>
+              <Text style={{ ...type.headline, color: colors.label, marginBottom: 10 }}>By category</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {stats.categories.map(({ name, count }) => (
+                  <PressScale
+                    key={name}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${name}, ${count}`}
+                    hitSlop={hitSlopFor(34)}
+                    onPress={() => router.push({ pathname: "/closet", params: { category: name } })}
+                    style={{ flexDirection: "row", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.card }}
+                  >
+                    <Text style={{ ...type.subhead, color: colors.label }}>{name}</Text>
+                    <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>{count}</Text>
+                  </PressScale>
+                ))}
+              </View>
+            </View>
+          ) : null}
+        </View>
+      </ScrollView>
+
+      <ItemSheet items={open?.list ?? []} index={open ? open.index : null} onClose={() => setOpen(null)}
+        onUpdated={() => load()} onDeleted={() => { setOpen(null); load(); }} />
+    </SafeAreaView>
+  );
+}

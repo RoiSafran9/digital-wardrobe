@@ -133,3 +133,23 @@ test("uses the iOS large title", async () => {
   render(<ClosetScreen />);
   expect(await screen.findByRole("header", { name: "Closet" })).toBeTruthy();
 });
+
+test("tapping the same Home chip again re-applies the filter after the user changed it", async () => {
+  mockParams = { category: "Shorts", at: "1" };
+  mockedGetItems.mockResolvedValue({ items: [fakeItem, fakeShorts] });
+  const { rerender } = render(<ClosetScreen />);
+  await screen.findByTestId("thumb-r1-item_1");
+  fireEvent.press(screen.getByRole("button", { name: "All" }));
+  expect(await screen.findByTestId("thumb-r1-item_0")).toBeTruthy();
+  mockParams = { category: "Shorts", at: "2" };
+  rerender(<ClosetScreen />);
+  await waitFor(() => expect(screen.queryByTestId("thumb-r1-item_0")).toBeNull());
+});
+
+test("a category that no longer exists falls back to everything instead of a blank closet", async () => {
+  mockParams = { category: "Jackets", at: "1" };
+  mockedGetItems.mockResolvedValue({ items: [fakeItem, fakeShorts] });
+  render(<ClosetScreen />);
+  expect(await screen.findByTestId("thumb-r1-item_0")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "All" }).props.accessibilityState).toEqual({ selected: true });
+});

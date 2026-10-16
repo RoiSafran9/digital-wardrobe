@@ -21,7 +21,7 @@ const TILE = 96;
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <View accessible accessibilityLabel={label} style={{ flex: 1, backgroundColor: colors.card, borderRadius: radius.card, padding: 14 }}>
+    <View accessible accessibilityLabel={`${label}, ${value}`} style={{ flex: 1, backgroundColor: colors.card, borderRadius: radius.card, padding: 14 }}>
       <CountUp value={value} style={{ ...type.title2, color: colors.label }} />
       <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 2 }}>{label}</Text>
     </View>
@@ -30,11 +30,11 @@ function Stat({ label, value }: { label: string; value: number }) {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { capture, loading, error: captureError } = useCapture();
   const [items, setItems] = useState<ClosetItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [open, setOpen] = useState<{ list: ClosetItem[]; index: number } | null>(null);
+  // The open garment by identity: the sheet always reads the live list, so edits and backs show at once.
+  const [openKey, setOpenKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -48,14 +48,18 @@ export default function HomeScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+  // A capture from Home lands back on Home (already focused), so refresh it ourselves.
+  const { capture, loading, error: captureError } = useCapture(load);
+  const keyOf = (i: ClosetItem) => `${i.run_id}/${i.photo_name}/${i.item_id}`;
+  const openIndex = openKey ? items.findIndex((i) => keyOf(i) === openKey) : -1;
 
   const stats = useMemo(() => closetStats(items, new Date()), [items]);
   const rowA = items.filter((_, i) => i % 2 === 0);
   const rowB = items.filter((_, i) => i % 2 === 1);
   const empty = loaded && !loadError && items.length === 0;
 
-  const garment = (list: ClosetItem[]) => (item: ClosetItem, index: number) => (
-    <PressScale accessibilityRole="button" accessibilityLabel={`Open ${item.facts.category.value}`} onPress={() => setOpen({ list, index })}>
+  const garment = (item: ClosetItem) => (
+    <PressScale accessibilityRole="button" accessibilityLabel={`Open ${item.facts.category.value}`} onPress={() => setOpenKey(keyOf(item))}>
       <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: TILE, height: TILE + 12 }} tile={colors.card} />
     </PressScale>
   );
@@ -81,8 +85,8 @@ export default function HomeScreen() {
 
         {items.length > 0 ? (
           <View style={{ marginTop: 18, gap: 10 }}>
-            <Marquee items={rowA} itemWidth={TILE} renderItem={garment(rowA)} testID="row-a" />
-            {rowB.length ? <Marquee items={rowB} itemWidth={TILE} renderItem={garment(rowB)} reverse speed={14} testID="row-b" /> : null}
+            <Marquee items={rowA} itemWidth={TILE} renderItem={garment} testID="row-a" />
+            {rowB.length ? <Marquee items={rowB} itemWidth={TILE} renderItem={garment} reverse speed={14} testID="row-b" /> : null}
           </View>
         ) : null}
 
@@ -132,7 +136,7 @@ export default function HomeScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={`${name}, ${count}`}
                     hitSlop={hitSlopFor(34)}
-                    onPress={() => router.push({ pathname: "/closet", params: { category: name } })}
+                    onPress={() => router.push({ pathname: "/closet", params: { category: name, at: String(Date.now()) } })}
                     style={{ flexDirection: "row", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.card }}
                   >
                     <Text style={{ ...type.subhead, color: colors.label }}>{name}</Text>
@@ -145,8 +149,9 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      <ItemSheet items={open?.list ?? []} index={open ? open.index : null} onClose={() => setOpen(null)}
-        onUpdated={() => load()} onDeleted={() => { setOpen(null); load(); }} />
+      <ItemSheet items={items} index={openIndex >= 0 ? openIndex : null} onClose={() => setOpenKey(null)}
+        onUpdated={(updated) => setItems((all) => all.map((i) => (keyOf(i) === keyOf(updated) ? updated : i)))}
+        onDeleted={() => { setOpenKey(null); load(); }} />
     </SafeAreaView>
   );
 }

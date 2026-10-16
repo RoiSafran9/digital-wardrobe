@@ -43,13 +43,18 @@ export function Marquee<T>({ items, renderItem, itemWidth, gap = 10, speed = 18,
   if (!items.length) return null;
   const track = [...one, ...one];
   return (
-    <Pressable testID={testID} onPressIn={() => setPaused(true)} onPressOut={() => setPaused(false)} style={{ overflow: "hidden" }}>
+    // Not one accessible blob: VoiceOver must reach each garment inside.
+    <Pressable testID={testID} accessible={false} onPressIn={() => setPaused(true)} onPressOut={() => setPaused(false)} style={{ overflow: "hidden" }}>
       <Animated.View
         testID={testID ? `${testID}-track` : "marquee-track"}
         style={{ flexDirection: "row", gap, transform: [{ translateX: reduced ? 0 : x }] }}
       >
         {track.map((item, i) => (
-          <View key={i} style={{ width: itemWidth }}>{renderItem(item, i % items.length)}</View>
+          // Repeats exist only to fill the loop; screen readers get each garment once.
+          <View key={i} style={{ width: itemWidth }} accessibilityElementsHidden={i >= items.length}
+            importantForAccessibility={i >= items.length ? "no-hide-descendants" : "auto"}>
+            {renderItem(item, i % items.length)}
+          </View>
         ))}
       </Animated.View>
     </Pressable>

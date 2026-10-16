@@ -25,12 +25,12 @@ export default function ClosetScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [category, setCategory] = useState(ALL);
-  const params = useLocalSearchParams<{ category?: string }>();
+  const params = useLocalSearchParams<{ category?: string; at?: string }>();
   // Home's category chips open the closet pre-filtered; normalize like everywhere else.
   useEffect(() => {
     if (!params.category) return;
     setCategory(categoryOf({ facts: { category: { value: params.category } } } as never));
-  }, [params.category]);
+  }, [params.category, params.at]);  // `at` changes on every chip tap, so the same chip re-applies
 
   const load = useCallback(async () => {
     const response = await getItems();
@@ -52,7 +52,9 @@ export default function ClosetScreen() {
   }
 
   const categories = useMemo(() => [ALL, ...new Set(items.map(categoryOf))], [items]);
-  const visible = category === ALL ? items : items.filter((item) => categoryOf(item) === category);
+  // A category that's gone (deleted, recategorized) falls back to everything, never a blank closet.
+  const active = categories.includes(category) ? category : ALL;
+  const visible = active === ALL ? items : items.filter((item) => categoryOf(item) === active);
 
   const header = (
     <View style={{ paddingTop: 8, paddingBottom: 16 }}>
@@ -63,20 +65,20 @@ export default function ClosetScreen() {
       {items.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }} contentContainerStyle={{ gap: 8 }}>
           {categories.map((name) => {
-            const active = name === category;
+            const selected = name === active;
             return (
               <Pressable
                 key={name}
                 accessibilityRole="button"
-                accessibilityState={{ selected: active }}
+                accessibilityState={{ selected: selected }}
                 onPress={() => setCategory(name)}
                 hitSlop={hitSlopFor(30)}
                 style={{
                   paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill,
-                  backgroundColor: active ? colors.tint : colors.card,
+                  backgroundColor: selected ? colors.tint : colors.card,
                 }}
               >
-                <Text style={{ ...type.subhead, color: active ? colors.onTint : colors.label }}>{name}</Text>
+                <Text style={{ ...type.subhead, color: selected ? colors.onTint : colors.label }}>{name}</Text>
               </Pressable>
             );
           })}

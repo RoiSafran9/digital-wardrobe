@@ -6,7 +6,7 @@ import { pickPhoto } from "./photoPicker";
 import { useLastRun } from "./store/lastRun";
 
 // Pick or take a photo, upload it, and land on Home where "Just added" shows the new pieces.
-export function useCapture() {
+export function useCapture(onDone?: () => void) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setLastRun } = useLastRun();
@@ -26,6 +26,7 @@ export function useCapture() {
     try {
       setLastRun(await postRun(uri));
       haptics.success();
+      onDone?.();
       router.push("/");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed. Try again.");

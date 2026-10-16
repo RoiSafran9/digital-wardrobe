@@ -32,10 +32,18 @@ export default function ClosetScreen() {
     setCategory(categoryOf({ facts: { category: { value: params.category } } } as never));
   }, [params.category, params.at]);  // `at` changes on every chip tap, so the same chip re-applies
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Never let a failed fetch become an uncaught rejection: show it, offer a retry.
   const load = useCallback(async () => {
-    const response = await getItems();
-    setItems(response.items);
-    setLoaded(true);
+    setLoadError(null);
+    try {
+      setItems((await getItems()).items);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Couldn't load your closet.");
+    } finally {
+      setLoaded(true);
+    }
   }, []);
 
   // Tabs stay mounted, so reload on every focus to pick up items from new runs.
@@ -62,6 +70,12 @@ export default function ClosetScreen() {
       <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 2, marginBottom: 12 }}>
         {items.length === 1 ? "1 piece" : `${items.length} pieces`}
       </Text>
+      {loadError ? (
+        <View style={{ padding: 16, borderRadius: radius.card, backgroundColor: colors.destructiveBg, gap: 10, marginBottom: 12 }}>
+          <Text style={{ ...type.subhead, color: colors.destructive }}>{loadError}</Text>
+          <PillButton label="Try again" onPress={load} />
+        </View>
+      ) : null}
       {items.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }} contentContainerStyle={{ gap: 8 }}>
           {categories.map((name) => {
@@ -98,7 +112,7 @@ export default function ClosetScreen() {
         columnWrapperStyle={{ gap: 12 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.secondaryLabel} />}
         ListEmptyComponent={
-          loaded && items.length === 0 ? (
+          loaded && !loadError && items.length === 0 ? (
             <View style={{ paddingTop: 48, alignItems: "center", gap: 8 }}>
               <Text style={{ ...type.title2, color: colors.label }}>Your closet is empty</Text>
               <Text style={{ ...type.body, color: colors.secondaryLabel, textAlign: "center", marginBottom: 16 }}>

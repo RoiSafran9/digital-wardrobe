@@ -153,3 +153,11 @@ test("a category that no longer exists falls back to everything instead of a bla
   expect(await screen.findByTestId("thumb-r1-item_0")).toBeTruthy();
   expect(screen.getByRole("button", { name: "All" }).props.accessibilityState).toEqual({ selected: true });
 });
+
+test("when the server can't be reached the closet says so and can retry, without crashing", async () => {
+  mockedGetItems.mockRejectedValueOnce(new Error("Can't reach your wardrobe server.")).mockResolvedValueOnce({ items: [fakeItem] });
+  render(<ClosetScreen />);
+  expect(await screen.findByText(/Can't reach your wardrobe server/)).toBeTruthy();
+  fireEvent.press(screen.getByText("Try again"));
+  expect(await screen.findByTestId("thumb-r1-item_0")).toBeTruthy();
+});

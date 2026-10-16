@@ -1,7 +1,12 @@
+import Constants from "expo-constants";
 import { File } from "expo-file-system";
+import { resolveApiBaseUrl } from "./baseUrl";
 import type { RunResponse, ItemsResponse, ApiError, ClosetItem, ItemPatch } from "./types";
 
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.1.238:8000";
+export const API_BASE_URL = resolveApiBaseUrl({
+  envUrl: process.env.EXPO_PUBLIC_API_URL,
+  hostUri: Constants.expoConfig?.hostUri,
+});
 
 const UNREACHABLE = "Can't reach your wardrobe server. Check that your phone and computer are on the same Wi-Fi.";
 

@@ -9,16 +9,13 @@ import { PillButton } from "../src/components/PillButton";
 import { JustAdded } from "../src/components/JustAdded";
 import { Rise } from "../src/motion/Rise";
 import type { ClosetItem } from "../src/api/types";
+import { categoryOf } from "../src/categories";
 import { asList, capitalize, colors, hitSlopFor, radius } from "../src/theme";
 
 const ALL = "All";
 
 function sameItem(a: ClosetItem, b: ClosetItem): boolean {
   return a.run_id === b.run_id && a.photo_name === b.photo_name && a.item_id === b.item_id;
-}
-
-function categoryOf(item: ClosetItem): string {
-  return capitalize(asList(item.facts.category.value)[0] ?? "Other");
 }
 
 export default function ClosetScreen() {

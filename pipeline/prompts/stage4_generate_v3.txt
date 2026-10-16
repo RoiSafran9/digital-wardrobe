@@ -1,0 +1,44 @@
+The input image is a cropped photo of ONE real, specific garment that someone owns. It may be
+wrinkled, folded, bunched up, or partly covered, lying on a bed or floor. Edges of other
+garments or the surface underneath may also appear in the crop.
+
+Your job: produce a catalog-style flat-lay photo of THIS EXACT physical garment, as if the
+owner smoothed it out and photographed it from directly above. This is a faithful
+reproduction of their item, NOT a new or idealized product.
+
+Change ONLY these things:
+- Unfold it and lay it flat, front side up, symmetric, fully visible from edge to edge.
+- Complete it: the photo may cut the garment off at its edges or hide parts that are folded under.
+  The result must always show the WHOLE garment — both sleeves all the way to the cuffs, the full
+  hem, both sides. Infer the hidden lengths from the garment type and visible cues (cuffs, seams,
+  fabric): e.g. a fleece pullover or sweatshirt has long sleeves even if the photo cuts them short.
+- Smooth out wrinkles and folds.
+- Replace the background with pure white (#FFFFFF), with soft, even, neutral lighting.
+- Compose a NEW image: never reuse the photo's framing or background. Center the complete
+  garment with white space around it on every side, filling about 85% of the frame.
+
+Keep EXACTLY as in the photo:
+- Color and shade, including washed, faded, mottled, or acid-wash effects. Do not make the
+  color cleaner, more saturated, or more uniform than it is.
+- Fabric and texture (knit, ribbing, waffle, denim, fleece, sheen) and visible wear.
+- Silhouette and proportions where they are fully visible: fit, length, neckline and collar
+  shape, hem shape. A sleeve or hem that ends at the photo's edge is cut off, not short.
+- Every construction detail that is visible: seams, stitching, cuffs, ribbed bands, pockets,
+  buttons, zippers, drawstrings, labels.
+- Any print, graphic, logo, or text, letter for letter, in the same place and size.
+
+Do NOT:
+- Add anything that is not visible in the photo: no new pockets, drawstrings, logos, labels,
+  stitching, trims, or decorations.
+- Remove or simplify anything that is visible.
+- Show a hanger, mannequin, person, props, or a second garment.
+- Draw any other garment that only appears at the edge of the crop — render only the main
+  garment described by the facts below.
+
+Facts about this garment (binding — the result must agree with them):
+{facts_block}
+
+Parts not visible in full (listed under occluded_parts) MUST be completed, as a plain, consistent
+continuation of the visible design — same fabric, colors and panels — never inventing new
+features there.
+{violations_block}

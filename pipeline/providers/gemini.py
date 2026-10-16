@@ -54,7 +54,7 @@ class GeminiProvider:
         try:
             with open(image_path, "rb") as f:
                 image_bytes = f.read()
-            prompt = _read_prompt("stage1_detect_facts_v2.txt")
+            prompt = _read_prompt("stage1_detect_facts_v3.txt")
             response = self.client.models.generate_content(
                 model=MODEL_VISION,
                 contents=[{"inline_data": {"mime_type": "image/jpeg", "data": image_bytes}}, prompt],
@@ -70,10 +70,10 @@ class GeminiProvider:
                     **detection.model_dump(exclude={"box_2d"}),
                     box=box_2d_to_bbox(detection.box_2d, width, height),
                 ))
-            self._log("stage1_detect_facts", MODEL_VISION, "v2", start, "ok")
+            self._log("stage1_detect_facts", MODEL_VISION, "v3", start, "ok")
             return items
         except Exception as e:
-            self._log("stage1_detect_facts", MODEL_VISION, "v2", start, "error", str(e))
+            self._log("stage1_detect_facts", MODEL_VISION, "v3", start, "error", str(e))
             raise
 
     async def generate(self, crop_path: str, facts: ItemFacts, violations: list[str] | None) -> str:
@@ -81,7 +81,7 @@ class GeminiProvider:
         try:
             with open(crop_path, "rb") as f:
                 crop_bytes = f.read()
-            template = _read_prompt("stage4_generate_v2.txt")
+            template = _read_prompt("stage4_generate_v3.txt")
             violations_block = ("\nPrevious attempt violations to fix:\n" + "\n".join(violations)
                                  if violations else "")
             prompt = template.format(facts_block=facts.model_dump_json(indent=2),
@@ -94,8 +94,8 @@ class GeminiProvider:
             image_bytes = response.candidates[0].content.parts[0].inline_data.data
             with open(out_path, "wb") as f:
                 f.write(image_bytes)
-            self._log("stage4_generate", MODEL_IMAGE, "v2", start, "ok")
+            self._log("stage4_generate", MODEL_IMAGE, "v3", start, "ok")
             return out_path
         except Exception as e:
-            self._log("stage4_generate", MODEL_IMAGE, "v2", start, "error", str(e))
+            self._log("stage4_generate", MODEL_IMAGE, "v3", start, "error", str(e))
             raise

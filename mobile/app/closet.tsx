@@ -9,7 +9,7 @@ import { PillButton } from "../src/components/PillButton";
 import { JustAdded } from "../src/components/JustAdded";
 import { FadeIn } from "../src/components/FadeIn";
 import type { ClosetItem } from "../src/api/types";
-import { asList, capitalize, colors, fonts, radius } from "../src/theme";
+import { asList, capitalize, colors, fonts, hitSlopFor, radius } from "../src/theme";
 
 const ALL = "All";
 
@@ -68,6 +68,7 @@ export default function ClosetScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
                 onPress={() => setCategory(name)}
+                hitSlop={hitSlopFor(30)}
                 style={{
                   paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill,
                   backgroundColor: active ? colors.ink : "transparent",
@@ -100,7 +101,7 @@ export default function ClosetScreen() {
               <Text style={{ color: colors.inkSoft, fontSize: 14, textAlign: "center", marginBottom: 16 }}>
                 Photograph a piece and it'll land here as a clean catalog shot.
               </Text>
-              <PillButton label="Add a piece" variant="primary" icon="camera-outline" onPress={() => router.push("/")} />
+              <PillButton label="Add a piece" variant="primary" icon="camera" onPress={() => router.push("/")} />
             </View>
           ) : null
         }

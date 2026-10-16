@@ -1,5 +1,6 @@
 import React from "react";
 import { Alert, Image } from "react-native";
+import { mockActionSheet } from "./helpers/actionSheet";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react-native";
 import { ItemSheet } from "../src/components/ItemSheet";
 import { addBack, API_BASE_URL } from "../src/api/client";
@@ -50,15 +51,14 @@ test("front/back toggle switches the image and shows the back's text", () => {
 });
 
 test("adding a back picks a photo, uploads it and reports the updated item", async () => {
-  const alertSpy = jest.spyOn(Alert, "alert");
+  const sheet = mockActionSheet();
   mockedPick.mockResolvedValue("file:///back.jpg");
   mockedAddBack.mockResolvedValue(withBack);
   const onUpdated = jest.fn();
   render(<ItemSheet items={[front]} index={0} onClose={() => {}} onUpdated={onUpdated} onDeleted={() => {}} />);
 
   fireEvent.press(screen.getByLabelText("Add back photo"));
-  const take = alertSpy.mock.calls[0][2]!.find((b) => b.text === "Take photo")!;
-  await act(async () => { await take.onPress!(); });
+  await act(async () => { await sheet.choose("Take photo"); });
 
   expect(mockedPick).toHaveBeenCalledWith(true);
   await waitFor(() => expect(onUpdated).toHaveBeenCalledWith(withBack));
@@ -66,23 +66,22 @@ test("adding a back picks a photo, uploads it and reports the updated item", asy
 });
 
 test("a rejected back photo shows the server's instruction", async () => {
-  const alertSpy = jest.spyOn(Alert, "alert");
+  const sheet = mockActionSheet();
   mockedPick.mockResolvedValue("file:///back.jpg");
   mockedAddBack.mockRejectedValue(new Error("Part of this piece is outside the photo — step back"));
   render(<ItemSheet items={[front]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
 
   fireEvent.press(screen.getByLabelText("Add back photo"));
-  const library = alertSpy.mock.calls[0][2]!.find((b) => b.text === "Choose from library")!;
-  await act(async () => { await library.onPress!(); });
+  await act(async () => { await sheet.choose("Choose from library"); });
 
   expect(await screen.findByText(/step back/)).toBeTruthy();
 });
 
 test("cancelling the picker uploads nothing", async () => {
-  const alertSpy = jest.spyOn(Alert, "alert");
+  const sheet = mockActionSheet();
   mockedPick.mockResolvedValue(null);
   render(<ItemSheet items={[front]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
   fireEvent.press(screen.getByLabelText("Add back photo"));
-  await act(async () => { await alertSpy.mock.calls[0][2]!.find((b) => b.text === "Take photo")!.onPress!(); });
+  await act(async () => { await sheet.choose("Take photo"); });
   expect(mockedAddBack).not.toHaveBeenCalled();
 });

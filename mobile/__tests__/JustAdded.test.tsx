@@ -1,5 +1,6 @@
 import React from "react";
 import { Alert } from "react-native";
+import { mockActionSheet } from "./helpers/actionSheet";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react-native";
 import { JustAdded } from "../src/components/JustAdded";
 import { LastRunProvider, useLastRun } from "../src/store/lastRun";
@@ -57,7 +58,7 @@ test("lists the new pieces with their tip and an add-back action", async () => {
 });
 
 test("adding a back from the new pieces uploads to that item and refreshes the closet", async () => {
-  const alertSpy = jest.spyOn(Alert, "alert");
+  const sheet = mockActionSheet();
   (pickPhoto as jest.Mock).mockResolvedValue("file:///back.jpg");
   (addBack as jest.Mock).mockImplementation(async (item) => ({
     ...item, back: { generated_url: "/b.png", cutout_url: null, visible_text: "" },
@@ -66,9 +67,7 @@ test("adding a back from the new pieces uploads to that item and refreshes the c
   renderWith(run, onChanged);
 
   fireEvent.press(await screen.findByLabelText("Add back photo"));
-  await act(async () => {
-    await alertSpy.mock.calls[0][2]!.find((b) => b.text === "Take photo")!.onPress!();
-  });
+  await act(async () => { await sheet.choose("Take photo"); });
 
   await waitFor(() => expect(onChanged).toHaveBeenCalled());
   expect((addBack as jest.Mock).mock.calls[0][0]).toMatchObject({ run_id: "r1", photo_name: "p1", item_id: "item_0" });
@@ -84,4 +83,13 @@ test("Done clears the section", async () => {
   renderWith(run);
   fireEvent.press(await screen.findByText("Done"));
   await waitFor(() => expect(screen.queryByText("Just added")).toBeNull());
+});
+
+test("the photo source is chosen from the iOS action sheet", async () => {
+  const sheet = mockActionSheet();
+  renderWith(run);
+  fireEvent.press(await screen.findByLabelText("Add back photo"));
+  const [config] = sheet.spy.mock.calls[0];
+  expect(config.options).toEqual(["Take photo", "Choose from library", "Cancel"]);
+  expect(config.cancelButtonIndex).toBe(2);
 });

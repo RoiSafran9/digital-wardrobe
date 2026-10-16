@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Icon } from "./Icon";
 import { updateItem } from "../api/client";
 import type { ClosetItem } from "../api/types";
-import { COLOR_NAMES, PATTERNS, asList, capitalize, colors, radius, swatchFor } from "../theme";
+import { COLOR_NAMES, PATTERNS, asList, capitalize, colors, hitSlopFor, palettes, radius, swatchFor } from "../theme";
 import { PillButton } from "./PillButton";
+
+const LIGHT_SWATCHES = new Set(["white", "beige", "yellow", "mint", "dusty pink", "pink"]);
 
 function Label({ children }: { children: string }) {
   return <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 8, marginTop: 20 }}>{children}</Text>;
@@ -73,14 +75,15 @@ export function ItemEditForm({ item, onSaved, onCancel }: Props) {
               accessibilityLabel={`Color ${name}`}
               accessibilityState={{ checked: on }}
               onPress={() => toggleColor(name)}
-              hitSlop={4}
+              hitSlop={hitSlopFor(34, 34)}
               style={{
                 width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center",
                 backgroundColor: swatchFor(name), borderWidth: on ? 2.5 : 1,
                 borderColor: on ? colors.ink : colors.lineStrong,
               }}
             >
-              {on ? <Ionicons name="checkmark" size={16} color={name === "white" || name === "beige" || name === "yellow" || name === "mint" ? colors.ink : "#fff"} /> : null}
+              {/* Swatches are fixed garment colors, so the check uses fixed ink/white too. */}
+              {on ? <Icon name="checkmark" size={16} color={LIGHT_SWATCHES.has(name) ? palettes.light.ink : "#FFFFFF"} /> : null}
             </Pressable>
           );
         })}
@@ -97,6 +100,7 @@ export function ItemEditForm({ item, onSaved, onCancel }: Props) {
               accessibilityLabel={capitalize(name)}
               accessibilityState={{ selected: on }}
               onPress={() => setPattern(name)}
+              hitSlop={hitSlopFor(30)}
               style={{
                 paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, borderWidth: 1,
                 backgroundColor: on ? colors.ink : "transparent", borderColor: on ? colors.ink : colors.lineStrong,

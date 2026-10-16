@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert } from "react-native";
+import { ActionSheetIOS, Alert, Platform } from "react-native";
 import { addBack } from "./api/client";
 import type { ClosetItem } from "./api/types";
 import { pickPhoto } from "./photoPicker";
@@ -32,7 +32,20 @@ export function useAddBack(item: ClosetItem | null, onUpdated?: (item: ClosetIte
     }
   }
 
+  // iOS chooses a photo source from an action sheet, not an alert box.
   function ask() {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: "Add the back",
+          message: "Lay the item flat, back side up.",
+          options: ["Take photo", "Choose from library", "Cancel"],
+          cancelButtonIndex: 2,
+        },
+        (index) => (index === 0 ? upload(true) : index === 1 ? upload(false) : undefined),
+      );
+      return;
+    }
     Alert.alert("Add the back", "Lay the item flat, back side up.", [
       { text: "Take photo", onPress: () => upload(true) },
       { text: "Choose from library", onPress: () => upload(false) },

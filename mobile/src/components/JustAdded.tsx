@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Icon } from "./Icon";
 import type { ClosetItem, RunItem, RunResponse } from "../api/types";
 import { useLastRun } from "../store/lastRun";
 import { useAddBack } from "../useAddBack";
@@ -35,7 +35,7 @@ function NewRow({ item, onOpen, onUpdated }: { item: NewItem; onOpen: () => void
         </Pressable>
         {item.back ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-            <Ionicons name="checkmark-circle" size={16} color={colors.inkSoft} />
+            <Icon name="check" size={16} color={colors.inkSoft} />
             <Text style={{ color: colors.inkSoft, fontSize: 13 }}>Back added</Text>
           </View>
         ) : uploading ? null : (
@@ -50,7 +50,7 @@ function NewRow({ item, onOpen, onUpdated }: { item: NewItem; onOpen: () => void
               transform: [{ scale: pressed ? 0.96 : 1 }],
             })}
           >
-            <Ionicons name="add" size={15} color={colors.ink} />
+            <Icon name="add" size={15} color={colors.ink} />
             <Text style={{ color: colors.ink, fontSize: 13 }}>Back</Text>
           </Pressable>
         )}

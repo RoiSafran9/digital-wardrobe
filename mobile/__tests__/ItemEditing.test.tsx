@@ -91,3 +91,39 @@ test("the edit control is labelled, not just an icon", () => {
   render(<ItemSheet items={[item]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
   expect(screen.getByText("Edit")).toBeTruthy();
 });
+
+describe("unsaved edits", () => {
+  test("swipe-to-dismiss is on while viewing and off while editing", () => {
+    const { UNSAFE_getByType } = render(
+      <ItemSheet items={[item]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />
+    );
+    const { Modal } = require("react-native");
+    expect(UNSAFE_getByType(Modal).props.allowSwipeDismissal).toBe(true);
+    fireEvent.press(screen.getByLabelText("Edit"));
+    expect(UNSAFE_getByType(Modal).props.allowSwipeDismissal).toBe(false);
+  });
+
+  test("closing while editing asks first; Keep editing stays, Discard closes", () => {
+    const alertSpy = jest.spyOn(Alert, "alert");
+    const onClose = jest.fn();
+    render(<ItemSheet items={[item]} index={0} onClose={onClose} onUpdated={() => {}} onDeleted={() => {}} />);
+    fireEvent.press(screen.getByLabelText("Edit"));
+    fireEvent.press(screen.getByLabelText("Close"));
+
+    expect(alertSpy).toHaveBeenCalledWith("Discard changes?", expect.any(String), expect.any(Array));
+    const buttons = alertSpy.mock.calls[0][2]!;
+    buttons.find((b) => b.style === "cancel")?.onPress?.();
+    expect(onClose).not.toHaveBeenCalled();
+    buttons.find((b) => b.style === "destructive")!.onPress!();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test("closing while just viewing doesn't ask", () => {
+    const alertSpy = jest.spyOn(Alert, "alert");
+    const onClose = jest.fn();
+    render(<ItemSheet items={[item]} index={0} onClose={onClose} onUpdated={() => {}} onDeleted={() => {}} />);
+    fireEvent.press(screen.getByLabelText("Close"));
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});

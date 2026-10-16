@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Alert, FlatList, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Icon } from "./Icon";
 import { deleteItem } from "../api/client";
 import { useAddBack } from "../useAddBack";
 import { BACK_STEPS, KEEP_OPEN, ProcessingStatus } from "./ProcessingStatus";
@@ -49,19 +49,47 @@ function isClosetItem(item: Item): item is ClosetItem {
 // Opens on items[index]; swipe left/right to page through the rest of the list.
 export function ItemSheet({ items, index, onClose, onUpdated, onDeleted }: Props) {
   const visible = index !== null && index >= 0 && index < items.length;
+  const [editing, setEditing] = useState(false);
+
+  const close = () => {
+    setEditing(false);
+    onClose();
+  };
+  // Unsaved edits never vanish silently: swipe-down is off while editing, and the
+  // close button / Android back ask first.
+  const requestClose = () => {
+    if (!editing) return close();
+    Alert.alert("Discard changes?", "Your edits to this item haven't been saved.", [
+      { text: "Keep editing", style: "cancel" },
+      { text: "Discard", style: "destructive", onPress: close },
+    ]);
+  };
+
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      allowSwipeDismissal={!editing}
+      onRequestClose={requestClose}
+    >
       {visible ? (
-        <Pager items={items} startIndex={index} onClose={onClose} onUpdated={onUpdated} onDeleted={onDeleted} />
+        <Pager items={items} startIndex={index} onClose={requestClose} onUpdated={onUpdated} onDeleted={onDeleted}
+          editing={editing} setEditing={setEditing} />
       ) : null}
     </Modal>
   );
 }
 
-function Pager({ items, startIndex, onClose, onUpdated, onDeleted }: Omit<Props, "index"> & { startIndex: number }) {
+type PagerProps = Omit<Props, "index"> & {
+  startIndex: number;
+  editing: boolean;
+  setEditing: (editing: boolean) => void;
+};
+
+function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setEditing }: PagerProps) {
   const { width } = useWindowDimensions();
   const [current, setCurrent] = useState(startIndex);
-  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const currentItem = items[current];
   const canEdit = !!onUpdated && !!currentItem && isClosetItem(currentItem);
@@ -107,7 +135,7 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted }: Omit<Props,
                 paddingHorizontal: 14, backgroundColor: colors.sunken, transform: [{ scale: pressed ? 0.95 : 1 }],
               })}
             >
-              <Ionicons name="pencil" size={15} color={colors.ink} />
+              <Icon name="pencil" size={15} color={colors.ink} />
               <Text style={{ color: colors.ink, fontSize: 14 }}>Edit</Text>
             </Pressable>
           ) : null}
@@ -121,7 +149,7 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted }: Omit<Props,
             backgroundColor: colors.sunken, transform: [{ scale: pressed ? 0.92 : 1 }],
           })}
         >
-          <Ionicons name="close" size={20} color={colors.ink} />
+          <Icon name="close" size={20} color={colors.ink} />
         </Pressable>
         </View>
       </View>
@@ -197,7 +225,7 @@ function SideStrip({ item, back, side, onChange, onAddBack }: {
       ) : onAddBack ? (
         <Pressable accessibilityRole="button" accessibilityLabel="Add back photo" onPress={onAddBack}
           style={({ pressed }) => ({ ...tile(false), borderStyle: "dashed", borderColor: colors.lineStrong, transform: [{ scale: pressed ? 0.95 : 1 }] })}>
-          <Ionicons name="add" size={18} color={colors.ink} />
+          <Icon name="add" size={18} color={colors.ink} />
           <Text style={{ color: colors.ink, fontSize: 11, marginTop: 1 }}>Back</Text>
         </Pressable>
       ) : null}

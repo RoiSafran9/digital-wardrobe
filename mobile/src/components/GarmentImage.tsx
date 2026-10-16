@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Image, View, type ViewStyle } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Image, View, type ColorValue, type ViewStyle } from "react-native";
+import { Icon } from "./Icon";
 import { imageUrl } from "../api/client";
 import { colors, radius } from "../theme";
 
@@ -12,7 +12,7 @@ type Props = {
   cropPath?: string;
   style?: ViewStyle;
   // Backdrop for images that still carry a background (white generation or photo crop).
-  tile?: string;
+  tile?: ColorValue;
   testID?: string;
 };
 
@@ -48,7 +48,7 @@ export function GarmentImage({ path, cutoutPath, cropPath, style, tile = colors.
           style={{ width: floating ? "92%" : "84%", height: floating ? "92%" : "84%" }}
         />
       ) : (
-        <Ionicons name="shirt-outline" size={32} color={colors.lineStrong} />
+        <Icon name="garment" size={32} color={colors.lineStrong} />
       )}
     </View>
   );

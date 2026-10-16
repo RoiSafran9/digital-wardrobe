@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Icon, type IconName } from "./Icon";
 import { colors, radius } from "../theme";
 import { EASE_OUT } from "./FadeIn";
 
@@ -8,7 +8,7 @@ type Props = {
   label: string;
   onPress: () => void;
   variant?: "primary" | "secondary";
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: IconName;
   disabled?: boolean;
 };
 
@@ -42,7 +42,7 @@ export function PillButton({ label, onPress, variant = "secondary", icon, disabl
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          {icon ? <Ionicons name={icon} size={18} color={fg} /> : null}
+          {icon ? <Icon name={icon} size={18} color={fg} /> : null}
           <Text style={{ color: fg, fontSize: 15, fontWeight: "500" }}>{label}</Text>
         </View>
       </Animated.View>

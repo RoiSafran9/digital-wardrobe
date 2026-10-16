@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Icon, type IconName } from "../src/components/Icon";
 import { pickPhoto } from "../src/photoPicker";
 import { useRouter } from "expo-router";
 import { postRun } from "../src/api/client";
@@ -10,10 +10,10 @@ import { PillButton } from "../src/components/PillButton";
 import { CAPTURE_STEPS, KEEP_OPEN, ProcessingStatus } from "../src/components/ProcessingStatus";
 import { colors, fonts, radius } from "../src/theme";
 
-const TIPS: { icon: keyof typeof Ionicons.glyphMap; label: string; detail: string }[] = [
-  { icon: "layers-outline", label: "Lay it flat", detail: "On a bed or the floor, front side up" },
-  { icon: "phone-portrait-outline", label: "Shoot from above", detail: "Keep the whole piece in the frame" },
-  { icon: "albums-outline", label: "A few at once works", detail: "Side by side; each becomes its own piece" },
+const TIPS: { icon: IconName; label: string; detail: string }[] = [
+  { icon: "flat", label: "Lay it flat", detail: "On a bed or the floor, front side up" },
+  { icon: "above", label: "Shoot from above", detail: "Keep the whole piece in the frame" },
+  { icon: "several", label: "A few at once works", detail: "Side by side; each becomes its own piece" },
 ];
 
 export default function CaptureScreen() {
@@ -59,7 +59,7 @@ export default function CaptureScreen() {
           <View style={{ gap: 18 }}>
             {TIPS.map((tip) => (
               <View key={tip.label} style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                <Ionicons name={tip.icon} size={22} color={colors.inkSoft} />
+                <Icon name={tip.icon} size={22} color={colors.inkSoft} />
                 <View>
                   <Text style={styles.tipLabel}>{tip.label}</Text>
                   <Text style={styles.tipDetail}>{tip.detail}</Text>
@@ -72,13 +72,13 @@ export default function CaptureScreen() {
 
       {error ? (
         <View style={styles.errorBox}>
-          <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
+          <Icon name="alert" size={18} color={colors.danger} />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
 
       <View style={{ gap: 10 }}>
-        <PillButton label="Take photo" variant="primary" icon="camera-outline" onPress={() => pickAndUpload(true)} disabled={loading} />
+        <PillButton label="Take photo" variant="primary" icon="camera" onPress={() => pickAndUpload(true)} disabled={loading} />
         <PillButton label="Choose from library" onPress={() => pickAndUpload(false)} disabled={loading} />
       </View>
     </SafeAreaView>

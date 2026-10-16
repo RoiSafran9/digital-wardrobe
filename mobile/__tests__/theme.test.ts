@@ -33,12 +33,28 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-test.each([
-  ["muted", colors.muted, "paper", colors.paper],
-  ["muted", colors.muted, "surface", colors.surface],
-  ["muted", colors.muted, "sunken", colors.sunken],
-  ["inkSoft", colors.inkSoft, "paper", colors.paper],
-  ["danger", colors.danger, "dangerBg", colors.dangerBg],
-])("%s text on %s meets WCAG AA (4.5:1)", (_f, fg, _b, bg) => {
-  expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
+const PAIRS = [
+  ["muted", "paper"], ["muted", "surface"], ["muted", "sunken"],
+  ["inkSoft", "paper"], ["ink", "paper"], ["danger", "dangerBg"], ["paper", "ink"],
+] as const;
+
+describe.each(["light", "dark"] as const)("%s palette", (mode) => {
+  const { palettes } = require("../src/theme");
+  test.each(PAIRS)("%s text on %s meets WCAG AA (4.5:1)", (fg, bg) => {
+    expect(contrast(palettes[mode][fg], palettes[mode][bg])).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test.each(["high", "medium", "low"] as const)("%s tier badge is readable", (tier) => {
+    const { tierPalettes } = require("../src/theme");
+    const { fg, bg } = tierPalettes[mode][tier];
+    expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+test("hitSlopFor grows small controls to Apple's 44pt minimum without resizing them", () => {
+  const { hitSlopFor } = require("../src/theme");
+  // Height only by default: pills are already wide, and sideways slop would overlap neighbours.
+  expect(hitSlopFor(30)).toEqual({ top: 7, bottom: 7, left: 0, right: 0 });
+  expect(hitSlopFor(34, 34)).toEqual({ top: 5, bottom: 5, left: 5, right: 5 });
+  expect(hitSlopFor(50)).toEqual({ top: 0, bottom: 0, left: 0, right: 0 });
 });

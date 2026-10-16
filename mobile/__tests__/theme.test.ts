@@ -3,7 +3,7 @@ import { addedLabel, asList, capitalize, swatchFor, colors } from "../src/theme"
 test("swatchFor maps known colors case-insensitively and falls back for unknown ones", () => {
   expect(swatchFor("Navy")).toBe("#26325A");
   expect(swatchFor("dusty pink")).toBe("#C9A0A0");
-  expect(swatchFor("chartreuse")).toBe(colors.lineStrong);
+  expect(swatchFor("chartreuse")).toBe(colors.separatorStrong);
 });
 
 test("asList normalizes single values and drops empty strings", () => {
@@ -34,8 +34,11 @@ function contrast(a: string, b: string): number {
 }
 
 const PAIRS = [
-  ["muted", "paper"], ["muted", "surface"], ["muted", "sunken"],
-  ["inkSoft", "paper"], ["ink", "paper"], ["danger", "dangerBg"], ["paper", "ink"],
+  ["label", "background"], ["label", "card"], ["label", "tile"],
+  ["secondaryLabel", "background"], ["secondaryLabel", "card"], ["secondaryLabel", "tile"],
+  ["tint", "background"], ["tint", "card"],
+  ["destructive", "card"], ["destructive", "destructiveBg"],
+  ["onTint", "tint"],
 ] as const;
 
 describe.each(["light", "dark"] as const)("%s palette", (mode) => {
@@ -57,4 +60,11 @@ test("hitSlopFor grows small controls to Apple's 44pt minimum without resizing t
   expect(hitSlopFor(30)).toEqual({ top: 7, bottom: 7, left: 0, right: 0 });
   expect(hitSlopFor(34, 34)).toEqual({ top: 5, bottom: 5, left: 5, right: 5 });
   expect(hitSlopFor(50)).toEqual({ top: 0, bottom: 0, left: 0, right: 0 });
+});
+
+test("type scale follows iOS text styles", () => {
+  const { type } = require("../src/theme");
+  expect(type.largeTitle).toEqual({ fontSize: 34, fontWeight: "700", letterSpacing: 0.37 });
+  expect(type.body).toEqual({ fontSize: 17 });
+  expect(type.footnote).toEqual({ fontSize: 13 });
 });

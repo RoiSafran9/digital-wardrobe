@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Text, View } from "react-native";
-import { colors, fonts } from "../theme";
+import { colors } from "../theme";
 import { useReducedMotion } from "../useReducedMotion";
 
 export type ProcessingStep = { label: string; at: number };  // `at`: seconds since start
@@ -42,28 +42,28 @@ export function ProcessingStatus({ steps, note, estimateSeconds = 45 }: Props) {
 
   return (
     <View style={{ alignItems: "center", gap: 14, width: "100%", paddingHorizontal: 24 }}>
-      <Text style={{ fontFamily: fonts.serifItalic, fontSize: 22, color: colors.ink, textAlign: "center" }}>
+      <Text style={{ fontSize: 22, color: colors.label, textAlign: "center" }}>
         {current.label}
       </Text>
       <View
         accessible
         accessibilityRole="progressbar"
         accessibilityLabel={current.label}
-        style={{ width: "70%", height: 2, borderRadius: 1, backgroundColor: colors.line, overflow: "hidden" }}
+        style={{ width: "70%", height: 2, borderRadius: 1, backgroundColor: colors.separator, overflow: "hidden" }}
       >
         {reduced ? null : (
           <Animated.View
             style={{
               height: 2,
               width: "100%",
-              backgroundColor: colors.ink,
+              backgroundColor: colors.label,
               transformOrigin: "left",
               transform: [{ scaleX: progress }],
             }}
           />
         )}
       </View>
-      {note ? <Text style={{ color: colors.inkSoft, fontSize: 13, textAlign: "center" }}>{note}</Text> : null}
+      {note ? <Text style={{ color: colors.secondaryLabel, fontSize: 13, textAlign: "center" }}>{note}</Text> : null}
     </View>
   );
 }

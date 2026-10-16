@@ -1,5 +1,4 @@
 import { Tabs } from "expo-router";
-import { useFonts, Fraunces_400Regular, Fraunces_400Regular_Italic } from "@expo-google-fonts/fraunces";
 import { StatusBar } from "expo-status-bar";
 import { Icon, type IconName } from "../src/components/Icon";
 import type { ColorValue } from "react-native";
@@ -11,19 +10,15 @@ function tabIcon(name: IconName) {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({ Fraunces_400Regular, Fraunces_400Regular_Italic });
-  if (!fontsLoaded) {
-    return null;  // a blink at launch beats titles reflowing from a fallback face
-  }
   return (
     <LastRunProvider>
       <StatusBar style="auto" />
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: colors.ink,
-          tabBarInactiveTintColor: colors.muted,
-          tabBarStyle: { backgroundColor: colors.paper, borderTopColor: colors.line },
+          tabBarActiveTintColor: colors.label,
+          tabBarInactiveTintColor: colors.secondaryLabel,
+          tabBarStyle: { backgroundColor: colors.background, borderTopColor: colors.separator },
           tabBarLabelStyle: { fontSize: 11 },
         }}
       >

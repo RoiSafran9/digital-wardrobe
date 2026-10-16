@@ -5,7 +5,7 @@ import { deleteItem } from "../api/client";
 import { useAddBack } from "../useAddBack";
 import { BACK_STEPS, KEEP_OPEN, ProcessingStatus } from "./ProcessingStatus";
 import type { BackView, ClosetItem, RunItem } from "../api/types";
-import { addedLabel, asList, capitalize, colors, fonts, radius } from "../theme";
+import { addedLabel, asList, capitalize, colors, radius } from "../theme";
 import { ColorSwatches } from "./ColorSwatches";
 import { FadeIn } from "./FadeIn";
 import { GarmentImage } from "./GarmentImage";
@@ -20,17 +20,17 @@ function FactRow({ label, children }: { label: string; children: React.ReactNode
     <View
       style={{
         flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 16,
-        paddingVertical: 14, borderTopWidth: 1, borderTopColor: colors.line,
+        paddingVertical: 14, borderTopWidth: 1, borderTopColor: colors.separator,
       }}
     >
-      <Text style={{ color: colors.muted, fontSize: 14 }}>{label}</Text>
+      <Text style={{ color: colors.secondaryLabel, fontSize: 14 }}>{label}</Text>
       <View style={{ flexShrink: 1, alignItems: "flex-end" }}>{children}</View>
     </View>
   );
 }
 
 function FactText({ children }: { children: string }) {
-  return <Text style={{ color: colors.ink, fontSize: 14, textAlign: "right" }}>{children}</Text>;
+  return <Text style={{ color: colors.label, fontSize: 14, textAlign: "right" }}>{children}</Text>;
 }
 
 type Props = {
@@ -113,14 +113,14 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.paper }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View
         style={{
           flexDirection: "row", justifyContent: "space-between", alignItems: "center",
           paddingHorizontal: 20, paddingTop: 16,
         }}
       >
-        <Text style={{ color: colors.muted, fontSize: 13, fontVariant: ["tabular-nums"] }}>
+        <Text style={{ color: colors.secondaryLabel, fontSize: 13, fontVariant: ["tabular-nums"] }}>
           {editing ? "Editing" : items.length > 1 ? `${current + 1} / ${items.length}` : ""}
         </Text>
         <View style={{ flexDirection: "row", gap: 10 }}>
@@ -132,11 +132,11 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
               hitSlop={8}
               style={({ pressed }) => ({
                 height: 36, borderRadius: 18, flexDirection: "row", alignItems: "center", gap: 6,
-                paddingHorizontal: 14, backgroundColor: colors.sunken, transform: [{ scale: pressed ? 0.95 : 1 }],
+                paddingHorizontal: 14, backgroundColor: colors.tile, transform: [{ scale: pressed ? 0.95 : 1 }],
               })}
             >
-              <Icon name="pencil" size={15} color={colors.ink} />
-              <Text style={{ color: colors.ink, fontSize: 14 }}>Edit</Text>
+              <Icon name="pencil" size={15} color={colors.label} />
+              <Text style={{ color: colors.label, fontSize: 14 }}>Edit</Text>
             </Pressable>
           ) : null}
         <Pressable
@@ -146,10 +146,10 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
           hitSlop={12}
           style={({ pressed }) => ({
             width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center",
-            backgroundColor: colors.sunken, transform: [{ scale: pressed ? 0.92 : 1 }],
+            backgroundColor: colors.tile, transform: [{ scale: pressed ? 0.92 : 1 }],
           })}
         >
-          <Icon name="close" size={20} color={colors.ink} />
+          <Icon name="close" size={20} color={colors.label} />
         </Pressable>
         </View>
       </View>
@@ -209,7 +209,7 @@ function SideStrip({ item, back, side, onChange, onAddBack }: {
 }) {
   const tile = (selected: boolean) => ({
     width: 60, height: 60, borderRadius: 14, alignItems: "center" as const, justifyContent: "center" as const,
-    borderWidth: selected ? 1.5 : 1, borderColor: selected ? colors.ink : colors.line,
+    borderWidth: selected ? 1.5 : 1, borderColor: selected ? colors.label : colors.separator,
   });
   return (
     <View style={{ flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 14 }}>
@@ -224,9 +224,9 @@ function SideStrip({ item, back, side, onChange, onAddBack }: {
         </Pressable>
       ) : onAddBack ? (
         <Pressable accessibilityRole="button" accessibilityLabel="Add back photo" onPress={onAddBack}
-          style={({ pressed }) => ({ ...tile(false), borderStyle: "dashed", borderColor: colors.lineStrong, transform: [{ scale: pressed ? 0.95 : 1 }] })}>
-          <Icon name="add" size={18} color={colors.ink} />
-          <Text style={{ color: colors.ink, fontSize: 11, marginTop: 1 }}>Back</Text>
+          style={({ pressed }) => ({ ...tile(false), borderStyle: "dashed", borderColor: colors.separatorStrong, transform: [{ scale: pressed ? 0.95 : 1 }] })}>
+          <Icon name="add" size={18} color={colors.label} />
+          <Text style={{ color: colors.label, fontSize: 11, marginTop: 1 }}>Back</Text>
         </Pressable>
       ) : null}
     </View>
@@ -274,15 +274,15 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
             <ProcessingStatus steps={BACK_STEPS} note={KEEP_OPEN} estimateSeconds={30} />
           </View>
         ) : null}
-        {backError ? <Text style={{ color: colors.danger, fontSize: 14, marginTop: 10, textAlign: "center" }}>{backError}</Text> : null}
+        {backError ? <Text style={{ color: colors.destructive, fontSize: 14, marginTop: 10, textAlign: "center" }}>{backError}</Text> : null}
 
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
-          <Text style={{ fontFamily: fonts.serif, fontSize: 30, color: colors.ink, flexShrink: 1 }}>
+          <Text style={{ fontSize: 30, color: colors.label, flexShrink: 1 }}>
             {capitalize(asList(facts.category.value)[0] ?? "Item")}
           </Text>
           <TierBadge tier={item.tier} />
         </View>
-        {added ? <Text style={{ color: colors.muted, fontSize: 13, marginTop: 4 }}>{added}</Text> : null}
+        {added ? <Text style={{ color: colors.secondaryLabel, fontSize: 13, marginTop: 4 }}>{added}</Text> : null}
 
         <View style={{ marginTop: 20 }}>
           <FactRow label="Colors">
@@ -314,7 +314,7 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
 
         {onRemove ? (
           <Pressable accessibilityRole="button" onPress={onRemove} hitSlop={8} style={{ alignSelf: "center", marginTop: 36, padding: 8 }}>
-            <Text style={{ color: colors.danger, fontSize: 15 }}>Remove from closet</Text>
+            <Text style={{ color: colors.destructive, fontSize: 15 }}>Remove from closet</Text>
           </Pressable>
         ) : null}
       </ScrollView>

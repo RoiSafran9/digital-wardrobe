@@ -7,8 +7,8 @@ import { colors } from "../theme";
 export function RetakeNote({ tier, text }: { tier: Tier; text: string }) {
   const retake = tier === "low";
   return (
-    <View style={{ marginTop: 12, backgroundColor: retake ? colors.dangerBg : colors.sunken, borderRadius: 14, padding: 12 }}>
-      <Text style={{ color: retake ? colors.danger : colors.inkSoft, fontSize: 14 }}>
+    <View style={{ marginTop: 12, backgroundColor: retake ? colors.destructiveBg : colors.tile, borderRadius: 14, padding: 12 }}>
+      <Text style={{ color: retake ? colors.destructive : colors.secondaryLabel, fontSize: 14 }}>
         {retake ? `Retake: ${text}` : text}
       </Text>
     </View>

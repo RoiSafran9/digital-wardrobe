@@ -8,7 +8,7 @@ import { postRun } from "../src/api/client";
 import { useLastRun } from "../src/store/lastRun";
 import { PillButton } from "../src/components/PillButton";
 import { CAPTURE_STEPS, KEEP_OPEN, ProcessingStatus } from "../src/components/ProcessingStatus";
-import { colors, fonts, radius } from "../src/theme";
+import { colors, radius } from "../src/theme";
 
 const TIPS: { icon: IconName; label: string; detail: string }[] = [
   { icon: "flat", label: "Lay it flat", detail: "On a bed or the floor, front side up" },
@@ -59,7 +59,7 @@ export default function CaptureScreen() {
           <View style={{ gap: 18 }}>
             {TIPS.map((tip) => (
               <View key={tip.label} style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                <Icon name={tip.icon} size={22} color={colors.inkSoft} />
+                <Icon name={tip.icon} size={22} color={colors.secondaryLabel} />
                 <View>
                   <Text style={styles.tipLabel}>{tip.label}</Text>
                   <Text style={styles.tipDetail}>{tip.detail}</Text>
@@ -72,7 +72,7 @@ export default function CaptureScreen() {
 
       {error ? (
         <View style={styles.errorBox}>
-          <Icon name="alert" size={18} color={colors.danger} />
+          <Icon name="alert" size={18} color={colors.destructive} />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
@@ -86,18 +86,18 @@ export default function CaptureScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper, paddingHorizontal: 24, paddingBottom: 24 },
-  title: { fontFamily: fonts.serif, fontSize: 42, lineHeight: 48, color: colors.ink, marginTop: 20 },
-  body: { color: colors.inkSoft, fontSize: 15, lineHeight: 22, marginTop: 10 },
-  tipLabel: { color: colors.ink, fontSize: 15 },
-  tipDetail: { color: colors.inkSoft, fontSize: 13, marginTop: 2 },
+  screen: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 24, paddingBottom: 24 },
+  title: { fontSize: 42, lineHeight: 48, color: colors.label, marginTop: 20 },
+  body: { color: colors.secondaryLabel, fontSize: 15, lineHeight: 22, marginTop: 10 },
+  tipLabel: { color: colors.label, fontSize: 15 },
+  tipDetail: { color: colors.secondaryLabel, fontSize: 13, marginTop: 2 },
   stage: {
     flex: 1, marginVertical: 24, borderRadius: radius.tile, borderWidth: 1.5, borderStyle: "dashed",
-    borderColor: colors.lineStrong, alignItems: "center", justifyContent: "center",
+    borderColor: colors.separatorStrong, alignItems: "center", justifyContent: "center",
   },
   errorBox: {
-    flexDirection: "row", gap: 8, alignItems: "flex-start", backgroundColor: colors.dangerBg,
+    flexDirection: "row", gap: 8, alignItems: "flex-start", backgroundColor: colors.destructiveBg,
     borderRadius: 14, padding: 12, marginBottom: 14,
   },
-  errorText: { color: colors.danger, fontSize: 14, flex: 1 },
+  errorText: { color: colors.destructive, fontSize: 14, flex: 1 },
 });

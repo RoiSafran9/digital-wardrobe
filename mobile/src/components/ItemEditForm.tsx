@@ -9,7 +9,7 @@ import { PillButton } from "./PillButton";
 const LIGHT_SWATCHES = new Set(["white", "beige", "yellow", "mint", "dusty pink", "pink"]);
 
 function Label({ children }: { children: string }) {
-  return <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 8, marginTop: 20 }}>{children}</Text>;
+  return <Text style={{ color: colors.secondaryLabel, fontSize: 13, marginBottom: 8, marginTop: 20 }}>{children}</Text>;
 }
 
 function Field({ label, value, onChange, placeholder }: {
@@ -23,10 +23,10 @@ function Field({ label, value, onChange, placeholder }: {
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor={colors.muted}
+        placeholderTextColor={colors.secondaryLabel}
         style={{
-          borderWidth: 1, borderColor: colors.lineStrong, borderRadius: 12,
-          paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.ink, backgroundColor: colors.surface,
+          borderWidth: 1, borderColor: colors.separatorStrong, borderRadius: 12,
+          paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.label, backgroundColor: colors.card,
         }}
       />
     </View>
@@ -79,11 +79,11 @@ export function ItemEditForm({ item, onSaved, onCancel }: Props) {
               style={{
                 width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center",
                 backgroundColor: swatchFor(name), borderWidth: on ? 2.5 : 1,
-                borderColor: on ? colors.ink : colors.lineStrong,
+                borderColor: on ? colors.label : colors.separatorStrong,
               }}
             >
               {/* Swatches are fixed garment colors, so the check uses fixed ink/white too. */}
-              {on ? <Icon name="checkmark" size={16} color={LIGHT_SWATCHES.has(name) ? palettes.light.ink : "#FFFFFF"} /> : null}
+              {on ? <Icon name="checkmark" size={16} color={LIGHT_SWATCHES.has(name) ? palettes.light.label : "#FFFFFF"} /> : null}
             </Pressable>
           );
         })}
@@ -103,10 +103,10 @@ export function ItemEditForm({ item, onSaved, onCancel }: Props) {
               hitSlop={hitSlopFor(30)}
               style={{
                 paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, borderWidth: 1,
-                backgroundColor: on ? colors.ink : "transparent", borderColor: on ? colors.ink : colors.lineStrong,
+                backgroundColor: on ? colors.label : "transparent", borderColor: on ? colors.label : colors.separatorStrong,
               }}
             >
-              <Text style={{ color: on ? colors.paper : colors.inkSoft, fontSize: 13 }}>{capitalize(name)}</Text>
+              <Text style={{ color: on ? colors.background : colors.secondaryLabel, fontSize: 13 }}>{capitalize(name)}</Text>
             </Pressable>
           );
         })}
@@ -115,7 +115,7 @@ export function ItemEditForm({ item, onSaved, onCancel }: Props) {
       <Field label="Details" value={trims} onChange={setTrims} placeholder="Half zip, white piping" />
       <Field label="Text on the garment" value={text} onChange={setText} placeholder="Leave empty if none" />
 
-      {error ? <Text style={{ color: colors.danger, fontSize: 14, marginTop: 16 }}>{error}</Text> : null}
+      {error ? <Text style={{ color: colors.destructive, fontSize: 14, marginTop: 16 }}>{error}</Text> : null}
 
       <View style={{ gap: 10, marginTop: 28 }}>
         <PillButton label={saving ? "Saving…" : "Save"} variant="primary" onPress={save} disabled={saving} />

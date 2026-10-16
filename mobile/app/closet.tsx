@@ -9,7 +9,7 @@ import { PillButton } from "../src/components/PillButton";
 import { JustAdded } from "../src/components/JustAdded";
 import { FadeIn } from "../src/components/FadeIn";
 import type { ClosetItem } from "../src/api/types";
-import { asList, capitalize, colors, fonts, hitSlopFor, radius } from "../src/theme";
+import { asList, capitalize, colors, hitSlopFor, radius } from "../src/theme";
 
 const ALL = "All";
 
@@ -53,8 +53,8 @@ export default function ClosetScreen() {
 
   const header = (
     <View style={{ paddingTop: 8, paddingBottom: 16 }}>
-      <Text style={{ fontFamily: fonts.serif, fontSize: 34, color: colors.ink }}>Your closet</Text>
-      <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2, marginBottom: 20 }}>
+      <Text style={{ fontSize: 34, color: colors.label }}>Your closet</Text>
+      <Text style={{ color: colors.secondaryLabel, fontSize: 13, marginTop: 2, marginBottom: 20 }}>
         {items.length === 1 ? "1 piece" : `${items.length} pieces`}
       </Text>
       <JustAdded onClosetChanged={load} />
@@ -71,11 +71,11 @@ export default function ClosetScreen() {
                 hitSlop={hitSlopFor(30)}
                 style={{
                   paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill,
-                  backgroundColor: active ? colors.ink : "transparent",
-                  borderWidth: 1, borderColor: active ? colors.ink : colors.lineStrong,
+                  backgroundColor: active ? colors.label : "transparent",
+                  borderWidth: 1, borderColor: active ? colors.label : colors.separatorStrong,
                 }}
               >
-                <Text style={{ color: active ? colors.paper : colors.inkSoft, fontSize: 13 }}>{name}</Text>
+                <Text style={{ color: active ? colors.background : colors.secondaryLabel, fontSize: 13 }}>{name}</Text>
               </Pressable>
             );
           })}
@@ -85,7 +85,7 @@ export default function ClosetScreen() {
   );
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
       <FlatList
         data={visible}
         numColumns={2}
@@ -93,12 +93,12 @@ export default function ClosetScreen() {
         ListHeaderComponent={header}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
         columnWrapperStyle={{ gap: 12 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.muted} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.secondaryLabel} />}
         ListEmptyComponent={
           loaded && items.length === 0 ? (
             <View style={{ paddingTop: 48, alignItems: "center", gap: 8 }}>
-              <Text style={{ fontFamily: fonts.serif, fontSize: 22, color: colors.ink }}>Your closet is empty</Text>
-              <Text style={{ color: colors.inkSoft, fontSize: 14, textAlign: "center", marginBottom: 16 }}>
+              <Text style={{ fontSize: 22, color: colors.label }}>Your closet is empty</Text>
+              <Text style={{ color: colors.secondaryLabel, fontSize: 14, textAlign: "center", marginBottom: 16 }}>
                 Photograph a piece and it'll land here as a clean catalog shot.
               </Text>
               <PillButton label="Add a piece" variant="primary" icon="camera" onPress={() => router.push("/")} />
@@ -114,8 +114,8 @@ export default function ClosetScreen() {
             style={({ pressed }) => ({ marginBottom: 22, transform: [{ scale: pressed ? 0.97 : 1 }] })}
           >
             <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: "100%", aspectRatio: 0.85 }} />
-            <Text style={{ color: colors.ink, fontSize: 14, marginTop: 8 }}>{categoryOf(item)}</Text>
-            <Text style={{ color: colors.muted, fontSize: 12, marginTop: 1 }} numberOfLines={1}>
+            <Text style={{ color: colors.label, fontSize: 14, marginTop: 8 }}>{categoryOf(item)}</Text>
+            <Text style={{ color: colors.secondaryLabel, fontSize: 12, marginTop: 1 }} numberOfLines={1}>
               {asList(item.facts.colors.value).map(capitalize).join(", ")}
             </Text>
           </Pressable>

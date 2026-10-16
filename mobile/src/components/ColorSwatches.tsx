@@ -10,10 +10,10 @@ export function ColorSwatches({ value, size = 12 }: { value: string | string[]; 
           <View
             style={{
               width: size, height: size, borderRadius: size / 2,
-              backgroundColor: swatchFor(name), borderWidth: 1, borderColor: colors.lineStrong,
+              backgroundColor: swatchFor(name), borderWidth: 1, borderColor: colors.separatorStrong,
             }}
           />
-          <Text style={{ color: colors.ink, fontSize: 13 }}>{capitalize(name)}</Text>
+          <Text style={{ color: colors.label, fontSize: 13 }}>{capitalize(name)}</Text>
         </View>
       ))}
     </View>

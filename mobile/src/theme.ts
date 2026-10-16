@@ -2,26 +2,29 @@ import { DynamicColorIOS, Platform, type ColorValue } from "react-native";
 import type { Tier } from "./api/types";
 
 type Palette = {
-  paper: string; surface: string; sunken: string;
-  ink: string; inkSoft: string; muted: string;
-  line: string; lineStrong: string;
-  danger: string; dangerBg: string;
+  background: string; card: string; tile: string;
+  label: string; secondaryLabel: string;
+  separator: string; separatorStrong: string;
+  tint: string; onTint: string;
+  destructive: string; destructiveBg: string;
 };
 
-// Editorial paper by day; the same warmth at night, like garments on dark velvet.
-// Every text pair is held to 4.5:1 in both (see __tests__/theme.test.ts).
+// The category standard, native iOS: grouped backgrounds, white cards, one blue tint.
+// Every text pair is held to 4.5:1 in both appearances (see __tests__/theme.test.ts).
 export const palettes: { light: Palette; dark: Palette } = {
   light: {
-    paper: "#F6F3EE", surface: "#FFFFFF", sunken: "#F0ECE5",
-    ink: "#1D1B18", inkSoft: "#5C564D", muted: "#6A645A",
-    line: "#E4DED4", lineStrong: "#CFC8BC",
-    danger: "#9A3B26", dangerBg: "#F6E4DD",
+    background: "#F2F2F7", card: "#FFFFFF", tile: "#F5F5F7",
+    label: "#000000", secondaryLabel: "#6C6C70",
+    separator: "#E5E5EA", separatorStrong: "#C7C7CC",
+    tint: "#2563EB", onTint: "#FFFFFF",
+    destructive: "#D70015", destructiveBg: "#FFECEC",
   },
   dark: {
-    paper: "#151412", surface: "#1E1C19", sunken: "#28251F",
-    ink: "#F2EEE7", inkSoft: "#CBC4B8", muted: "#A69F93",
-    line: "#2F2B26", lineStrong: "#4A453D",
-    danger: "#F2A48F", dangerBg: "#3B221B",
+    background: "#000000", card: "#1C1C1E", tile: "#2C2C2E",
+    label: "#FFFFFF", secondaryLabel: "#AEAEB2",
+    separator: "#38383A", separatorStrong: "#48484A",
+    tint: "#64A0FF", onTint: "#000000",
+    destructive: "#FF6961", destructiveBg: "#3A1D1F",
   },
 };
 
@@ -34,13 +37,18 @@ export const colors = Object.fromEntries(
   (Object.keys(palettes.light) as (keyof Palette)[]).map((k) => [k, adaptive(palettes.light[k], palettes.dark[k])]),
 ) as Record<keyof Palette, ColorValue>;
 
-// Fraunces, loaded at startup in app/_layout.tsx: a warm editorial serif for titles.
-export const fonts = {
-  serif: "Fraunces_400Regular",
-  serifItalic: "Fraunces_400Regular_Italic",
-};
+// iOS text styles on the system font (SF Pro).
+export const type = {
+  largeTitle: { fontSize: 34, fontWeight: "700", letterSpacing: 0.37 },
+  title2: { fontSize: 22, fontWeight: "700" },
+  headline: { fontSize: 17, fontWeight: "600" },
+  body: { fontSize: 17 },
+  subhead: { fontSize: 15 },
+  footnote: { fontSize: 13 },
+  caption: { fontSize: 12 },
+} as const;
 
-export const radius = { tile: 18, pill: 999 };
+export const radius = { card: 16, tile: 14, pill: 999 };
 
 // Apple's minimum touch target. Small controls keep their look and get invisible slop.
 export const MIN_TOUCH = 44;
@@ -97,7 +105,7 @@ export const COLOR_NAMES = Object.keys(SWATCHES);
 export const PATTERNS = ["solid", "striped", "floral", "graphic", "plaid", "polka-dot"];
 
 export function swatchFor(color: string): ColorValue {
-  return SWATCHES[color.toLowerCase()] ?? colors.lineStrong;
+  return SWATCHES[color.toLowerCase()] ?? colors.separatorStrong;
 }
 
 export function asList(value: string | string[]): string[] {

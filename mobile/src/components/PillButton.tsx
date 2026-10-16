@@ -15,7 +15,7 @@ type Props = {
 export function PillButton({ label, onPress, variant = "secondary", icon, disabled }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
   const primary = variant === "primary";
-  const fg = primary ? colors.paper : colors.ink;
+  const fg = primary ? colors.background : colors.label;
 
   // Press lands at once (100ms); release springs back with only a hint of bounce.
   const pressIn = () => Animated.timing(scale, { toValue: 0.97, duration: 100, easing: EASE_OUT, useNativeDriver: true }).start();
@@ -33,9 +33,9 @@ export function PillButton({ label, onPress, variant = "secondary", icon, disabl
         style={{
           transform: [{ scale }],
           opacity: disabled ? 0.5 : 1,
-          backgroundColor: primary ? colors.ink : "transparent",
+          backgroundColor: primary ? colors.label : "transparent",
           borderWidth: primary ? 0 : 1,
-          borderColor: colors.lineStrong,
+          borderColor: colors.separatorStrong,
           borderRadius: radius.pill,
           paddingVertical: 15,
           paddingHorizontal: 20,

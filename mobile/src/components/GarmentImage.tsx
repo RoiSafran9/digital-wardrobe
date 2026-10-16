@@ -19,7 +19,7 @@ type Props = {
 // A garment is never boxed: a cutout floats on whatever it sits on. Only images that still
 // carry their own background get a tile, so that background reads as intentional.
 // Falls back cutout → white-background image → photo crop → placeholder.
-export function GarmentImage({ path, cutoutPath, cropPath, style, tile = colors.surface, testID }: Props) {
+export function GarmentImage({ path, cutoutPath, cropPath, style, tile = colors.tile, testID }: Props) {
   const sources = [cutoutPath, path, cropPath].filter((p): p is string => !!p);
   const [attempt, setAttempt] = useState(0);
   const current = sources[attempt];
@@ -48,7 +48,7 @@ export function GarmentImage({ path, cutoutPath, cropPath, style, tile = colors.
           style={{ width: floating ? "92%" : "84%", height: floating ? "92%" : "84%" }}
         />
       ) : (
-        <Icon name="garment" size={32} color={colors.lineStrong} />
+        <Icon name="garment" size={32} color={colors.separatorStrong} />
       )}
     </View>
   );

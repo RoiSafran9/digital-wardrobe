@@ -45,8 +45,9 @@ async def _run_item(image_path: str, item, item_dir: str, providers: Providers,
     if generated_path and os.path.exists(generated_path) and generated_path != generated_dest:
         shutil.copy(generated_path, generated_dest)
     if os.path.exists(generated_dest):
-        # Local, free; off the event loop so concurrent items keep moving.
-        await asyncio.to_thread(cutout.run, generated_dest, os.path.join(item_dir, "cutout.png"))
+        # Local and free. Runs inline on purpose: onnxruntime in a worker thread
+        # segfaults alongside scikit-image color math from another item's verify.
+        cutout.run(generated_dest, os.path.join(item_dir, "cutout.png"))
     if verification:
         with open(os.path.join(item_dir, "verification.json"), "w") as f:
             f.write(verification.model_dump_json(indent=2))

@@ -11,6 +11,10 @@ import { asList, capitalize, colors, fonts, radius } from "../src/theme";
 
 const ALL = "All";
 
+function sameItem(a: ClosetItem, b: ClosetItem): boolean {
+  return a.run_id === b.run_id && a.photo_name === b.photo_name && a.item_id === b.item_id;
+}
+
 function categoryOf(item: ClosetItem): string {
   return capitalize(asList(item.facts.category.value)[0] ?? "Other");
 }
@@ -112,7 +116,18 @@ export default function ClosetScreen() {
         )}
       />
       {/* Swipes through the grid as currently filtered. */}
-      <ItemSheet items={visible} index={selectedIndex} onClose={() => setSelectedIndex(null)} />
+      <ItemSheet
+        items={visible}
+        index={selectedIndex}
+        onClose={() => setSelectedIndex(null)}
+        onUpdated={(updated) =>
+          setItems((all) => all.map((i) => (sameItem(i, updated) ? updated : i)))
+        }
+        onDeleted={(removed) => {
+          setSelectedIndex(null);
+          setItems((all) => all.filter((i) => !sameItem(i, removed)));
+        }}
+      />
     </SafeAreaView>
   );
 }

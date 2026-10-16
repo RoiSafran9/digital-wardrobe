@@ -36,6 +36,7 @@ export type RunResponse = {
 
 export type ClosetItem = {
   run_id: string;
+  photo_name: string;
   item_id: string;
   tier: Tier;
   facts: ItemFacts;
@@ -50,4 +51,13 @@ export type ItemsResponse = {
 
 export type ApiError = {
   error: string;
+};
+
+// Fields the user can edit; omitted fields stay as they are.
+export type ItemPatch = {
+  category?: string;
+  colors?: string[];
+  pattern?: string;
+  trims?: string;
+  visible_text?: string;
 };

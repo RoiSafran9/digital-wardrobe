@@ -1,7 +1,8 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react-native";
 import ClosetScreen from "../app/closet";
-import { getItems } from "../src/api/client";
+import { getItems, deleteItem } from "../src/api/client";
+import { Alert } from "react-native";
 
 jest.mock("../src/api/client");
 
@@ -16,9 +17,10 @@ jest.mock("expo-router", () => ({
   },
 }));
 const mockedGetItems = getItems as jest.Mock;
+const mockedDeleteItem = deleteItem as jest.Mock;
 
 const fakeItem = {
-  run_id: "r1", item_id: "item_0", tier: "high",
+  run_id: "r1", photo_name: "p1", item_id: "item_0", tier: "high",
   facts: {
     category: { value: "shirt", confidence: 0.9, basis: "observed" },
     colors: { value: "blue", confidence: 0.9, basis: "observed" },
@@ -88,4 +90,20 @@ test("reloads items every time the closet tab regains focus", async () => {
   await waitFor(() => expect(mockedGetItems).toHaveBeenCalledTimes(1));
   await act(async () => focusCallback!());
   expect(mockedGetItems).toHaveBeenCalledTimes(2);
+});
+
+test("removing an item takes it off the grid and closes the sheet", async () => {
+  const alertSpy = jest.spyOn(Alert, "alert");
+  mockedDeleteItem.mockResolvedValue(undefined);
+  mockedGetItems.mockResolvedValue({ items: [fakeItem, fakeShorts] });
+  render(<ClosetScreen />);
+  fireEvent.press(await screen.findByTestId("thumb-r1-item_0"));
+  fireEvent.press((await screen.findAllByText("Remove from closet"))[0]);  // one per swipe page; first is the opened item
+  await act(async () => {
+    await alertSpy.mock.calls[0][2]!.find((b) => b.style === "destructive")!.onPress!();
+  });
+
+  await waitFor(() => expect(screen.queryByTestId("thumb-r1-item_0")).toBeNull());
+  expect(screen.getByTestId("thumb-r1-item_1")).toBeTruthy();
+  expect(screen.queryByLabelText("Close")).toBeNull();
 });

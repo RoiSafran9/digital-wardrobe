@@ -1,10 +1,12 @@
 import React, { useState } from "react";
-import { FlatList, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Alert, FlatList, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { deleteItem } from "../api/client";
 import type { ClosetItem, RunItem } from "../api/types";
 import { addedLabel, asList, capitalize, colors, fonts } from "../theme";
 import { ColorSwatches } from "./ColorSwatches";
 import { GarmentImage } from "./GarmentImage";
+import { ItemEditForm } from "./ItemEditForm";
 import { TierBadge } from "./TierBadge";
 
 type Item = RunItem | ClosetItem;
@@ -27,19 +29,55 @@ function FactText({ children }: { children: string }) {
   return <Text style={{ color: colors.ink, fontSize: 14, textAlign: "right" }}>{children}</Text>;
 }
 
+type Props = {
+  items: Item[];
+  index: number | null;
+  onClose: () => void;
+  // Closet only: when given, the sheet offers editing and removing the item.
+  onUpdated?: (item: ClosetItem) => void;
+  onDeleted?: (item: ClosetItem) => void;
+};
+
+function isClosetItem(item: Item): item is ClosetItem {
+  return "photo_name" in item;
+}
+
 // Opens on items[index]; swipe left/right to page through the rest of the list.
-export function ItemSheet({ items, index, onClose }: { items: Item[]; index: number | null; onClose: () => void }) {
+export function ItemSheet({ items, index, onClose, onUpdated, onDeleted }: Props) {
   const visible = index !== null && index >= 0 && index < items.length;
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      {visible ? <Pager items={items} startIndex={index} onClose={onClose} /> : null}
+      {visible ? (
+        <Pager items={items} startIndex={index} onClose={onClose} onUpdated={onUpdated} onDeleted={onDeleted} />
+      ) : null}
     </Modal>
   );
 }
 
-function Pager({ items, startIndex, onClose }: { items: Item[]; startIndex: number; onClose: () => void }) {
+function Pager({ items, startIndex, onClose, onUpdated, onDeleted }: Omit<Props, "index"> & { startIndex: number }) {
   const { width } = useWindowDimensions();
   const [current, setCurrent] = useState(startIndex);
+  const [editing, setEditing] = useState(false);
+  const currentItem = items[current];
+  const canEdit = !!onUpdated && !!currentItem && isClosetItem(currentItem);
+
+  function confirmRemove(item: ClosetItem) {
+    Alert.alert("Remove this item?", "It leaves your closet. You can restore it from the server's trash.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteItem(item);
+            onDeleted?.(item);
+          } catch (e) {
+            Alert.alert("Couldn't remove it", e instanceof Error ? e.message : "Try again.");
+          }
+        },
+      },
+    ]);
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
@@ -50,8 +88,23 @@ function Pager({ items, startIndex, onClose }: { items: Item[]; startIndex: numb
         }}
       >
         <Text style={{ color: colors.muted, fontSize: 13, fontVariant: ["tabular-nums"] }}>
-          {items.length > 1 ? `${current + 1} / ${items.length}` : ""}
+          {editing ? "Editing" : items.length > 1 ? `${current + 1} / ${items.length}` : ""}
         </Text>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          {canEdit && !editing ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Edit"
+              onPress={() => setEditing(true)}
+              hitSlop={12}
+              style={({ pressed }) => ({
+                width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center",
+                backgroundColor: colors.sunken, transform: [{ scale: pressed ? 0.92 : 1 }],
+              })}
+            >
+              <Ionicons name="pencil" size={17} color={colors.ink} />
+            </Pressable>
+          ) : null}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close"
@@ -64,6 +117,7 @@ function Pager({ items, startIndex, onClose }: { items: Item[]; startIndex: numb
         >
           <Ionicons name="close" size={20} color={colors.ink} />
         </Pressable>
+        </View>
       </View>
 
       <FlatList
@@ -72,6 +126,8 @@ function Pager({ items, startIndex, onClose }: { items: Item[]; startIndex: numb
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
+        scrollEnabled={!editing}
+        extraData={editing}
         initialScrollIndex={startIndex}
         getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
         keyExtractor={(item, i) => ("run_id" in item ? `${item.run_id}-${item.item_id}` : `${item.item_id}-${i}`)}
@@ -79,9 +135,22 @@ function Pager({ items, startIndex, onClose }: { items: Item[]; startIndex: numb
           const { contentOffset, layoutMeasurement } = e.nativeEvent;
           setCurrent(Math.round(contentOffset.x / layoutMeasurement.width));
         }}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <View style={{ width }}>
-            <SheetContent item={item} />
+            {editing && index === current && isClosetItem(item) ? (
+              <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 4, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
+                <ItemEditForm
+                  item={item}
+                  onCancel={() => setEditing(false)}
+                  onSaved={(updated) => {
+                    setEditing(false);
+                    onUpdated?.(updated);
+                  }}
+                />
+              </ScrollView>
+            ) : (
+              <SheetContent item={item} onRemove={onDeleted && isClosetItem(item) ? () => confirmRemove(item) : undefined} />
+            )}
           </View>
         )}
       />
@@ -89,7 +158,7 @@ function Pager({ items, startIndex, onClose }: { items: Item[]; startIndex: numb
   );
 }
 
-function SheetContent({ item }: { item: Item }) {
+function SheetContent({ item, onRemove }: { item: Item; onRemove?: () => void }) {
   const { facts } = item;
   const trims = asList(facts.trims.value).filter((t) => t.toLowerCase() !== "not visible");
   const text = asList(facts.visible_text.value);
@@ -131,6 +200,12 @@ function SheetContent({ item }: { item: Item }) {
           <View style={{ marginTop: 20, backgroundColor: colors.dangerBg, borderRadius: 14, padding: 14 }}>
             <Text style={{ color: colors.danger, fontSize: 14 }}>{item.retake_instruction}</Text>
           </View>
+        ) : null}
+
+        {onRemove ? (
+          <Pressable accessibilityRole="button" onPress={onRemove} hitSlop={8} style={{ alignSelf: "center", marginTop: 36, padding: 8 }}>
+            <Text style={{ color: colors.danger, fontSize: 15 }}>Remove from closet</Text>
+          </Pressable>
         ) : null}
       </ScrollView>
     </View>

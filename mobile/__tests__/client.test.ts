@@ -1,5 +1,5 @@
 import { File } from "expo-file-system";
-import { postRun, getItems, imageUrl, API_BASE_URL } from "../src/api/client";
+import { postRun, getItems, imageUrl, updateItem, deleteItem, API_BASE_URL } from "../src/api/client";
 
 jest.mock("expo-file-system", () => ({
   File: jest.fn().mockImplementation((uri: string) => ({ uri, name: "fake.jpg", type: "image/jpeg" })),
@@ -70,5 +70,46 @@ describe("imageUrl", () => {
     expect(imageUrl("/images/r1/My Photo/item_0/generated.png")).toBe(
       `${API_BASE_URL}/images/r1/My%20Photo/item_0/generated.png`
     );
+  });
+});
+
+const closetItem = {
+  run_id: "r1", photo_name: "My Photo", item_id: "item_0", tier: "high" as const,
+  facts: {} as any, crop_url: "", generated_url: "",
+};
+
+describe("updateItem", () => {
+  afterEach(() => (global.fetch as jest.Mock).mockReset());
+
+  test("PATCHes the encoded item path with the changed fields", async () => {
+    const updated = { ...closetItem, tier: "high" };
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => updated });
+    const result = await updateItem(closetItem, { category: "fleece" });
+    expect(global.fetch).toHaveBeenCalledWith(`${API_BASE_URL}/items/r1/My%20Photo/item_0`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category: "fleece" }),
+    });
+    expect(result).toEqual(updated);
+  });
+
+  test("throws the server's validation message", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 400, json: async () => ({ error: "category can't be empty" }) });
+    await expect(updateItem(closetItem, { category: " " })).rejects.toThrow("category can't be empty");
+  });
+});
+
+describe("deleteItem", () => {
+  afterEach(() => (global.fetch as jest.Mock).mockReset());
+
+  test("DELETEs the item and resolves on 204", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 204 });
+    await deleteItem(closetItem);
+    expect(global.fetch).toHaveBeenCalledWith(`${API_BASE_URL}/items/r1/My%20Photo/item_0`, { method: "DELETE" });
+  });
+
+  test("throws a readable message when the server is unreachable", async () => {
+    global.fetch = jest.fn().mockRejectedValue(new TypeError("Network request failed"));
+    await expect(deleteItem(closetItem)).rejects.toThrow("can't reach server");
   });
 });

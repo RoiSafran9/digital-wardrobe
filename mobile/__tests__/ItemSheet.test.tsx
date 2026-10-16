@@ -5,6 +5,7 @@ import type { ClosetItem } from "../src/api/types";
 
 const item: ClosetItem = {
   run_id: "20261015-214550-752",
+  photo_name: "p",
   item_id: "item_0",
   tier: "high",
   facts: {

@@ -1,5 +1,5 @@
 import { File } from "expo-file-system";
-import type { RunResponse, ItemsResponse, ApiError } from "./types";
+import type { RunResponse, ItemsResponse, ApiError, ClosetItem, ItemPatch } from "./types";
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.1.238:8000";
 
@@ -39,4 +39,34 @@ export async function getItems(): Promise<ItemsResponse> {
 // The API returns image paths relative to itself; React Native needs a full URL.
 export function imageUrl(path: string): string {
   return API_BASE_URL + encodeURI(path);
+}
+
+function itemPath(item: ClosetItem): string {
+  return `${API_BASE_URL}/items/${[item.run_id, item.photo_name, item.item_id].map(encodeURIComponent).join("/")}`;
+}
+
+export async function updateItem(item: ClosetItem, patch: ItemPatch): Promise<ClosetItem> {
+  let response: Response;
+  try {
+    response = await fetch(itemPath(item), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+  } catch {
+    throw new Error("can't reach server — check WiFi/IP");
+  }
+  return parseJsonOrThrow<ClosetItem>(response);
+}
+
+export async function deleteItem(item: ClosetItem): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(itemPath(item), { method: "DELETE" });
+  } catch {
+    throw new Error("can't reach server — check WiFi/IP");
+  }
+  if (!response.ok) {
+    await parseJsonOrThrow(response);
+  }
 }

@@ -46,6 +46,9 @@ const SWATCHES: Record<string, string> = {
   beige: "#DCCDB1",
 };
 
+export const COLOR_NAMES = Object.keys(SWATCHES);
+export const PATTERNS = ["solid", "striped", "floral", "graphic", "plaid", "polka-dot"];
+
 export function swatchFor(color: string): string {
   return SWATCHES[color.toLowerCase()] ?? colors.lineStrong;
 }

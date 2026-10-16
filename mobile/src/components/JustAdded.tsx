@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Icon } from "./Icon";
 import type { ClosetItem, RunItem, RunResponse } from "../api/types";
 import { useLastRun } from "../store/lastRun";
 import { useAddBack } from "../useAddBack";
-import { asList, capitalize, colors, radius } from "../theme";
+import { asList, capitalize, colors, radius, type } from "../theme";
 import { GarmentImage } from "./GarmentImage";
 import { ItemSheet } from "./ItemSheet";
 import { BACK_STEPS, KEEP_OPEN, ProcessingStatus } from "./ProcessingStatus";
@@ -17,15 +17,15 @@ function sameItem(a: { item_id: string; photo_name: string }, b: { item_id: stri
   return a.item_id === b.item_id && a.photo_name === b.photo_name;
 }
 
-function NewRow({ item, onOpen, onUpdated }: { item: NewItem; onOpen: () => void; onUpdated: (i: ClosetItem) => void }) {
+function NewRow({ item, onOpen, onUpdated, first }: { item: NewItem; onOpen: () => void; onUpdated: (i: ClosetItem) => void; first?: boolean }) {
   const { ask, uploading, error } = useAddBack(item, onUpdated);
   return (
-    <View style={{ paddingVertical: 14, borderTopWidth: 1, borderTopColor: colors.separator }}>
+    <View style={{ paddingVertical: 12, paddingHorizontal: 14, borderTopWidth: first ? 0 : StyleSheet.hairlineWidth, borderTopColor: colors.separator }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
         <Pressable onPress={onOpen} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 14, flex: 1, transform: [{ scale: pressed ? 0.98 : 1 }] })}>
           <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: 72, height: 72 }} />
           <View style={{ flex: 1, gap: 6 }}>
-            <Text style={{ fontSize: 19, color: colors.label }}>
+            <Text style={{ ...type.headline, color: colors.label }}>
               {capitalize(asList(item.facts.category.value)[0] ?? "Item")}
             </Text>
             <View style={{ flexDirection: "row" }}>
@@ -36,7 +36,7 @@ function NewRow({ item, onOpen, onUpdated }: { item: NewItem; onOpen: () => void
         {item.back ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
             <Icon name="check" size={16} color={colors.secondaryLabel} />
-            <Text style={{ color: colors.secondaryLabel, fontSize: 13 }}>Back added</Text>
+            <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>Back added</Text>
           </View>
         ) : uploading ? null : (
           <Pressable
@@ -46,12 +46,12 @@ function NewRow({ item, onOpen, onUpdated }: { item: NewItem; onOpen: () => void
             hitSlop={8}
             style={({ pressed }) => ({
               flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8,
-              borderRadius: radius.pill, borderWidth: 1, borderColor: colors.separatorStrong,
+              borderRadius: radius.pill, backgroundColor: colors.tile,
               transform: [{ scale: pressed ? 0.96 : 1 }],
             })}
           >
             <Icon name="add" size={15} color={colors.label} />
-            <Text style={{ color: colors.label, fontSize: 13 }}>Back</Text>
+            <Text style={{ ...type.footnote, color: colors.tint }}>Back</Text>
           </Pressable>
         )}
       </View>
@@ -61,7 +61,7 @@ function NewRow({ item, onOpen, onUpdated }: { item: NewItem; onOpen: () => void
         </View>
       ) : null}
       {item.retake_instruction ? <RetakeNote tier={item.tier} text={item.retake_instruction} /> : null}
-      {error ? <Text style={{ color: colors.destructive, fontSize: 14, marginTop: 8 }}>{error}</Text> : null}
+      {error ? <Text style={{ ...type.footnote, color: colors.destructive, marginTop: 8 }}>{error}</Text> : null}
     </View>
   );
 }
@@ -88,23 +88,25 @@ export function JustAdded({ onClosetChanged }: { onClosetChanged: () => void }) 
   return (
     <View style={{ marginBottom: 28 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-        <Text style={{ fontSize: 22, color: colors.label }}>Just added</Text>
+        <Text style={{ ...type.title2, color: colors.label }}>Just added</Text>
         <Pressable accessibilityRole="button" onPress={() => setLastRun(null)} hitSlop={10}>
-          <Text style={{ color: colors.secondaryLabel, fontSize: 14 }}>Done</Text>
+          <Text style={{ ...type.body, color: colors.tint }}>Done</Text>
         </Pressable>
       </View>
 
       {items.length === 0 ? (
-        <Text style={{ color: colors.secondaryLabel, fontSize: 14, lineHeight: 20, paddingVertical: 12 }}>
+        <Text style={{ ...type.subhead, color: colors.secondaryLabel, padding: 14 }}>
           No pieces found in that photo. Try again with each piece laid flat, in good light.
         </Text>
       ) : (
-        items.map((item, index) => (
-          <NewRow key={`${item.photo_name}-${item.item_id}`} item={item} onOpen={() => setSelectedIndex(index)} onUpdated={replaceItem} />
-        ))
+        <View style={{ backgroundColor: colors.card, borderRadius: radius.card, overflow: "hidden" }}>
+          {items.map((item, index) => (
+            <NewRow key={`${item.photo_name}-${item.item_id}`} item={item} first={index === 0} onOpen={() => setSelectedIndex(index)} onUpdated={replaceItem} />
+          ))}
+        </View>
       )}
       {run.failed.length > 0 ? (
-        <Text style={{ color: colors.secondaryLabel, fontSize: 13, marginTop: 8 }}>
+        <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 8 }}>
           {run.failed.length === 1 ? "One piece couldn't be processed." : `${run.failed.length} pieces couldn't be processed.`}
         </Text>
       ) : null}

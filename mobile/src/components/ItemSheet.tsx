@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { Alert, FlatList, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Icon } from "./Icon";
 import { deleteItem } from "../api/client";
 import { useAddBack } from "../useAddBack";
 import { BACK_STEPS, KEEP_OPEN, ProcessingStatus } from "./ProcessingStatus";
 import type { BackView, ClosetItem, RunItem } from "../api/types";
-import { addedLabel, asList, capitalize, colors, radius } from "../theme";
+import { addedLabel, asList, capitalize, colors, hitSlopFor, radius, type } from "../theme";
+import { haptics } from "../haptics";
 import { ColorSwatches } from "./ColorSwatches";
 import { Rise } from "../motion/Rise";
 import { GarmentImage } from "./GarmentImage";
@@ -15,22 +16,22 @@ import { TierBadge } from "./TierBadge";
 
 type Item = RunItem | ClosetItem;
 
-function FactRow({ label, children }: { label: string; children: React.ReactNode }) {
+function FactRow({ label, children, first }: { label: string; children: React.ReactNode; first?: boolean }) {
   return (
     <View
       style={{
         flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 16,
-        paddingVertical: 14, borderTopWidth: 1, borderTopColor: colors.separator,
+        paddingVertical: 12, borderTopWidth: first ? 0 : StyleSheet.hairlineWidth, borderTopColor: colors.separator,
       }}
     >
-      <Text style={{ color: colors.secondaryLabel, fontSize: 14 }}>{label}</Text>
+      <Text style={{ ...type.body, color: colors.secondaryLabel }}>{label}</Text>
       <View style={{ flexShrink: 1, alignItems: "flex-end" }}>{children}</View>
     </View>
   );
 }
 
 function FactText({ children }: { children: string }) {
-  return <Text style={{ color: colors.label, fontSize: 14, textAlign: "right" }}>{children}</Text>;
+  return <Text style={{ ...type.body, color: colors.label, textAlign: "right" }}>{children}</Text>;
 }
 
 type Props = {
@@ -103,6 +104,7 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
         onPress: async () => {
           try {
             await deleteItem(item);
+            haptics.success();
             onDeleted?.(item);
           } catch (e) {
             Alert.alert("Couldn't remove it", e instanceof Error ? e.message : "Try again.");
@@ -199,36 +201,31 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
   );
 }
 
-// Front and back as small tiles under the garment: tap to switch; an empty back tile adds one.
-function SideStrip({ item, back, side, onChange, onAddBack }: {
+// Front and back as an iOS segmented control; when there's no back, the second segment adds one.
+function SideStrip({ back, side, onChange, onAddBack }: {
   item: Item;
   back: BackView | null;
   side: "front" | "back";
   onChange: (s: "front" | "back") => void;
   onAddBack?: () => void;
 }) {
-  const tile = (selected: boolean) => ({
-    width: 60, height: 60, borderRadius: 14, alignItems: "center" as const, justifyContent: "center" as const,
-    borderWidth: selected ? 1.5 : 1, borderColor: selected ? colors.label : colors.separator,
-  });
+  const segment = (label: string, selected: boolean, onPress: () => void, a11y: string) => (
+    <Pressable
+      accessibilityRole="button" accessibilityLabel={a11y} accessibilityState={{ selected }} onPress={onPress}
+      hitSlop={hitSlopFor(32, 120)}
+      style={{ flex: 1, paddingVertical: 7, borderRadius: 8, alignItems: "center", backgroundColor: selected ? colors.card : "transparent" }}
+    >
+      <Text style={{ ...type.subhead, fontWeight: selected ? "600" : "400", color: colors.label }}>{label}</Text>
+    </Pressable>
+  );
   return (
-    <View style={{ flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 14 }}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Front" accessibilityState={{ selected: side === "front" }}
-        onPress={() => onChange("front")} style={tile(side === "front")}>
-        <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: 48, height: 48 }} />
-      </Pressable>
-      {back ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="Back" accessibilityState={{ selected: side === "back" }}
-          onPress={() => onChange("back")} style={tile(side === "back")}>
-          <GarmentImage path={back.generated_url} cutoutPath={back.cutout_url} style={{ width: 48, height: 48 }} />
-        </Pressable>
-      ) : onAddBack ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="Add back photo" onPress={onAddBack}
-          style={({ pressed }) => ({ ...tile(false), borderStyle: "dashed", borderColor: colors.separatorStrong, transform: [{ scale: pressed ? 0.95 : 1 }] })}>
-          <Icon name="add" size={18} color={colors.label} />
-          <Text style={{ color: colors.label, fontSize: 11, marginTop: 1 }}>Back</Text>
-        </Pressable>
-      ) : null}
+    <View style={{ flexDirection: "row", marginTop: 14, padding: 2, borderRadius: 10, backgroundColor: colors.tile }}>
+      {segment("Front", side === "front", () => onChange("front"), "Front")}
+      {back
+        ? segment("Back", side === "back", () => onChange("back"), "Back")
+        : onAddBack
+          ? segment("+ Back", false, onAddBack, "Add back photo")
+          : null}
     </View>
   );
 }
@@ -274,18 +271,18 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
             <ProcessingStatus steps={BACK_STEPS} note={KEEP_OPEN} estimateSeconds={30} />
           </View>
         ) : null}
-        {backError ? <Text style={{ color: colors.destructive, fontSize: 14, marginTop: 10, textAlign: "center" }}>{backError}</Text> : null}
+        {backError ? <Text style={{ ...type.footnote, color: colors.destructive, marginTop: 10, textAlign: "center" }}>{backError}</Text> : null}
 
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
-          <Text style={{ fontSize: 30, color: colors.label, flexShrink: 1 }}>
+          <Text accessibilityRole="header" style={{ ...type.title2, color: colors.label, flexShrink: 1 }}>
             {capitalize(asList(facts.category.value)[0] ?? "Item")}
           </Text>
           <TierBadge tier={item.tier} />
         </View>
-        {added ? <Text style={{ color: colors.secondaryLabel, fontSize: 13, marginTop: 4 }}>{added}</Text> : null}
+        {added ? <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 4 }}>{added}</Text> : null}
 
-        <View style={{ marginTop: 20 }}>
-          <FactRow label="Colors">
+        <View testID="facts-card" style={{ marginTop: 20, backgroundColor: colors.card, borderRadius: radius.card, paddingHorizontal: 16 }}>
+          <FactRow label="Colors" first>
             <ColorSwatches value={facts.colors.value} />
           </FactRow>
           <FactRow label="Pattern">
@@ -313,9 +310,11 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
         ) : null}
 
         {onRemove ? (
-          <Pressable accessibilityRole="button" onPress={onRemove} hitSlop={8} style={{ alignSelf: "center", marginTop: 36, padding: 8 }}>
-            <Text style={{ color: colors.destructive, fontSize: 15 }}>Remove from closet</Text>
-          </Pressable>
+          <View style={{ marginTop: 24, backgroundColor: colors.card, borderRadius: radius.card }}>
+            <Pressable accessibilityRole="button" onPress={onRemove} style={{ padding: 16, alignItems: "center" }}>
+              <Text style={{ ...type.body, color: colors.destructive }}>Remove from closet</Text>
+            </Pressable>
+          </View>
         ) : null}
       </ScrollView>
     </View>

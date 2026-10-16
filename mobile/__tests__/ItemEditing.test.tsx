@@ -127,3 +127,13 @@ describe("unsaved edits", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+test("saving confirms with a haptic", async () => {
+  const { haptics } = require("../src/haptics");
+  const spy = jest.spyOn(haptics, "success").mockImplementation(() => {});
+  mockedUpdate.mockResolvedValue(item);
+  render(<ItemSheet items={[item]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
+  fireEvent.press(screen.getByLabelText("Edit"));
+  fireEvent.press(screen.getByText("Save"));
+  await waitFor(() => expect(spy).toHaveBeenCalled());
+});

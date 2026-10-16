@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Text, View } from "react-native";
-import { colors } from "../theme";
+import { colors, type } from "../theme";
 import { useReducedMotion } from "../useReducedMotion";
 
 export type ProcessingStep = { label: string; at: number };  // `at`: seconds since start
@@ -42,7 +42,7 @@ export function ProcessingStatus({ steps, note, estimateSeconds = 45 }: Props) {
 
   return (
     <View style={{ alignItems: "center", gap: 14, width: "100%", paddingHorizontal: 24 }}>
-      <Text style={{ fontSize: 22, color: colors.label, textAlign: "center" }}>
+      <Text style={{ ...type.headline, color: colors.label, textAlign: "center" }}>
         {current.label}
       </Text>
       <View
@@ -56,14 +56,14 @@ export function ProcessingStatus({ steps, note, estimateSeconds = 45 }: Props) {
             style={{
               height: 2,
               width: "100%",
-              backgroundColor: colors.label,
+              backgroundColor: colors.tint,
               transformOrigin: "left",
               transform: [{ scaleX: progress }],
             }}
           />
         )}
       </View>
-      {note ? <Text style={{ color: colors.secondaryLabel, fontSize: 13, textAlign: "center" }}>{note}</Text> : null}
+      {note ? <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>{note}</Text> : null}
     </View>
   );
 }

@@ -90,3 +90,9 @@ test("hides the counter for a single item", () => {
   render(<ItemSheet items={[item]} index={0} onClose={() => {}} />);
   expect(screen.queryByText("1 / 1")).toBeNull();
 });
+
+test("facts sit in one grouped card with the title as a header", () => {
+  render(<ItemSheet items={[item]} index={0} onClose={() => {}} />);
+  expect(screen.getByRole("header", { name: "T-shirt" })).toBeTruthy();
+  expect(screen.getByTestId("facts-card")).toBeTruthy();
+});

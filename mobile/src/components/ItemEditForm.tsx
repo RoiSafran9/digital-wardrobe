@@ -3,13 +3,14 @@ import { Pressable, Text, TextInput, View } from "react-native";
 import { Icon } from "./Icon";
 import { updateItem } from "../api/client";
 import type { ClosetItem } from "../api/types";
-import { COLOR_NAMES, PATTERNS, asList, capitalize, colors, hitSlopFor, palettes, radius, swatchFor } from "../theme";
+import { COLOR_NAMES, PATTERNS, asList, capitalize, colors, hitSlopFor, palettes, radius, swatchFor, type } from "../theme";
+import { haptics } from "../haptics";
 import { PillButton } from "./PillButton";
 
 const LIGHT_SWATCHES = new Set(["white", "beige", "yellow", "mint", "dusty pink", "pink"]);
 
 function Label({ children }: { children: string }) {
-  return <Text style={{ color: colors.secondaryLabel, fontSize: 13, marginBottom: 8, marginTop: 20 }}>{children}</Text>;
+  return <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginBottom: 8, marginTop: 20 }}>{children}</Text>;
 }
 
 function Field({ label, value, onChange, placeholder }: {
@@ -25,8 +26,8 @@ function Field({ label, value, onChange, placeholder }: {
         placeholder={placeholder}
         placeholderTextColor={colors.secondaryLabel}
         style={{
-          borderWidth: 1, borderColor: colors.separatorStrong, borderRadius: 12,
-          paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.label, backgroundColor: colors.card,
+          borderRadius: 12,
+          paddingHorizontal: 14, paddingVertical: 12, ...type.body, color: colors.label, backgroundColor: colors.card,
         }}
       />
     </View>
@@ -52,7 +53,9 @@ export function ItemEditForm({ item, onSaved, onCancel }: Props) {
     setSaving(true);
     setError(null);
     try {
-      onSaved(await updateItem(item, { category, colors: picked, pattern, trims, visible_text: text }));
+      const updated = await updateItem(item, { category, colors: picked, pattern, trims, visible_text: text });
+      haptics.success();
+      onSaved(updated);
     } catch (e) {
       setError(e instanceof Error ? e.message : "couldn't save");
     } finally {
@@ -102,11 +105,11 @@ export function ItemEditForm({ item, onSaved, onCancel }: Props) {
               onPress={() => setPattern(name)}
               hitSlop={hitSlopFor(30)}
               style={{
-                paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, borderWidth: 1,
-                backgroundColor: on ? colors.label : "transparent", borderColor: on ? colors.label : colors.separatorStrong,
+                paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill,
+                backgroundColor: on ? colors.tint : colors.card,
               }}
             >
-              <Text style={{ color: on ? colors.background : colors.secondaryLabel, fontSize: 13 }}>{capitalize(name)}</Text>
+              <Text style={{ ...type.subhead, color: on ? colors.onTint : colors.label }}>{capitalize(name)}</Text>
             </Pressable>
           );
         })}
@@ -115,7 +118,7 @@ export function ItemEditForm({ item, onSaved, onCancel }: Props) {
       <Field label="Details" value={trims} onChange={setTrims} placeholder="Half zip, white piping" />
       <Field label="Text on the garment" value={text} onChange={setText} placeholder="Leave empty if none" />
 
-      {error ? <Text style={{ color: colors.destructive, fontSize: 14, marginTop: 16 }}>{error}</Text> : null}
+      {error ? <Text style={{ ...type.subhead, color: colors.destructive, marginTop: 16 }}>{error}</Text> : null}
 
       <View style={{ gap: 10, marginTop: 28 }}>
         <PillButton label={saving ? "Saving…" : "Save"} variant="primary" onPress={save} disabled={saving} />

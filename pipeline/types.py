@@ -22,6 +22,8 @@ class FactField(BaseModel):
 
 class DetectionFields(BaseModel):
     included: bool
+    # Part of the garment extends past the photo edge; we ask for a retake instead of guessing.
+    cut_off_by_frame: bool = False
     exclusion_reason: str | None = None
     category: FactField
     colors: FactField

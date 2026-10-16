@@ -22,9 +22,11 @@ def _facts_json():
     }
 
 
-def _write_item(tmp_path, run_id, photo_name, item_id, tier="high"):
+def _write_item(tmp_path, run_id, photo_name, item_id, tier="high", with_image=True):
     item_dir = tmp_path / run_id / photo_name / item_id
     item_dir.mkdir(parents=True, exist_ok=True)
+    if with_image:
+        (item_dir / "generated.png").write_bytes(b"png")
     (item_dir / "facts.json").write_text(json.dumps(_facts_json()))
     (item_dir / "result.json").write_text(json.dumps({
         "tier": tier, "reason": "verification passed, fully visible",
@@ -82,3 +84,10 @@ def test_cutout_url_points_at_the_cutout_when_it_exists(client, tmp_path):
     (item_dir / "cutout.png").write_bytes(b"png")
     item = client.get("/items").json()["items"][0]
     assert item["cutout_url"] == "/images/run1/photo1/item_0/cutout.png"
+
+
+def test_closet_lists_only_items_that_have_a_generated_image(client, tmp_path):
+    _write_item(tmp_path, "run1", "photo1", "item_0")
+    _write_item(tmp_path, "run2", "photo2", "item_0", tier="low", with_image=False)  # retake
+    items = client.get("/items").json()["items"]
+    assert [(i["run_id"], i["item_id"]) for i in items] == [("run1", "item_0")]

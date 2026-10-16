@@ -22,3 +22,10 @@ test("falls back to the white-background image if the cutout fails to load", () 
   fireEvent(screen.UNSAFE_getByType(Image), "error");
   expect(screen.UNSAFE_getByType(Image).props.source.uri).toBe(`${API_BASE_URL}${generated}`);
 });
+
+test("falls back to the photo crop for retake items that were never generated", () => {
+  const crop = "/images/r/p/item_0/crop.png";
+  render(<GarmentImage path={generated} cutoutPath={null} cropPath={crop} />);
+  fireEvent(screen.UNSAFE_getByType(Image), "error");
+  expect(screen.UNSAFE_getByType(Image).props.source.uri).toBe(`${API_BASE_URL}${crop}`);
+});

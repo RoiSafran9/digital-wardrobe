@@ -11,7 +11,7 @@ export function ItemCard({ item, onPress }: { item: RunItem | ClosetItem; onPres
   const pattern = capitalize(asList(item.facts.pattern.value).join(", "));
   return (
     <Pressable onPress={onPress} disabled={!onPress} style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.98 : 1 }] })}>
-      <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} style={{ width: "100%", aspectRatio: 1 }} />
+      <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: "100%", aspectRatio: 1 }} />
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
         <Text style={{ fontFamily: fonts.serif, fontSize: 22, color: colors.ink, flexShrink: 1 }}>
           {capitalize(asList(item.facts.category.value)[0] ?? "Item")}

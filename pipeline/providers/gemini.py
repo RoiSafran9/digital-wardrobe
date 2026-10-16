@@ -27,6 +27,15 @@ class _RawDetection(DetectionFields):
     box_2d: list[int]
 
 
+# A box this close to the photo edge (on the 0-1000 scale) means the garment runs past it.
+FRAME_EDGE_MARGIN = 5
+
+
+def touches_frame(box_2d: list[int]) -> bool:
+    # The model's own cut_off_by_frame flag proved unreliable; the box geometry is not.
+    return min(box_2d) <= FRAME_EDGE_MARGIN or max(box_2d) >= 1000 - FRAME_EDGE_MARGIN
+
+
 def box_2d_to_bbox(box_2d: list[int], width: int, height: int) -> BBox:
     ymin, xmin, ymax, xmax = box_2d
     x0, x1 = xmin / 1000 * width, xmax / 1000 * width
@@ -54,7 +63,7 @@ class GeminiProvider:
         try:
             with open(image_path, "rb") as f:
                 image_bytes = f.read()
-            prompt = _read_prompt("stage1_detect_facts_v3.txt")
+            prompt = _read_prompt("stage1_detect_facts_v4.txt")
             response = self.client.models.generate_content(
                 model=MODEL_VISION,
                 contents=[{"inline_data": {"mime_type": "image/jpeg", "data": image_bytes}}, prompt],
@@ -66,14 +75,13 @@ class GeminiProvider:
             items = []
             for raw in json.loads(response.text):
                 detection = _RawDetection.model_validate(raw)
-                items.append(DetectedItemWithFacts(
-                    **detection.model_dump(exclude={"box_2d"}),
-                    box=box_2d_to_bbox(detection.box_2d, width, height),
-                ))
-            self._log("stage1_detect_facts", MODEL_VISION, "v3", start, "ok")
+                fields = detection.model_dump(exclude={"box_2d"})
+                fields["cut_off_by_frame"] = detection.cut_off_by_frame or touches_frame(detection.box_2d)
+                items.append(DetectedItemWithFacts(**fields, box=box_2d_to_bbox(detection.box_2d, width, height)))
+            self._log("stage1_detect_facts", MODEL_VISION, "v4", start, "ok")
             return items
         except Exception as e:
-            self._log("stage1_detect_facts", MODEL_VISION, "v3", start, "error", str(e))
+            self._log("stage1_detect_facts", MODEL_VISION, "v4", start, "error", str(e))
             raise
 
     async def generate(self, crop_path: str, facts: ItemFacts, violations: list[str] | None) -> str:
@@ -81,7 +89,7 @@ class GeminiProvider:
         try:
             with open(crop_path, "rb") as f:
                 crop_bytes = f.read()
-            template = _read_prompt("stage4_generate_v3.txt")
+            template = _read_prompt("stage4_generate_v4.txt")
             violations_block = ("\nPrevious attempt violations to fix:\n" + "\n".join(violations)
                                  if violations else "")
             prompt = template.format(facts_block=facts.model_dump_json(indent=2),
@@ -94,8 +102,8 @@ class GeminiProvider:
             image_bytes = response.candidates[0].content.parts[0].inline_data.data
             with open(out_path, "wb") as f:
                 f.write(image_bytes)
-            self._log("stage4_generate", MODEL_IMAGE, "v3", start, "ok")
+            self._log("stage4_generate", MODEL_IMAGE, "v4", start, "ok")
             return out_path
         except Exception as e:
-            self._log("stage4_generate", MODEL_IMAGE, "v3", start, "error", str(e))
+            self._log("stage4_generate", MODEL_IMAGE, "v4", start, "error", str(e))
             raise

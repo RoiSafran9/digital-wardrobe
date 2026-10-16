@@ -130,3 +130,37 @@ async def test_run_photo_writes_transparent_cutout_next_to_generated(tmp_path):
     assert os.path.exists(item_dir / "generated.png")
     cut = Image.open(item_dir / "cutout.png")
     assert cut.mode == "RGBA"
+
+
+class CountingImageGen:
+    def __init__(self):
+        self.calls = 0
+
+    async def generate(self, crop_path, facts, violations):
+        self.calls += 1
+        gen_path = crop_path.replace("crop.png", "generated.png")
+        _write_ok_photo(gen_path)
+        return gen_path
+
+
+@pytest.mark.asyncio
+async def test_item_cut_off_by_frame_skips_generation_and_asks_for_retake(tmp_path):
+    import os
+    photo_path = str(tmp_path / "photo.png")
+    _write_ok_photo(photo_path)
+    item = _item()
+    item.cut_off_by_frame = True
+    imagegen = CountingImageGen()
+    providers = Providers(vision=FakeVision([item]), imagegen=imagegen)
+    logger = RunLogger(str(tmp_path / "run_log.jsonl"))
+
+    result = await run_photo(photo_path, str(tmp_path / "out"), providers, logger)
+
+    assert imagegen.calls == 0
+    item_result = result["items"][0]["result"]
+    assert item_result.tier == "low"
+    assert "frame" in item_result.retake_instruction
+    item_dir = tmp_path / "out" / "item_0"
+    assert os.path.exists(item_dir / "crop.png")
+    assert os.path.exists(item_dir / "result.json")
+    assert not os.path.exists(item_dir / "generated.png")

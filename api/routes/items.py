@@ -16,6 +16,9 @@ def list_items() -> ItemsResponse:
 
     items: list[ClosetItemOut] = []
     for item_dir in item_dirs:
+        # Retake-only items (never generated) belong in the run's results, not the closet.
+        if not os.path.exists(os.path.join(item_dir, "generated.png")):
+            continue
         loaded = load_item(item_dir)
         if loaded is None:
             continue

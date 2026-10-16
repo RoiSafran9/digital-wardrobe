@@ -1,6 +1,12 @@
 from pipeline.types import VerificationResult, ItemResult
 
 VISIBLE_FRACTION_MEDIUM_THRESHOLD = 0.6
+CUT_OFF_RETAKE = "Part of this piece is outside the photo — step back so the whole piece fits in the frame"
+
+
+def cut_off(visible_fraction: float) -> ItemResult:
+    return ItemResult(tier="low", reason="cut off by the photo frame; not generated",
+                       retake_instruction=CUT_OFF_RETAKE, visible_fraction=visible_fraction)
 
 
 def run(verification: VerificationResult | None, visible_fraction: float,

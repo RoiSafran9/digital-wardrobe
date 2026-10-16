@@ -8,13 +8,15 @@ type Props = {
   path: string;
   // Transparent-background version; preferred so the garment sits directly on the tile.
   cutoutPath?: string | null;
+  // The original photo crop; shown for retake items that never got a generated image.
+  cropPath?: string;
   style?: ViewStyle;
   tile?: string;
 };
 
-// A garment on its own tile. Falls back cutout → white-background image → hanger placeholder.
-export function GarmentImage({ path, cutoutPath, style, tile = colors.surface }: Props) {
-  const sources = cutoutPath ? [cutoutPath, path] : [path];
+// A garment on its own tile. Falls back cutout → white-background image → photo crop → placeholder.
+export function GarmentImage({ path, cutoutPath, cropPath, style, tile = colors.surface }: Props) {
+  const sources = [cutoutPath, path, cropPath].filter((p): p is string => !!p);
   const [attempt, setAttempt] = useState(0);
   const current = sources[attempt];
 

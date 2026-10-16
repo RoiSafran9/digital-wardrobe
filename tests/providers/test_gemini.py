@@ -62,3 +62,34 @@ def test_box_2d_to_bbox_clamps_padding_to_image():
     from pipeline.providers.gemini import box_2d_to_bbox
     box = box_2d_to_bbox([0, 0, 1000, 1000], width=300, height=400)
     assert (box.x, box.y, box.width, box.height) == (0, 0, 300, 400)
+
+
+def test_touches_frame_flags_boxes_at_the_photo_edge():
+    from pipeline.providers.gemini import touches_frame
+    assert touches_frame([163, 0, 902, 1000])      # sleeve cut off on both sides
+    assert touches_frame([0, 200, 600, 700])       # top edge
+    assert not touches_frame([203, 516, 575, 987])  # close to the edge but inside
+
+
+@pytest.mark.asyncio
+async def test_detection_marks_items_touching_the_frame_as_cut_off(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    img_path = tmp_path / "photo.jpg"
+    cv2.imwrite(str(img_path), np.zeros((400, 300, 3), dtype=np.uint8))
+    from pipeline.providers.gemini import GeminiProvider
+
+    field = {"value": "gray", "confidence": 0.9, "basis": "observed"}
+    def det(box):
+        return {"box_2d": box, "included": True, "cut_off_by_frame": False, "exclusion_reason": None,
+                "category": field, "colors": field, "pattern": field,
+                "visible_text": {"value": "", "confidence": 0.9, "basis": "observed"}, "trims": field,
+                "visible_parts": {"value": ["front"], "confidence": 0.9, "basis": "observed"},
+                "occluded_parts": {"value": [], "confidence": 0.9, "basis": "observed"}}
+    fake_response = MagicMock()
+    fake_response.text = json.dumps([det([163, 0, 902, 1000]), det([203, 516, 575, 987])])
+
+    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
+        MockClient.return_value.models.generate_content.return_value = fake_response
+        items = await GeminiProvider().detect_items_with_facts(str(img_path))
+
+    assert [i.cut_off_by_frame for i in items] == [True, False]

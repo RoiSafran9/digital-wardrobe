@@ -17,8 +17,10 @@ jest.mock("../src/api/client");
 
 // Tabs stay mounted, so the closet must reload whenever its tab regains focus.
 let focusCallback: (() => void) | null = null;
+let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn() }),
+  useLocalSearchParams: () => mockParams,
   useFocusEffect: (cb: () => void) => {
     const { useEffect } = require("react");
     focusCallback = cb;
@@ -50,6 +52,7 @@ const fakeShorts = {
 };
 
 beforeEach(() => {
+  mockParams = {};
   jest.clearAllMocks();
   mockedGetItems.mockResolvedValue({ items: [fakeItem] });
 });
@@ -115,4 +118,18 @@ test("removing an item takes it off the grid and closes the sheet", async () => 
   await waitFor(() => expect(screen.queryByTestId("thumb-r1-item_0")).toBeNull());
   expect(screen.getByTestId("thumb-r1-item_1")).toBeTruthy();
   expect(screen.queryByLabelText("Close")).toBeNull();
+});
+
+test("opens filtered when Home sends a category", async () => {
+  mockParams = { category: "shorts " };
+  mockedGetItems.mockResolvedValue({ items: [fakeItem, fakeShorts] });
+  render(<ClosetScreen />);
+  expect(await screen.findByTestId("thumb-r1-item_1")).toBeTruthy();
+  expect(screen.queryByTestId("thumb-r1-item_0")).toBeNull();
+  expect(screen.getByRole("button", { name: "Shorts" }).props.accessibilityState).toEqual({ selected: true });
+});
+
+test("uses the iOS large title", async () => {
+  render(<ClosetScreen />);
+  expect(await screen.findByRole("header", { name: "Closet" })).toBeTruthy();
 });

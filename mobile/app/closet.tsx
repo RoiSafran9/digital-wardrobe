@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useState } from "react";
-import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getItems } from "../src/api/client";
@@ -9,7 +9,8 @@ import { PillButton } from "../src/components/PillButton";
 import { Rise } from "../src/motion/Rise";
 import type { ClosetItem } from "../src/api/types";
 import { categoryOf } from "../src/categories";
-import { asList, capitalize, colors, hitSlopFor, radius } from "../src/theme";
+import { asList, capitalize, colors, hitSlopFor, radius, type } from "../src/theme";
+import { PressScale } from "../src/motion/PressScale";
 
 const ALL = "All";
 
@@ -24,6 +25,12 @@ export default function ClosetScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [category, setCategory] = useState(ALL);
+  const params = useLocalSearchParams<{ category?: string }>();
+  // Home's category chips open the closet pre-filtered; normalize like everywhere else.
+  useEffect(() => {
+    if (!params.category) return;
+    setCategory(categoryOf({ facts: { category: { value: params.category } } } as never));
+  }, [params.category]);
 
   const load = useCallback(async () => {
     const response = await getItems();
@@ -49,8 +56,8 @@ export default function ClosetScreen() {
 
   const header = (
     <View style={{ paddingTop: 8, paddingBottom: 16 }}>
-      <Text style={{ fontSize: 34, color: colors.label }}>Your closet</Text>
-      <Text style={{ color: colors.secondaryLabel, fontSize: 13, marginTop: 2, marginBottom: 20 }}>
+      <Text accessibilityRole="header" style={{ ...type.largeTitle, color: colors.label }}>Closet</Text>
+      <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 2, marginBottom: 12 }}>
         {items.length === 1 ? "1 piece" : `${items.length} pieces`}
       </Text>
       {items.length > 0 ? (
@@ -66,11 +73,10 @@ export default function ClosetScreen() {
                 hitSlop={hitSlopFor(30)}
                 style={{
                   paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill,
-                  backgroundColor: active ? colors.label : "transparent",
-                  borderWidth: 1, borderColor: active ? colors.label : colors.separatorStrong,
+                  backgroundColor: active ? colors.tint : colors.card,
                 }}
               >
-                <Text style={{ color: active ? colors.background : colors.secondaryLabel, fontSize: 13 }}>{name}</Text>
+                <Text style={{ ...type.subhead, color: active ? colors.onTint : colors.label }}>{name}</Text>
               </Pressable>
             );
           })}
@@ -92,28 +98,28 @@ export default function ClosetScreen() {
         ListEmptyComponent={
           loaded && items.length === 0 ? (
             <View style={{ paddingTop: 48, alignItems: "center", gap: 8 }}>
-              <Text style={{ fontSize: 22, color: colors.label }}>Your closet is empty</Text>
-              <Text style={{ color: colors.secondaryLabel, fontSize: 14, textAlign: "center", marginBottom: 16 }}>
+              <Text style={{ ...type.title2, color: colors.label }}>Your closet is empty</Text>
+              <Text style={{ ...type.body, color: colors.secondaryLabel, textAlign: "center", marginBottom: 16 }}>
                 Photograph a piece and it'll land here as a clean catalog shot.
               </Text>
-              <PillButton label="Add a piece" variant="primary" icon="camera" onPress={() => router.push("/")} />
+              <PillButton label="Add a piece" variant="primary" icon="camera" onPress={() => router.push("/add")} />
             </View>
           ) : null
         }
         renderItem={({ item, index }) => (
           // The collection lays itself out: short stagger, capped so long closets don't wait.
           <Rise delay={Math.min(index, 8) * 30} style={{ flex: 1 / 2 }}>
-          <Pressable
+          <PressScale
             testID={`thumb-${item.run_id}-${item.item_id}`}
             onPress={() => setSelectedIndex(index)}
-            style={({ pressed }) => ({ marginBottom: 22, transform: [{ scale: pressed ? 0.97 : 1 }] })}
+            style={{ marginBottom: 22 }}
           >
-            <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: "100%", aspectRatio: 0.85 }} />
-            <Text style={{ color: colors.label, fontSize: 14, marginTop: 8 }}>{categoryOf(item)}</Text>
-            <Text style={{ color: colors.secondaryLabel, fontSize: 12, marginTop: 1 }} numberOfLines={1}>
+            <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} tile={colors.card} style={{ width: "100%", aspectRatio: 0.85 }} />
+            <Text style={{ ...type.subhead, color: colors.label, marginTop: 8 }}>{categoryOf(item)}</Text>
+            <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 1 }} numberOfLines={1}>
               {asList(item.facts.colors.value).map(capitalize).join(", ")}
             </Text>
-          </Pressable>
+          </PressScale>
           </Rise>
         )}
       />

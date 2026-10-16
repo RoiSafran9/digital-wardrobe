@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
+import { pickPhoto } from "../src/photoPicker";
 import { useRouter } from "expo-router";
 import { postRun } from "../src/api/client";
 import { useLastRun } from "../src/store/lastRun";
@@ -17,29 +17,20 @@ export default function CaptureScreen() {
 
   async function pickAndUpload(fromCamera: boolean) {
     setError(null);
-    const permission = fromCamera
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setError("permission denied — enable camera/photos access in Settings");
+    let uri: string | null;
+    try {
+      uri = await pickPhoto(fromCamera);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "couldn't open the camera");
       return;
     }
-
-    const result = fromCamera
-      ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
-      : await ImagePicker.launchImageLibraryAsync({
-          quality: 0.8,
-          // iOS gallery photos are HEIC; the backend can only decode JPEG/PNG.
-          preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
-        });
-
-    if (result.canceled || result.assets.length === 0) {
+    if (!uri) {
       return;
     }
 
     setLoading(true);
     try {
-      const run = await postRun(result.assets[0].uri);
+      const run = await postRun(uri);
       setLastRun(run);
       router.push("/results");
     } catch (e) {

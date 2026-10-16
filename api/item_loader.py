@@ -24,3 +24,23 @@ def cutout_url(item_dir: str, run_id: str, photo_name: str, item_id: str) -> str
     if not os.path.exists(os.path.join(item_dir, "cutout.png")):
         return None
     return f"/images/{run_id}/{photo_name}/{item_id}/cutout.png"
+
+
+def load_back(item_dir: str, run_id: str, photo_name: str, item_id: str):
+    """The item's back view as a BackOut, or None when it has no usable back."""
+    from api.schemas import BackOut
+    back_dir = os.path.join(item_dir, "back")
+    if not os.path.exists(os.path.join(back_dir, "generated.png")):
+        return None
+    try:
+        with open(os.path.join(back_dir, "facts.json")) as f:
+            facts = ItemFacts.model_validate_json(f.read())
+    except (OSError, ValueError):
+        return None
+    base = f"/images/{run_id}/{photo_name}/{item_id}/back"
+    text = facts.visible_text.value
+    return BackOut(
+        generated_url=f"{base}/generated.png",
+        cutout_url=f"{base}/cutout.png" if os.path.exists(os.path.join(back_dir, "cutout.png")) else None,
+        visible_text=" ".join(text) if isinstance(text, list) else text,
+    )

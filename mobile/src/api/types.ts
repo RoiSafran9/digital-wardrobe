@@ -34,6 +34,12 @@ export type RunResponse = {
   failed: string[];
 };
 
+export type BackView = {
+  generated_url: string;
+  cutout_url?: string | null;
+  visible_text: string;
+};
+
 export type ClosetItem = {
   run_id: string;
   photo_name: string;
@@ -43,6 +49,7 @@ export type ClosetItem = {
   crop_url: string;
   generated_url: string;
   cutout_url?: string | null;
+  back?: BackView | null;
 };
 
 export type ItemsResponse = {

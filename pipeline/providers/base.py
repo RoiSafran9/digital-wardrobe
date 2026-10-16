@@ -10,3 +10,6 @@ class VisionProvider(Protocol):
 @runtime_checkable
 class ImageGenProvider(Protocol):
     async def generate(self, crop_path: str, facts: ItemFacts, violations: list[str] | None) -> str: ...
+
+    async def generate_back(self, crop_path: str, front_image_path: str, facts: ItemFacts,
+                            violations: list[str] | None) -> str: ...

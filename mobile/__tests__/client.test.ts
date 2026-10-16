@@ -1,5 +1,5 @@
 import { File } from "expo-file-system";
-import { postRun, getItems, imageUrl, updateItem, deleteItem, API_BASE_URL } from "../src/api/client";
+import { postRun, getItems, imageUrl, updateItem, deleteItem, addBack, API_BASE_URL } from "../src/api/client";
 
 jest.mock("expo-file-system", () => ({
   File: jest.fn().mockImplementation((uri: string) => ({ uri, name: "fake.jpg", type: "image/jpeg" })),
@@ -111,5 +111,26 @@ describe("deleteItem", () => {
   test("throws a readable message when the server is unreachable", async () => {
     global.fetch = jest.fn().mockRejectedValue(new TypeError("Network request failed"));
     await expect(deleteItem(closetItem)).rejects.toThrow("can't reach server");
+  });
+});
+
+describe("addBack", () => {
+  afterEach(() => (global.fetch as jest.Mock).mockReset());
+
+  test("uploads the back photo as a File to the item's back endpoint", async () => {
+    const updated = { ...closetItem, back: { generated_url: "/b.png", cutout_url: null, visible_text: "" } };
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => updated });
+    const result = await addBack(closetItem, "file:///back.jpg");
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toBe(`${API_BASE_URL}/items/r1/My%20Photo/item_0/back`);
+    expect(init.method).toBe("POST");
+    expect(init.body).toBeInstanceOf(FormData);
+    expect(File).toHaveBeenCalledWith("file:///back.jpg");
+    expect(result).toEqual(updated);
+  });
+
+  test("passes the server's retake instruction through", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 400, json: async () => ({ error: "step back so the whole piece fits" }) });
+    await expect(addBack(closetItem, "file:///back.jpg")).rejects.toThrow("step back");
   });
 });

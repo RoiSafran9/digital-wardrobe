@@ -70,3 +70,15 @@ export async function deleteItem(item: ClosetItem): Promise<void> {
     await parseJsonOrThrow(response);
   }
 }
+
+export async function addBack(item: ClosetItem, photoUri: string): Promise<ClosetItem> {
+  const formData = new FormData();
+  formData.append("photo", new File(photoUri));
+  let response: Response;
+  try {
+    response = await fetch(`${itemPath(item)}/back`, { method: "POST", body: formData });
+  } catch {
+    throw new Error("can't reach server — check WiFi/IP");
+  }
+  return parseJsonOrThrow<ClosetItem>(response);
+}

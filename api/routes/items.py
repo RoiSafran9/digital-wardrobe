@@ -3,10 +3,14 @@ import os
 import re
 import shutil
 import time
-from fastapi import APIRouter
+import tempfile
+from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import JSONResponse, Response
 from api.config import runs_dir
-from api.item_loader import load_item, image_urls, cutout_url
+from api.item_loader import load_back, load_item, image_urls, cutout_url
+from api.routes.runs import ProviderFactory, get_provider_factory
+from pipeline.back import BackPhotoRejected, run_back
+from pipeline.run_log import RunLogger
 from api.schemas import COLORS, PATTERNS, ClosetItemOut, ItemPatch, ItemsResponse
 from pipeline.types import FactField
 
@@ -44,6 +48,7 @@ def _closet_item(item_dir: str, run_id: str, photo_name: str) -> ClosetItemOut |
         run_id=run_id, photo_name=photo_name, item_id=item_id, tier=result.tier, facts=facts,
         crop_url=crop_url, generated_url=generated_url,
         cutout_url=cutout_url(item_dir, run_id, photo_name, item_id),
+        back=load_back(item_dir, run_id, photo_name, item_id),
     )
 
 
@@ -110,3 +115,46 @@ def delete_item(run_id: str, photo_name: str, item_id: str):
     os.makedirs(os.path.dirname(trash), exist_ok=True)
     shutil.move(item_dir, trash)
     return Response(status_code=204)
+
+
+@router.post("/items/{run_id}/{photo_name}/{item_id}/back", response_model=ClosetItemOut)
+async def add_back(
+    run_id: str, photo_name: str, item_id: str,
+    photo: UploadFile | None = File(None),
+    provider_factory: ProviderFactory = Depends(get_provider_factory),
+):
+    item_dir = _item_dir(run_id, photo_name, item_id)
+    front = os.path.join(item_dir, "generated.png") if item_dir else None
+    if not front or not os.path.exists(front):
+        return _error(404, "item not found")
+    if photo is None or not photo.filename:
+        return _error(400, "no photo provided")
+
+    suffix = os.path.splitext(photo.filename)[1] or ".jpg"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        shutil.copyfileobj(photo.file, tmp)
+        photo_path = tmp.name
+
+    # Build the new back next to the item, then swap it in, so a failure never loses the old one.
+    staging = os.path.join(item_dir, ".back-new")
+    if os.path.exists(staging):
+        shutil.move(staging, staging + f"-{int(time.time())}")
+    logger = RunLogger(os.path.join(item_dir, "back_log.jsonl"))
+    try:
+        await run_back(photo_path, front, staging, provider_factory(logger), logger)
+    except BackPhotoRejected as e:
+        return _error(400, str(e))
+    except ValueError as e:
+        return _error(400, str(e))
+    except Exception as e:
+        return _error(500, str(e))
+    finally:
+        os.remove(photo_path)
+
+    back_dir = os.path.join(item_dir, "back")
+    if os.path.exists(back_dir):
+        trash = os.path.join(runs_dir(), TRASH_DIR, run_id, photo_name, item_id, f"back-{int(time.time())}")
+        os.makedirs(os.path.dirname(trash), exist_ok=True)
+        shutil.move(back_dir, trash)
+    shutil.move(staging, back_dir)
+    return _closet_item(item_dir, run_id, photo_name)

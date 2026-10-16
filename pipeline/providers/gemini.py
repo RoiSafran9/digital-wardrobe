@@ -107,3 +107,37 @@ class GeminiProvider:
         except Exception as e:
             self._log("stage4_generate", MODEL_IMAGE, "v4", start, "error", str(e))
             raise
+
+    async def generate_back(self, crop_path: str, front_image_path: str, facts: ItemFacts,
+                            violations: list[str] | None) -> str:
+        start = time.monotonic()
+        try:
+            with open(crop_path, "rb") as f:
+                crop_bytes = f.read()
+            with open(front_image_path, "rb") as f:
+                front_bytes = f.read()
+            template = _read_prompt("stage4_generate_back_v1.txt")
+            violations_block = ("\nPrevious attempt violations to fix:\n" + "\n".join(violations)
+                                 if violations else "")
+            prompt = template.format(facts_block=facts.model_dump_json(indent=2),
+                                      violations_block=violations_block)
+            response = self.client.models.generate_content(
+                model=MODEL_IMAGE,
+                contents=[
+                    "Image 1 — photo of the back:",
+                    {"inline_data": {"mime_type": "image/png", "data": crop_bytes}},
+                    "Image 2 — catalog image of the front:",
+                    {"inline_data": {"mime_type": "image/png", "data": front_bytes}},
+                    prompt,
+                ],
+            )
+            out_path = crop_path.rsplit(".", 1)[0] + "_generated.png"
+            image_bytes = next(p.inline_data.data for p in response.candidates[0].content.parts
+                               if p.inline_data is not None)
+            with open(out_path, "wb") as f:
+                f.write(image_bytes)
+            self._log("stage4_generate_back", MODEL_IMAGE, "v1", start, "ok")
+            return out_path
+        except Exception as e:
+            self._log("stage4_generate_back", MODEL_IMAGE, "v1", start, "error", str(e))
+            raise

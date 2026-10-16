@@ -9,6 +9,12 @@ COLORS = {"black", "white", "gray", "navy", "blue", "red", "pink", "dusty pink",
 PATTERNS = {"solid", "striped", "floral", "graphic", "plaid", "polka-dot"}
 
 
+class BackOut(BaseModel):
+    generated_url: str
+    cutout_url: str | None = None
+    visible_text: str = ""
+
+
 class ClosetItemOut(BaseModel):
     run_id: str
     photo_name: str
@@ -18,6 +24,7 @@ class ClosetItemOut(BaseModel):
     crop_url: str
     generated_url: str
     cutout_url: str | None = None
+    back: BackOut | None = None
 
 
 class ItemsResponse(BaseModel):

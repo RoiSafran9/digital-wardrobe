@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { Alert, FlatList, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { deleteItem } from "../api/client";
+import { addBack, deleteItem } from "../api/client";
+import { pickPhoto } from "../photoPicker";
+import { PillButton } from "./PillButton";
 import type { ClosetItem, RunItem } from "../api/types";
-import { addedLabel, asList, capitalize, colors, fonts } from "../theme";
+import { addedLabel, asList, capitalize, colors, fonts, radius } from "../theme";
 import { ColorSwatches } from "./ColorSwatches";
 import { GarmentImage } from "./GarmentImage";
 import { ItemEditForm } from "./ItemEditForm";
@@ -58,6 +60,7 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted }: Omit<Props,
   const { width } = useWindowDimensions();
   const [current, setCurrent] = useState(startIndex);
   const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
   const currentItem = items[current];
   const canEdit = !!onUpdated && !!currentItem && isClosetItem(currentItem);
 
@@ -126,7 +129,7 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted }: Omit<Props,
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        scrollEnabled={!editing}
+        scrollEnabled={!editing && !busy}
         extraData={editing}
         initialScrollIndex={startIndex}
         getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
@@ -149,7 +152,12 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted }: Omit<Props,
                 />
               </ScrollView>
             ) : (
-              <SheetContent item={item} onRemove={onDeleted && isClosetItem(item) ? () => confirmRemove(item) : undefined} />
+              <SheetContent
+                item={item}
+                onRemove={onDeleted && isClosetItem(item) ? () => confirmRemove(item) : undefined}
+                onUpdated={onUpdated}
+                onBusy={setBusy}
+              />
             )}
           </View>
         )}
@@ -158,16 +166,100 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted }: Omit<Props,
   );
 }
 
-function SheetContent({ item, onRemove }: { item: Item; onRemove?: () => void }) {
+function SideToggle({ side, onChange }: { side: "front" | "back"; onChange: (s: "front" | "back") => void }) {
+  return (
+    <View style={{ flexDirection: "row", alignSelf: "center", marginTop: 12, backgroundColor: colors.sunken, borderRadius: radius.pill, padding: 3 }}>
+      {(["front", "back"] as const).map((name) => {
+        const on = name === side;
+        return (
+          <Pressable
+            key={name}
+            accessibilityRole="button"
+            accessibilityLabel={capitalize(name)}
+            accessibilityState={{ selected: on }}
+            onPress={() => onChange(name)}
+            style={{ paddingHorizontal: 18, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: on ? colors.surface : "transparent" }}
+          >
+            <Text style={{ color: on ? colors.ink : colors.muted, fontSize: 13 }}>{capitalize(name)}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+type SheetContentProps = {
+  item: Item;
+  onRemove?: () => void;
+  onUpdated?: (item: ClosetItem) => void;
+  onBusy?: (busy: boolean) => void;
+};
+
+function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) {
   const { facts } = item;
   const trims = asList(facts.trims.value).filter((t) => t.toLowerCase() !== "not visible");
   const text = asList(facts.visible_text.value);
   const added = "run_id" in item ? addedLabel(item.run_id) : null;
+  const back = isClosetItem(item) ? item.back ?? null : null;
+  const [side, setSide] = useState<"front" | "back">("front");
+  const [uploading, setUploading] = useState(false);
+  const [backError, setBackError] = useState<string | null>(null);
+  const showBack = side === "back" && back !== null;
+
+  async function uploadBack(fromCamera: boolean) {
+    if (!isClosetItem(item) || !onUpdated) return;
+    setBackError(null);
+    let uri: string | null;
+    try {
+      uri = await pickPhoto(fromCamera);
+    } catch (e) {
+      setBackError(e instanceof Error ? e.message : "couldn't open the camera");
+      return;
+    }
+    if (!uri) return;
+    setUploading(true);
+    onBusy?.(true);
+    try {
+      onUpdated(await addBack(item, uri));
+      setSide("back");
+    } catch (e) {
+      setBackError(e instanceof Error ? e.message : "couldn't add the back");
+    } finally {
+      setUploading(false);
+      onBusy?.(false);
+    }
+  }
+
+  function askForBack() {
+    Alert.alert("Add the back", "Lay the item flat, back side up, with all of it in the frame.", [
+      { text: "Take photo", onPress: () => uploadBack(true) },
+      { text: "Choose from library", onPress: () => uploadBack(false) },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }
 
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 12, paddingBottom: 48 }}>
-        <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} tile={colors.paper} style={{ width: "100%", aspectRatio: 1 }} />
+        {showBack ? (
+          <GarmentImage key="back" path={back.generated_url} cutoutPath={back.cutout_url} tile={colors.paper} style={{ width: "100%", aspectRatio: 1 }} />
+        ) : (
+          <GarmentImage key="front" path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} tile={colors.paper} style={{ width: "100%", aspectRatio: 1 }} />
+        )}
+        {back ? <SideToggle side={side} onChange={setSide} /> : null}
+        {!back && onUpdated && isClosetItem(item) ? (
+          <View style={{ marginTop: 14 }}>
+            {uploading ? (
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 14 }}>
+                <ActivityIndicator color={colors.ink} />
+                <Text style={{ color: colors.inkSoft, fontSize: 14 }}>Pressing the back… up to a minute</Text>
+              </View>
+            ) : (
+              <PillButton label="Add back photo" icon="camera-reverse-outline" onPress={askForBack} />
+            )}
+          </View>
+        ) : null}
+        {backError ? <Text style={{ color: colors.danger, fontSize: 14, marginTop: 10, textAlign: "center" }}>{backError}</Text> : null}
 
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
           <Text style={{ fontFamily: fonts.serif, fontSize: 30, color: colors.ink, flexShrink: 1 }}>
@@ -192,6 +284,11 @@ function SheetContent({ item, onRemove }: { item: Item; onRemove?: () => void })
           {text.length > 0 ? (
             <FactRow label="Text">
               <FactText>{`“${text.join(" ")}”`}</FactText>
+            </FactRow>
+          ) : null}
+          {back && back.visible_text ? (
+            <FactRow label="Back text">
+              <FactText>{`“${back.visible_text}”`}</FactText>
             </FactRow>
           ) : null}
         </View>

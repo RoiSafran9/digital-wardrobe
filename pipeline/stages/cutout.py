@@ -1,4 +1,5 @@
 import threading
+import cv2
 import numpy as np
 from PIL import Image
 
@@ -24,6 +25,26 @@ def _remove(image: Image.Image) -> Image.Image:
     return remove(image, session=_session)
 
 
+def _solidify(alpha: np.ndarray) -> np.ndarray:
+    """Make everything inside the garment's outline opaque.
+
+    Background removal on a white backdrop also clears white parts of the garment itself
+    (white stripes, collars, prints). Only the outside of the outline is background, so
+    holes inside it are filled; the rim keeps its soft, anti-aliased edge.
+    """
+    h, w = alpha.shape
+    mask = (alpha > 16).astype(np.uint8)
+    # Bridge stripe ends that broke the outline, so the outline stays one closed shape.
+    k = max(3, int(0.02 * max(h, w))) | 1
+    closed = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k)))
+    contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    filled = np.zeros_like(mask)
+    big = [c for c in contours if cv2.contourArea(c) >= 0.01 * h * w]
+    cv2.drawContours(filled, big, -1, 1, thickness=cv2.FILLED)
+    interior = cv2.erode(filled, np.ones((3, 3), np.uint8), iterations=2)
+    return np.where(interior == 1, 255, alpha).astype(np.uint8)
+
+
 def run(generated_path: str, out_path: str) -> str | None:
     """Write a transparent-background, trimmed PNG of the garment.
 
@@ -33,7 +54,8 @@ def run(generated_path: str, out_path: str) -> str | None:
     try:
         image = Image.open(generated_path).convert("RGB")
         cut = _remove(image).convert("RGBA")
-        alpha = np.asarray(cut.getchannel("A"))
+        alpha = _solidify(np.asarray(cut.getchannel("A")))
+        cut.putalpha(Image.fromarray(alpha))
         coverage = float((alpha > 128).mean())
         if not MIN_COVERAGE <= coverage <= MAX_COVERAGE:
             return None

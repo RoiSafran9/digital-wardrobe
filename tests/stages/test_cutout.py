@@ -59,3 +59,29 @@ def test_never_raises_on_errors(tmp_path, monkeypatch):
     _white_with_dark_square(src)
 
     assert cutout.run(str(src), str(tmp_path / "cutout.png")) is None
+
+
+def test_white_parts_inside_the_garment_stay_opaque(tmp_path, monkeypatch):
+    # A navy shirt with white stripes on a white background: background removal also
+    # clears the white stripes. They are inside the garment's outline, so they must stay.
+    def remove_with_stripe_holes(image):
+        h, w = 200, 200
+        alpha = np.zeros((h, w), dtype=np.uint8)
+        alpha[40:160, 50:150] = 255
+        alpha[50:150:8, 52:148] = 0        # stripe holes inside the garment
+        alpha[44:46, 50:150] = 0            # a stripe running out to the garment's edge
+        rgb = np.full((h, w, 3), 255, dtype=np.uint8)
+        rgb[40:160, 50:150] = (90, 40, 30)
+        return Image.fromarray(np.dstack([rgb, alpha]), "RGBA")
+
+    monkeypatch.setattr(cutout, "_remove", remove_with_stripe_holes)
+    src = tmp_path / "generated.png"
+    _white_with_dark_square(src)
+
+    out = cutout.run(str(src), str(tmp_path / "cutout.png"))
+
+    alpha = np.asarray(Image.open(out).getchannel("A"))
+    h, w = alpha.shape
+    inner = alpha[h // 4: 3 * h // 4, w // 4: 3 * w // 4]
+    assert inner.min() == 255, "stripes inside the garment were left transparent"
+    assert alpha[0, 0] == 0 and alpha[-1, -1] == 0  # real background still removed

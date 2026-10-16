@@ -38,7 +38,9 @@ Fidelity to the owner's actual garment, not an idealized product shot. Each piec
 
 ## Brand Commitments
 
-None set beyond the product name in use ("my wardrobe"). No logo or voice guide exists.
+Standing preference: the category standard, native iOS (system font, grouped backgrounds, one blue tint),
+executed at full craft; immersion comes from motion of the garments, not decoration. Chosen in an impeccable
+direction round on 2026-10-16. Dark mode follows the system.
 
 ## Evidence on Hand
 

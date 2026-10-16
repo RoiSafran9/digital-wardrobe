@@ -20,7 +20,7 @@ export default function ClosetScreen() {
   const [items, setItems] = useState<ClosetItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [selected, setSelected] = useState<ClosetItem | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [category, setCategory] = useState(ALL);
 
   const load = useCallback(async () => {
@@ -97,10 +97,10 @@ export default function ClosetScreen() {
             </View>
           ) : null
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <Pressable
             testID={`thumb-${item.run_id}-${item.item_id}`}
-            onPress={() => setSelected(item)}
+            onPress={() => setSelectedIndex(index)}
             style={({ pressed }) => ({ flex: 1 / 2, marginBottom: 18, transform: [{ scale: pressed ? 0.97 : 1 }] })}
           >
             <GarmentImage path={item.generated_url} style={{ width: "100%", aspectRatio: 0.85 }} />
@@ -111,7 +111,8 @@ export default function ClosetScreen() {
           </Pressable>
         )}
       />
-      <ItemSheet item={selected} onClose={() => setSelected(null)} />
+      {/* Swipes through the grid as currently filtered. */}
+      <ItemSheet items={visible} index={selectedIndex} onClose={() => setSelectedIndex(null)} />
     </SafeAreaView>
   );
 }

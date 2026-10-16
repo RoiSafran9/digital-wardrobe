@@ -6,13 +6,12 @@ import { ItemCard } from "../src/components/ItemCard";
 import { ItemSheet } from "../src/components/ItemSheet";
 import { PillButton } from "../src/components/PillButton";
 import { useLastRun } from "../src/store/lastRun";
-import type { RunItem } from "../src/api/types";
 import { colors, fonts } from "../src/theme";
 
 export default function ResultsScreen() {
   const { lastRun } = useLastRun();
   const router = useRouter();
-  const [selected, setSelected] = useState<RunItem | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   if (!lastRun || lastRun.items.length === 0) {
     const retake = lastRun !== null;
@@ -46,7 +45,7 @@ export default function ResultsScreen() {
             </Text>
           </View>
         }
-        renderItem={({ item }) => <ItemCard item={item} onPress={() => setSelected(item)} />}
+        renderItem={({ item, index }) => <ItemCard item={item} onPress={() => setSelectedIndex(index)} />}
         ListFooterComponent={
           <View style={{ gap: 12 }}>
             {lastRun.failed.length > 0 ? (
@@ -58,7 +57,7 @@ export default function ResultsScreen() {
           </View>
         }
       />
-      <ItemSheet item={selected} onClose={() => setSelected(null)} />
+      <ItemSheet items={lastRun.items} index={selectedIndex} onClose={() => setSelectedIndex(null)} />
     </SafeAreaView>
   );
 }

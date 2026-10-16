@@ -1,5 +1,5 @@
-import React from "react";
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import React, { useState } from "react";
+import { FlatList, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { ClosetItem, RunItem } from "../api/types";
 import { addedLabel, asList, capitalize, colors, fonts } from "../theme";
@@ -27,23 +27,31 @@ function FactText({ children }: { children: string }) {
   return <Text style={{ color: colors.ink, fontSize: 14, textAlign: "right" }}>{children}</Text>;
 }
 
-export function ItemSheet({ item, onClose }: { item: Item | null; onClose: () => void }) {
+// Opens on items[index]; swipe left/right to page through the rest of the list.
+export function ItemSheet({ items, index, onClose }: { items: Item[]; index: number | null; onClose: () => void }) {
+  const visible = index !== null && index >= 0 && index < items.length;
   return (
-    <Modal visible={item !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      {item ? <SheetContent item={item} onClose={onClose} /> : null}
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      {visible ? <Pager items={items} startIndex={index} onClose={onClose} /> : null}
     </Modal>
   );
 }
 
-function SheetContent({ item, onClose }: { item: Item; onClose: () => void }) {
-  const { facts } = item;
-  const trims = asList(facts.trims.value).filter((t) => t.toLowerCase() !== "not visible");
-  const text = asList(facts.visible_text.value);
-  const added = "run_id" in item ? addedLabel(item.run_id) : null;
+function Pager({ items, startIndex, onClose }: { items: Item[]; startIndex: number; onClose: () => void }) {
+  const { width } = useWindowDimensions();
+  const [current, setCurrent] = useState(startIndex);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 20, paddingTop: 16 }}>
+      <View
+        style={{
+          flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+          paddingHorizontal: 20, paddingTop: 16,
+        }}
+      >
+        <Text style={{ color: colors.muted, fontSize: 13, fontVariant: ["tabular-nums"] }}>
+          {items.length > 1 ? `${current + 1} / ${items.length}` : ""}
+        </Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close"
@@ -58,6 +66,37 @@ function SheetContent({ item, onClose }: { item: Item; onClose: () => void }) {
         </Pressable>
       </View>
 
+      <FlatList
+        testID="item-pager"
+        data={items}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        initialScrollIndex={startIndex}
+        getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
+        keyExtractor={(item, i) => ("run_id" in item ? `${item.run_id}-${item.item_id}` : `${item.item_id}-${i}`)}
+        onMomentumScrollEnd={(e) => {
+          const { contentOffset, layoutMeasurement } = e.nativeEvent;
+          setCurrent(Math.round(contentOffset.x / layoutMeasurement.width));
+        }}
+        renderItem={({ item }) => (
+          <View style={{ width }}>
+            <SheetContent item={item} />
+          </View>
+        )}
+      />
+    </View>
+  );
+}
+
+function SheetContent({ item }: { item: Item }) {
+  const { facts } = item;
+  const trims = asList(facts.trims.value).filter((t) => t.toLowerCase() !== "not visible");
+  const text = asList(facts.visible_text.value);
+  const added = "run_id" in item ? addedLabel(item.run_id) : null;
+
+  return (
+    <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 12, paddingBottom: 48 }}>
         <GarmentImage path={item.generated_url} tile={colors.paper} style={{ width: "100%", aspectRatio: 1 }} />
 

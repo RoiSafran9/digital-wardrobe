@@ -210,10 +210,9 @@ class GeminiProvider:
             for name, side in (("FRONT", refs.front), ("BACK", refs.back)):
                 if side is None:
                     continue
+                # Catalog images only: given the raw photo, the model returned it as-is, couch and all.
                 if side.catalog:
                     contents += [f"Reference — {name}, flat-lay catalog image:", _png_part(side.catalog)]
-                if side.photo:
-                    contents += [f"Reference — {name}, original photo:", _png_part(side.photo)]
             for name, path in anchors.items():
                 contents += [ANCHOR_LABELS[name], _png_part(path)]
             contents.append(_read_prompt("turn_view_v2.txt").format(

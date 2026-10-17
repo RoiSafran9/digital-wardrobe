@@ -51,7 +51,7 @@ def _refs(tmp_path, back=True, back_printed=True):
 
 
 @pytest.mark.asyncio
-async def test_back_is_made_before_the_sides_and_each_view_gets_the_right_anchors(tmp_path):
+async def test_back_is_made_before_the_sides_and_the_front_anchors_the_others(tmp_path):
     gen = FakeImageGen()
     out = str(tmp_path / "turn")
 
@@ -61,8 +61,9 @@ async def test_back_is_made_before_the_sides_and_each_view_gets_the_right_anchor
     assert [c["view"] for c in gen.calls] == ["front", "back", "right", "left"]
     assert gen.calls[0]["anchors"] == {}
     assert gen.calls[1]["anchors"] == {"front": os.path.join(out, "front.png")}
+    # The back ghost's large print leaked onto the sleeves when it anchored the profiles.
     for side in gen.calls[2:]:
-        assert side["anchors"] == {"front": os.path.join(out, "front.png"), "back": os.path.join(out, "back.png")}
+        assert side["anchors"] == {"front": os.path.join(out, "front.png")}
     for v in TURN_ORDER:
         assert os.path.exists(os.path.join(out, f"{v}.png"))
         assert os.path.exists(os.path.join(out, f"{v}_cutout.png"))

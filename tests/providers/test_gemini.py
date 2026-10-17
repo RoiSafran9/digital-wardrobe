@@ -133,16 +133,19 @@ async def _call(tmp_path, refs, view, anchors, retry_note=None):
 
 
 @pytest.mark.asyncio
-async def test_every_photo_of_the_item_goes_in_with_a_label_saying_which_side_it_shows(monkeypatch, tmp_path):
+async def test_both_sides_go_in_as_catalog_images_labelled_by_side(monkeypatch, tmp_path):
+    # Raw photos were copied back verbatim (couch background and all), so only the faithful
+    # catalog images of each side are sent; their printed text travels in the prompt.
     monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
     data, labels, prompt, contents = await _call(tmp_path, _refs(tmp_path), "front", {})
     assert data == b"view"
-    assert sum(isinstance(c, dict) for c in contents) == 4          # front + back, catalog + photo
+    assert sum(isinstance(c, dict) for c in contents) == 2
     assert any("FRONT" in l and "catalog" in l for l in labels)
-    assert any("FRONT" in l and "photo" in l for l in labels)
     assert any("BACK" in l and "catalog" in l for l in labels)
-    assert any("BACK" in l and "photo" in l for l in labels)
+    assert not any("photo" in l for l in labels)
     assert "GHOST MANNEQUIN" in prompt
+    assert "never a photo background" in prompt
+    assert "no mannequin neck" in prompt
 
 
 @pytest.mark.asyncio
@@ -159,9 +162,9 @@ async def test_the_back_view_names_the_back_print_and_uses_the_front_only_for_sh
 @pytest.mark.asyncio
 async def test_side_views_never_copy_a_print_onto_the_side(monkeypatch, tmp_path):
     monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
-    anchors = {"front": _png(tmp_path / "gf.png"), "back": _png(tmp_path / "gb.png")}
+    anchors = {"front": _png(tmp_path / "gf.png")}
     _, labels, prompt, _ = await _call(tmp_path, _refs(tmp_path), "right", anchors)
-    assert sum("already rendered" in l.lower() for l in labels) == 2
+    assert sum("already rendered" in l.lower() for l in labels) == 1
     assert "RIGHT" in prompt.split("VIEW:")[1]
     assert "never copy a print onto the sleeve or side" in prompt
 

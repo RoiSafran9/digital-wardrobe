@@ -2,6 +2,7 @@ Render this exact garment as a professional e-commerce GHOST MANNEQUIN (invisibl
 the garment is worn by an invisible body, so it has natural 3D volume, shoulders, chest and drape, but no person
 or mannequin is visible; the inside of the neckline is visible. Pure white background (#FFFFFF), soft even studio
 light, the whole garment in frame, centered, filling about 80% of the frame, camera at chest height.
+The background is always pure white, never a photo background; no mannequin neck, stand or hanger.
 Keep EXACTLY the same garment: color and shade, fabric, fit and length, sleeve length, collar. Every print and text
 appears letter for letter only on the side where it appears in the references, in the same place and size.
 Do not add anything that is not in the reference images.

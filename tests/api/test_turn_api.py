@@ -152,3 +152,22 @@ def test_missing_item_is_404(tmp_path, make_client):
 def test_status_before_any_job_is_404(tmp_path, make_client):
     _write_item(tmp_path)
     assert make_client(FakeImageGen()).get(URL).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_an_outdated_job_never_writes_into_a_newer_one(tmp_path, make_client):
+    # A slow job outlives the stale window, the owner retries, then the old job finishes:
+    # its views and status must not land in the new job's folder.
+    from api.routes.turn import _make_turn
+    item_dir = _write_item(tmp_path)
+    started = datetime.now(timezone.utc).isoformat()
+    turn_dir = item_dir / "turn"
+    turn_dir.mkdir()
+    (turn_dir / "status.json").write_text(json.dumps(
+        {"state": "running", "error": None, "started_at": started, "job": "new"}))
+
+    await _make_turn(str(item_dir / "generated.png"), None, str(turn_dir), started, "old", FakeImageGen())
+
+    status = json.loads((turn_dir / "status.json").read_text())
+    assert status["state"] == "running" and status["job"] == "new"
+    assert sorted(os.listdir(turn_dir)) == ["status.json"]

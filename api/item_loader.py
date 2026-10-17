@@ -53,9 +53,19 @@ STALE_AFTER_SECONDS = 5 * 60
 INTERRUPTED = "Interrupted — try again"
 
 
-def write_turn_status(turn_dir: str, state: str, started_at: str, error: str | None = None) -> None:
+def write_turn_status(turn_dir: str, state: str, started_at: str, error: str | None = None,
+                      job: str | None = None) -> None:
     with open(os.path.join(turn_dir, "status.json"), "w") as f:
-        json.dump({"state": state, "error": error, "started_at": started_at}, f)
+        json.dump({"state": state, "error": error, "started_at": started_at, "job": job}, f)
+
+
+def turn_job(turn_dir: str) -> str | None:
+    """Id of the job that currently owns turn_dir, or None."""
+    try:
+        with open(os.path.join(turn_dir, "status.json")) as f:
+            return json.load(f).get("job")
+    except (OSError, ValueError, AttributeError):
+        return None
 
 
 def load_turn(item_dir: str, run_id: str, photo_name: str, item_id: str):

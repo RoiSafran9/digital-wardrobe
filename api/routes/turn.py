@@ -1,10 +1,11 @@
 import os
 import shutil
 import time
+import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends
 from api.config import runs_dir
-from api.item_loader import load_turn, write_turn_status
+from api.item_loader import load_turn, turn_job, write_turn_status
 from api.routes.items import TRASH_DIR, _error, _item_dir
 from api.routes.runs import ProviderFactory, get_provider_factory
 from api.schemas import TurnOut
@@ -14,16 +15,25 @@ from pipeline.turn import TurnFailed, run_turn
 router = APIRouter()
 
 
-async def _make_turn(front: str, back: str | None, turn_dir: str, started_at: str, imagegen) -> None:
+async def _make_turn(front: str, back: str | None, turn_dir: str, started_at: str, job: str, imagegen) -> None:
+    # Views are made in the job's own folder and published only if this job still owns turn/:
+    # a job that outlived the stale window must never write into the retry that replaced it.
+    work = os.path.join(turn_dir, f".job-{job}")
     try:
-        await run_turn(front, back, turn_dir, imagegen)
-    except TurnFailed as e:
-        write_turn_status(turn_dir, "failed", started_at, str(e))
+        await run_turn(front, back, work, imagegen)
+    except Exception as e:
+        shutil.rmtree(work, ignore_errors=True)
+        if turn_job(turn_dir) == job:
+            message = str(e) if isinstance(e, TurnFailed) else "couldn't create the 360 view — try again"
+            write_turn_status(turn_dir, "failed", started_at, message, job)
         return
-    except Exception:
-        write_turn_status(turn_dir, "failed", started_at, "couldn't create the 360 view — try again")
+    if turn_job(turn_dir) != job:
+        shutil.rmtree(work, ignore_errors=True)
         return
-    write_turn_status(turn_dir, "done", started_at)
+    for name in os.listdir(work):
+        os.replace(os.path.join(work, name), os.path.join(turn_dir, name))
+    os.rmdir(work)
+    write_turn_status(turn_dir, "done", started_at, job=job)
 
 
 @router.post("/items/{run_id}/{photo_name}/{item_id}/turn", status_code=202, response_model=TurnOut)
@@ -47,11 +57,12 @@ async def start_turn(
         shutil.move(turn_dir, trash)
     os.makedirs(turn_dir)
     started_at = datetime.now(timezone.utc).isoformat()
-    write_turn_status(turn_dir, "running", started_at)
+    job = uuid.uuid4().hex
+    write_turn_status(turn_dir, "running", started_at, job=job)
 
     back = os.path.join(item_dir, "back", "generated.png")
     imagegen = provider_factory(RunLogger(os.path.join(item_dir, "turn_log.jsonl"))).imagegen
-    background.add_task(_make_turn, front, back if os.path.exists(back) else None, turn_dir, started_at, imagegen)
+    background.add_task(_make_turn, front, back if os.path.exists(back) else None, turn_dir, started_at, job, imagegen)
     return TurnOut(state="running")
 
 

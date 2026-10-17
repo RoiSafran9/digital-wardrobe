@@ -51,3 +51,17 @@ async def test_works_without_a_back(tmp_path):
 async def test_a_failed_view_raises_turn_failed_with_a_readable_message(tmp_path):
     with pytest.raises(TurnFailed, match="try again"):
         await run_turn("front.png", None, str(tmp_path / "turn"), FakeImageGen(fail_on="back"))
+
+
+@pytest.mark.asyncio
+async def test_a_hung_model_call_times_out_instead_of_running_forever(tmp_path, monkeypatch):
+    import asyncio
+    import pipeline.turn as turn
+
+    class Hung:
+        async def generate_view(self, *args):
+            await asyncio.sleep(5)
+
+    monkeypatch.setattr(turn, "VIEW_TIMEOUT_SECONDS", 0.01)
+    with pytest.raises(TurnFailed):
+        await run_turn("front.png", None, str(tmp_path / "turn"), Hung())

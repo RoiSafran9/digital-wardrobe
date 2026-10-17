@@ -10,17 +10,17 @@ from api.routes.items import TRASH_DIR, _error, _item_dir
 from api.routes.runs import ProviderFactory, get_provider_factory
 from api.schemas import TurnOut
 from pipeline.run_log import RunLogger
-from pipeline.turn import TurnFailed, run_turn
+from pipeline.turn import TurnFailed, TurnRefs, refs_for_item, run_turn
 
 router = APIRouter()
 
 
-async def _make_turn(front: str, back: str | None, turn_dir: str, started_at: str, job: str, imagegen) -> None:
+async def _make_turn(refs: TurnRefs, turn_dir: str, started_at: str, job: str, imagegen) -> None:
     # Views are made in the job's own folder and published only if this job still owns turn/:
     # a job that outlived the stale window must never write into the retry that replaced it.
     work = os.path.join(turn_dir, f".job-{job}")
     try:
-        await run_turn(front, back, work, imagegen)
+        await run_turn(refs, work, imagegen)
     except Exception as e:
         shutil.rmtree(work, ignore_errors=True)
         if turn_job(turn_dir) == job:
@@ -60,9 +60,8 @@ async def start_turn(
     job = uuid.uuid4().hex
     write_turn_status(turn_dir, "running", started_at, job=job)
 
-    back = os.path.join(item_dir, "back", "generated.png")
     imagegen = provider_factory(RunLogger(os.path.join(item_dir, "turn_log.jsonl"))).imagegen
-    background.add_task(_make_turn, front, back if os.path.exists(back) else None, turn_dir, started_at, job, imagegen)
+    background.add_task(_make_turn, refs_for_item(item_dir), turn_dir, started_at, job, imagegen)
     return TurnOut(state="running")
 
 

@@ -8,7 +8,7 @@ class FakeVision:
 class FakeImageGen:
     async def generate(self, crop_path, facts, violations, complete_edges=False): raise NotImplementedError
     async def generate_back(self, crop_path, front_image_path, facts, violations, complete_edges=False): raise NotImplementedError
-    async def generate_view(self, front_path, back_path, view, anchor_path=None): raise NotImplementedError
+    async def generate_view(self, refs, view, anchors, retry_note=None): raise NotImplementedError
 
 
 def test_fake_vision_satisfies_protocol():

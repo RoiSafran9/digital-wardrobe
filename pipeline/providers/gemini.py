@@ -39,14 +39,10 @@ Do not invent pockets, zips, prints or trims in the completed areas.
 FRAME_EDGE_MARGIN = 5
 
 
-# Ghost-mannequin angles for the 360 view, in turn order.
-TURN_VIEWS = {
-    "front": "VIEW: straight-on FRONT view (0 degrees).",
-    "right": ("VIEW: exact RIGHT SIDE profile (90 degrees): we see the garment's right side, the side seam and "
-              "right sleeve; front prints are only barely visible at the edge."),
-    "back": "VIEW: straight-on BACK view (180 degrees), matching the back reference image.",
-    "left": "VIEW: exact LEFT SIDE profile (270 degrees): we see the garment's left side, the side seam and left sleeve.",
-}
+# --- 360 "on body" views ---------------------------------------------------------------
+
+SIDE_RULE = ("Prints sit on the front and back faces, so from the side only their edges may show; "
+             "never copy a print onto the sleeve or side.")
 
 NO_BACK_BLOCK = ("There is no image of the back. Show a plain back in the same fabric and color; "
                  "do not invent prints, text or details on it.\n")
@@ -55,8 +51,36 @@ NO_BACK_BLOCK = ("There is no image of the back. Show a plain back in the same f
 BACK_VIEW_WITHOUT_PHOTO = ("VIEW: straight-on BACK view (180 degrees). No image of the back exists: show a plain back "
                            "in the same fabric and color, with no prints, text or details.")
 
-ANCHOR_LABEL = ("This is the SAME garment already rendered as a ghost mannequin from the front; "
-                "keep its exact volume, fit and proportions:")
+ANCHOR_LABELS = {
+    "front": ("Already rendered as a ghost mannequin — FRONT view. Use it only for volume, fit and proportions; "
+              "it does not show the back:"),
+    "back": "Already rendered as a ghost mannequin — BACK view. Use it only for volume, fit and proportions:",
+}
+
+
+def _view_block(view: str, refs) -> str:
+    if view == "front":
+        return "VIEW: straight-on FRONT view (0 degrees). Show the front exactly as in the FRONT references."
+    if view == "back":
+        if refs.back is None:
+            return BACK_VIEW_WITHOUT_PHOTO
+        printed = (f' The back print "{refs.back.text}" must be fully visible, letter for letter, in the same size '
+                   "and position." if refs.back.text else "")
+        return ("VIEW: straight-on BACK view (180 degrees). Reproduce the BACK references exactly." + printed +
+                " Do not copy the front print onto the back.")
+    side = "RIGHT" if view == "right" else "LEFT"
+    angle = 90 if view == "right" else 270
+    return (f"VIEW: exact {side} SIDE profile ({angle} degrees): we see the garment's {view} side, the side seam "
+            f"and {view} sleeve. {SIDE_RULE}")
+
+
+def _prints_block(refs) -> str:
+    front = f'"{refs.front.text}"' if refs.front.text else "plain, no print"
+    lines = [f"PRINTS — FRONT: {front} (as in the FRONT references)."]
+    if refs.back is not None:
+        back = f'"{refs.back.text}"' if refs.back.text else "plain, no print"
+        lines.append(f"PRINTS — BACK: {back} (as in the BACK references, as large and centered as photographed).")
+    return "\n".join(lines) + "\n"
 
 
 def _png_part(path: str) -> dict:
@@ -178,23 +202,31 @@ class GeminiProvider:
             self._log("stage4_generate_back", MODEL_IMAGE, "v2", start, "error", str(e))
             raise
 
-    async def generate_view(self, front_path: str, back_path: str | None, view: str,
-                            anchor_path: str | None = None) -> bytes:
+    async def generate_view(self, refs, view: str, anchors: dict[str, str],
+                            retry_note: str | None = None) -> bytes:
         start = time.monotonic()
         try:
-            contents: list = ["Reference: flat-lay catalog image of the FRONT:", _png_part(front_path)]
-            if back_path:
-                contents += ["Reference: flat-lay catalog image of the BACK:", _png_part(back_path)]
-            if anchor_path:
-                contents += [ANCHOR_LABEL, _png_part(anchor_path)]
-            contents.append(_read_prompt("turn_view_v1.txt").format(
-                back_block="" if back_path else NO_BACK_BLOCK, view_block=BACK_VIEW_WITHOUT_PHOTO if view == "back" and not back_path else TURN_VIEWS[view]))
+            contents: list = []
+            for name, side in (("FRONT", refs.front), ("BACK", refs.back)):
+                if side is None:
+                    continue
+                if side.catalog:
+                    contents += [f"Reference — {name}, flat-lay catalog image:", _png_part(side.catalog)]
+                if side.photo:
+                    contents += [f"Reference — {name}, original photo:", _png_part(side.photo)]
+            for name, path in anchors.items():
+                contents += [ANCHOR_LABELS[name], _png_part(path)]
+            contents.append(_read_prompt("turn_view_v2.txt").format(
+                prints_block=_prints_block(refs),
+                back_block="" if refs.back is not None else NO_BACK_BLOCK,
+                view_block=_view_block(view, refs),
+                retry_block="\n" + retry_note if retry_note else ""))
             # Async client: the 360 job runs in the background while the app polls the same server.
             response = await self.client.aio.models.generate_content(model=MODEL_IMAGE, contents=contents)
             data = next(p.inline_data.data for p in response.candidates[0].content.parts
                         if p.inline_data is not None)
-            self._log("turn_view", MODEL_IMAGE, "v1", start, "ok")
+            self._log("turn_view", MODEL_IMAGE, "v2", start, "ok")
             return data
         except Exception as e:
-            self._log("turn_view", MODEL_IMAGE, "v1", start, "error", str(e))
+            self._log("turn_view", MODEL_IMAGE, "v2", start, "error", str(e))
             raise

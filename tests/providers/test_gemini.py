@@ -112,58 +112,73 @@ def _png(path):
     return str(path)
 
 
-@pytest.mark.asyncio
-async def test_generate_view_sends_front_back_and_anchor_with_the_view(monkeypatch, tmp_path):
-    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
-    from pipeline.providers.gemini import GeminiProvider, TURN_VIEWS
-    front, back, anchor = _png(tmp_path / "f.png"), _png(tmp_path / "b.png"), _png(tmp_path / "a.png")
+def _refs(tmp_path, back=True):
+    from pipeline.turn import SideRef, TurnRefs
+    front = SideRef(catalog=_png(tmp_path / "f.png"), photo=_png(tmp_path / "fc.png"), text="90 EASTERN DIVISION")
+    if not back:
+        return TurnRefs(front=front, back=None)
+    return TurnRefs(front=front, back=SideRef(catalog=_png(tmp_path / "b.png"), photo=_png(tmp_path / "bc.png"),
+                                             text="DOME 90 EASTERN DIVISION"))
 
+
+async def _call(tmp_path, refs, view, anchors, retry_note=None):
+    from pipeline.providers.gemini import GeminiProvider
     with patch("pipeline.providers.gemini.genai.Client") as MockClient:
         call = AsyncMock(return_value=_image_response(b"view"))
         MockClient.return_value.aio.models.generate_content = call
-        data = await GeminiProvider().generate_view(front, back, "right", anchor)
-
-    assert data == b"view"
-    contents = call.call_args.kwargs["contents"]
-    labels = [c for c in contents if isinstance(c, str)]
-    assert any("FRONT" in l for l in labels[:-1])
-    assert any("BACK" in l for l in labels[:-1])
-    assert any("ghost mannequin from the front" in l for l in labels[:-1])
-    assert TURN_VIEWS["right"] in contents[-1]
-    assert "GHOST MANNEQUIN" in contents[-1]
+        data = await GeminiProvider().generate_view(refs, view, anchors, retry_note)
     assert call.call_args.kwargs["model"] == "gemini-2.5-flash-image"
+    contents = call.call_args.kwargs["contents"]
+    return data, [c for c in contents[:-1] if isinstance(c, str)], contents[-1], contents
+
+
+@pytest.mark.asyncio
+async def test_every_photo_of_the_item_goes_in_with_a_label_saying_which_side_it_shows(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    data, labels, prompt, contents = await _call(tmp_path, _refs(tmp_path), "front", {})
+    assert data == b"view"
+    assert sum(isinstance(c, dict) for c in contents) == 4          # front + back, catalog + photo
+    assert any("FRONT" in l and "catalog" in l for l in labels)
+    assert any("FRONT" in l and "photo" in l for l in labels)
+    assert any("BACK" in l and "catalog" in l for l in labels)
+    assert any("BACK" in l and "photo" in l for l in labels)
+    assert "GHOST MANNEQUIN" in prompt
+
+
+@pytest.mark.asyncio
+async def test_the_back_view_names_the_back_print_and_uses_the_front_only_for_shape(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    anchors = {"front": _png(tmp_path / "ghost_front.png")}
+    _, labels, prompt, _ = await _call(tmp_path, _refs(tmp_path), "back", anchors)
+    anchor_label = next(l for l in labels if "already rendered" in l.lower())
+    assert "FRONT" in anchor_label and "does not show the back" in anchor_label
+    assert "DOME 90 EASTERN DIVISION" in prompt
+    assert "BACK" in prompt.split("VIEW:")[1]
+
+
+@pytest.mark.asyncio
+async def test_side_views_never_copy_a_print_onto_the_side(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    anchors = {"front": _png(tmp_path / "gf.png"), "back": _png(tmp_path / "gb.png")}
+    _, labels, prompt, _ = await _call(tmp_path, _refs(tmp_path), "right", anchors)
+    assert sum("already rendered" in l.lower() for l in labels) == 2
+    assert "RIGHT" in prompt.split("VIEW:")[1]
+    assert "never copy a print onto the sleeve or side" in prompt
 
 
 @pytest.mark.asyncio
 async def test_generate_view_without_back_says_so(monkeypatch, tmp_path):
+    from pipeline.providers.gemini import NO_BACK_BLOCK
     monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
-    from pipeline.providers.gemini import GeminiProvider, NO_BACK_BLOCK
-    front = _png(tmp_path / "f.png")
-
-    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
-        call = AsyncMock(return_value=_image_response())
-        MockClient.return_value.aio.models.generate_content = call
-        await GeminiProvider().generate_view(front, None, "back")
-
-    contents = call.call_args.kwargs["contents"]
-    assert not any(isinstance(c, str) and "image of the BACK" in c for c in contents)
-    assert NO_BACK_BLOCK.strip() in contents[-1]
+    _, labels, prompt, contents = await _call(tmp_path, _refs(tmp_path, back=False), "back", {"front": _png(tmp_path / "g.png")})
+    assert not any("BACK" in l and "catalog" in l for l in labels)
+    assert NO_BACK_BLOCK.strip() in prompt
+    assert "no prints, text or details" in prompt.split("VIEW:")[1]
+    assert "back reference" not in prompt
 
 
 @pytest.mark.asyncio
-async def test_back_view_without_a_back_photo_never_asks_for_the_missing_reference(monkeypatch, tmp_path):
-    # Fidelity: with no back photo the model must not be told to match a back image, nor to
-    # carry prints "in the same place" — that is how a front graphic gets copied onto the back.
+async def test_a_retry_note_is_added_to_the_prompt(monkeypatch, tmp_path):
     monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
-    from pipeline.providers.gemini import GeminiProvider
-    front = _png(tmp_path / "f.png")
-
-    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
-        call = AsyncMock(return_value=_image_response())
-        MockClient.return_value.aio.models.generate_content = call
-        await GeminiProvider().generate_view(front, None, "back", front)
-
-    prompt = call.call_args.kwargs["contents"][-1]
-    assert "back reference image" not in prompt
-    assert "no prints, text or details" in prompt
-    assert "on the side where it appears" in prompt
+    _, _, prompt, _ = await _call(tmp_path, _refs(tmp_path), "back", {}, retry_note="The back print is missing.")
+    assert prompt.rstrip().endswith("The back print is missing.")

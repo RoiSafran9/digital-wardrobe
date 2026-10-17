@@ -17,10 +17,10 @@ def _png_bytes():
 class FakeImageGen:
     def __init__(self, fail=False):
         self.fail = fail
-        self.backs = []
+        self.refs = []
 
-    async def generate_view(self, front_path, back_path, view, anchor_path=None):
-        self.backs.append(back_path)
+    async def generate_view(self, refs, view, anchors, retry_note=None):
+        self.refs.append(refs)
         if self.fail:
             raise RuntimeError("quota")
         return _png_bytes()
@@ -86,9 +86,11 @@ def test_uses_the_back_image_when_the_item_has_one(tmp_path, make_client):
     item_dir = _write_item(tmp_path)
     (item_dir / "back").mkdir()
     cv2.imwrite(str(item_dir / "back" / "generated.png"), np.zeros((10, 10, 3), dtype=np.uint8))
+    cv2.imwrite(str(item_dir / "back" / "crop.png"), np.zeros((10, 10, 3), dtype=np.uint8))
     gen = FakeImageGen()
     make_client(gen).post(URL)
-    assert gen.backs[0] == str(item_dir / "back" / "generated.png")
+    assert gen.refs[0].back.catalog == str(item_dir / "back" / "generated.png")
+    assert gen.refs[0].back.photo == str(item_dir / "back" / "crop.png")
 
 
 def test_closet_lists_the_finished_turn(tmp_path, make_client):
@@ -166,7 +168,8 @@ async def test_an_outdated_job_never_writes_into_a_newer_one(tmp_path, make_clie
     (turn_dir / "status.json").write_text(json.dumps(
         {"state": "running", "error": None, "started_at": started, "job": "new"}))
 
-    await _make_turn(str(item_dir / "generated.png"), None, str(turn_dir), started, "old", FakeImageGen())
+    from pipeline.turn import refs_for_item
+    await _make_turn(refs_for_item(str(item_dir)), str(turn_dir), started, "old", FakeImageGen())
 
     status = json.loads((turn_dir / "status.json").read_text())
     assert status["state"] == "running" and status["job"] == "new"

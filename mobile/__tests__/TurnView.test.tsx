@@ -15,7 +15,7 @@ function turner() {
 // Touches the way the responder system delivers them (PanResponder reads touchHistory).
 let clock = 1;
 function touchAt(x: number, startX: number) {
-  const t = clock++;
+  const t = (clock += 1000);   // slow, deliberate drags: no fling
   return {
     nativeEvent: { touches: [], changedTouches: [], pageX: x, pageY: 0, timestamp: t },
     touchHistory: {
@@ -103,4 +103,24 @@ test("a drag taken away by the system settles on a view", () => {
   fireEvent(turner(), "responderMove", touchAt(100, 200));
   fireEvent(turner(), "responderTerminate", touchAt(100, 200));
   expect(turner().props.accessibilityValue).toEqual({ text: "Right side" });
+});
+
+test("a quick flick keeps the garment spinning past the next side", () => {
+  render(<TurnView views={views} />);
+  const at = (x: number, t: number, prevX: number) => ({
+    nativeEvent: { touches: [], changedTouches: [] },
+    touchHistory: {
+      numberActiveTouches: 1, indexOfSingleActiveTouch: 0, mostRecentTimeStamp: t,
+      touchBank: [{ touchActive: true, startPageX: 300, startPageY: 0, startTimeStamp: 0,
+        currentPageX: x, currentPageY: 0, currentTimeStamp: t, previousPageX: prevX, previousPageY: 0, previousTimeStamp: t - 10 }],
+    },
+  });
+  const base = (clock += 1000);
+  fireEvent(turner(), "responderGrant", at(300, base, 300));
+  // PanResponder measures speed from the second move on, as with a real finger.
+  fireEvent(turner(), "responderMove", at(296, base + 5, 300));
+  fireEvent(turner(), "responderMove", at(290, base + 15, 296));   // only 10pt, but fast
+  fireEvent(turner(), "responderRelease", at(290, base + 15, 296));
+  // A slow 10pt drag would settle back on Front; the flick carries it two sides round.
+  expect(turner().props.accessibilityValue).toEqual({ text: "Back" });
 });

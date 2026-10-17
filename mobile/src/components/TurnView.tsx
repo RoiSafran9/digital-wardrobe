@@ -1,10 +1,10 @@
-import React, { useMemo, useRef, useState } from "react";
-import { PanResponder, Text, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Animated, PanResponder, Text, View } from "react-native";
 import { GarmentImage } from "./GarmentImage";
 import { colors, type } from "../theme";
 import { useReducedMotion } from "../useReducedMotion";
 import { Rise } from "../motion/Rise";
-import { dragPosition, opacityFor, snap, wrap } from "../turn";
+import { dragPosition, faceFor, flingTarget, wrap } from "../turn";
 import { haptics } from "../haptics";
 
 export type TurnFrame = { label: string; path: string; cutoutPath?: string | null };
@@ -19,29 +19,63 @@ type Props = {
 // Less movement than this on release is a tap, not a drag.
 const TAP_SLOP = 8;
 
-// The garment on an invisible body: drag sideways to turn it, tap to step one view.
-// Every view stays mounted (stacked) so turning is instant; drag progress crossfades neighbours.
+// The garment on an invisible body, on a turntable: drag sideways and it turns with the finger,
+// flick and it keeps spinning, tap to turn one side. Every view stays mounted (stacked) so
+// turning never waits on the network.
 export function TurnView({ views, label, onDragActive }: Props) {
   const n = views.length;
   const reduced = useReducedMotion();
   const [index, setIndex] = useState(0);
-  const [pos, setPos] = useState(0);          // fractional position while dragging
+  const [pos, setPos] = useState(0);          // fractional, unwrapped turn position
+  const spin = useRef(new Animated.Value(0)).current;
   const dragging = useRef(false);
   const start = useRef(0);
+  const lastTick = useRef(0);
 
-  const go = (next: number) => {
-    const i = wrap(next, n);
-    if (i !== index) haptics.selection();
+  // One source of truth for the turn: the finger and the settle spring both move `spin`.
+  // A light tick each time a new side faces you, like a detent.
+  useEffect(() => {
+    const id = spin.addListener(({ value }) => {
+      setPos(value);
+      const facing = Math.round(value);
+      if (facing !== lastTick.current) {
+        lastTick.current = facing;
+        haptics.selection();
+      }
+    });
+    return () => {
+      spin.stopAnimation();
+      spin.removeListener(id);
+    };
+  }, [spin]);
+
+  // Turn to an (unwrapped) position: the label and dots update at once, the garment follows.
+  const turnTo = (target: number, from: number) => {
+    const i = wrap(target, n);
     setIndex(i);
-    setPos(i);
+    if (reduced) {
+      lastTick.current = i;
+      spin.setValue(i);
+      return;
+    }
+    spin.setValue(from);
+    Animated.spring(spin, { toValue: target, useNativeDriver: false, speed: 12, bounciness: 3 }).start(({ finished }) => {
+      if (!finished) return;
+      lastTick.current = i;
+      spin.setValue(i);   // back on the circle, so positions never drift far from 0..n
+    });
   };
 
-  const settle = (dx: number) => {
+  const go = (next: number) => turnTo(next, index);
+
+  const settle = (dx: number, vx: number) => {
     dragging.current = false;
     onDragActive?.(false);
     if (Math.abs(dx) < TAP_SLOP) return go(start.current + 1);
-    // Reduce Motion: no scrub; a swipe steps one view with a short fade.
-    go(reduced ? start.current + (dx < 0 ? 1 : -1) : snap(dragPosition(start.current, dx), n));
+    // Reduce Motion: no scrub or spin; a swipe steps one view with a short fade.
+    if (reduced) return go(start.current + (dx < 0 ? 1 : -1));
+    const now = dragPosition(start.current, dx);
+    turnTo(flingTarget(now, vx), now);
   };
 
   // A plain View owns the touch (a Pressable would replace these handlers with its own).
@@ -53,14 +87,15 @@ export function TurnView({ views, label, onDragActive }: Props) {
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: () => {
           dragging.current = true;
+          spin.stopAnimation();
           start.current = index;
           onDragActive?.(true);
         },
         onPanResponderMove: (_, g) => {
-          if (!reduced) setPos(dragPosition(start.current, g.dx));
+          if (!reduced) spin.setValue(dragPosition(start.current, g.dx));
         },
-        onPanResponderRelease: (_, g) => settle(g.dx),
-        onPanResponderTerminate: (_, g) => settle(g.dx),
+        onPanResponderRelease: (_, g) => settle(g.dx, g.vx),
+        onPanResponderTerminate: (_, g) => settle(g.dx, g.vx),
       }),
     [index, n, reduced, onDragActive],
   );
@@ -83,11 +118,21 @@ export function TurnView({ views, label, onDragActive }: Props) {
             <GarmentImage path={views[index].path} cutoutPath={views[index].cutoutPath} style={{ width: "100%", height: "100%" }} />
           </Rise>
         ) : (
-          views.map((v, i) => (
-            <View key={v.path} pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: opacityFor(i, pos, n) }}>
-              <GarmentImage path={v.path} cutoutPath={v.cutoutPath} style={{ width: "100%", height: "100%" }} />
-            </View>
-          ))
+          views.map((v, i) => {
+            const face = faceFor(i, pos, n);
+            return (
+              <View
+                key={v.path}
+                pointerEvents="none"
+                style={{
+                  position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: face.opacity,
+                  transform: [{ perspective: 900 }, { rotateY: `${face.rotateY}deg` }],
+                }}
+              >
+                <GarmentImage path={v.path} cutoutPath={v.cutoutPath} style={{ width: "100%", height: "100%" }} />
+              </View>
+            );
+          })
         )}
       </View>
       <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 10 }}>

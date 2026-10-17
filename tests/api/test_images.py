@@ -56,3 +56,12 @@ def test_serves_cutout_png(client, tmp_path):
     response = client.get("/images/run1/photo1/item_0/cutout.png")
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
+
+
+def test_serves_turn_views_and_nothing_else_from_turn(client, tmp_path):
+    turn = tmp_path / "run1" / "photo1" / "item_0" / "turn"
+    turn.mkdir(parents=True)
+    cv2.imwrite(str(turn / "right_cutout.png"), np.zeros((10, 10, 3), dtype=np.uint8))
+    (turn / "status.json").write_text("{}")
+    assert client.get("/images/run1/photo1/item_0/turn/right_cutout.png").status_code == 200
+    assert client.get("/images/run1/photo1/item_0/turn/status.json").status_code == 404

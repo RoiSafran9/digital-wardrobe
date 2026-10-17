@@ -15,6 +15,18 @@ class BackOut(BaseModel):
     visible_text: str = ""
 
 
+class TurnViewOut(BaseModel):
+    angle: Literal["front", "right", "back", "left"]
+    url: str
+    cutout_url: str | None = None
+
+
+class TurnOut(BaseModel):
+    state: Literal["running", "done", "failed"]
+    error: str | None = None
+    views: list[TurnViewOut] = []
+
+
 class ClosetItemOut(BaseModel):
     run_id: str
     photo_name: str
@@ -25,6 +37,7 @@ class ClosetItemOut(BaseModel):
     generated_url: str
     cutout_url: str | None = None
     back: BackOut | None = None
+    turn: TurnOut | None = None
 
 
 class ItemsResponse(BaseModel):

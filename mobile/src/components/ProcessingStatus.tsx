@@ -81,3 +81,11 @@ export const BACK_STEPS: ProcessingStep[] = [
 ];
 
 export const KEEP_OPEN = "Keep the app open — this can take up to a minute.";
+
+export const TURN_STEPS: ProcessingStep[] = [
+  { label: "Dressing the invisible mannequin…", at: 0 },
+  { label: "Turning it around…", at: 15 },
+  { label: "Cutting it out…", at: 45 },
+];
+
+export const TURN_NOTE = "You can close this — it keeps going.";

@@ -20,6 +20,7 @@ const ICONS = {
   several: { sf: "square.grid.2x2", ion: "albums-outline" },
   garment: { sf: "tshirt", ion: "shirt-outline" },
   closet: { sf: "square.grid.2x2", ion: "grid-outline" },
+  turn: { sf: "rotate.3d", ion: "sync-outline" },
 } as const satisfies Record<string, { sf: SFSymbol; ion: keyof typeof Ionicons.glyphMap }>;
 
 export type IconName = keyof typeof ICONS;

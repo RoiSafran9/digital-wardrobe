@@ -1,9 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Icon } from "./Icon";
 import { deleteItem } from "../api/client";
 import { useAddBack } from "../useAddBack";
-import { BACK_STEPS, KEEP_OPEN, ProcessingStatus } from "./ProcessingStatus";
+import { BACK_STEPS, KEEP_OPEN, ProcessingStatus, TURN_NOTE, TURN_STEPS } from "./ProcessingStatus";
+import { PillButton } from "./PillButton";
+import { TurnView } from "./TurnView";
+import { TURN_LABELS, useTurn } from "../useTurn";
 import type { BackView, ClosetItem, RunItem } from "../api/types";
 import { addedLabel, asList, capitalize, colors, hitSlopFor, radius, type } from "../theme";
 import { haptics } from "../haptics";
@@ -202,11 +205,14 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
 }
 
 // Front and back as an iOS segmented control; when there's no back, the second segment adds one.
-function SideStrip({ back, side, onChange, onAddBack }: {
+type Side = "front" | "back" | "360";
+
+function SideStrip({ back, side, onChange, onAddBack, has360 }: {
   item: Item;
   back: BackView | null;
-  side: "front" | "back";
-  onChange: (s: "front" | "back") => void;
+  side: Side;
+  onChange: (s: Side) => void;
+  has360: boolean;
   onAddBack?: () => void;
 }) {
   const segment = (label: string, selected: boolean, onPress: () => void, a11y: string) => (
@@ -226,6 +232,7 @@ function SideStrip({ back, side, onChange, onAddBack }: {
         : onAddBack
           ? segment("+ Back", false, onAddBack, "Add back photo")
           : null}
+      {has360 ? segment("360", side === "360", () => onChange("360"), "360") : null}
     </View>
   );
 }
@@ -243,8 +250,16 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
   const text = asList(facts.visible_text.value);
   const added = "run_id" in item ? addedLabel(item.run_id) : null;
   const back = isClosetItem(item) ? item.back ?? null : null;
-  const [side, setSide] = useState<"front" | "back">("front");
   const closetItem = isClosetItem(item) ? item : null;
+  const { start: start360, turn, error: turnError } = useTurn(closetItem, onUpdated);
+  const turnViews = turn?.state === "done" && turn.views.length > 0
+    ? turn.views.map((v) => ({ label: TURN_LABELS[v.angle], path: v.url, cutoutPath: v.cutout_url }))
+    : null;
+  // A finished 360 is the most complete view of the garment, so the sheet opens on it.
+  const [side, setSide] = useState<Side>(turnViews ? "360" : "front");
+  useEffect(() => {
+    if (turnViews) setSide("360");
+  }, [turn?.state]);
   const { ask: askForBack, uploading, error: backError } = useAddBack(
     closetItem,
     onUpdated && ((updated) => { onUpdated(updated); setSide("back"); }),
@@ -256,15 +271,19 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 12, paddingBottom: 48 }}>
         {/* Same garment turning over: a quick crossfade, not a hard cut. */}
-        <Rise key={side} distance={0}>
-          {showBack ? (
-            <GarmentImage path={back.generated_url} cutoutPath={back.cutout_url} style={{ width: "100%", aspectRatio: 1 }} />
-          ) : (
-            <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: "100%", aspectRatio: 1 }} />
-          )}
-        </Rise>
-        {back || (onUpdated && closetItem) ? (
-          <SideStrip item={item} back={back} side={side} onChange={setSide} onAddBack={!back && onUpdated && closetItem && !uploading ? askForBack : undefined} />
+        {side === "360" && turnViews ? (
+          <TurnView views={turnViews} label="360 · AI view" />
+        ) : (
+          <Rise key={side} distance={0}>
+            {showBack ? (
+              <GarmentImage path={back.generated_url} cutoutPath={back.cutout_url} style={{ width: "100%", aspectRatio: 1 }} />
+            ) : (
+              <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: "100%", aspectRatio: 1 }} />
+            )}
+          </Rise>
+        )}
+        {back || turnViews || (onUpdated && closetItem) ? (
+          <SideStrip item={item} back={back} side={side} onChange={setSide} has360={!!turnViews} onAddBack={!back && onUpdated && closetItem && !uploading ? askForBack : undefined} />
         ) : null}
         {uploading ? (
           <View style={{ paddingVertical: 18 }}>
@@ -272,6 +291,33 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
           </View>
         ) : null}
         {backError ? <Text style={{ ...type.footnote, color: colors.destructive, marginTop: 10, textAlign: "center" }}>{backError}</Text> : null}
+
+        {closetItem && onUpdated && !turnViews ? (
+          <View style={{ marginTop: 16 }}>
+            {turn?.state === "running" ? (
+              <ProcessingStatus steps={TURN_STEPS} note={TURN_NOTE} estimateSeconds={60} />
+            ) : (
+              <>
+                {turn?.state === "failed" && turn.error ? (
+                  <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center", marginBottom: 10 }}>{turn.error}</Text>
+                ) : null}
+                <PillButton
+                  label={turn?.state === "failed" ? "Try again" : "View in 360"}
+                  icon="turn"
+                  onPress={start360}
+                />
+                {turn?.state !== "failed" ? (
+                  <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center", marginTop: 8 }}>
+                    See it on an invisible body from every side. AI-made, about a minute.
+                  </Text>
+                ) : null}
+              </>
+            )}
+            {turnError ? (
+              <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center", marginTop: 10 }}>{turnError}</Text>
+            ) : null}
+          </View>
+        ) : null}
 
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
           <Text accessibilityRole="header" style={{ ...type.title2, color: colors.label, flexShrink: 1 }}>

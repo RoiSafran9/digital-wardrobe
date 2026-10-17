@@ -272,7 +272,7 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 12, paddingBottom: 48 }}>
         {/* Same garment turning over: a quick crossfade, not a hard cut. */}
         {side === "360" && turnViews ? (
-          <TurnView views={turnViews} label="360 · AI view" />
+          <TurnView views={turnViews} label="360 · AI view" onDragActive={onBusy} />
         ) : (
           <Rise key={side} distance={0}>
             {showBack ? (

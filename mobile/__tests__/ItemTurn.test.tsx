@@ -107,3 +107,13 @@ test("polling stops when the sheet closes", async () => {
   await act(async () => jest.advanceTimersByTime(6000));
   expect(mockedGet).not.toHaveBeenCalled();
 });
+
+test("turning the garment pauses item paging until the finger lifts", () => {
+  sheet({ ...item, turn: done });
+  const touch = { nativeEvent: { touches: [], changedTouches: [] }, touchHistory: { numberActiveTouches: 1, indexOfSingleActiveTouch: 0, mostRecentTimeStamp: 1, touchBank: [{ touchActive: true, startPageX: 0, startPageY: 0, startTimeStamp: 0, currentPageX: 0, currentPageY: 0, currentTimeStamp: 1, previousPageX: 0, previousPageY: 0, previousTimeStamp: 0 }] } };
+  expect(screen.getByTestId("item-pager").props.scrollEnabled).toBe(true);
+  fireEvent(screen.getByLabelText("360 view"), "responderGrant", touch);
+  expect(screen.getByTestId("item-pager").props.scrollEnabled).toBe(false);
+  fireEvent(screen.getByLabelText("360 view"), "responderRelease", touch);
+  expect(screen.getByTestId("item-pager").props.scrollEnabled).toBe(true);
+});

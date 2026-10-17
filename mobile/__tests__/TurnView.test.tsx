@@ -12,6 +12,31 @@ function turner() {
   return screen.getByLabelText("360 view");
 }
 
+// Touches the way the responder system delivers them (PanResponder reads touchHistory).
+let clock = 1;
+function touchAt(x: number, startX: number) {
+  const t = clock++;
+  return {
+    nativeEvent: { touches: [], changedTouches: [], pageX: x, pageY: 0, timestamp: t },
+    touchHistory: {
+      numberActiveTouches: 1, indexOfSingleActiveTouch: 0, mostRecentTimeStamp: t,
+      touchBank: [{
+        touchActive: true, startPageX: startX, startPageY: 0, startTimeStamp: 0,
+        currentPageX: x, currentPageY: 0, currentTimeStamp: t,
+        previousPageX: startX, previousPageY: 0, previousTimeStamp: t - 1,
+      }],
+    },
+  };
+}
+
+function drag(fromX: number, toX: number) {
+  fireEvent(turner(), "responderGrant", touchAt(fromX, fromX));
+  if (toX !== fromX) fireEvent(turner(), "responderMove", touchAt(toX, fromX));
+  fireEvent(turner(), "responderRelease", touchAt(toX, fromX));
+}
+
+const tap = () => drag(100, 100);
+
 test("starts on the first view and names it for VoiceOver", () => {
   render(<TurnView views={views} />);
   expect(turner().props.accessibilityValue).toEqual({ text: "Front" });
@@ -20,9 +45,9 @@ test("starts on the first view and names it for VoiceOver", () => {
 
 test("tap steps to the next view and wraps around", () => {
   render(<TurnView views={views} />);
-  for (let i = 0; i < 4; i++) fireEvent.press(turner());
+  for (let i = 0; i < 4; i++) tap();
   expect(turner().props.accessibilityValue).toEqual({ text: "Front" });
-  fireEvent.press(turner());
+  tap();
   expect(turner().props.accessibilityValue).toEqual({ text: "Right side" });
 });
 
@@ -44,4 +69,38 @@ test("shows dots and the label", () => {
   render(<TurnView views={views} label="360 · AI view" />);
   expect(screen.getByText("360 · AI view")).toBeTruthy();
   expect(screen.getAllByTestId(/^turn-dot-/)).toHaveLength(4);
+});
+
+test("the view claims touches so its own handlers run, not a press handler", () => {
+  render(<TurnView views={views} />);
+  expect(turner().props.onStartShouldSetResponder()).toBe(true);
+  expect(turner().props.onPress).toBeUndefined();
+});
+
+test("dragging left one step turns to the next view; a short drag snaps back", () => {
+  render(<TurnView views={views} />);
+  drag(200, 110);                               // 90pt left = one view
+  expect(turner().props.accessibilityValue).toEqual({ text: "Right side" });
+  drag(200, 180);                               // 20pt: not enough, stays
+  expect(turner().props.accessibilityValue).toEqual({ text: "Right side" });
+  drag(100, 190);                               // 90pt right = back one view
+  expect(turner().props.accessibilityValue).toEqual({ text: "Front" });
+});
+
+test("tells its parent while a drag is active, so the pager can stop scrolling", () => {
+  const onDragActive = jest.fn();
+  render(<TurnView views={views} onDragActive={onDragActive} />);
+  fireEvent(turner(), "responderGrant", touchAt(200, 200));
+  expect(onDragActive).toHaveBeenLastCalledWith(true);
+  fireEvent(turner(), "responderMove", touchAt(150, 200));
+  fireEvent(turner(), "responderRelease", touchAt(150, 200));
+  expect(onDragActive).toHaveBeenLastCalledWith(false);
+});
+
+test("a drag taken away by the system settles on a view", () => {
+  render(<TurnView views={views} />);
+  fireEvent(turner(), "responderGrant", touchAt(200, 200));
+  fireEvent(turner(), "responderMove", touchAt(100, 200));
+  fireEvent(turner(), "responderTerminate", touchAt(100, 200));
+  expect(turner().props.accessibilityValue).toEqual({ text: "Right side" });
 });

@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { PanResponder, Pressable, Text, View } from "react-native";
+import { PanResponder, Text, View } from "react-native";
 import { GarmentImage } from "./GarmentImage";
 import { colors, type } from "../theme";
 import { useReducedMotion } from "../useReducedMotion";
@@ -9,11 +9,19 @@ import { haptics } from "../haptics";
 
 export type TurnFrame = { label: string; path: string; cutoutPath?: string | null };
 
-type Props = { views: TurnFrame[]; label?: string };
+type Props = {
+  views: TurnFrame[];
+  label?: string;
+  // True while a finger is turning the garment; the sheet's pager stops scrolling meanwhile.
+  onDragActive?: (active: boolean) => void;
+};
+
+// Less movement than this on release is a tap, not a drag.
+const TAP_SLOP = 8;
 
 // The garment on an invisible body: drag sideways to turn it, tap to step one view.
 // Every view stays mounted (stacked) so turning is instant; drag progress crossfades neighbours.
-export function TurnView({ views, label }: Props) {
+export function TurnView({ views, label, onDragActive }: Props) {
   const n = views.length;
   const reduced = useReducedMotion();
   const [index, setIndex] = useState(0);
@@ -28,31 +36,38 @@ export function TurnView({ views, label }: Props) {
     setPos(i);
   };
 
+  const settle = (dx: number) => {
+    dragging.current = false;
+    onDragActive?.(false);
+    if (Math.abs(dx) < TAP_SLOP) return go(start.current + 1);
+    // Reduce Motion: no scrub; a swipe steps one view with a short fade.
+    go(reduced ? start.current + (dx < 0 ? 1 : -1) : snap(dragPosition(start.current, dx), n));
+  };
+
+  // A plain View owns the touch (a Pressable would replace these handlers with its own).
   const pan = useMemo(
     () =>
       PanResponder.create({
-        // Claim clearly horizontal drags before the item pager does.
-        onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dx) > TAP_SLOP && Math.abs(g.dx) > Math.abs(g.dy),
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: () => {
           dragging.current = true;
           start.current = index;
+          onDragActive?.(true);
         },
         onPanResponderMove: (_, g) => {
           if (!reduced) setPos(dragPosition(start.current, g.dx));
         },
-        onPanResponderRelease: (_, g) => {
-          dragging.current = false;
-          // Reduce Motion: no scrub; a swipe steps one view with a short fade.
-          go(reduced ? start.current + (g.dx < 0 ? 1 : -1) : snap(dragPosition(start.current, g.dx), n));
-        },
+        onPanResponderRelease: (_, g) => settle(g.dx),
+        onPanResponderTerminate: (_, g) => settle(g.dx),
       }),
-    [index, n, reduced],
+    [index, n, reduced, onDragActive],
   );
 
   return (
     <View>
-      <Pressable
+      <View
         {...pan.panHandlers}
         accessible
         accessibilityRole="adjustable"
@@ -61,7 +76,6 @@ export function TurnView({ views, label }: Props) {
         accessibilityValue={{ text: views[index].label }}
         accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
         onAccessibilityAction={(e) => go(index + (e.nativeEvent.actionName === "increment" ? 1 : -1))}
-        onPress={() => go(index + 1)}
         style={{ width: "100%", aspectRatio: 1 }}
       >
         {reduced ? (
@@ -75,7 +89,7 @@ export function TurnView({ views, label }: Props) {
             </View>
           ))
         )}
-      </Pressable>
+      </View>
       <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 10 }}>
         {views.map((v, i) => (
           <View

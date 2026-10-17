@@ -3,5 +3,5 @@ the garment is worn by an invisible body, so it has natural 3D volume, shoulders
 or mannequin is visible; the inside of the neckline is visible. Pure white background (#FFFFFF), soft even studio
 light, the whole garment in frame, centered, filling about 80% of the frame, camera at chest height.
 Keep EXACTLY the same garment: color and shade, fabric, fit and length, sleeve length, collar, every print and text
-letter for letter in the same place and size. Do not add anything that is not in the reference images.
+letter for letter, on the side where it appears in the references, in the same place and size. Do not add anything that is not in the reference images.
 {back_block}{view_block}

@@ -51,6 +51,10 @@ TURN_VIEWS = {
 NO_BACK_BLOCK = ("There is no image of the back. Show a plain back in the same fabric and color; "
                  "do not invent prints, text or details on it.\n")
 
+# With no back photo there is nothing to match: the back must stay plain, never a copy of the front.
+BACK_VIEW_WITHOUT_PHOTO = ("VIEW: straight-on BACK view (180 degrees). No image of the back exists: show a plain back "
+                           "in the same fabric and color, with no prints, text or details.")
+
 ANCHOR_LABEL = ("This is the SAME garment already rendered as a ghost mannequin from the front; "
                 "keep its exact volume, fit and proportions:")
 
@@ -184,7 +188,7 @@ class GeminiProvider:
             if anchor_path:
                 contents += [ANCHOR_LABEL, _png_part(anchor_path)]
             contents.append(_read_prompt("turn_view_v1.txt").format(
-                back_block="" if back_path else NO_BACK_BLOCK, view_block=TURN_VIEWS[view]))
+                back_block="" if back_path else NO_BACK_BLOCK, view_block=BACK_VIEW_WITHOUT_PHOTO if view == "back" and not back_path else TURN_VIEWS[view]))
             # Async client: the 360 job runs in the background while the app polls the same server.
             response = await self.client.aio.models.generate_content(model=MODEL_IMAGE, contents=contents)
             data = next(p.inline_data.data for p in response.candidates[0].content.parts

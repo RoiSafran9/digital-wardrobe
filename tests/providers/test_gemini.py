@@ -148,3 +148,22 @@ async def test_generate_view_without_back_says_so(monkeypatch, tmp_path):
     contents = call.call_args.kwargs["contents"]
     assert not any(isinstance(c, str) and "image of the BACK" in c for c in contents)
     assert NO_BACK_BLOCK.strip() in contents[-1]
+
+
+@pytest.mark.asyncio
+async def test_back_view_without_a_back_photo_never_asks_for_the_missing_reference(monkeypatch, tmp_path):
+    # Fidelity: with no back photo the model must not be told to match a back image, nor to
+    # carry prints "in the same place" — that is how a front graphic gets copied onto the back.
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    from pipeline.providers.gemini import GeminiProvider
+    front = _png(tmp_path / "f.png")
+
+    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
+        call = AsyncMock(return_value=_image_response())
+        MockClient.return_value.aio.models.generate_content = call
+        await GeminiProvider().generate_view(front, None, "back", front)
+
+    prompt = call.call_args.kwargs["contents"][-1]
+    assert "back reference image" not in prompt
+    assert "no prints, text or details" in prompt
+    assert "on the side where it appears" in prompt

@@ -1,5 +1,5 @@
 import { File } from "expo-file-system";
-import { postRun, getItems, imageUrl, updateItem, deleteItem, addBack, API_BASE_URL } from "../src/api/client";
+import { postRun, getItems, imageUrl, updateItem, deleteItem, addBack, startTurn, getTurn, API_BASE_URL } from "../src/api/client";
 
 jest.mock("expo-file-system", () => ({
   File: jest.fn().mockImplementation((uri: string) => ({ uri, name: "fake.jpg", type: "image/jpeg" })),
@@ -132,5 +132,30 @@ describe("addBack", () => {
   test("passes the server's retake instruction through", async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 400, json: async () => ({ error: "step back so the whole piece fits" }) });
     await expect(addBack(closetItem, "file:///back.jpg")).rejects.toThrow(/step back/i);
+  });
+});
+
+describe("turn", () => {
+  const item = {
+    run_id: "r 1", photo_name: "p", item_id: "item_0", tier: "high", facts: {} as never,
+    crop_url: "", generated_url: "",
+  } as const;
+  afterEach(() => (global.fetch as jest.Mock).mockReset());
+
+  test("startTurn POSTs to the item's turn path", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ state: "running", error: null, views: [] }) });
+    const turn = await startTurn(item);
+    expect(global.fetch).toHaveBeenCalledWith(`${API_BASE_URL}/items/r%201/p/item_0/turn`, { method: "POST" });
+    expect(turn.state).toBe("running");
+  });
+
+  test("getTurn reads the status and surfaces server errors as sentences", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 409, json: async () => ({ error: "the 360 view is already being made" }) });
+    await expect(getTurn(item)).rejects.toThrow("The 360 view is already being made");
+  });
+
+  test("a network failure reads as unreachable", async () => {
+    global.fetch = jest.fn().mockRejectedValue(new TypeError("Network request failed"));
+    await expect(startTurn(item)).rejects.toThrow("Can't reach your wardrobe server");
   });
 });

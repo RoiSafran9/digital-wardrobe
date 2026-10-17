@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { File } from "expo-file-system";
 import { resolveApiBaseUrl } from "./baseUrl";
-import type { RunResponse, ItemsResponse, ApiError, ClosetItem, ItemPatch } from "./types";
+import type { RunResponse, ItemsResponse, ApiError, ClosetItem, ItemPatch, Turn } from "./types";
 
 export const API_BASE_URL = resolveApiBaseUrl({
   envUrl: process.env.EXPO_PUBLIC_API_URL,
@@ -93,4 +93,24 @@ export async function addBack(item: ClosetItem, photoUri: string): Promise<Close
     throw new Error(UNREACHABLE);
   }
   return parseJsonOrThrow<ClosetItem>(response);
+}
+
+export async function startTurn(item: ClosetItem): Promise<Turn> {
+  let response: Response;
+  try {
+    response = await fetch(`${itemPath(item)}/turn`, { method: "POST" });
+  } catch {
+    throw new Error(UNREACHABLE);
+  }
+  return parseJsonOrThrow<Turn>(response);
+}
+
+export async function getTurn(item: ClosetItem): Promise<Turn> {
+  let response: Response;
+  try {
+    response = await fetch(`${itemPath(item)}/turn`);
+  } catch {
+    throw new Error(UNREACHABLE);
+  }
+  return parseJsonOrThrow<Turn>(response);
 }

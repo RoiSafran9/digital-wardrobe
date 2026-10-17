@@ -41,6 +41,21 @@ export type BackView = {
   visible_text: string;
 };
 
+export type TurnAngle = "front" | "right" | "back" | "left";
+
+export type TurnViewOut = {
+  angle: TurnAngle;
+  url: string;
+  cutout_url?: string | null;
+};
+
+// The 360 "on body" view: AI-generated ghost-mannequin angles, made on request.
+export type Turn = {
+  state: "running" | "done" | "failed";
+  error: string | null;
+  views: TurnViewOut[];
+};
+
 export type ClosetItem = {
   run_id: string;
   photo_name: string;
@@ -51,6 +66,7 @@ export type ClosetItem = {
   generated_url: string;
   cutout_url?: string | null;
   back?: BackView | null;
+  turn?: Turn | null;
 };
 
 export type ItemsResponse = {

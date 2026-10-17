@@ -1,8 +1,9 @@
 """The 360 "on body" view: four ghost-mannequin angles of an item, generated from all its images.
 
-Every view sees the catalog image of each side we have (front, back) and the printed text of each.
-The front is made first and anchors the rest for volume only; the back comes from the back
-references. Raw photos are kept on the refs but not sent: the model copied them verbatim.
+Each view sees only the images of its own side plus the printed text of each side: the back is
+drawn from every back image (catalog and photo), the front and profiles from the front catalog
+image, with the front ghost anchoring the profiles' volume. Shown both sides at once, the model
+copied the wrong side onto the view.
 Each view is cut out locally like every other garment image.
 """
 import asyncio
@@ -104,9 +105,14 @@ async def run_turn(refs: TurnRefs, out_dir: str, imagegen) -> list[str]:
     os.makedirs(out_dir, exist_ok=True)
     path = {view: os.path.join(out_dir, f"{view}.png") for view in TURN_ORDER}
     for view in GENERATION_ORDER:
-        # The front ghost sets volume and proportions for the rest. The back ghost is never an
-        # anchor: its large print leaked onto the sleeves of the profiles.
-        anchors = {} if view == "front" else {"front": path["front"]}
+        # The front ghost sets volume and proportions for the profiles, and for a back we have to
+        # imagine. A photographed back is drawn from its own photos alone (beside the front ghost
+        # the model copied the front onto it), and the back ghost anchors nothing (its print
+        # leaked onto the sleeves).
+        if view == "front" or (view == "back" and refs.back is not None):
+            anchors = {}
+        else:
+            anchors = {"front": path["front"]}
         await _generate(imagegen, refs, view, anchors, path[view])
         if view == "back" and _lost_the_print(refs, path["back"]):
             await _generate(imagegen, refs, view, anchors, path[view], RETRY_NOTE)

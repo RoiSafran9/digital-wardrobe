@@ -60,7 +60,9 @@ async def test_back_is_made_before_the_sides_and_the_front_anchors_the_others(tm
     assert paths == [os.path.join(out, f"{v}.png") for v in TURN_ORDER]
     assert [c["view"] for c in gen.calls] == ["front", "back", "right", "left"]
     assert gen.calls[0]["anchors"] == {}
-    assert gen.calls[1]["anchors"] == {"front": os.path.join(out, "front.png")}
+    # The back is drawn from the back photos alone: with the front ghost beside it, the model
+    # copied the front onto the back.
+    assert gen.calls[1]["anchors"] == {}
     # The back ghost's large print leaked onto the sleeves when it anchored the profiles.
     for side in gen.calls[2:]:
         assert side["anchors"] == {"front": os.path.join(out, "front.png")}

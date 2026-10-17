@@ -207,12 +207,16 @@ class GeminiProvider:
         start = time.monotonic()
         try:
             contents: list = []
-            for name, side in (("FRONT", refs.front), ("BACK", refs.back)):
-                if side is None:
-                    continue
-                # Catalog images only: given the raw photo, the model returned it as-is, couch and all.
-                if side.catalog:
-                    contents += [f"Reference — {name}, flat-lay catalog image:", _png_part(side.catalog)]
+            # Each view sees only its own side: shown both sides, the model copied the wrong one.
+            # The back gets every back image (the photo carries the print best); the front and the
+            # profiles get the front catalog image, whose raw photo the model copied verbatim.
+            if view == "back" and refs.back is not None:
+                if refs.back.catalog:
+                    contents += ["Reference — BACK, flat-lay catalog image:", _png_part(refs.back.catalog)]
+                if refs.back.photo:
+                    contents += ["Reference — BACK, original photo:", _png_part(refs.back.photo)]
+            elif refs.front.catalog:
+                contents += ["Reference — FRONT, flat-lay catalog image:", _png_part(refs.front.catalog)]
             for name, path in anchors.items():
                 contents += [ANCHOR_LABELS[name], _png_part(path)]
             contents.append(_read_prompt("turn_view_v2.txt").format(

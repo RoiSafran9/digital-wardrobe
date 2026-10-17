@@ -93,3 +93,58 @@ async def test_detection_marks_items_touching_the_frame_as_cut_off(monkeypatch, 
         items = await GeminiProvider().detect_items_with_facts(str(img_path))
 
     assert [i.cut_off_by_frame for i in items] == [True, False]
+
+
+from unittest.mock import AsyncMock
+
+
+def _image_response(data=b"png-bytes"):
+    part = MagicMock()
+    part.inline_data.data = data
+    response = MagicMock()
+    response.candidates = [MagicMock()]
+    response.candidates[0].content.parts = [part]
+    return response
+
+
+def _png(path):
+    cv2.imwrite(str(path), np.full((20, 20, 3), 200, dtype=np.uint8))
+    return str(path)
+
+
+@pytest.mark.asyncio
+async def test_generate_view_sends_front_back_and_anchor_with_the_view(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    from pipeline.providers.gemini import GeminiProvider, TURN_VIEWS
+    front, back, anchor = _png(tmp_path / "f.png"), _png(tmp_path / "b.png"), _png(tmp_path / "a.png")
+
+    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
+        call = AsyncMock(return_value=_image_response(b"view"))
+        MockClient.return_value.aio.models.generate_content = call
+        data = await GeminiProvider().generate_view(front, back, "right", anchor)
+
+    assert data == b"view"
+    contents = call.call_args.kwargs["contents"]
+    labels = [c for c in contents if isinstance(c, str)]
+    assert any("FRONT" in l for l in labels[:-1])
+    assert any("BACK" in l for l in labels[:-1])
+    assert any("ghost mannequin from the front" in l for l in labels[:-1])
+    assert TURN_VIEWS["right"] in contents[-1]
+    assert "GHOST MANNEQUIN" in contents[-1]
+    assert call.call_args.kwargs["model"] == "gemini-2.5-flash-image"
+
+
+@pytest.mark.asyncio
+async def test_generate_view_without_back_says_so(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    from pipeline.providers.gemini import GeminiProvider, NO_BACK_BLOCK
+    front = _png(tmp_path / "f.png")
+
+    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
+        call = AsyncMock(return_value=_image_response())
+        MockClient.return_value.aio.models.generate_content = call
+        await GeminiProvider().generate_view(front, None, "back")
+
+    contents = call.call_args.kwargs["contents"]
+    assert not any(isinstance(c, str) and "image of the BACK" in c for c in contents)
+    assert NO_BACK_BLOCK.strip() in contents[-1]

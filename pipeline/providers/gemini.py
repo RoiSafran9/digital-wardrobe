@@ -39,6 +39,27 @@ Do not invent pockets, zips, prints or trims in the completed areas.
 FRAME_EDGE_MARGIN = 5
 
 
+# Ghost-mannequin angles for the 360 view, in turn order.
+TURN_VIEWS = {
+    "front": "VIEW: straight-on FRONT view (0 degrees).",
+    "right": ("VIEW: exact RIGHT SIDE profile (90 degrees): we see the garment's right side, the side seam and "
+              "right sleeve; front prints are only barely visible at the edge."),
+    "back": "VIEW: straight-on BACK view (180 degrees), matching the back reference image.",
+    "left": "VIEW: exact LEFT SIDE profile (270 degrees): we see the garment's left side, the side seam and left sleeve.",
+}
+
+NO_BACK_BLOCK = ("There is no image of the back. Show a plain back in the same fabric and color; "
+                 "do not invent prints, text or details on it.\n")
+
+ANCHOR_LABEL = ("This is the SAME garment already rendered as a ghost mannequin from the front; "
+                "keep its exact volume, fit and proportions:")
+
+
+def _png_part(path: str) -> dict:
+    with open(path, "rb") as f:
+        return {"inline_data": {"mime_type": "image/png", "data": f.read()}}
+
+
 def touches_frame(box_2d: list[int]) -> bool:
     # The model's own cut_off_by_frame flag proved unreliable; the box geometry is not.
     return min(box_2d) <= FRAME_EDGE_MARGIN or max(box_2d) >= 1000 - FRAME_EDGE_MARGIN
@@ -151,4 +172,25 @@ class GeminiProvider:
             return out_path
         except Exception as e:
             self._log("stage4_generate_back", MODEL_IMAGE, "v2", start, "error", str(e))
+            raise
+
+    async def generate_view(self, front_path: str, back_path: str | None, view: str,
+                            anchor_path: str | None = None) -> bytes:
+        start = time.monotonic()
+        try:
+            contents: list = ["Reference: flat-lay catalog image of the FRONT:", _png_part(front_path)]
+            if back_path:
+                contents += ["Reference: flat-lay catalog image of the BACK:", _png_part(back_path)]
+            if anchor_path:
+                contents += [ANCHOR_LABEL, _png_part(anchor_path)]
+            contents.append(_read_prompt("turn_view_v1.txt").format(
+                back_block="" if back_path else NO_BACK_BLOCK, view_block=TURN_VIEWS[view]))
+            # Async client: the 360 job runs in the background while the app polls the same server.
+            response = await self.client.aio.models.generate_content(model=MODEL_IMAGE, contents=contents)
+            data = next(p.inline_data.data for p in response.candidates[0].content.parts
+                        if p.inline_data is not None)
+            self._log("turn_view", MODEL_IMAGE, "v1", start, "ok")
+            return data
+        except Exception as e:
+            self._log("turn_view", MODEL_IMAGE, "v1", start, "error", str(e))
             raise

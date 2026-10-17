@@ -14,3 +14,6 @@ class ImageGenProvider(Protocol):
 
     async def generate_back(self, crop_path: str, front_image_path: str, facts: ItemFacts,
                             violations: list[str] | None, complete_edges: bool = False) -> str: ...
+
+    async def generate_view(self, front_path: str, back_path: str | None, view: str,
+                            anchor_path: str | None = None) -> bytes: ...

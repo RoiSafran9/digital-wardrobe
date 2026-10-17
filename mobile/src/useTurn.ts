@@ -19,18 +19,23 @@ export function useTurn(item: ClosetItem | null, onUpdated?: (item: ClosetItem) 
   useEffect(() => {
     if (!item || turn?.state !== "running") return;
     let alive = true;
-    const timer = setInterval(async () => {
+    let timer: ReturnType<typeof setTimeout>;
+    // Each check waits for the previous answer, so a busy server never gets a pile of them.
+    const poll = async () => {
       try {
         const next = await getTurn(item);
         const { item: current, onUpdated: report } = latest.current;
-        if (alive && current && next.state !== "running") report?.({ ...current, turn: next });
+        if (!alive) return;
+        if (current && next.state !== "running") return report?.({ ...current, turn: next });
       } catch {
-        // A missed poll is fine; the next one tries again.
+        // A missed check is fine; the next one tries again.
       }
-    }, POLL_MS);
+      if (alive) timer = setTimeout(poll, POLL_MS);
+    };
+    timer = setTimeout(poll, POLL_MS);
     return () => {
       alive = false;
-      clearInterval(timer);
+      clearTimeout(timer);
     };
   }, [item?.run_id, item?.photo_name, item?.item_id, turn?.state]);
 

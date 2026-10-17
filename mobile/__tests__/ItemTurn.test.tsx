@@ -117,3 +117,11 @@ test("turning the garment pauses item paging until the finger lifts", () => {
   fireEvent(screen.getByLabelText("360 view"), "responderRelease", touch);
   expect(screen.getByTestId("item-pager").props.scrollEnabled).toBe(true);
 });
+
+test("a slow status check is never stacked with another one", async () => {
+  mockedGet.mockReturnValue(new Promise(() => {}));   // the server is busy and doesn't answer
+  sheet({ ...item, turn: running });
+  await tick(2000);
+  await tick(6000);
+  expect(mockedGet).toHaveBeenCalledTimes(1);
+});

@@ -34,7 +34,8 @@ Fidelity to the owner's actual garment, not an idealized product shot. Each piec
 - Paid model calls cost money; the owner prefers no extra calls or added latency beyond what a feature needs.
 - Backend runs locally (FastAPI) on the owner's Mac; the phone reaches it over the LAN. No accounts, auth, cloud hosting or sync yet.
 - Removed items are soft-deleted and recoverable.
-- Undecided: 360° item models (researched; needs a hanger/mannequin capture flow, a fal.ai key and async jobs), outfit features, and everything required to open the product to other users.
+- Optional 360 "on body" view per item: four AI ghost-mannequin angles (~16¢, ~1 min), made on request in the background and labelled as AI.
+- Undecided: outfit features, and everything required to open the product to other users.
 
 ## Brand Commitments
 

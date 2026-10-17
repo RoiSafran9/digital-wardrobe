@@ -161,3 +161,11 @@ test("when the server can't be reached the closet says so and can retry, without
   fireEvent.press(screen.getByText("Try again"));
   expect(await screen.findByTestId("thumb-r1-item_0")).toBeTruthy();
 });
+
+test("tiles with a finished 360 carry a 360 badge", async () => {
+  const withTurn = { ...fakeItem, item_id: "item_1", turn: { state: "done", error: null, views: [] } };
+  mockedGetItems.mockResolvedValue({ items: [fakeItem, withTurn] });
+  render(<ClosetScreen />);
+  expect(await screen.findByTestId("badge-360-r1-item_1")).toBeTruthy();
+  expect(screen.queryByTestId("badge-360-r1-item_0")).toBeNull();
+});

@@ -130,7 +130,18 @@ export default function ClosetScreen() {
             onPress={() => setSelectedIndex(index)}
             style={{ marginBottom: 22 }}
           >
-            <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} tile={colors.card} style={{ width: "100%", aspectRatio: 0.85 }} />
+            <View>
+              <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} tile={colors.card} style={{ width: "100%", aspectRatio: 0.85 }} />
+              {item.turn?.state === "done" ? (
+                <View
+                  testID={`badge-360-${item.run_id}-${item.item_id}`}
+                  accessibilityLabel="Has a 360 view"
+                  style={{ position: "absolute", top: 8, right: 8, paddingHorizontal: 7, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: colors.background }}
+                >
+                  <Text style={{ ...type.caption, fontWeight: "600", color: colors.label }}>360</Text>
+                </View>
+              ) : null}
+            </View>
             <Text style={{ ...type.subhead, color: colors.label, marginTop: 8 }}>{categoryOf(item)}</Text>
             <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 1 }} numberOfLines={1}>
               {asList(item.facts.colors.value).map(capitalize).join(", ")}

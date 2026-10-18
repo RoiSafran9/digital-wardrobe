@@ -4,7 +4,7 @@ import { GarmentImage } from "./GarmentImage";
 import { colors, type } from "../theme";
 import { useReducedMotion } from "../useReducedMotion";
 import { Rise } from "../motion/Rise";
-import { dragPosition, flingTarget, layersFor, wrap } from "../turn";
+import { dragPosition, faceFor, flingTarget, wrap } from "../turn";
 
 export type TurnFrame = { label: string; path: string; cutoutPath?: string | null };
 
@@ -18,8 +18,8 @@ type Props = {
 // Less movement than this on release is a tap, not a drag.
 const TAP_SLOP = 8;
 
-// The garment on an invisible body: drag sideways and it turns smoothly with the finger,
-// flick and it keeps turning, tap to turn one side. Every view stays mounted (stacked) so
+// The garment on an invisible body, on a turntable: drag sideways and it turns with the finger,
+// flick and it keeps spinning, tap to turn one side. Every view stays mounted (stacked) so
 // turning never waits on the network.
 export function TurnView({ views, label, onDragActive }: Props) {
   const n = views.length;
@@ -30,8 +30,8 @@ export function TurnView({ views, label, onDragActive }: Props) {
   const dragging = useRef(false);
   const start = useRef(0);
 
-  // One source of truth for the turn: the finger and the settle animation both move `spin`.
-  // Turning is silent — no haptic per side; it should feel like one object, not detents.
+  // One source of truth for the turn: the finger and the settle spring both move `spin`.
+  // Turning is silent: the owner found a haptic per side distracting.
   useEffect(() => {
     const id = spin.addListener(({ value }) => setPos(value));
     return () => {
@@ -49,8 +49,7 @@ export function TurnView({ views, label, onDragActive }: Props) {
       return;
     }
     spin.setValue(from);
-    // No bounce: an overshoot would flick back across to the previous side.
-    Animated.spring(spin, { toValue: target, useNativeDriver: false, speed: 10, bounciness: 0 }).start(({ finished }) => {
+    Animated.spring(spin, { toValue: target, useNativeDriver: false, speed: 12, bounciness: 3 }).start(({ finished }) => {
       if (!finished) return;
       spin.setValue(i);   // back on the circle, so positions never drift far from 0..n
     });
@@ -90,8 +89,6 @@ export function TurnView({ views, label, onDragActive }: Props) {
     [index, n, reduced, onDragActive],
   );
 
-  const layers = layersFor(pos, n);
-
   return (
     <View>
       <View
@@ -110,26 +107,21 @@ export function TurnView({ views, label, onDragActive }: Props) {
             <GarmentImage path={views[index].path} cutoutPath={views[index].cutoutPath} style={{ width: "100%", height: "100%" }} />
           </Rise>
         ) : (
-          <View
-            pointerEvents="none"
-            style={{
-              flex: 1,
-              transform: [{ perspective: 900 }, { rotateY: `${layers.rotateY}deg` }, { scaleX: layers.scaleX }],
-            }}
-          >
-            {views.map((v, i) => (
+          views.map((v, i) => {
+            const face = faceFor(i, pos, n);
+            return (
               <View
                 key={v.path}
+                pointerEvents="none"
                 style={{
-                  position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-                  opacity: i === layers.base ? 1 : i === layers.top ? layers.topOpacity : 0,
-                  zIndex: i === layers.top ? 1 : 0,
+                  position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: face.opacity,
+                  transform: [{ perspective: 900 }, { rotateY: `${face.rotateY}deg` }],
                 }}
               >
                 <GarmentImage path={v.path} cutoutPath={v.cutoutPath} style={{ width: "100%", height: "100%" }} />
               </View>
-            ))}
-          </View>
+            );
+          })
         )}
       </View>
       <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 10 }}>

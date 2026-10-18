@@ -21,26 +21,11 @@ export function offsetFrom(view: number, pos: number, n: number): number {
   return d > n / 2 ? d - n : d;
 }
 
-// Turning between two photographed sides, smoothly: the side you're leaving stays fully opaque
-// underneath while the next side fades in over it (so the garment never dims), and the whole
-// garment leans and narrows a little mid-turn, as if turning toward its profile.
-export const LEAN_DEG = 14;
-export const SQUEEZE = 0.06;
-
-export type Layers = { base: number; top: number; topOpacity: number; rotateY: number; scaleX: number };
-
-export function layersFor(pos: number, n: number): Layers {
-  const p = wrap(pos, n);
-  const base = Math.floor(p) % n;
-  const f = p - Math.floor(p);
-  const swing = Math.sin(Math.PI * f);       // 0 on a side, 1 halfway between
-  return {
-    base,
-    top: wrap(base + 1, n),
-    topOpacity: f * f * (3 - 2 * f),         // smoothstep: eases in and out of each side
-    rotateY: -LEAN_DEG * swing + 0,          // + 0: never -0
-    scaleX: 1 - SQUEEZE * swing,
-  };
+// Like a turntable: the facing view swings away as the next swings in, each a quarter turn
+// apart, and whichever is nearer facing us is the one shown — they swap at halfway.
+export function faceFor(view: number, pos: number, n: number): { rotateY: number; opacity: number } {
+  const d = offsetFrom(view, pos, n);
+  return { rotateY: d * 90 + 0, opacity: Math.abs(d) < 0.5 ? 1 : 0 };
 }
 
 // How far a flick carries the spin: the release speed projected a moment ahead, capped.

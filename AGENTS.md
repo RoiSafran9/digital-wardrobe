@@ -21,7 +21,7 @@ This repository is the source of truth for Digital Wardrobe code and product dec
 - No invented users, testimonials or metrics in docs or UI.
 
 ## Credits decision
-- Approved product direction: **one unified AI Credits wallet per account**, a remaining-balance meter in Account, and an in-app AI Price List. Built so far: only the M5 hooks (job `cost_credits`, env price list, a no-op `CreditGate`, `GET /v1/prices`); billing is off and there is no wallet, ledger, meter or price-list screen.
+- Approved product direction: **one unified AI Credits wallet per account**, with **billing per user-requested AI generation action rather than per garment record** (front image, optional back image, one bundled 360 action), a remaining-balance meter in Account, and an in-app AI Price List. Built so far: only the M5 hooks (job `cost_credits`, env price list, a no-op `CreditGate`, `GET /v1/prices`); billing is off and there is no wallet, ledger, meter or price-list screen.
 - Do not invent numerical credit prices or purchase plans. Build billing only on reviewed scope: server-owned prices, identity from the verified token, atomic/idempotent ledger changes, clear user confirmation and failure reconciliation. Read `docs/CREDITS.md` (decisions, and where they differ from the built hooks) first.
 
 ## Checks

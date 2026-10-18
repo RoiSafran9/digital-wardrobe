@@ -91,3 +91,8 @@ async def test_a_job_runs_end_to_end_through_the_worker(settings, store, users):
                         headers={"Authorization": f"Bearer {b['token']}"}).status_code == 404
     assert client.patch(f"/v1/items/{mine['id']}", json={"category": "coat"},
                         headers={"Authorization": f"Bearer {a['token']}"}).json()["facts"]["category"]["value"] == "coat"
+
+
+def test_jobs_store_their_credit_cost(store, users):
+    job, _ = store.create_job(users[0]["id"], "garment", f"cost-{uuid.uuid4()}", None, cost_credits=2)
+    assert store.get_job(users[0]["id"], job["id"])["cost_credits"] == 2

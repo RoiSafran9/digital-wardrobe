@@ -8,8 +8,9 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
 from fastapi.responses import JSONResponse
 from api.auth import User, current_user
+from api.credits import InsufficientCredits, get_gate, get_prices, job_cost
 from api.facts_edit import apply_patch, patch_error
-from api.schemas import BackOut, ItemPatch, JobOut, TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse
+from api.schemas import BackOut, ItemPatch, JobOut, PricesOut, TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse
 from api.store import INTERRUPTED, get_store
 from pipeline.types import ItemFacts
 
@@ -30,10 +31,10 @@ def job_out(job: dict) -> JobOut:
     result = job.get("result") or {}
     return JobOut(id=job["id"], kind=job["kind"], status=job["status"], error=job.get("error"),
                   item_id=job.get("item_id"), item_ids=result.get("item_ids", []),
-                  quality=result.get("quality"), failed=result.get("failed", []))
+                  quality=result.get("quality"), failed=result.get("failed", []), cost_credits=job.get("cost_credits"))
 
 
-def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, item_id: str | None = None):
+def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, gate, prices, item_id: str | None = None):
     """Create (or find) the user's job for this key; a new job answers 202, a repeat 200."""
     existing = store.job_by_key(user.id, key)
     if existing:
@@ -41,28 +42,47 @@ def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, 
     if store.profile_status(user.id) == "disabled":
         raise HTTPException(403, "this account is disabled")
 
-    job_id, input_path = str(uuid.uuid4()), None
+    ext = None
     if photo is not None:
         if not photo.filename:
             raise HTTPException(400, "no photo provided")
         ext = os.path.splitext(photo.filename)[1].lower()
         if ext not in PHOTO_TYPES:
             raise HTTPException(400, "unsupported photo type")
-        input_path = f"{user.id}/jobs/{job_id}/upload{ext}"
-        store.upload(input_path, photo.file.read(), PHOTO_TYPES[ext])
 
-    job, created = store.create_job(user.id, kind, key, input_path, item_id=item_id, job_id=job_id)
-    if not created and input_path:
-        store.remove([input_path])  # lost a race with the same key: keep only the first upload
+    job_id, cost = str(uuid.uuid4()), job_cost(prices, kind)
+    try:
+        gate.reserve(user.id, job_id, kind, cost)  # AI Credits hook: hold the cost before any work
+    except InsufficientCredits:
+        raise HTTPException(402, "not enough AI credits")
+
+    input_path, created = None, False
+    try:
+        if ext:
+            input_path = f"{user.id}/jobs/{job_id}/upload{ext}"
+            store.upload(input_path, photo.file.read(), PHOTO_TYPES[ext])
+        job, created = store.create_job(user.id, kind, key, input_path, item_id=item_id, job_id=job_id, cost_credits=cost)
+    finally:
+        if not created:
+            gate.release(job_id)  # failed, or lost a race with the same key: one hold per job
+            if input_path:
+                store.remove([input_path])
     return JSONResponse(status_code=202 if created else 200, content=job_out(job).model_dump())
 
 
 @router.post("/jobs", response_model=JobOut, status_code=202)
 def create_garment_job(user: User = Depends(current_user), photo: UploadFile | None = File(None),
-                       key: str = Depends(idempotency_key), store=Depends(get_store)):
+                       key: str = Depends(idempotency_key), store=Depends(get_store),
+                       gate=Depends(get_gate), prices=Depends(get_prices)):
     if photo is None:
         raise HTTPException(400, "no photo provided")
-    return queue_job(store, user, "garment", key, photo)
+    return queue_job(store, user, "garment", key, photo, gate, prices)
+
+
+@router.get("/prices", response_model=PricesOut)
+def prices_list(user: User = Depends(current_user), prices=Depends(get_prices)):
+    """The AI Price List the app can show; empty while billing is off."""
+    return PricesOut(billing=bool(prices), prices=prices)
 
 
 @router.get("/jobs/{job_id}", response_model=JobOut)
@@ -163,20 +183,21 @@ def delete_item(item_id: str, user: User = Depends(current_user), store=Depends(
 
 @router.post("/items/{item_id}/back", response_model=JobOut, status_code=202)
 def add_back(item_id: str, user: User = Depends(current_user), photo: UploadFile | None = File(None),
-             key: str = Depends(idempotency_key), store=Depends(get_store)):
+             key: str = Depends(idempotency_key), store=Depends(get_store),
+             gate=Depends(get_gate), prices=Depends(get_prices)):
     _own_item(store, user, item_id)
     if photo is None:
         raise HTTPException(400, "no photo provided")
-    return queue_job(store, user, "back", key, photo, item_id=item_id)
+    return queue_job(store, user, "back", key, photo, gate, prices, item_id=item_id)
 
 
 @router.post("/items/{item_id}/turn", response_model=JobOut, status_code=202)
 def start_turn(item_id: str, user: User = Depends(current_user), key: str = Depends(idempotency_key),
-               store=Depends(get_store)):
+               store=Depends(get_store), gate=Depends(get_gate), prices=Depends(get_prices)):
     _own_item(store, user, item_id)
     if store.job_by_key(user.id, key) is None and store.active_job(user.id, item_id, "turn"):
         raise HTTPException(409, "the 360 view is already being made")
-    response = queue_job(store, user, "turn", key, None, item_id=item_id)
+    response = queue_job(store, user, "turn", key, None, gate, prices, item_id=item_id)
     if response.status_code == 202:
         store.update_item(user.id, item_id, {"turn": {"state": "running", "started_at": datetime.now(timezone.utc).isoformat()}})
     return response

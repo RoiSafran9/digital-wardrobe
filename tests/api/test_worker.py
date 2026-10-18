@@ -197,3 +197,37 @@ async def test_a_job_for_an_item_deleted_meanwhile_fails_cleanly():
     store.update_item(A, item["id"], {"deleted_at": "2026-10-18T00:00:00Z"})
     await run_once(store, factory())
     assert store.jobs[job_id]["status"] == "failed" and store.jobs[job_id]["error"] == "That item no longer exists"
+
+
+class Gate:
+    def __init__(self):
+        self.calls = []
+
+    def reserve(self, *a): self.calls.append(("reserve",) + a)
+    def release(self, job_id): self.calls.append(("release", job_id))
+    def settle(self, job_id): self.calls.append(("settle", job_id))
+    def refund(self, job_id): self.calls.append(("refund", job_id))
+
+
+async def test_a_successful_job_settles_its_credits_once():
+    store, gate = MemoryStore(), Gate()
+    job_id = garment_job(store)
+    await run_once(store, factory(), gate=gate)
+    assert gate.calls == [("settle", job_id)]
+
+
+async def test_a_failed_job_refunds_only_when_it_is_final():
+    store, gate = MemoryStore(), Gate()
+    job_id = garment_job(store)
+    await run_once(store, factory(FakeVision(crash=True)), gate=gate)
+    assert gate.calls == []  # retried: still holding
+    await run_once(store, factory(FakeVision(crash=True)), gate=gate)
+    assert gate.calls == [("refund", job_id)]
+
+
+async def test_a_rejected_job_refunds():
+    store, gate = MemoryStore(), Gate()
+    item = await add_front(store)
+    job_id = queue(store, "back", item["id"], "b1", photo_bytes())
+    await run_once(store, factory(FakeVision([])), gate=gate)
+    assert gate.calls == [("refund", job_id)]

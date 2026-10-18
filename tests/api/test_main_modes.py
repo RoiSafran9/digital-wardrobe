@@ -34,3 +34,9 @@ def test_turning_auth_on_without_settings_fails_at_startup(monkeypatch):
     monkeypatch.delenv("SUPABASE_URL", raising=False)
     with pytest.raises(RuntimeError, match="SUPABASE_URL"):
         create_app()
+
+
+def test_a_malformed_price_list_fails_at_startup(monkeypatch):
+    monkeypatch.setenv("WARDROBE_CREDIT_PRICES", '{"garment": -1}')
+    with pytest.raises(RuntimeError, match="WARDROBE_CREDIT_PRICES"):
+        create_app(ON, start_worker=False)

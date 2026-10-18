@@ -10,6 +10,7 @@ import logging
 import os
 import tempfile
 import uuid
+from api.credits import CreditGate, NoCharge
 from api.item_loader import load_item
 from pipeline.back import BackPhotoRejected, run_back
 from pipeline.orchestrator import run_photo
@@ -168,15 +169,17 @@ async def _turn(store, job, providers, tmp, uploads):
 HANDLERS = {"garment": _garment, "back": _back, "turn": _turn}
 
 
-def _fail(store, job, uploads, message):
+def _fail(store, gate, job, uploads, message):
     store.remove(uploads.paths + ([job["input_path"]] if job.get("input_path") else []))
     store.finish_job(job["id"], "failed", error=message)
+    gate.refund(job["id"])  # AI Credits hook: a job that failed for good costs nothing
     if job["kind"] == "turn" and store.get_item(job["user_id"], job["item_id"]):
         store.update_item(job["user_id"], job["item_id"], {"turn": {"state": "failed", "error": message}})
 
 
-async def run_once(store, provider_factory, lease_seconds: int = 600) -> bool:
+async def run_once(store, provider_factory, lease_seconds: int = 600, gate: CreditGate | None = None) -> bool:
     """Claim and run one job. False when the queue is empty."""
+    gate = gate or NoCharge()
     job = store.claim_job(lease_seconds)
     if job is None:
         return False
@@ -185,21 +188,22 @@ async def run_once(store, provider_factory, lease_seconds: int = 600) -> bool:
         with tempfile.TemporaryDirectory() as tmp:
             result = await HANDLERS[job["kind"]](store, job, provider_factory, tmp, uploads)
         store.finish_job(job["id"], "succeeded", result)
+        gate.settle(job["id"])  # AI Credits hook: the hold becomes a charge
     except JobRejected as e:
-        _fail(store, job, uploads, str(e))
+        _fail(store, gate, job, uploads, str(e))
     except Exception:
         log.exception("job %s (%s) failed on attempt %s", job["id"], job["kind"], job["attempts"])
         if job["attempts"] >= job["max_attempts"]:
-            _fail(store, job, uploads, GENERIC_FAILURE)
+            _fail(store, gate, job, uploads, GENERIC_FAILURE)
         else:
             store.retry_job(job["id"], GENERIC_FAILURE)
     return True
 
 
-async def run_forever(store, provider_factory, idle_seconds: float = 2.0) -> None:
+async def run_forever(store, provider_factory, idle_seconds: float = 2.0, gate: CreditGate | None = None) -> None:
     while True:
         try:
-            worked = await run_once(store, provider_factory)
+            worked = await run_once(store, provider_factory, gate=gate)
         except Exception:
             log.exception("worker loop error")  # e.g. Supabase unreachable; keep going
             worked = False

@@ -11,8 +11,8 @@ from api.item_loader import load_back, load_item, load_turn, image_urls, cutout_
 from api.routes.runs import ProviderFactory, get_provider_factory
 from pipeline.back import BackPhotoRejected, run_back
 from pipeline.run_log import RunLogger
-from api.schemas import COLORS, PATTERNS, ClosetItemOut, ItemPatch, ItemsResponse
-from pipeline.types import FactField
+from api.facts_edit import apply_patch, patch_error
+from api.schemas import ClosetItemOut, ItemPatch, ItemsResponse
 
 # Soft-deleted items go here; glob("*") skips dot-directories, so the closet never lists them.
 TRASH_DIR = ".trash"
@@ -79,27 +79,16 @@ def edit_item(run_id: str, photo_name: str, item_id: str, patch: ItemPatch):
         return _error(404, "item not found")
     _, _, facts = loaded
 
-    if patch.category is not None and not patch.category.strip():
-        return _error(400, "category can't be empty")
-    if patch.colors is not None and (not patch.colors or not set(patch.colors) <= COLORS):
-        return _error(400, f"colors must be one or more of: {', '.join(sorted(COLORS))}")
-    if patch.pattern is not None and patch.pattern not in PATTERNS:
-        return _error(400, f"pattern must be one of: {', '.join(sorted(PATTERNS))}")
+    error = patch_error(patch)
+    if error:
+        return _error(400, error)
 
     facts_path = os.path.join(item_dir, "facts.json")
     original_path = os.path.join(item_dir, "facts.original.json")
     if not os.path.exists(original_path):
         shutil.copy(facts_path, original_path)  # keep the model's version on first edit
 
-    edited = {
-        "category": patch.category.strip() if patch.category is not None else None,
-        "colors": patch.colors, "pattern": patch.pattern,
-        "trims": patch.trims.strip() if patch.trims is not None else None,
-        "visible_text": patch.visible_text.strip() if patch.visible_text is not None else None,
-    }
-    for name, value in edited.items():
-        if value is not None:
-            setattr(facts, name, FactField(value=value, confidence=1.0, basis="observed"))
+    facts = apply_patch(facts, patch)
     with open(facts_path, "w") as f:
         f.write(facts.model_dump_json(indent=2))
     return _closet_item(item_dir, run_id, photo_name)

@@ -1,124 +1,108 @@
 # Technical Architecture — Digital Wardrobe
-Status: **Proposed**, not yet implemented · Updated: 2026-10-15
+Status: **As built** · Updated: 2026-10-18
 
-## Guiding principles
-iPhone-first, easy iteration, minimal operational overhead, private by default, **multiple isolated user accounts from V1**, and GitHub as the code/documentation source of truth.
+Decisions and the multi-user research: [multi-user architecture design](superpowers/specs/2026-10-18-multiuser-architecture-design.md). Credits hooks: [credits integration notes](superpowers/specs/2026-10-18-credits-readiness.md). Other feature designs: `docs/superpowers/specs/`. Ideas from the first planning docs that aren't built are under "Later" in [ROADMAP.md](ROADMAP.md).
 
-## Proposed components
-- Client: Expo / React Native with TypeScript and Expo Router.
-- Image capture/selection: Expo ImagePicker (camera permissions as needed).
-- Data/auth/storage: Supabase Auth, PostgreSQL and a **private** Supabase Storage bucket.
-- AI image creation **and** metadata enrichment: authenticated server-side orchestration (e.g. Supabase Edge Function) invoking an **image editing/generation model** that accepts a source photograph, plus a vision-capable model or equivalent structured metadata step. Model/provider(s) TBD. No provider secrets in the mobile app.
-- Release: EAS Build for iOS → App Store Connect → TestFlight.
-- No custom application server in MVP unless needed for security-sensitive operations.
-
-## UI implementation guidance
-The confirmed visual direction is **Modern & Playful**, with a confirmed **Wardrobe | Add | Account** bottom tab navigator; specific colors remain open. Build a small central theme/tokens layer for palette, typography, radius and spacing so that styling can evolve consistently. Aim for friendly rounded components, a restrained playful accent palette, accessible contrast and touch sizes, and a **confirmed two-column, photo-first item grid**. Use a **horizontal, single-select chip row** for All (default) and the nine categories, filtering the existing grid in place rather than routing to category screens. Keep filter state distinct from remote data access and always scope queries to the signed-in user. Avoid prematurely choosing a UI framework solely for its visual style.
-
-The screen inventory and confirmed tab labels live in [docs/SCREENS.md](SCREENS.md). Use Expo Router's tab navigation for **Wardrobe | Add | Account** (or an equivalent accessible bottom-tab implementation); keep unauthenticated routes outside the tab group and Item Details/Edit as secondary routes. **Photo First → AI-generated representative image + AI metadata → Single Review Form is confirmed:** entering Add presents Take Photo / Choose from Library; after selection, retain the source photo temporarily, generate a new fully laid-out garment image with isolated background and infer metadata, and show the **generated image** plus editable suggested metadata on one scrollable screen. Request camera/photo permissions only when needed. Preserve drafts during retries. The model analysis may require sending image bytes or a short-lived private reference to the backend before the user confirms Save; **do not create a permanent wardrobe item before the explicit Save Item action**. Clear temporary uploads according to a bounded retention policy. Respect iPhone safe areas.
-
-## AI-generated catalog image (confirmed MVP requirement)
-- The wardrobe representation is **not the original camera/photo-library image**. AI must produce a distinct, full-garment, neatly spread / flat-lay style image isolated against a **uniform solid white (#FFFFFF) background, without transparency**.
-- Input may be folded, partly hidden or photographed at an angle. The model may **estimate** occluded shapes while aiming to keep actual garment characteristics faithful; completion is not an exact reconstruction. Avoid invented patterns/logos, color shifts and hallucinated embellishments.
-- In the unsaved Review screen, default to the **generated** preview and expose an accessible **Original / Generated** comparison toggle. Only the UI preview source changes: toggling does **not** modify either asset, associated metadata, or the final `display_image_path`. The original is accessed only through authenticated/private preview access, never a public URL. Offer **Regenerate** and **Retake / Choose Different Photo** **only in the unsaved creation flow**. Each Regenerate attempt creates a replacement preview from the same source; the user's saved wardrobe is unchanged. The app must never expose post-save regeneration actions in the MVP. If generation fails, block Save until a generated image is available; do not silently use the input photo as the wardrobe display.
-- The **one visible image per item** requirement refers to one final AI-generated image in the grid/details, while an **original source photo is also persistently retained** in separate private storage for future regeneration.
-- **Confirmed:** keep the original uploaded photo **persistently** with the item in private cloud storage, not only in temporary AI-processing storage. Access must be restricted to its owner. Keep original and generated images at distinct private storage paths; delete both when item is deleted. Temporary intermediate images that are not linked to a saved item must still be cleaned up.
-- Image output must have a **solid white (#FFFFFF) background** and no alpha channel. Validate on generated samples; if the provider produces off-white/transparent pixels, normalize or composite to white (without damaging light garment edges), then verify the result. Output encoding (JPEG/PNG/WebP), size and quality targets remain to be selected.
-
-## Image generation + vision metadata processing pipeline (MVP requirement)
-1. Authenticated client captures/selects one **source/reference photo**.
-2. Validate and securely send source bytes or a short-lived private object reference to a server-side handler (e.g. Supabase Edge Function). Do not expose public image URLs.
-3. Authenticate/authorize caller, validate image type/size, apply abuse/rate/cost controls; call a **source-image-conditioned image editing/generation model** to produce a separate garment display image with the whole item flat/fully visible against **solid white (#FFFFFF), with no transparency**, and consistent padding. It may estimate unseen parts but must not intentionally invent distinguishable branding/details.
-4. In parallel or sequentially, call a vision-capable metadata model or a supported structured extraction step; validate `{ category, color, item_name, brand }` against the nine approved categories. Brand null unless supported by evidence; Notes not generated.
-5. Return references for the **generated** preview and metadata suggestions (plus generation status/errors). The Review screen retains private references to **both source and generated previews**, displaying **Generated by default** and permitting authenticated **Original / Generated** toggle comparison, along with editable fields and **pre-save-only Regenerate/Retake**; Original is never the Wardrobe image. Regenerate creates or refreshes a private draft variant, with cleanup of superseded previews and no write to a saved item.
-6. Metadata-only failure → manual Category selection; **image generation failure → Retry/Retake and no Save**. Explicit Save Item commits the **retained original source**, exactly one **generated catalog image**, and validated item metadata, linked to the same item. No auto-save.
-7. The preview/generated output must remain private (temporary object with TTL or secured transmission); clean up unsaved, superseded and abandoned generations according to retention policy.
-
-**Privacy/operations:** Document that images may be processed by the chosen AI service and account for consent/transparency, processing retention, per-request costs and quotas. Never expose AI provider credentials to the client. AI failures must not block manual category fallback. Provider, model, performance budgets and temporary-image cleanup implementation are deferred decisions.
-
-## Account tenancy model
-**Confirmed product requirement:** multiple independent users in MVP. Each account owns a private wardrobe. Supabase Auth identifies the active user, and both database rows and Storage objects must be user-scoped. Cross-user sharing and public clothing galleries are out of scope.
-
-## Data model (proposal)
-`wardrobe_items`
-- `id` UUID primary key
-- `user_id` UUID not null references `auth.users`
-- `category` text not null (validated against the nine MVP categories)
-- `item_name` text nullable (user-facing optional clothing name)
-- `color` text nullable
-- `brand` text nullable
-- `notes` text nullable
-- `source_image_path` text not null (**original user-supplied photo**, stored privately for future re-generation; never used as wardrobe thumbnail)
-- `display_image_path` text not null (**AI-generated** full-garment representative image shown in Wardrobe/Details; separate private storage object key, never public URL)
-- `created_at` and `updated_at` timestamptz
-
-**Confirmed item fields:** each saved item stores a retained **original source photo** and exactly **one AI-generated display image** (separate paths) plus one category. Item Name, Color, Brand and Notes are optional/nullable. IDs and timestamps are system-managed. Do not add Size or Season in MVP. Validate categories consistently client- and server-side.
-
-The user's original source photo **is retained privately** at `source_image_path`, never rendered in Wardrobe. The generated catalog image is separately stored at `display_image_path`. Suggested object keys in private Storage: `<user-id>/<item-id>/source.<ext>` and `<user-id>/<item-id>/display.<ext>`, or equivalent separate private buckets. Keep their association with the same item. Deletion of that item must remove both objects; orphan cleanup/retry should handle partially completed deletions. A future multi-image gallery can introduce `item_images` without changing this contract.
-
-## Privacy and security boundaries
-- Enable and test RLS: user can SELECT, INSERT, UPDATE and DELETE only rows with `user_id = auth.uid()`.
-- Store **both original and generated** photos in private object storage, scoped by authenticated user ID and item ID with appropriate Storage access policies. Original-photo access should be limited to the owner and authorized backend jobs; generated images are likewise private.
-- Read images through authenticated downloads or short-lived signed URLs; don't persist permanent public URLs.
-- Client only uses public project URL and publishable/anon key with correctly configured RLS. Never embed Supabase service-role keys or Apple credentials in the app.
-- Retain original photos while the item exists so future regeneration is possible. On item deletion, delete **both source and display images** and reconcile partial failures/orphans; item replacement must never accidentally orphan old assets. Explain source retention in a user-facing privacy notice.
-- Keep `.env*` secrets out of git; include a safe `.env.example` at implementation time.
-
-## Suggested project layout (once scaffolded)
+## Shape
 ```text
-app/                 # Expo Router screens
-components/          # reusable UI
-features/wardrobe/   # wardrobe components and logic
-lib/                 # Supabase, image handling, helpers
-assets/              # static app assets only
-supabase/migrations/ # schema & RLS policies
-docs/                # requirements and decisions
+iPhone (Expo Go app)
+  ├─ Supabase Auth (6-digit email code) — session encrypted on the device         [account mode]
+  ├─ Supabase Storage signed URLs (≤ 1 h) for the user's own images              [account mode]
+  └─ FastAPI on the owner's Mac, over home Wi-Fi (port 8000)
+        ├─ account mode (WARDROBE_AUTH=on): verifies the token → user_id, serves /v1 only,
+        │    queues generation_jobs in Postgres; an in-process worker claims them,
+        │    runs the pipeline and writes results to private Storage + rows
+        └─ local mode (default): the original file API over runs/, no accounts
+                    └─ pipeline/ → Gemini API (backend only)
+```
+- **App** (`mobile/`, Expo Go): with Supabase settings it requires sign-in and calls `/v1` with the access token, starting captures, back photos and 360s as jobs it polls, so they finish even if the phone drops the connection. Without settings, a development build runs in local mode against the original endpoints; a release build without settings (or with half-filled ones) shows a blocking "not configured" screen.
+- **Backend** (`api/`): `WARDROBE_AUTH=on` verifies tokens against the project's JWKS and serves only user-scoped `/v1` routes (someone else's IDs answer 404); the local `runs/` routes aren't mounted. Off (default) = the file-based API.
+- **Data** (Supabase): `profiles`, `wardrobe_items`, `generation_jobs` with row level security, column-limited client updates (`facts`, `deleted_at`), same-owner foreign keys and owner-folder path checks; private bucket `wardrobe` with owner-only reads. No Edge Functions.
+- **Secrets:** `GEMINI_API_KEY` and `SUPABASE_SECRET_KEY` are server-only (`.env`). The app holds only the Supabase URL and publishable key (`mobile/.env`).
+- **Proof:** pgTAP (`supabase/tests/database/`), API tests with two users (`tests/api/test_v1_*.py`), and a two-user end-to-end suite on the local stack (`tests/integration/`).
+
+## Repository layout
+```text
+mobile/app/            Expo Router: _layout, sign-in, (tabs)/{index (Home), closet, add, account}
+mobile/src/            api (local client, v1 client, types), auth (Supabase client, secure store, provider),
+                       components (ItemSheet, TurnView, GarmentImage…), motion, theme, hooks, store
+mobile/__tests__/      Jest + Testing Library
+api/                   main.py (mode switch), auth, store (Supabase/in-memory), worker, credits, facts_edit,
+                       routes/ (local: runs, items, images, turn; account: v1)
+pipeline/              orchestrator, back.py, turn.py, stages/, providers/gemini.py, prompts/, run_log
+supabase/              migrations, pgTAP tests, local CLI config, email template
+scripts/               migrate_runs (runs/ → account), sweep_storage, backfill_cutouts
+tests/                 pytest: pipeline, providers, API (local and v1), integration (local Supabase stack)
+cli.py, ui/app.py      batch CLI and Streamlit harness for running the pipeline without the app
 ```
 
-## Add and upload flow (proposal)
-1. Request permission when needed, then capture/select one **source** image.
-2. Validate/compress source, keep an ephemeral draft and send to authorized server-side AI processing.
-3. Generate a **new** full-garment, nicely laid-out representative image with a **solid white (#FFFFFF) background**, and infer metadata; keep output preview private.
-4. Show **generated output** and editable suggested fields on one review screen; support Regenerate or Retake. If metadata fails, allow manual Category. If the display image cannot be generated, **block Save** and show Retry/Retake.
-5. Upon explicit **Save Item**, use a stable item ID and persist **both** the original source photo at `<user-id>/<item-id>/source.<ext>` and generated image at `<user-id>/<item-id>/display.<ext>` in private storage. Write **both** `source_image_path` and `display_image_path` along with category and optional fields. Handle partial multi-object writes, idempotent retries and orphan cleanup.
-6. After **source photo, generated image and metadata** all persist, refresh Wardrobe list, navigate to Wardrobe, reveal new item (select All if needed), and show brief success indication.
-7. Reset Add draft only on confirmed success. On failure preserve reference, generated preview and edits for retry; prevent double-submit.
-8. Clean up **unsaved temporary** input/output assets and superseded generated previews according to a bounded lifecycle. **Do not clean up the original linked to a successfully saved item** until item deletion or an explicit future source-deletion feature. Display only `display_image_path` in the Wardrobe UI; any original-image access must be authenticated/authorized.
+## Pipeline (per photo; the same in both modes)
+1. **Quality** (`stage0_quality`, local OpenCV): reject below 800 px short side, too dark, or blurry.
+2. **Detect + facts** (`stage1_detect_facts`, one Gemini vision call per photo, `gemini-3.1-flash-lite`, structured output): boxes, included/excluded, category, colors, pattern, trims, visible text, visible/hidden parts, cut-off-by-frame flag.
+3. Per included item, concurrently:
+   - **Crop** to the box (local).
+   - **Generate** (`stage4_generate`, `gemini-2.5-flash-image`): same garment, unfolded, on white; edge-cut pieces are completed.
+   - **Verify** (`stage5_verify`, local): Lab color distance and OCR text match against the facts; on failure regenerate with the violations (up to 2 retries).
+   - **Cutout** (`cutout`, local rembg `isnet-general-use`, interior filled so white parts stay opaque; skipped if coverage looks wrong).
+   - **Score** (`stage6_score`): tier high/medium/low with reason and retake tip.
+4. One item failing does not fail the others; a failed detect call fails the photo.
 
-## Regeneration scope
-- MVP: allowed only against an **unsaved Add Item draft**, before the initial Save Item action. A new generated preview can replace a previous unsaved preview without modifying the source photograph. Preserve user-edited metadata across image-only regeneration unless an explicit action changes it.
-- Post-MVP: potentially offer Regenerate on saved items using their private retained `source_image_path`, with preview/confirm and safe replacement of `display_image_path`. Do **not** implement this endpoint/UI in MVP merely because source images are retained.
+Every model call is appended to a `run_log.jsonl` (stage, model, prompt version, latency, status). Prompts are versioned files in `pipeline/prompts/`.
+**Back** (`pipeline/back.py`): same stages on one more photo, generation conditioned on the item's front image; the largest detected piece is used.
+**360** (`pipeline/turn.py`): four ghost-mannequin views (front first, then right/back/left anchored on it), each cut out.
 
-## Proposed per-user credit system (future hosted multi-user stage)
+## Account mode
+**Jobs.** `POST /v1/jobs` (garment), `POST /v1/items/{id}/back` and `POST /v1/items/{id}/turn` upload the photo to `<user>/jobs/<job>/upload.<ext>`, insert a `generation_jobs` row and return `202` with the job. Every job-creating request carries an `Idempotency-Key`; `unique (user_id, idempotency_key)` returns the existing job on retry, and `unique (job_id, piece_index)` stops a retried job duplicating items. The worker claims with `claim_generation_job` (`FOR UPDATE SKIP LOCKED`, 10-minute lease); a crashed job is reclaimed when its lease runs out, up to `max_attempts` (2).
 
-- Separate product decision from implementation status: **one unified AI Credits balance per authenticated user** is approved, but the current LAN FastAPI service has no authentication, persistent wallet or purchases.
-- Proposed tables: `credit_wallets(user_id, available_credits, updated_at)`; append-only `credit_ledger(id, user_id, delta, action_type, operation_id, price_version, status, created_at)`; and server-owned `ai_action_prices(action_type, credits, effective_at)`. Schema, indexes and entitlement receipt handling require review.
-- Validate Supabase user credentials server-side for each chargeable operation. The server derives the user identity from the verified token, **not** a client-supplied `user_id`. Only the server can set prices, grant/refund/debit credits and write ledger entries; never expose service-role secrets in the iPhone app.
-- To handle costly generation safely, **atomically reserve** enough credits before invoking AI; reconcile the operation by settling its charge on a defined successful result or releasing/refunding on failed generation. Stable `operation_id` plus transaction constraints prevent duplicate debits on retries and polling. Precise business definition of *successful result* is still open.
-- A photographed image may contain several garments. Users must see the total potential charge and approve it, or explicitly select which garments to create, before one photo causes multiple charges.
-- Present the same server-authoritative prices in the in-app **AI Price List** and on action entry points. F&F admins issue promotional credits through a protected grant operation; public purchase packs/payment receipts come later.
-- Monitor API/model cost separately from user credits. Log action type, attempts, model cost, wallet ledger operation, outcome and per-user usage without exposing private photos.
-- Test data isolation, atomic debit under parallel requests, insufficient-credit refusal, retries, failure releases/refunds and ledger auditability. Never claim this is already deployed.
-- See [Credits requirements](CREDITS.md).
+**Storage** (bucket `wardrobe`, private): `<user>/items/<item>/{source,generated,cutout,crop}.*`, `…/back/<job>/…`, `…/turn/<job>/…`. Each new item keeps the **original upload** as its `source` (`source_kind = 'original'`); items migrated from `runs/` use their crop (`source_kind = 'crop'`). The catalog image is `display_path` (generated.png); the app shows the cutout first.
 
-## Save-success UI/data consistency
-- Success means the committed database item, **private retained source photo** and private **AI-generated display image** are all saved and accessible to their authorized owner; only then report success.
-- The tab navigation must support returning from Add to Wardrobe. Keep any active filter from hiding the newly added item (switch to All when needed).
-- Refresh the wardrobe query/cache, show the new item prominently and use a short, non-blocking success indicator.
-- Restore the Add screen to its clean Photo First state after successful save, but preserve the unsaved photo and suggested/edited metadata during failed submissions and retries.
-- Confirm no duplicate item is created by rapid taps or a retry after an ambiguous network response.
+**API (`/v1`)**
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/v1/jobs` | start a garment job (multipart photo) |
+| GET | `/v1/jobs/{id}` | job state, result, error, `cost_credits` |
+| GET | `/v1/prices` | credit price list (`{"billing": false}` today) |
+| GET | `/v1/items`, `/v1/items/{id}` | the user's items with signed image URLs |
+| PATCH | `/v1/items/{id}` | edit facts (validated server-side) |
+| DELETE | `/v1/items/{id}` | soft delete (`deleted_at`) |
+| POST | `/v1/items/{id}/back`, `/v1/items/{id}/turn` | start a back or 360 job |
+
+**Credits (hooks only):** jobs record `cost_credits` from `WARDROBE_CREDIT_PRICES` (unset = billing off); a `CreditGate` is called at reserve/release/settle/refund and is a no-op today. Wallet and ledger are designed, not built. Product requirements: [CREDITS.md](CREDITS.md) (one wallet per account, server-owned prices, atomic reserve → settle/refund, confirmation before a multi-piece photo can charge more than once); its "Spec vs built hooks" section lists where the M5 hooks differ.
+
+**Operations:** `scripts/migrate_runs.py` moves an existing `runs/` closet into an account (dry run by default, idempotent by `legacy_key`, `.trash` → `deleted_at`). `scripts/sweep_storage.py` removes files of deleted accounts and stale job uploads (dry run by default).
+
+## Local mode (`runs/`, gitignored)
+```text
+runs/<run_id>/run_log.jsonl
+runs/<run_id>/<photo>/item_<n>/
+    crop.png  generated.png  cutout.png  facts.json  facts.original.json (after first edit)
+    verification.json  result.json
+    back/   crop.png generated.png cutout.png facts.json result.json  (optional)
+    turn/   front|right|back|left.png + _cutout.png, status.json      (optional)
+runs/.trash/…        soft-deleted items and replaced backs
+```
+The closet is a directory scan (newest first). The full original photo is not kept in local mode — only the per-item crop.
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/runs` | multipart `photo`; runs the pipeline synchronously (15–60 s) |
+| GET | `/items` | every item with a `generated.png`, with back and turn status |
+| PATCH / DELETE | `/items/{run}/{photo}/{item}` | edit facts / soft delete to `.trash` |
+| POST | `/items/{run}/{photo}/{item}/back` | add or replace the back |
+| POST / GET | `/items/{run}/{photo}/{item}/turn` | start a 360 background task / read its state |
+| GET | `/images/{run}/{photo}/{item}/{file}` (also `back/`, `turn/`) | allow-listed image files only |
+
+## App
+- Tabs: Home · Closet · Add · Account (`mobile/app/(tabs)/_layout.tsx`); `RootNavigator` sends signed-out users to Sign In.
+- Session: Supabase's `LargeSecureStore` pattern (AES key in the Keychain, encrypted session in AsyncStorage), auto-refresh paused in the background.
+- Plain `fetch` clients (`src/api/client.ts` local, `src/api/v1.ts` account) adapting both to the same item shapes; local component state.
+- Native iOS look and motion per `DESIGN.md`; Reanimated motion that honors Reduce Motion; `expo-haptics`. Everything runs in Expo Go.
+- `GarmentImage` falls back cutout → generated → crop → placeholder.
 
 ## Quality gates
-- TypeScript checking, linting, minimal unit tests for data helpers.
-- Manual iOS device tests for camera, gallery, permissions, auth, offline/error states, image refresh, and item deletion.
-- Test AI outputs for valid category mapping, missing/uncertain fields, unsupported brands, corrupt responses, timeouts, server errors, abuse limits and manual category fallback.
-- Test **image generation** on folded, hung, cropped and partly obscured clothes; ensure full garment framing, faithful colors/visible patterns, **consistent solid-white background without alpha**, no fabricated logos, generated-image-only Wardrobe rendering, **pre-save regeneration**, and save prevention when generation fails.
-- Verify **Original / Generated toggle** defaults to Generated, works repeatedly before save with owner-only private access, survives metadata edits, and never causes Original to be saved/rendered as `display_image_path`. Confirm no Regenerate control or regeneration endpoint is exposed through saved Item Details/Edit in MVP. Evaluate white/light garments for lost outlines, harsh masking or altered fabric detail.
-- Ensure Supabase RLS and private object Storage policies are tested using two distinct accounts for **both source and display paths** before external testers.
-- Confirm deletion removes both private image types (including retry/cleanup after partial failure) and does not break other users' items.
+`pytest` (providers faked), `npx jest`, `npx tsc --noEmit`, `npx supabase test db`; `pytest tests/integration` with the local Supabase stack running. Manual runs on real photos for prompt or generation changes; manual phone checks for UI.
 
-## iOS delivery
-Use EAS development builds for testing, and a production/distribution profile for TestFlight submission. Requires Apple Developer Program membership and App Store Connect setup; review signing, bundle identifier and EAS credentials when implementation begins.
-
-## Deferred architectural decisions
-Exact OTP-versus-magic-link UX, Expo SDK version, styling library, **image generation/editing model and metadata vision provider(s)**, output encoding/resolution and white-background normalization approach, image processing fidelity criteria, **user-facing retention disclosure and optional future original-photo deletion controls**, inference-time private transfer and temporary intermediate retention, request cost limits, cache/offline behavior and localization strategy. Choose these before implementation and update this document.
+## Known limits
+- The server and worker run on the owner's Mac; off-LAN access (tunnel) is documented, not set up. No cloud host.
+- Local mode's `POST /runs` holds the request for the whole run; its 360 is an in-process task.
+- `pyproject.toml` still lists `anthropic` and `replicate` from the earlier pipeline version.

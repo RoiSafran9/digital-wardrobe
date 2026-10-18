@@ -79,3 +79,37 @@ class ItemPatch(BaseModel):
     pattern: str | None = None
     trims: str | None = None
     visible_text: str | None = None
+
+
+class JobOut(BaseModel):
+    id: str
+    kind: Literal["garment", "back", "turn"]
+    status: Literal["queued", "running", "succeeded", "failed", "canceled"]
+    error: str | None = None
+    item_id: str | None = None
+    item_ids: list[str] = []
+    quality: QualityOut | None = None
+    failed: list[str] = []
+    cost_credits: int | None = None  # AI Credits this job costs; None while billing is off
+
+
+class PricesOut(BaseModel):
+    billing: bool
+    prices: dict[str, int]
+
+
+class V1ItemOut(BaseModel):
+    """A closet item in the multi-user API: same shape as ClosetItemOut, keyed by id, with signed image URLs."""
+    id: str
+    created_at: str
+    tier: Literal["high", "medium", "low"]
+    facts: ItemFacts
+    crop_url: str
+    generated_url: str
+    cutout_url: str | None = None
+    back: BackOut | None = None
+    turn: TurnOut | None = None
+
+
+class V1ItemsResponse(BaseModel):
+    items: list[V1ItemOut]

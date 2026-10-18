@@ -1,27 +1,27 @@
 # Claude Code — Digital Wardrobe
 
-Read `AGENTS.md` first. It contains the shared rules for **all** AI coding agents.
+Read `AGENTS.md` first. It holds the shared rules for **all** AI coding agents.
 
 ## At session start
-- Run `git status`, `git branch --show-current` and `git pull --ff-only` (when safe and tracking branch exists).
-- Read `README.md`, `docs/PRD.md`, `docs/ARCHITECTURE.md` and `docs/ROADMAP.md`.
-- Review open branches / pull requests if connected to GitHub.
+- Run `git status` and `git branch --show-current`; `git pull --ff-only` when a tracking branch exists and it is safe.
+- Read `README.md`, `PRODUCT.md`, `docs/PRD.md` and `docs/ARCHITECTURE.md`. Read `DESIGN.md` before any UI work and the matching spec in `docs/superpowers/specs/` before changing a feature.
 
 ## Implementation guidelines
-- Use Expo + React Native + TypeScript as the proposed stack; resolve open architecture decisions with the owner instead of treating drafts as immutable.
-- Keep navigation in `app/`, business logic in `features/`, reusable primitives in `components/`, integrations in `lib/`.
-- Use Supabase RLS and private image storage. Never ship service-role credentials to the client.
-- Work in feature branches and open PRs rather than pushing to main.
-- After code changes run available type checks, lint/tests, and describe any checks that could not run.
-- **AI garment image generation IS part of MVP**: source camera/gallery photo → secure image editing/generation that reconstructs a neatly laid-out full garment on a **solid white (#FFFFFF), non-transparent background** → preview the **generated image by default**, with **Original / Generated** toggle for pre-save comparison and editable category/color/name suggestions → allow **pre-save-only** Regenerate/Retake and explicit Save Item → show the generated image in Wardrobe. Never present the original input image as the saved catalog image. Avoid fabricated distinctive details and explain uncertainty of unseen portions.
-- Every saved garment must have **two private files and two associated paths**: retained `source_image_path` (original) and `display_image_path` (AI-generated). Wardrobe and Item Details render only `display_image_path`. In pre-save Review, Original may be viewed temporarily via a private toggle, but the saved display is always the generated image. Both are owner-restricted; on item deletion clean up both. Saving confirms both objects and metadata; preserve the original for future regeneration. **Do not implement Regenerate in saved Item Details/Edit in the MVP**; it is definitively deferred.
-- The metadata stage must validate category, keep uncertain brands blank, allow manual category correction, and block saving if **image generation** fails. Run AI from an authenticated server-side handler; keep secrets out of the app and private input/output images protected.
-- Defer other AI features such as outfit recommendations until after MVP.
+- Stack as built: Expo Go iPhone app (`mobile/`, Expo Router, TypeScript) → FastAPI (`api/`) on the owner's Mac over the LAN → Python pipeline (`pipeline/`) calling Gemini. Account mode adds Supabase Auth (6-digit email code), Postgres with RLS, a private Storage bucket and a Postgres job queue with an in-process worker; local mode (default) keeps everything as files under `runs/`.
+- Layout: routes in `mobile/app/` (`sign-in.tsx`, `(tabs)/` for Home, Closet, Add, Account), app logic in `mobile/src/` (`api/`, `auth/`, `components/`), HTTP routes in `api/routes/` (`v1.py` for account mode), auth/store/worker/credits in `api/`, pipeline stages in `pipeline/stages/`, prompts in `pipeline/prompts/` (versioned files, never edited in place), model calls in `pipeline/providers/`, database in `supabase/migrations/` with pgTAP tests in `supabase/tests/`. (`mobile/AGENTS.md` is Expo boilerplate; its `src/app/` route path does not apply here.)
+- Never put a secret or service-role key in `mobile/`; the user ID comes only from the verified token. See `AGENTS.md` → Privacy.
+- **Garment fidelity comes first**: the catalog image must match the real photographed piece — colors, wash, texture, prints, text, trims, proportions. Unfold and smooth it; do not invent logos, details or "nicer" versions. Anything generated rather than photographed (the 360 view) is labelled as AI.
+- The closet shows the transparent cutout on a neutral tile; the white-background generated image is the fallback, then the photo crop. No tints, filters or glows on garment images.
+- No extra paid model calls or added waiting beyond what a feature needs. Paid, slow features (the 360 view) run only when the user asks.
+- Expo Go only: new native dependencies must be ones bundled in Expo Go, or raise it with the owner first.
+- Commit directly to `main` (the owner's chosen workflow); use a branch or PR only when the owner asks. Never force-push.
+- After code changes run the checks in `AGENTS.md` and say which could not run.
+- Out of scope unless the owner asks: outfit features, payments, a cloud host (see "Next" and "Later" in `docs/ROADMAP.md`).
 
 ## Expected handoff
-In each PR provide purpose, implementation summary, manual verification steps, risks, and documentation updates.
+Summarize purpose, what changed, how it was verified (tests run, manual steps on the phone), risks, and doc updates.
 
-## Future AI Credits
-- Approved product direction: each user gets a single AI Credits balance; the Account screen shows remaining credits and an in-app price list for all billable AI creation actions.
-- Actual credit amounts, F&F grants and purchase packs remain unapproved. Do not hardcode example values as launch prices or claim the current local application already supports accounts/wallets.
-- Credits must be enforced by a trusted server with an append-only ledger, transaction safety and idempotent generation operations. Read `docs/CREDITS.md` before implementing monetization.
+## AI Credits
+- Approved product direction: each account gets a single AI Credits balance; Account shows remaining credits and an in-app price list for all billable AI actions. Only the M5 hooks exist (billing off).
+- Credit amounts, F&F grants and purchase packs are unapproved. Do not hardcode example values as launch prices or claim wallets/balances exist.
+- Credits must be enforced by the trusted server with an append-only ledger, transaction safety and idempotent jobs. Read `docs/CREDITS.md` before implementing monetization.

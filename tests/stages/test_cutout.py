@@ -85,3 +85,47 @@ def test_white_parts_inside_the_garment_stay_opaque(tmp_path, monkeypatch):
     inner = alpha[h // 4: 3 * h // 4, w // 4: 3 * w // 4]
     assert inner.min() == 255, "stripes inside the garment were left transparent"
     assert alpha[0, 0] == 0 and alpha[-1, -1] == 0  # real background still removed
+
+
+def _shirt_with_gap(path, gap_color=(255, 255, 255)):
+    # A dark garment whose outline encloses a wide gap (like the space between a sleeve and the
+    # body), filled with `gap_color` in the generated image.
+    img = np.full((200, 200, 3), 255, dtype=np.uint8)
+    img[30:170, 30:170] = (40, 50, 90)
+    img[80:120, 80:120] = gap_color
+    Image.fromarray(img).save(path)
+
+
+def _remove_like_rembg(image):
+    # rembg clears near-white areas and zeroes the color of what it clears.
+    rgb = np.asarray(image.convert("RGB")).copy()
+    alpha = np.where(rgb.min(axis=2) < 230, 255, 0).astype(np.uint8)
+    rgb[alpha == 0] = 0
+    return Image.fromarray(np.dstack([rgb, alpha]), "RGBA")
+
+
+def test_background_showing_between_sleeve_and_body_stays_transparent(tmp_path, monkeypatch):
+    monkeypatch.setattr(cutout, "_remove", _remove_like_rembg)
+    src = tmp_path / "generated.png"
+    _shirt_with_gap(src)
+
+    out = cutout.run(str(src), str(tmp_path / "cutout.png"))
+
+    result = np.asarray(Image.open(out))
+    gap = result[result.shape[0] // 2, result.shape[1] // 2]
+    assert gap[3] == 0, "the studio-white gap inside the outline was filled in"
+
+
+def test_white_parts_of_the_garment_keep_their_own_color_not_black(tmp_path, monkeypatch):
+    # A white panel inside the garment is off-white fabric, not the pure studio background: it
+    # stays opaque, and in its real color (rembg had zeroed it to black).
+    monkeypatch.setattr(cutout, "_remove", _remove_like_rembg)
+    src = tmp_path / "generated.png"
+    _shirt_with_gap(src, gap_color=(236, 236, 236))
+
+    out = cutout.run(str(src), str(tmp_path / "cutout.png"))
+
+    result = np.asarray(Image.open(out))
+    panel = result[result.shape[0] // 2, result.shape[1] // 2]
+    assert panel[3] == 255
+    assert panel[:3].min() >= 230, f"filled area came out dark: {panel[:3]}"

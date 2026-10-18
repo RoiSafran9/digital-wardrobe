@@ -1,0 +1,174 @@
+// The account API (/v1): the same operations as the local API, adapted to the shapes the screens use.
+// Captures, back photos and 360s are jobs on the server; we poll them so work survives a dropped request.
+import { randomUUID } from "expo-crypto";
+import { File } from "expo-file-system";
+import { API_BASE_URL, UNREACHABLE, sentence } from "./http";
+import type { BackView, ClosetItem, ItemFacts, ItemPatch, ItemsResponse, RunItem, RunResponse, Tier, Turn } from "./types";
+
+export type Account = {
+  getToken: () => Promise<string | null>;
+  onUnauthorized: () => void;
+};
+
+export const POLL_MS = 2000;
+export const POLL_LIMIT_MS = 5 * 60_000;
+export const SESSION_EXPIRED = "Your session expired. Sign in again.";
+export const NOT_ACCOUNT_MODE = "Your wardrobe server isn't in account mode. Restart it with WARDROBE_AUTH=on.";
+export const SIGNED_OUT = "You signed out.";
+export const STILL_WORKING = "Still working on it — check your closet in a minute.";
+
+type V1Item = {
+  id: string;
+  created_at: string;
+  tier: Tier;
+  facts: ItemFacts;
+  crop_url: string;
+  generated_url: string;
+  cutout_url?: string | null;
+  back?: BackView | null;
+  turn?: Turn | null;
+};
+
+type Job = {
+  id: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "canceled";
+  error: string | null;
+  item_ids: string[];
+  quality: RunResponse["quality"] | null;
+  failed: string[];
+  retakes?: unknown[];
+};
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+// The screens date items by a local "YYYYMMDD-HHMMSS" stamp (today's run ids); give /v1 items one too.
+function stamp(date: Date): string {
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+}
+
+export function toClosetItem(item: V1Item): ClosetItem {
+  const { created_at, ...rest } = item;
+  return { ...rest, item_id: item.id, photo_name: "", run_id: stamp(new Date(created_at)) };
+}
+
+async function send(account: Account, path: string, init: RequestInit = {}): Promise<Response> {
+  const token = await account.getToken();
+  if (!token) {
+    account.onUnauthorized();
+    throw new Error(SESSION_EXPIRED);
+  }
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init, headers: { ...(init.headers as Record<string, string>), Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new Error(UNREACHABLE);
+  }
+  if (response.status === 401) {
+    account.onUnauthorized();
+    throw new Error(SESSION_EXPIRED);
+  }
+  return response;
+}
+
+async function read<T>(response: Response): Promise<T> {
+  if (response.status === 204) return undefined as T;
+  const body = await response.json();
+  if (!response.ok) {
+    const error = (body as { error?: string } | null)?.error;
+    if (error) throw new Error(sentence(error));
+    if (response.status === 404) throw new Error(NOT_ACCOUNT_MODE);  // FastAPI's own 404: no /v1 routes
+    throw new Error(`Something went wrong (error ${response.status}). Try again.`);
+  }
+  return body as T;
+}
+
+const call = async <T>(account: Account, path: string, init?: RequestInit) => read<T>(await send(account, path, init));
+
+// Starts a job. A request that never got an answer is sent once more with the same key, so the
+// server returns the job it may already have made instead of starting a second one.
+async function startJob(account: Account, path: string, photoUri?: string): Promise<Job> {
+  const key = randomUUID();
+  const attempt = () => {
+    let body: FormData | undefined;
+    if (photoUri) {
+      body = new FormData();
+      body.append("photo", new File(photoUri) as unknown as Blob);
+    }
+    return call<Job>(account, path, { method: "POST", body, headers: { "Idempotency-Key": key } });
+  };
+  try {
+    return await attempt();
+  } catch (e) {
+    if (e instanceof Error && e.message === UNREACHABLE) return attempt();
+    throw e;
+  }
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function waitFor(account: Account, current: () => Account | null, job: Job): Promise<Job> {
+  for (let waited = 0; ; waited += POLL_MS) {
+    if (job.status === "succeeded") return job;
+    if (job.status === "failed" || job.status === "canceled") throw new Error(sentence(job.error ?? "Something went wrong — try again"));
+    if (waited >= POLL_LIMIT_MS) throw new Error(STILL_WORKING);
+    await sleep(POLL_MS);
+    if (current() !== account) throw new Error(SIGNED_OUT);
+    job = await call<Job>(account, `/v1/jobs/${encodeURIComponent(job.id)}`);
+  }
+}
+
+export async function getItems(account: Account): Promise<ItemsResponse> {
+  const { items } = await call<{ items: V1Item[] }>(account, "/v1/items");
+  return { items: items.map(toClosetItem) };
+}
+
+export async function postRun(account: Account, current: () => Account | null, photoUri: string): Promise<RunResponse> {
+  const job = await waitFor(account, current, await startJob(account, "/v1/jobs", photoUri));
+  const { items } = await getItems(account);
+  const byId = new Map(items.map((i) => [i.item_id, i]));
+  const pieces: RunItem[] = job.item_ids.flatMap((id) => {
+    const item = byId.get(id);
+    return item ? [{ ...item, reason: "", retake_instruction: null }] : [];
+  });
+  return {
+    run_id: stamp(new Date()),
+    quality: job.quality ?? { status: "ok", reason: null },
+    items: pieces,
+    // Pieces the pipeline couldn't render have no picture to show; report them as not processed.
+    failed: [...job.failed, ...(job.retakes ?? []).map((_, i) => `retake_${i}`)],
+  };
+}
+
+const itemPath = (item: ClosetItem) => `/v1/items/${encodeURIComponent(item.id ?? item.item_id)}`;
+
+export async function getItem(account: Account, item: ClosetItem): Promise<ClosetItem> {
+  return toClosetItem(await call<V1Item>(account, itemPath(item)));
+}
+
+export async function updateItem(account: Account, item: ClosetItem, patch: ItemPatch): Promise<ClosetItem> {
+  return toClosetItem(await call<V1Item>(account, itemPath(item), {
+    method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch),
+  }));
+}
+
+export async function deleteItem(account: Account, item: ClosetItem): Promise<void> {
+  await call<void>(account, itemPath(item), { method: "DELETE" });
+}
+
+export async function addBack(account: Account, current: () => Account | null, item: ClosetItem, photoUri: string): Promise<ClosetItem> {
+  await waitFor(account, current, await startJob(account, `${itemPath(item)}/back`, photoUri));
+  return getItem(account, item);
+}
+
+export async function startTurn(account: Account, item: ClosetItem): Promise<Turn> {
+  await startJob(account, `${itemPath(item)}/turn`);
+  return { state: "running", error: null, views: [] };
+}
+
+export async function getTurn(account: Account, item: ClosetItem): Promise<Turn> {
+  const { turn } = await getItem(account, item);
+  if (!turn) throw new Error("No 360 view yet");
+  return turn;
+}

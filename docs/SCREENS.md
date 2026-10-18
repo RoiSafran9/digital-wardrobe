@@ -1,128 +1,59 @@
-# Screen Map — Digital Wardrobe MVP
-Status: **Draft / screen planning** · Updated: 2026-10-15
+# Screen Map — Digital Wardrobe
+Status: **As built** · Updated: 2026-10-18
 
-## Confirmed context
-- iPhone-first and English-only.
-- Visual direction: **Modern & Playful**. Light surfaces, friendly rounded components, restrained playful accent colors, photo-first imagery and accessible text/controls. Detailed tokens are not finalized.
-- Passwordless email authentication (OTP and/or magic link; exact verification UX TBD).
-- Multiple accounts with isolated, private cloud wardrobes.
-- One original source photo is required and **retained privately after Save**, alongside one distinct **AI-generated full-garment catalog image** and category; optional item name, color, brand and notes. Only the generated photo is shown in Wardrobe.
-- Nine predefined categories; category filtering is part of the MVP.
-- **Home layout confirmed:** My Wardrobe shows a two-column photo grid plus horizontally scrollable filter chips (All + nine categories), with in-place filtering. Category-first browsing is not part of MVP.
-- **Navigation confirmed:** persistent Bottom Navigation with **Wardrobe | Add | Account**. No floating add button or header-only Settings navigation.
-- **Add Item flow confirmed:** Photo First → **AI generates isolated, fully laid-out garment image + suggests metadata** → Single Review/Edit Form with **Generated (default) / Original toggle for comparison** → explicit Save Item → Wardrobe shows generated image with success message.
+Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: system font, grouped backgrounds, one blue tint, light/dark, Reduce Motion). Feature specs: `docs/superpowers/specs/`.
 
-## Proposed screens (for review, not yet approved)
+## Navigation
+- Signed out (account mode): only **Sign In**. Local mode skips it. A release build without Supabase settings shows a blocking "not configured" screen.
+- Signed in: bottom tabs **Home** (default) · **Closet** · **Add** · **Account** (`mobile/app/(tabs)/`). The item sheet opens over Home or Closet; it is not a tab.
 
-### 1. Sign In
-- Clear brand identity and a single email input with Continue.
-- Explain that an email code or link will arrive.
-- Show basic email validation and network/retry feedback.
+## 0. Sign In (`mobile/app/sign-in.tsx`)
+- Email step: "Enter your email and we'll send you a 6-digit code." → Send code.
+- Code step: 6-digit field (one-time-code autofill) → Sign in; "Resend code in Ns" (60 s); change email; clear messages for wrong/expired codes and rate limits.
 
-### 2. Verify Email
-- Enter email code and/or follow a magic link (decide during implementation).
-- Resend, change email and recovery from invalid/expired verification.
-- On success, enter private wardrobe.
+## 1. Home (`mobile/app/(tabs)/index.tsx`)
+- Large title "Wardrobe" with "N pieces · M added this week".
+- Running garments: two rows of recent cutouts drifting in opposite directions; touch pauses, tap opens the item. Static under Reduce Motion.
+- Stats tiles: Pieces, Categories, Colors (count up on first appearance).
+- Quick add: "Take photo" (primary) and "Choose from library" start capture without leaving Home.
+- **Just added** (`src/components/JustAdded.tsx`): the latest capture's pieces with tier, retake instruction or edge-completion tip, and "+ Back"; "N pieces couldn't be processed"; "No pieces found in that photo…" when nothing was detected or the photo failed the quality check; "Done" clears it.
+- By category: chips with counts; tapping opens Closet filtered to that category.
+- Empty closet: one empty state with the two add buttons.
 
-### 3. My Wardrobe (home)
-- Title **My Wardrobe**; Account is accessed through the bottom navigation rather than a header Settings icon.
-- **Confirmed:** two-column photo grid with rounded cards, showing the user's clothing across categories.
-- **Confirmed:** horizontally scrollable category-filter chips: All (default) plus each of the nine categories. One chip is active at a time; selection filters the existing grid without opening another category screen.
-- **Add** is always available as the center bottom-tab action.
-- Each card: **generated wardrobe image** (never the original source photo) plus optional name (or category fallback).
-- Empty wardrobe, empty filter, loading and retry states.
-- After saving a new item, display it in the grid (reset the active category chip to **All** if needed), bring it into view, and show a brief non-blocking success message.
+## 2. Closet (`mobile/app/(tabs)/closet.tsx`)
+- Large title, scrollable category filter chips (accepts a `category` route param from Home).
+- Two-column grid of garment tiles (cutout on tile, category and colors below); "360" badge when a 360 view is done.
+- Pull to refresh; tapping a tile opens the item sheet, which swipes between items. Failed loads show an error instead of crashing.
 
-### 4. Add Item (confirmed: Photo First + AI-first + Single Form)
-- Enter via the **Add** bottom-tab action; retain the three-tab navigation model.
-- First show **Take Photo** and **Choose from Library**; handle permissions and cancellation.
-- After choosing a source photo, display a clear **Generating your wardrobe image…** processing state while AI generates a new image of the garment laid out in full on a **solid white (#FFFFFF) background, with no transparency**, and suggests metadata.
-- On the **single scrollable review screen**, prominently show **Generated by default**. Place an accessible, clearly labeled **Generated / Original** segmented toggle adjacent to the image preview. Tapping Original shows the source photo temporarily to compare real cut, color, pattern and details; toggling back shows the generated preview without leaving Review. Present an editable Category (one of nine), Color and optional Item Name; Brand only if identifiable from visible evidence, Notes only if entered by user.
-- **Before Save Item**, the user can **Regenerate image** from the selected source photo or **Retake/Choose Another Source Photo**, and manually edit/clear any optional suggestion. Regenerate only updates the unsaved preview, not the saved wardrobe. Image completion of hidden regions may be approximate.
-- If metadata analysis fails, show Retry + manual Category selection. If **image generation fails**, show Retry/Retake and block Save until a generated representative image is available. Never silently switch to the unprocessed source as the item image.
-- The user explicitly presses **Save Item** after seeing the generated result. Disabled until a **generated representative image** and a valid category are available. **Saving always uses Generated as the catalog image, even if Original is currently selected in the comparison toggle.** Prevent duplicate submits and retain the draft on failure.
-- **After successful persistence:** reset the Add draft, switch to the Wardrobe tab, reveal the new item in the grid (choose All if a category filter would hide it), and display a short success message.
-- Cancel/back requires appropriate draft-discard protection; exact cancellation behavior is not yet decided.
+## 3. Add (`mobile/app/(tabs)/add.tsx`)
+- "Add a piece" with three shooting tips (lay it flat, shoot from above, a few at once works).
+- Take photo / Choose from library; staged processing status during the run; upload or camera errors shown inline.
+- On success the app returns to Home, where the run appears under Just added.
 
-### 5. Item Details
-- Large **generated representative garment image** (not source camera photo), category, optional metadata, created date.
-- Edit and Delete actions; confirm destructive deletion. Delete also removes the retained private original source image and the generated display image. **Do not show Regenerate for saved items in MVP.**
-- Graceful display when optional fields are absent.
+## 4. Account (`mobile/app/(tabs)/account.tsx`)
+- Signed in: email and Sign Out (confirmed).
+- Local mode: a "Local mode" row: "Not signed in. Your items live on your computer's wardrobe server."
 
-### 6. Edit Item
-- Reuse the add/edit form components.
-- Change category and optional fields, or replace the single photo.
-- Save, cancel, loading, error feedback.
-
-### 7. Account (bottom navigation destination)
-- Open from the **Account** bottom tab; do not rely on header Settings.
-- Show signed-in account email.
-- Sign out.
-- Basic app information; no social, billing or advanced settings in MVP.
-
-## Information architecture (primary navigation confirmed)
-- Sign-in and email verification are shown without a valid session, outside the authenticated tab navigator.
-- After successful authentication, show the **Wardrobe** tab by default.
-- Authenticated bottom tabs, in order: **Wardrobe | Add | Account**.
-- **Wardrobe**: photo-grid catalog and category filter chips; tapping an item opens Item Details and then Edit Item.
-- **Add**: entry into Add Item photo selection and form flow.
-- **Account**: account email, sign out and simple app information.
-- Item Details/Edit are secondary screens, not additional bottom tabs.
-- Avoid onboarding slides, extra tabs and post-MVP AI surfaces.
-
-## Home browsing decision (confirmed)
-**Photo Grid + Filter Chips** is approved. The category-first home proposal is rejected for MVP. Users arrive at My Wardrobe with All selected, browse a two-column image grid, and filter that grid directly through the horizontally scrollable category chips.
-
-## Primary navigation decision (confirmed)
-**Bottom Navigation: Wardrobe | Add | Account** is approved. The floating Add button plus header-only Settings alternative is not used in MVP.
-
-The tab bar should use clear icons and readable English labels, accommodate iPhone safe areas and maintain appropriate touch targets.
-
-## Add Item entry decision (confirmed)
-**Photo First** is approved. Tapping Add shows Take Photo / Choose from Library, and the item details form follows after an image has been chosen. Form First was not selected for MVP.
-
-## Add Item completion layout (confirmed)
-**Single Review/Edit Form** is approved. After Photo First and AI-generated image/metadata processing, show one scrollable screen led by the **new generated catalog image**, editable AI suggestions, Regenerate/Retake and Save Item. No multi-step wizard or compulsory typing when a valid category is suggested.
-
-## After Save Item decision (confirmed)
-**Return to Wardrobe** is approved. On backend-confirmed success, display the new item in the Wardrobe grid and show a brief success message such as **"Item added to your wardrobe"**. If the previous filter would hide the item, set category filter to **All**. Ensure the item is visible (e.g. put newest first and scroll to it). Only then discard/reset the Add draft.
-
-On save failure remain in the Add review screen, retain the image and edits, and show an actionable error/retry. Never show success prematurely or create duplicate items from repeated Save taps.
-
-## Generated image background (confirmed)
-**Solid white (#FFFFFF)** for every generated representative clothing image. No transparent background. The full garment should be centered, completely in frame with consistent breathing room; no hands, hangers, props, mannequins or distracting scenery. Preserve original visible garment features and avoid fabricated details. A subtle border or shadow around an item card may help white garments stand out against the white generated background.
-
-## Original source photo retention (confirmed)
-- Save the **original photo privately, separately from the generated white-background image** and associate both with the garment.
-- Do not display the original in Wardrobe tiles or as the default Item Details photo.
-- Keeping the original supports future AI **Regenerate from Original** without a new picture. **This control is explicitly deferred until after MVP**; regeneration is available only before the first save.
-- Deleting an item removes **both** images; a brief privacy notice should explain that the original photo is stored for future regeneration.
-
-## Other open visual decision
-Choose an accessible **Modern & Playful** palette (background/surface, primary accent, secondary accent, text and states). Avoid excessive accents; keep generated garment photos visually primary.
+## 5. Item sheet (`mobile/src/components/ItemSheet.tsx`)
+- Large garment image (cutout → white image → crop fallback); Front/Back segmented control when a back exists, "+ Back" when not.
+- 360: "View in 360" with a cost/time note → staged status while running (sheet can close and reopen) → turnable view labelled "360 · AI view" → on failure the error and "Try again".
+- Facts as a grouped list: Colors, Pattern, Details, Text, Back text.
+- Edit (category, colors, pattern, details, text), with an unsaved-changes guard.
+- "Remove from closet" as the last row, confirmed; recoverable on the server.
 
 ## Screen-level acceptance
-- Users can locate Add Item and Account quickly from the persistent labeled bottom bar.
-- Choosing a source photo triggers AI image generation and metadata analysis before review; the user sees **Generated by default**, can toggle between **Original / Generated** before saving, and can regenerate or change the source. Comparison never alters which image gets displayed in the saved wardrobe.
-- An AI-inferred category/color can be edited. On metadata-only failure manual category selection allows saving **only if the generated image succeeded**; image-generation failures require Retry/Retake.
-- On successful Save Item, return to Wardrobe, show the new item and a short success notice even if a filter was active. On failure, the Add draft remains editable and no success notice appears.
-- On the unsaved Add preview, Regenerate yields another draft image without saving; after Save, Item Details and Edit Item have no Regenerate action.
-- No optional field is required to save a clothing item.
-- Filter by any of the nine predefined categories.
-- Only the signed-in user's wardrobe is visible.
-- Verification, network failure, camera/photo permissions, upload failure, empty and delete-confirmation states are accounted for.
+- Signed out you see only Sign In; after the code you land on Home; restart keeps you signed in; Sign Out returns to Sign In.
+- Every tab reachable from the bar; capture from Home and Add both land new pieces in Just added and the closet.
+- Category chips on Home open Closet pre-filtered.
+- Item sheet states (no back / back, 360 none / running / done / failed, edit, remove) all reachable on the phone.
+- Light and dark mode readable; Reduce Motion removes drift, count-up and scrub crossfades.
 
-## Credits experience (confirmed product direction; multi-user rollout)
+## Credits experience (confirmed direction; not built)
+- **Account → AI Credits:** remaining balance and a readable usage bar with an honest baseline (e.g. a specific granted pack); for combined balances or top-ups, no misleading percentage.
+- **Account → AI Price List:** read-only list of actions and their cost in AI Credits — **Create Garment**, **Add Back Image**, **Create 360**, and **Regenerate** if it ever becomes a separately chargeable action. Numbers pending approval; the data source is `GET /v1/prices`.
+- Every billable entry point (capture, + Back, View in 360) shows its price and the balance, with explicit confirmation where the charge or the number of generated items might surprise the user.
+- Insufficient credits: a useful explanation and a way to get more (admin-issued F&F grants first; paid packs only after payment integration). Viewing saved items keeps working.
+- Credit History / Activity may list grants, charges and refunds; presentation pending screen design.
 
-- **Account → AI Credits:** prominently show remaining balance and a readable usage bar. The progress bar needs an honest baseline (e.g., a specific active granted pack); for combined balances or top-ups, never show a misleading percentage.
-- **Account → AI Price List:** English-language, in-app read-only list of actions and their cost in AI Credits: **Create Garment**, **Add Back Image**, **Create 360**, and **Regenerate** if separately chargeable. Actual numbers pending approval.
-- Every billable generation entry point shows its current fixed credit price and balance, with explicit confirmation where the charge or generated-item count might surprise the user.
-- Insufficient credits: show a useful explanation and a way to request/get more credits (admin-issued F&F grants initially; paid packs only after payment integration). Viewing saved items must continue working.
-- Credit History / Activity may list grants, charges and refunds; exact presentation pending screen design.
-- The local iPhone prototype has no accounts/credits yet. These are target requirements for the authenticated rollout, not shipped functionality.
-
-## Open screen questions
-- Generated-image fidelity criteria and exact preview image sizing; the **Original / Generated pre-save comparison toggle is confirmed**.
-- Palette, typography and spacing tokens.
-- Cancel/draft-discard behavior and precise success-message presentation.
-- OTP code versus magic link as the primary verification method.
+## Not built (see ROADMAP "Later")
+A pre-save Review screen with an Original/Generated toggle and Save button, saved-item Regenerate, in-app restore of removed items, a credits balance on Account.

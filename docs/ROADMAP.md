@@ -1,59 +1,56 @@
 # Roadmap — Digital Wardrobe
+Updated: 2026-10-18
 
-## Phase 0 — Foundation (current)
-- [x] Create private repository
-- [x] Define draft MVP and proposed architecture
-- [x] Confirm home browsing: two-column Photo Grid + horizontal category chips
-- [x] Confirm Bottom Navigation: Wardrobe | Add | Account
-- [x] Confirm Photo First entry for Add Item
-- [x] Confirm AI-first metadata suggestion and Single Review/Edit Form after photo selection
-- [x] Confirm AI-generated full-garment representative images (not original camera photos) in Wardrobe
-- [x] Confirm after-save success: return to Wardrobe, reveal new item and show success message
-- [x] Confirm generated-image background: solid white (#FFFFFF), non-transparent
-- [x] Decide original source-photo retention: keep privately with each item for future regeneration
-- [x] Confirm Regenerate is available **before the first Save Item only**; saved-item Regenerate is post-MVP
-- [x] Confirm pre-save Review comparison: **Generated default / Original toggle**, without changing saved catalog image
-- [ ] Define detailed output image quality/fidelity acceptance requirements
-- [ ] Finalize cancel/discard handling, visual tokens and remaining screen map (Modern & Playful approved)
-- [ ] Connect Claude Code to the same repository
+## Done — single-owner app
+- [x] Pipeline: quality check → one Gemini call for detection + facts → crop → catalog image with color/text check and retries → tier
+- [x] Simplified to Gemini only (SAM and Claude judge dropped)
+- [x] FastAPI backend on the owner's Mac over the LAN; Expo Go iPhone app: capture, results, closet
+- [x] Edit an item's facts; soft delete (recoverable)
+- [x] Retake guidance; pieces past the photo edge completed with a tip
+- [x] Optional back photo
+- [x] Local background removal (rembg cutouts), white parts kept opaque
+- [x] Native iOS redesign: Home tab, motion, haptics, dark mode
+- [x] API found on any Wi-Fi without config
+- [x] Optional AI 360 "on body" view (four ghost-mannequin angles, background job)
 
-## Phase 1 — App foundation
-- [ ] Scaffold Expo + TypeScript + Expo Router
-- [ ] Establish navigation, UI primitives and theme
-- [ ] Configure Supabase project and environment example
-- [ ] Choose image generation/editing and metadata-vision model(s), secure inference endpoint, limits and photo privacy/retention safeguards
-- [ ] Create schema with separate `source_image_path` and `display_image_path`, private Storage, user-scoped RLS/policies and paired-asset deletion
+## Multi-user phase ([design](superpowers/specs/2026-10-18-multiuser-architecture-design.md))
+- [x] M1 — Authentication foundation: email-code sign-in, encrypted persisted session, guarded navigation, Account tab, local mode for development
+- [x] M2 — Database schema, RLS, private Storage bucket and policies, two-account isolation tests
+- [x] M3 — FastAPI verifies Supabase tokens, Postgres-backed generation jobs, results in private Storage, migration of local `runs/`
+  - [x] M3a — backend: token verification, `/v1` jobs/items API, worker, `claim_generation_job`, `runs/` migration script
+  - [x] M3b — app: send the token, use `/v1`, poll jobs, signed image URLs (server stays on the Mac for now; tunnel documented, not set up)
+- [x] M4 — End-to-end two-user verification (automated on the local stack; on-device check by the owner), storage sweeper, product docs updated
+- [x] M5 — Credit system readiness: job `cost_credits`, server price list (off), credit gate hooks, `GET /v1/prices`, [integration notes](superpowers/specs/2026-10-18-credits-readiness.md); no payments
 
-## Phase 2 — Working wardrobe MVP
-- [ ] Sign-in and session persistence
-- [ ] Camera/photo-library picker and **private upload of original and generated photos**
-- [ ] Generate full-length garment catalog image from source photo (**solid white background, no alpha**), with **pre-save-only regeneration**, **Original / Generated comparison** and fidelity review
-- [ ] Vision AI category/color/name suggestions with editable Single Review Form and safe manual-category fallback
-- [ ] Clothing item creation and image grid
-- [ ] Post-save Wardrobe refresh, new-item visibility and brief success feedback; preserve draft on failed save
-- [ ] Category filters
-- [ ] Item detail, edit and delete (including cleanup of both source and generated images)
-- [ ] Error/empty/loading states and security validation
+## Owner steps open
+See README → "Owner setup still open": hosted Supabase SMTP and email template, `db push`, backend secret key, moving the current closet, the on-device account-mode check.
 
-## Multi-user AI Credits workstream (planned, not implemented)
-
-- [x] Approve one pooled credit balance per user and a transparent in-app AI action price list
-- [ ] Approve numerical price per action, manual regeneration policy, F&F grants and public packs
-- [ ] Implement secure authentication and user-scoped data migration from local files
-- [ ] Implement credit wallet, auditable ledger, server-controlled price table, reservation/settlement and idempotency
-- [ ] Build Account remaining-credits/usage meter and **AI Price List**
-- [ ] Show credit price and available balance before generation; handle insufficient credits
+## AI Credits workstream ([decisions](CREDITS.md))
+- [x] Approve one pooled credit balance per account and a transparent in-app AI price list
+- [x] Authentication and user-scoped data, migration from local files (multi-user M1–M4)
+- [x] Hooks: job `cost_credits`, server price list (off), credit gate, `GET /v1/prices` (M5)
+- [ ] Approve numerical price per action, multi-piece photo charging, manual regeneration policy, F&F grants and public packs
+- [ ] Credit wallet, auditable ledger, reservation/settlement and idempotency behind the gate
+- [ ] Account remaining-credits/usage meter and **AI Price List** screen
+- [ ] Show price and balance before generation; handle insufficient credits in the app
 - [ ] F&F grant process, activity tracking and cost caps
 - [ ] Before paid public launch: payments and receipt verification, refunds and App Store compliance
 
-## Phase 3 — iPhone release
-- [ ] Test camera/gallery and persistence on a physical iPhone
-- [ ] Set up EAS and App Store Connect
-- [ ] Build and submit to TestFlight
-- [ ] Install and complete personal acceptance testing
+## Next (candidates — owner to pick)
+- AI Credits: prices, wallet/ledger and purchases on the M5 hooks
+- A cloud host for the backend and worker (or the documented tunnel), then EAS build and TestFlight
+- Better print fidelity across 360 angles (prompt work or a better model)
+- Labeled eval set of real photos to measure fidelity
+- Restore a removed item inside the app
+- Remove unused `anthropic` / `replicate` dependencies from `pyproject.toml`
 
-## Post-MVP ideas (not committed)
-Regeneration of **already-saved** items using retained originals (**explicitly deferred post-MVP**); advanced AI wardrobe search; outfit creation; outfit recommendations; weather/context-based suggestions. **Private retention of originals, normalized AI-generated garment images and basic metadata suggestions are part of MVP.**
+## Later (from the first planning docs; not built, undecided)
+Kept so the intent isn't lost; none is committed.
+- A pre-save Review step: Generated/Original toggle, Regenerate/Retake, explicit Save Item (today results go straight to the closet)
+- Regenerating an already-saved item from its retained original (account-mode items now keep the original upload)
+- A fixed category list (the plan had nine: T-Shirts, Shirts, Sweaters & Hoodies, Pants, Shorts, Jackets & Coats, Shoes, Accessories, Dresses & Skirts); brand, name and notes fields
+- Original-photo retention notice and controls for deleting retained originals
+- Outfit creation and recommendations, weather/context suggestions, AI wardrobe search
 
 ## Workflow
-One issue or scoped task per branch. Pull request → review → merge. Record material changes to the PRD and architecture in the same pull request.
+Small focused commits directly to `main` (the owner's choice); a branch or PR when the owner asks. Record material product or architecture changes in the PRD/architecture docs in the same change.

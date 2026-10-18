@@ -10,7 +10,7 @@ ios
 
 Today: the owner, using it on their own iPhone on home Wi-Fi, photographing their real clothes to build a digital copy of their closet.
 
-Intended: a future product for other people with the same job. Accounts, multi-user data, and a hosted backend do not exist yet (see Capabilities and Constraints).
+Intended: a product for other people with the same job. Accounts and per-user private wardrobes exist (email-code sign-in); the backend still runs on the owner's Mac, so other people can't use it yet (see Capabilities and Constraints).
 
 ## Product Purpose
 
@@ -32,17 +32,18 @@ Fidelity to the owner's actual garment, not an idealized product shot. Each piec
 - Pipeline per photo: quality check → detection with facts (Gemini vision) → crop → catalog image generation (Gemini image) with a color check and retries → local background removal (rembg, no API cost).
 - Pieces touching the photo edge are completed rather than rejected, with a non-blocking tip; real failures ask for a retake with a concrete instruction.
 - Paid model calls cost money; the owner prefers no extra calls or added latency beyond what a feature needs.
-- Backend runs locally (FastAPI) on the owner's Mac; the phone reaches it over the LAN. No accounts, auth, cloud hosting or sync yet.
+- Backend runs on the owner's Mac (FastAPI); the phone reaches it over the LAN. Signed in, items, photos and AI jobs are stored per account in Supabase and follow the account across devices; work keeps running on the server if the phone disconnects. Without Supabase settings the app runs in local mode over `runs/`. No cloud host yet.
 - Removed items are soft-deleted and recoverable.
 - Optional 360 "on body" view per item: four AI ghost-mannequin angles (~16¢, ~1 min), made on request in the background and labelled as AI.
-- Undecided: outfit features, and everything required to open the product to other users.
+- AI Credits are a confirmed direction (one balance per account). Jobs record their cost and the backend has the hooks to hold, charge and refund credits, but billing is off: no prices, balances or purchases yet.
+- Undecided: outfit features, the cloud host, and opening the product to other users.
 
-## Confirmed direction: AI Credits (future account-based app)
+## Confirmed direction: AI Credits
 
 - Each signed-in user has **one unified AI Credits balance**, not separate quotas for garment creation, back images, and 360. Paid AI generation actions consume fixed, clearly advertised credit costs.
 - The **Account** screen shows current credits, a usage/progress meter and an in-app **AI Price List**. Each action shows its price before proceeding.
 - Numerical action costs, launch packs, promotional grants and the precise charging moment still need approval; examples are not launch prices.
-- **Current status:** the local single-user FastAPI app does not yet implement accounts, wallets or purchases. The requirement applies to the upcoming hosted multi-user experience.
+- **Current status:** accounts exist; credits are hooks only (job cost recording, a server price list that is off, a credit gate). No wallet, balance, meter, price-list screen or purchases yet.
 - See `docs/CREDITS.md` for the decision record and safety/implementation proposal.
 
 ## Brand Commitments
@@ -61,4 +62,4 @@ Real items photographed by the owner (in `runs/`, not committed). No users, test
 2. Never make the owner wait or pay for nothing: no extra model calls, and say what is happening during long work.
 3. Try first, ask for a retake only when the result would be wrong.
 4. The owner stays in control: anything the model decides can be corrected or removed, and removal is recoverable.
-5. Built for one today, designed so it can serve others later.
+5. Every wardrobe is private to its account: nobody else can see it, and nothing about another account is ever guessable from the app.

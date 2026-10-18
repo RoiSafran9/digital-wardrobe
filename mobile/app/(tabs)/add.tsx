@@ -1,11 +1,11 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Icon, type IconName } from "../src/components/Icon";
-import { PillButton } from "../src/components/PillButton";
-import { CAPTURE_STEPS, KEEP_OPEN, ProcessingStatus } from "../src/components/ProcessingStatus";
-import { colors, radius, type } from "../src/theme";
-import { useCapture } from "../src/useCapture";
+import { Icon, type IconName } from "../../src/components/Icon";
+import { PillButton } from "../../src/components/PillButton";
+import { CAPTURE_STEPS, KEEP_OPEN, ProcessingStatus } from "../../src/components/ProcessingStatus";
+import { colors, radius, type } from "../../src/theme";
+import { useCapture } from "../../src/useCapture";
 
 const TIPS: { icon: IconName; label: string; detail: string }[] = [
   { icon: "flat", label: "Lay it flat", detail: "On a bed or the floor, front side up" },

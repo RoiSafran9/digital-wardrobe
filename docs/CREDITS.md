@@ -44,5 +44,30 @@ For illustration only, a possible conversion discussed was **1 credit per garmen
 5. Real-launch free trial/packs/prices, expiration policies if any, and iOS in-app purchase flow.
 6. Account balance meter definition and low-balance experience.
 
+## Proposed server design
+(Moved here from this decision's first ARCHITECTURE draft, so the proposal stays next to the decisions.)
+- Proposed tables: `credit_wallets(user_id, available_credits, updated_at)`; append-only `credit_ledger(id, user_id, delta, action_type, operation_id, price_version, status, created_at)`; server-owned `ai_action_prices(action_type, credits, effective_at)`. Schema, indexes and entitlement receipt handling require review.
+- The server derives the user from the verified Supabase token, never a client-supplied `user_id`. Only the server sets prices, grants/refunds/debits credits and writes ledger entries; no service-role secret in the app.
+- **Atomically reserve** enough credits before invoking AI; settle on a defined successful result or release/refund on failure. A stable `operation_id` plus transaction constraints prevent duplicate debits on retries and polling. The business definition of *successful result* is open.
+- A photo may contain several garments: users see the total potential charge and approve it, or select which garments to create, before one photo causes multiple charges.
+- The same server-authoritative prices feed the in-app AI Price List and every action entry point. F&F admins issue promotional credits through a protected grant operation; public packs and payment receipts come later.
+- Monitor API/model cost separately from user credits; log action type, attempts, model cost, ledger operation, outcome and per-user usage without exposing private photos.
+- Test data isolation, atomic debit under parallel requests, insufficient-credit refusal, retries, failure releases/refunds and ledger auditability.
+
 ## Current repository state
-The existing iOS client communicates with a Mac-hosted FastAPI server over the local network, with local filesystem item data. Authentication, per-user databases, hosted storage, wallets, real charge enforcement and purchased credit packs are **future work**, not implemented features.
+Accounts exist (multi-user M1–M4): Supabase email-code sign-in, per-user Postgres rows with RLS, private Storage, and AI work as server jobs on a FastAPI backend that still runs on the owner's Mac. Multi-user M5 added **credits-readiness hooks only**, described in [credits integration notes](superpowers/specs/2026-10-18-credits-readiness.md): billing is off, and there is no wallet, ledger, balance, meter, price-list screen, grant tool or purchase. Real charge enforcement and credit packs remain future work.
+
+## Spec vs built hooks (M5)
+This record and the built hooks were written separately. Where they differ, neither is rewritten here; the difference is listed so the owner can decide.
+
+| Topic | This spec | Built in M5 |
+|---|---|---|
+| Price source | Server-owned price table (`ai_action_prices(action_type, credits, effective_at)`, see Proposed server design) | `WARDROBE_CREDIT_PRICES` env JSON read at server start; no table, no `effective_at`. Unset = billing off. |
+| Action types | Create Garment, Add Back Image, Create 360, possibly Manual Regenerate | `garment`, `back`, `turn` only. There is no Regenerate action in the app. |
+| Multi-piece photos | Show the maximum or per-item price and get confirmation before one photo can cause several charges | A garment job is priced once per photo, whatever the number of pieces, with no confirmation step. Per-piece pricing would need a maximum hold at reserve and the real count at settle. |
+| When credits are spent | Open: on successful generation vs at Save; unsaved previews | There is no Save step: results go straight to the closet. The hook settles when the worker finishes the job successfully and refunds when it fails for good. |
+| Internal retries and failures | Must not surprise users | Matches: internal retries neither settle nor refund; a job that fails for good is refunded; a repeated `Idempotency-Key` returns the existing job without a second hold. |
+| Insufficient credits | No paid generation; wardrobe stays usable | `reserve` can raise `InsufficientCredits` → HTTP 402 "not enough AI credits" before anything is uploaded or queued. The default gate (`NoCharge`) never raises, so this path is unused today. The app has no dedicated screen for it. |
+| Ledger shape | `credit_wallets(user_id, available_credits, updated_at)`; `credit_ledger(…, action_type, operation_id, price_version, status, …)` | Not built. The integration notes propose a different shape: wallet `balance` + `held`, ledger `reason` (`grant`/`purchase`/`hold`/`release`/`charge`/`refund`/`adjustment`) with `unique (user_id, operation_key)`. |
+| Price shown to users | In-app AI Price List and price at each entry point | `GET /v1/prices` returns `{"billing": false, "prices": {}}`; no app screen uses it yet. Each job stores `cost_credits` (null while billing is off). |
+| Example figures | 1 / 1 / 3 are illustration only, not approved | The `.env.example` and integration notes reuse the same figures as a format example only; nothing is hardcoded. |

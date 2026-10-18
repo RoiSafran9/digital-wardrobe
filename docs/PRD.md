@@ -56,6 +56,21 @@ Today: the owner, on their own iPhone over home Wi-Fi. Intended: other people wi
 - No surprise charges for hidden AI retries, timeouts or failed generations. Users without enough credits can't start a chargeable action but keep full access to their wardrobe. Wallet changes are server-controlled.
 - Built today: job cost recording, the server price list (off), credit gate hooks and `GET /v1/prices`; an over-budget request would get "not enough AI credits" (HTTP 402) before anything is uploaded. No wallet, balance, meter, price-list screen or purchases. Details and open decisions: [CREDITS.md](CREDITS.md).
 
+## Planned feature — import garments from a photo of a person wearing clothes (NOT BUILT)
+
+**Owner-approved high-level direction (2026-10-19):** support two separate input contexts without changing the existing laid-flat capture behavior.
+
+1. **Garment Photo:** the current single/multi-piece photo pipeline remains as built.
+2. **Outfit Photo:** recognize clothing **worn by a person**, detect candidate items, show cheap original-image crop previews, let the user select/correct the desired items, display an exact AI Credits quote, and generate complete high-quality flat-lay catalog images **only for selected candidates**. Review generated results before saving in this new route.
+3. The candidate-detection/review step must not debit **user** credits; successful confirmed final-image actions use the existing per-front wallet pricing. Model internal retries are not user-charged.
+4. Visible garment features remain faithful; inferred unseen areas may be completed naturally but must not be presented as observed facts.
+5. Routing may be automatic with manual override, or explicit mode choice at first, after accuracy/cost benchmarking.
+6. Rescans, partial success, privacy/retention of photos containing people, ambiguous/multiple-person images and regeneration/refund policy need detailed design and evaluation.
+
+**Not yet implemented:** mode classification, worn-garment detection, candidate picker, person-photo reconstruction, selection-specific charging. These require an offline feasibility gate first.
+
+See [two-stage outfit import design](superpowers/specs/2026-10-19-outfit-photo-two-step-design.md) and [Claude Code task](tasks/outfit-photo-two-step-flow.md).
+
 ## Cross-cutting
 - English-only UI. Light and dark mode follow the system. Reduce Motion is honored everywhere.
 - Paid model calls cost money: no extra calls or waiting beyond what a feature needs.
@@ -69,7 +84,7 @@ Outfits and recommendations, sharing/social, shopping, payments, Sign in with Ap
 - Manual, on the owner's iPhone: camera and library capture; a multi-piece photo yields one item per piece; catalog images recognizably the owner's pieces; blurry/dark photos rejected; edit, remove, back photo and 360 work and survive an app and server restart; sign-in, restart still signed in, sign-out.
 
 ## Open questions
-- Outfit features — undecided.
+- **Outfit Photo import:** high-level two-stage direction approved, implementation and quality pending evaluation (see linked planned-feature section). Outfit recommendations remain undecided.
 - The cloud host, and opening the product to other users.
 - Exact credit prices **per front-image, back-image and 360 generation action**; multi-piece photos need an explicit counting and up-front quote rule. The number of garments stored is not itself a billing unit (see the credits integration notes).
 - Better print fidelity across 360 angles.

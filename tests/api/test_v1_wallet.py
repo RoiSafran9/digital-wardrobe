@@ -20,7 +20,7 @@ def client(store):
 def test_a_new_account_has_an_empty_wallet(client):
     r = client.get("/v1/credits", headers=as_user(A))
     assert r.status_code == 200
-    assert r.json() == {"balance": 0, "held": 0, "available": 0, "entries": [], "next_before": None}
+    assert r.json() == {"balance": 0, "held": 0, "available": 0, "granted": 0, "used": 0, "entries": [], "next_before": None}
 
 
 def test_balance_held_and_available_after_a_grant_and_a_hold(client, store):
@@ -104,3 +104,12 @@ def test_memory_store_refuses_unknown_and_disabled_users(store):
     with pytest.raises(CreditError) as e:
         store.credit_grant(A, 1, "k", "r", "owner")
     assert e.value.code == "WC403"
+
+
+def test_granted_and_used_give_an_honest_baseline(client, store):
+    store.credit_grant(A, 10, "ff-1", "F&F pilot", "owner")
+    store.credit_grant(A, 5, "ff-2", "top-up", "owner")
+    store.credit_reserve(A, JOB1, "garment", 3)
+    store.credit_settle(JOB1, 2)
+    body = client.get("/v1/credits", headers=as_user(A)).json()
+    assert (body["granted"], body["used"], body["balance"], body["held"]) == (15, 2, 13, 0)

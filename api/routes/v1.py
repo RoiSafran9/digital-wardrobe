@@ -113,8 +113,9 @@ def credits(user: User = Depends(current_user), store=Depends(get_store), limit:
     entries = [CreditEntryOut(id=r["id"], kind=r["kind"], amount=r["amount"], action=r.get("action"),
                               job_id=r.get("job_id"), note=r.get("note"), created_at=str(r["created_at"]))
                for r in rows[:size]]
+    granted = store.credit_granted(user.id)
     return CreditsOut(balance=wallet["balance"], held=wallet["held"], available=wallet["balance"] - wallet["held"],
-                      entries=entries, next_before=entries[-1].id if len(rows) > size else None)
+                      granted=granted, used=max(granted - wallet["balance"], 0), entries=entries, next_before=entries[-1].id if len(rows) > size else None)
 
 
 @router.get("/jobs/{job_id}", response_model=JobOut)

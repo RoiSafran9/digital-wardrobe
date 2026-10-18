@@ -50,7 +50,7 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 
 ## Credits experience (confirmed direction; not built)
 - **Account → AI Credits:** remaining balance and a readable usage bar with an honest baseline (e.g. a specific granted pack); for combined balances or top-ups, no misleading percentage.
-- **Account → AI Price List:** read-only list of **AI generation actions, not per-garment ownership fees** — **Create Front Image**, **Create Back Image**, **Create 360**, and **Regenerate** if it becomes separately chargeable. A 360 is one user-facing action despite generating four views internally. Numbers pending approval; source is `GET /v1/prices` (backend keys remain `garment`/`back`/`turn` today).
+- **Account → AI Price List:** read-only list of **AI generation actions, not per-garment ownership fees** — **Create Front Image**, **Create Back Image**, **Create 360**, and **Regenerate** if it becomes separately chargeable. A 360 is one user-facing action despite generating four views internally. Provisional F&F rates for design: **1 front / 1 back / 3 for one 360** (not live billing, not yet the public prices); the displayed rates must come from the server's `GET /v1/prices` response (backend keys remain `garment`/`back`/`turn` today).
 - Every billable entry point (capture, + Back, View in 360) shows its price and the balance, with explicit confirmation where the charge or the number of generated items might surprise the user.
 - Insufficient credits: a useful explanation and a way to get more (admin-issued F&F grants first; paid packs only after payment integration). Viewing saved items keeps working.
 - Credit History / Activity may list grants, charges and refunds; presentation pending screen design.

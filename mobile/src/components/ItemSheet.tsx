@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { creditsLabel } from "../credits/credits";
 import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Icon } from "./Icon";
 import { deleteItem } from "../api/client";
@@ -251,7 +252,7 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
   const added = "run_id" in item ? addedLabel(item.run_id) : null;
   const back = isClosetItem(item) ? item.back ?? null : null;
   const closetItem = isClosetItem(item) ? item : null;
-  const { start: start360, turn, error: turnError } = useTurn(closetItem, onUpdated);
+  const { start: start360, turn, error: turnError, price: turnPrice } = useTurn(closetItem, onUpdated);
   const turnViews = turn?.state === "done" && turn.views.length > 0
     ? turn.views.map((v) => ({ label: TURN_LABELS[v.angle], path: v.url, cutoutPath: v.cutout_url }))
     : null;
@@ -308,7 +309,7 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
                 />
                 {turn?.state !== "failed" ? (
                   <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center", marginTop: 8 }}>
-                    See it on an invisible body from every side. AI-made, about a minute.
+                    See it on an invisible body from every side. AI-made, about a minute{turnPrice ? ` · ${creditsLabel(turnPrice)}` : ""}.
                   </Text>
                 ) : null}
               </>

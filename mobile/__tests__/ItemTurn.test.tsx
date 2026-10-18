@@ -125,3 +125,40 @@ test("a slow status check is never stacked with another one", async () => {
   await tick(6000);
   expect(mockedGet).toHaveBeenCalledTimes(1);
 });
+
+describe("with billing on", () => {
+  const { Alert } = require("react-native");
+  const { CreditsContext } = require("../src/credits/CreditsProvider");
+  const wallet = (available: number) => ({ balance: available, held: 0, available, granted: 10, used: 0, entries: [], next_before: null });
+  function billed(available: number) {
+    const refresh = jest.fn(async () => {});
+    render(
+      <CreditsContext.Provider value={{ billing: true, prices: { turn: 3 }, credits: wallet(available), refresh }}>
+        <Harness initial={item} spy={jest.fn()} />
+      </CreditsContext.Provider>,
+    );
+    return refresh;
+  }
+  afterEach(() => jest.restoreAllMocks());
+
+  test("the 360 shows its cost and asks before spending it", async () => {
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    mockedStart.mockResolvedValue(running);
+    billed(5);
+    expect(screen.getByText(/about a minute · 3 credits/)).toBeTruthy();
+    fireEvent.press(screen.getByText("View in 360"));
+    expect(alert).toHaveBeenCalledWith("Make a 360 view?", "Uses 3 credits. You have 5.", expect.any(Array));
+    expect(mockedStart).not.toHaveBeenCalled();
+    const buttons = alert.mock.calls[0][2] as { text: string; onPress?: () => void }[];
+    await act(async () => { buttons.find((b) => b.text === "Make 360")!.onPress!(); });
+    expect(mockedStart).toHaveBeenCalled();
+  });
+
+  test("without enough credits the 360 doesn't start and says why", () => {
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    billed(2);
+    fireEvent.press(screen.getByText("View in 360"));
+    expect(alert).not.toHaveBeenCalled();
+    expect(screen.getByText(/A 360 view uses 3 credits; you have 2. Ask the app owner for more credits./)).toBeTruthy();
+  });
+});

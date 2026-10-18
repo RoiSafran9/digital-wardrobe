@@ -31,7 +31,7 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 - On success the app returns to Home, where the run appears under Just added.
 
 ## 4. Account (`mobile/app/(tabs)/account.tsx`)
-- Signed in: email and Sign Out (confirmed).
+- Signed in: email, the AI Credits card (see Credits below) and Sign Out (confirmed).
 - Local mode: a "Local mode" row: "Not signed in. Your items live on your computer's wardrobe server."
 
 ## 5. Item sheet (`mobile/src/components/ItemSheet.tsx`)
@@ -48,12 +48,15 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 - Item sheet states (no back / back, 360 none / running / done / failed, edit, remove) all reachable on the phone.
 - Light and dark mode readable; Reduce Motion removes drift, count-up and scrub crossfades.
 
-## Credits experience (confirmed direction; not built)
-- **Account → AI Credits:** remaining balance and a readable usage bar with an honest baseline (e.g. a specific granted pack); for combined balances or top-ups, no misleading percentage.
-- **Account → AI Price List:** read-only list of **AI generation actions, not per-garment ownership fees** — **Create Front Image**, **Create Back Image**, **Create 360**, and **Regenerate** if it becomes separately chargeable. A 360 is one user-facing action despite generating four views internally. Provisional F&F rates for design: **1 front / 1 back / 3 for one 360** (not live billing, not yet the public prices); the displayed rates must come from the server's `GET /v1/prices` response (backend keys remain `garment`/`back`/`turn` today).
-- Every billable entry point (capture, + Back, View in 360) shows its price and the balance, with explicit confirmation where the charge or the number of generated items might surprise the user.
-- Insufficient credits: a useful explanation and a way to get more (admin-issued F&F grants first; paid packs only after payment integration). Viewing saved items keeps working.
-- Credit History / Activity may list grants, charges and refunds; presentation pending screen design.
+## Credits (account mode; [spec](superpowers/specs/2026-10-18-ai-credits-app-design.md))
+All figures come from the server (`GET /v1/credits`, `GET /v1/prices`); nothing is shown in local mode.
+- **Account → AI Credits card:** "N available", "N held for work in progress" while a job runs, a 2pt bar with "Used X of Y credits granted". Billing off: "Billing is off — AI actions don't use credits yet." and no price list.
+- **AI Price List** (billing on): Front image / Back image / 360 view with their credits, and how multi-piece photos, 360 and failures are charged.
+- **Credit activity:** grants (+N, with the grant's reason) and charges (−N, the action), newest first, "Show more".
+- **Capture (Add and Home), billing on:** "Pieces in this photo" stepper (1 up to what you can afford, max 20) with "Up to N front images · N credits · M available. You pay only for the pieces made; extra pieces aren't made." Not enough credits: buttons off and an explanation. Just added notes pieces left out over the limit.
+- **+ Back** (billing on): the photo-source sheet says the cost and balance; not enough credits → an explanation instead.
+- **View in 360** (billing on): the note adds the cost; pressing asks "Make a 360 view?" first.
+- Out of credits anywhere: "Not enough AI credits. Ask the app owner for more."
 
 ## Not built (see ROADMAP "Later")
-A pre-save Review screen with an Original/Generated toggle and Save button, saved-item Regenerate, in-app restore of removed items, a credits balance on Account.
+A pre-save Review screen with an Original/Generated toggle and Save button, saved-item Regenerate, in-app restore of removed items, buying credits.

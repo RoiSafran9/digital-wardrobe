@@ -62,7 +62,7 @@ Every model call is appended to a `run_log.jsonl` (stage, model, prompt version,
 | POST | `/v1/jobs` | start a garment job (multipart photo) |
 | GET | `/v1/jobs/{id}` | job state, result, error, `cost_credits` |
 | GET | `/v1/prices` | credit price list (`{"billing": false}` unless `WARDROBE_BILLING=on`) |
-| GET | `/v1/credits` | the user's AI Credits wallet (`balance`, `held`, `available`) and activity, newest first (`?limit=` 1–100, `?before=<entry id>`) |
+| GET | `/v1/credits` | the user's AI Credits wallet (`balance`, `held`, `available`, `granted`, `used`) and activity, newest first (`?limit=` 1–100, `?before=<entry id>`) |
 | GET | `/v1/items`, `/v1/items/{id}` | the user's items with signed image URLs |
 | PATCH | `/v1/items/{id}` | edit facts (validated server-side) |
 | DELETE | `/v1/items/{id}` | soft delete (`deleted_at`) |

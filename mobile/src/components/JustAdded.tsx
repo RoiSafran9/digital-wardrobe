@@ -105,6 +105,13 @@ export function JustAdded({ onClosetChanged }: { onClosetChanged: () => void }) 
           ))}
         </View>
       )}
+      {run.over_limit ? (
+        <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 8 }}>
+          {run.over_limit === 1
+            ? "1 more piece in the photo wasn't made (over your limit). Take another photo to add it."
+            : `${run.over_limit} more pieces in the photo weren't made (over your limit). Take another photo to add them.`}
+        </Text>
+      ) : null}
       {run.failed.length > 0 ? (
         <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 8 }}>
           {run.failed.length === 1 ? "One piece couldn't be processed." : `${run.failed.length} pieces couldn't be processed.`}

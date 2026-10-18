@@ -1,12 +1,17 @@
-import React from "react";
+import React, { useCallback } from "react";
+import { useFocusEffect } from "expo-router";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../src/auth/AuthProvider";
+import { CreditsCard } from "../../src/components/CreditsCard";
 import { PillButton } from "../../src/components/PillButton";
+import { useCredits } from "../../src/credits/CreditsProvider";
 import { colors, radius, type } from "../../src/theme";
 
 export default function AccountScreen() {
   const { status, email, signOut } = useAuth();
+  const { refresh } = useCredits();
+  useFocusEffect(useCallback(() => { void refresh(); }, [refresh]));
 
   const confirmSignOut = () =>
     Alert.alert("Sign out?", "You'll need a new email code to sign back in.", [
@@ -28,6 +33,7 @@ export default function AccountScreen() {
             <Text style={styles.rowLabel}>Email</Text>
             <Text style={styles.rowValue} numberOfLines={1}>{email}</Text>
           </View>
+          <CreditsCard />
           <PillButton label="Sign out" onPress={confirmSignOut} />
         </>
       )}

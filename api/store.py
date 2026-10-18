@@ -50,6 +50,9 @@ class MemoryStore:
     def credits(self, user_id):
         return dict(self.wallets.get(user_id, {"balance": 0, "held": 0}))
 
+    def credit_granted(self, user_id):
+        return sum(e["amount"] for e in self.ledger if e["user_id"] == user_id and e["kind"] == "grant")
+
     def credit_entries(self, user_id, limit, before=None):
         own = [e for e in reversed(self.ledger) if e["user_id"] == user_id and (before is None or e["id"] < before)]
         return copy.deepcopy(own[:limit])
@@ -322,6 +325,10 @@ class SupabaseStore:
     def credits(self, user_id):
         row = self._one("credit_wallets", {"user_id": f"eq.{user_id}"})
         return {"balance": row["balance"], "held": row["held"]} if row else {"balance": 0, "held": 0}
+
+    def credit_granted(self, user_id):
+        rows = self._rows("credit_ledger", {"user_id": f"eq.{user_id}", "kind": "eq.grant", "select": "amount"})
+        return sum(r["amount"] for r in rows)
 
     def credit_entries(self, user_id, limit, before=None):
         params = {"user_id": f"eq.{user_id}", "order": "id.desc", "limit": str(limit)}

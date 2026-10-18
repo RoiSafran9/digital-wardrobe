@@ -35,13 +35,14 @@ See README → "Owner setup still open": hosted Supabase SMTP and email template
 - [x] Wallet M1: per-account wallet, append-only ledger, backend-only grant/reserve/settle/release with idempotency, admin F&F grant CLI, read-only `GET /v1/credits` — billing still off ([design](superpowers/specs/2026-10-18-ai-credits-wallet-design.md), [brief](tasks/ai-credits-wallet-implementation.md))
 - [x] Approve multi-piece accounting: the user approves a maximum number of fronts per photo; charged only for fronts made
 - [x] Billing M2: wallet-backed `CreditGate` behind `WARDROBE_BILLING=on` (off by default), `max_fronts` cap, partial settle, reconcile of expired/crashed jobs, fail-closed prices
-- [ ] Account remaining-credits/usage meter and **AI Price List** screen
-- [ ] Show price and balance before generation; handle insufficient credits in the app
+- [x] Account AI Credits card (available, held, used of granted), **AI Price List** and credit activity (M3)
+- [x] Price and balance before capture, + Back and 360; pieces-per-photo picker; out-of-credits states (M3)
+- [ ] Phone check of the credits UI with billing on (owner), then switch `WARDROBE_BILLING=on` for F&F
 - [ ] F&F grant process, activity tracking and cost caps
 - [ ] Before paid public launch: payments and receipt verification, refunds and App Store compliance
 
 ## Next (candidates — owner to pick)
-- AI Credits: app UX (M3: balance, price list, cost and `max_fronts` before capture, 402 state), then switch billing on for F&F; purchases later
+- AI Credits: try the credits UI on the phone, choose prices, switch billing on for F&F; purchases later
 - A cloud host for the backend and worker (or the documented tunnel), then EAS build and TestFlight
 - Better print fidelity across 360 angles (prompt work or a better model)
 - Labeled eval set of real photos to measure fidelity

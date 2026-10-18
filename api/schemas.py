@@ -115,6 +115,8 @@ class CreditsOut(BaseModel):
     balance: int
     held: int
     available: int
+    granted: int  # every credit ever granted; with used, an honest "used X of Y" baseline
+    used: int  # every credit ever charged (= granted - balance)
     entries: list[CreditEntryOut]
     next_before: int | None = None  # pass as ?before= for older activity; None on the last page
 

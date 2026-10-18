@@ -34,7 +34,33 @@ export type RunResponse = {
   quality: { status: "ok" | "retake"; reason: string | null };
   items: RunItem[];
   failed: string[];
+  over_limit?: number;  // pieces in the photo not made because of the fronts the user approved (billing on)
 };
+
+// AI Credits (account mode). Prices and balances always come from the server.
+export type CreditAction = "garment" | "back" | "turn";
+
+export type CreditEntry = {
+  id: number;
+  kind: "grant" | "hold" | "charge" | "release";
+  amount: number;
+  action: CreditAction | null;
+  job_id: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export type Credits = {
+  balance: number;
+  held: number;
+  available: number;
+  granted: number;
+  used: number;
+  entries: CreditEntry[];
+  next_before: number | null;
+};
+
+export type Prices = { billing: boolean; prices: Partial<Record<CreditAction, number>> };
 
 export type BackView = {
   generated_url: string;

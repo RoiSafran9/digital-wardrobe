@@ -18,10 +18,12 @@ dependencies = [
   "uvicorn[standard]",
   "python-multipart",
   "rembg[cpu]",
+  "httpx",
+  "pyjwt[crypto]",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio", "httpx"]
+dev = ["pytest", "pytest-asyncio"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -1,6 +1,6 @@
 # Multi-User Architecture — Research, Design and Milestones
 
-Status: **Draft for owner approval** · Date: 2026-10-18 · Task: `docs/tasks/multiuser-architecture-implementation.md` (branch `docs/multiuser-task-prompt`, PR #3)
+Status: **Approved by the owner 2026-10-18** · Date: 2026-10-18 · Task: `docs/tasks/multiuser-architecture-implementation.md` (branch `docs/multiuser-task-prompt`, PR #3)
 
 ## 1. Intent
 

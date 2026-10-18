@@ -2,7 +2,7 @@
 
 A private, personal iPhone wardrobe catalog built with **Expo / React Native / TypeScript**. Capture clothes, browse your closet, and grow the product iteratively.
 
-> Status: **planning / foundation**. No mobile app has been scaffolded yet.
+> Status: **working single-owner app, moving to multiple users.** An Expo app (`mobile/`) talks to a local FastAPI server (`api/`) that runs the Gemini pipeline (`pipeline/`). Accounts are being added in milestones — see the [multi-user design](docs/superpowers/specs/2026-10-18-multiuser-architecture-design.md). Older planning docs below predate the built app; where they disagree, the design's "discrepancies" section explains which is current.
 
 ## MVP
 
@@ -34,6 +34,18 @@ Expo (React Native + TypeScript), Expo Router, Supabase (Auth/Postgres/private S
 2. Work in small branches with focused pull requests; `main` reflects reviewed decisions.
 3. Document material product/architecture changes alongside the code.
 4. Never commit credentials, tokens, personal photos, or generated build artifacts.
+
+## Accounts (multi-user, in progress)
+
+Milestone 1 adds email-code sign-in (Supabase Auth) to the app. Without Supabase settings, development builds run in **local mode** exactly like before.
+
+To sign in against a local Supabase stack (needs Docker):
+
+1. `npx supabase start` from the repo root. It prints the API URL and the publishable key; sign-in emails land in Mailpit at http://127.0.0.1:54324.
+2. Copy `mobile/.env.example` to `mobile/.env` and set `EXPO_PUBLIC_SUPABASE_URL=http://<your-Mac-LAN-IP>:54321` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable key>`.
+3. Restart Expo (`npx expo start -c`) so it picks up the env.
+
+For a hosted project, use its Project URL and **publishable** key instead, and put `{{ .Token }}` in the Magic Link email template (see `supabase/templates/magic_link.html`). Never put a secret or service-role key in `mobile/`.
 
 ## Next
 

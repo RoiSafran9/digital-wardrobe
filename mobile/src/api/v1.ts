@@ -3,7 +3,7 @@
 import { randomUUID } from "expo-crypto";
 import { File } from "expo-file-system";
 import { API_BASE_URL, UNREACHABLE, sentence } from "./http";
-import type { BackView, ClosetItem, ItemFacts, ItemPatch, ItemsResponse, RunItem, RunResponse, Tier, Turn } from "./types";
+import type { BackView, ClosetItem, Credits, ItemFacts, ItemPatch, ItemsResponse, Prices, RunItem, RunResponse, Tier, Turn } from "./types";
 
 export type Account = {
   getToken: () => Promise<string | null>;
@@ -16,6 +16,7 @@ export const SESSION_EXPIRED = "Your session expired. Sign in again.";
 export const NOT_ACCOUNT_MODE = "Your wardrobe server isn't in account mode. Restart it with WARDROBE_AUTH=on.";
 export const SIGNED_OUT = "You signed out.";
 export const STILL_WORKING = "Still working on it — check your closet in a minute.";
+export const NO_CREDITS = "Not enough AI credits. Ask the app owner for more.";
 
 type V1Item = {
   id: string;
@@ -37,6 +38,7 @@ type Job = {
   quality: RunResponse["quality"] | null;
   failed: string[];
   retakes?: unknown[];
+  over_limit?: number;
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -74,6 +76,7 @@ async function send(account: Account, path: string, init: RequestInit = {}): Pro
 
 async function read<T>(response: Response): Promise<T> {
   if (response.status === 204) return undefined as T;
+  if (response.status === 402) throw new Error(NO_CREDITS);
   const body = await response.json();
   if (!response.ok) {
     const error = (body as { error?: string } | null)?.error;
@@ -88,13 +91,14 @@ const call = async <T>(account: Account, path: string, init?: RequestInit) => re
 
 // Starts a job. A request that never got an answer is sent once more with the same key, so the
 // server returns the job it may already have made instead of starting a second one.
-async function startJob(account: Account, path: string, photoUri?: string): Promise<Job> {
+async function startJob(account: Account, path: string, photoUri?: string, fields: Record<string, string> = {}): Promise<Job> {
   const key = randomUUID();
   const attempt = () => {
     let body: FormData | undefined;
     if (photoUri) {
       body = new FormData();
       body.append("photo", new File(photoUri) as unknown as Blob);
+      for (const [name, value] of Object.entries(fields)) body.append(name, value);
     }
     return call<Job>(account, path, { method: "POST", body, headers: { "Idempotency-Key": key } });
   };
@@ -124,8 +128,10 @@ export async function getItems(account: Account): Promise<ItemsResponse> {
   return { items: items.map(toClosetItem) };
 }
 
-export async function postRun(account: Account, current: () => Account | null, photoUri: string): Promise<RunResponse> {
-  const job = await waitFor(account, current, await startJob(account, "/v1/jobs", photoUri));
+// maxFronts: the front images the user approved paying for (sent only while billing is on).
+export async function postRun(account: Account, current: () => Account | null, photoUri: string, maxFronts?: number): Promise<RunResponse> {
+  const fields: Record<string, string> = maxFronts ? { max_fronts: String(maxFronts) } : {};
+  const job = await waitFor(account, current, await startJob(account, "/v1/jobs", photoUri, fields));
   const { items } = await getItems(account);
   const byId = new Map(items.map((i) => [i.item_id, i]));
   const pieces: RunItem[] = job.item_ids.flatMap((id) => {
@@ -138,7 +144,16 @@ export async function postRun(account: Account, current: () => Account | null, p
     items: pieces,
     // Pieces the pipeline couldn't render have no picture to show; report them as not processed.
     failed: [...job.failed, ...(job.retakes ?? []).map((_, i) => `retake_${i}`)],
+    over_limit: job.over_limit ?? 0,
   };
+}
+
+export async function getCredits(account: Account, before?: number): Promise<Credits> {
+  return call<Credits>(account, `/v1/credits${before ? `?before=${before}` : ""}`);
+}
+
+export async function getPrices(account: Account): Promise<Prices> {
+  return call<Prices>(account, "/v1/prices");
 }
 
 const itemPath = (item: ClosetItem) => `/v1/items/${encodeURIComponent(item.id ?? item.item_id)}`;

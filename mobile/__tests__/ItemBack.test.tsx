@@ -85,3 +85,29 @@ test("cancelling the picker uploads nothing", async () => {
   await act(async () => { await sheet.choose("Take photo"); });
   expect(mockedAddBack).not.toHaveBeenCalled();
 });
+
+describe("with billing on", () => {
+  const { CreditsContext } = require("../src/credits/CreditsProvider");
+  const wallet = (available: number) => ({ balance: available, held: 0, available, granted: 10, used: 0, entries: [], next_before: null });
+  const billed = (available: number) => render(
+    <CreditsContext.Provider value={{ billing: true, prices: { back: 1 }, credits: wallet(available), refresh: jest.fn(async () => {}) }}>
+      <ItemSheet items={[front]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />
+    </CreditsContext.Provider>,
+  );
+  afterEach(() => jest.restoreAllMocks());
+
+  test("+ Back says what it costs before choosing a photo", () => {
+    const sheet = mockActionSheet();
+    billed(4);
+    fireEvent.press(screen.getByLabelText("Add back photo"));
+    expect(sheet.spy.mock.calls[0][0].message).toBe("Lay the item flat, back side up. Uses 1 credit · 4 available.");
+  });
+
+  test("without credits + Back explains instead of opening the camera", () => {
+    const sheet = mockActionSheet();
+    billed(0);
+    fireEvent.press(screen.getByLabelText("Add back photo"));
+    expect(sheet.spy).not.toHaveBeenCalled();
+    expect(screen.getByText(/Adding the back uses 1 credit; you have 0. Ask the app owner for more credits./)).toBeTruthy();
+  });
+});

@@ -16,6 +16,8 @@ import { PressScale } from "../../src/motion/PressScale";
 import { Rise } from "../../src/motion/Rise";
 import { colors, hitSlopFor, radius, type } from "../../src/theme";
 import { useCapture } from "../../src/useCapture";
+import { FrontsPicker } from "../../src/components/FrontsPicker";
+import { useFrontsChoice } from "../../src/credits/useFrontsChoice";
 
 const TILE = 96;
 
@@ -50,6 +52,7 @@ export default function HomeScreen() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
   // A capture from Home lands back on Home (already focused), so refresh it ourselves.
   const { capture, loading, error: captureError } = useCapture(load);
+  const fronts = useFrontsChoice();
   const keyOf = (i: ClosetItem) => `${i.run_id}/${i.photo_name}/${i.item_id}`;
   const openIndex = openKey ? items.findIndex((i) => keyOf(i) === openKey) : -1;
 
@@ -115,8 +118,9 @@ export default function HomeScreen() {
               </View>
             ) : (
               <>
-                <PillButton label="Take photo" variant="primary" icon="camera" onPress={() => capture(true)} />
-                <PillButton label="Choose from library" onPress={() => capture(false)} />
+                <FrontsPicker choice={fronts} />
+                <PillButton label="Take photo" variant="primary" icon="camera" onPress={() => capture(true, fronts.maxFronts)} disabled={fronts.blocked} />
+                <PillButton label="Choose from library" onPress={() => capture(false, fronts.maxFronts)} disabled={fronts.blocked} />
               </>
             )}
             {captureError ? <Text style={{ ...type.footnote, color: colors.destructive }}>{captureError}</Text> : null}

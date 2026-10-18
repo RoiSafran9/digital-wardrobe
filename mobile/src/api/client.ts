@@ -1,6 +1,6 @@
 import { File } from "expo-file-system";
 import { API_BASE_URL, UNREACHABLE, parseJsonOrThrow } from "./http";
-import type { RunResponse, ItemsResponse, ClosetItem, ItemPatch, Turn } from "./types";
+import type { RunResponse, ItemsResponse, ClosetItem, Credits, ItemPatch, Prices, Turn } from "./types";
 import * as v1 from "./v1";
 
 export { API_BASE_URL };
@@ -15,8 +15,8 @@ export function configureApi(config: v1.Account | null): void {
 
 const current = () => account;
 
-export async function postRun(photoUri: string): Promise<RunResponse> {
-  if (account) return v1.postRun(account, current, photoUri);
+export async function postRun(photoUri: string, maxFronts?: number): Promise<RunResponse> {
+  if (account) return v1.postRun(account, current, photoUri, maxFronts);
   // Expo's global fetch rejects RN-style {uri, name, type} parts; File is a Blob it can read.
   const formData = new FormData();
   formData.append("photo", new File(photoUri));
@@ -112,4 +112,13 @@ export async function getTurn(item: ClosetItem): Promise<Turn> {
     throw new Error(UNREACHABLE);
   }
   return parseJsonOrThrow<Turn>(response);
+}
+
+// AI Credits exist only in account mode; local mode has none (null).
+export async function getCredits(before?: number): Promise<Credits | null> {
+  return account ? v1.getCredits(account, before) : null;
+}
+
+export async function getPrices(): Promise<Prices | null> {
+  return account ? v1.getPrices(account) : null;
 }

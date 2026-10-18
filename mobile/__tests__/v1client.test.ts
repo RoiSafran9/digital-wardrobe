@@ -1,4 +1,5 @@
-import { API_BASE_URL, addBack, configureApi, deleteItem, getItems, getTurn, imageUrl, postRun, startTurn, updateItem } from "../src/api/client";
+import { API_BASE_URL, addBack, configureApi, deleteItem, getCredits, getItems, getPrices, getTurn, imageUrl, postRun, startTurn, updateItem } from "../src/api/client";
+import { NO_CREDITS } from "../src/api/v1";
 import { addedLabel } from "../src/theme";
 
 jest.mock("expo-file-system", () => ({ File: jest.fn().mockImplementation((uri: string) => ({ uri })) }));
@@ -179,4 +180,36 @@ test("edits, removal, back and 360 use the item's /v1 id", async () => {
   expect(await startTurn(closetItem)).toEqual({ state: "running", error: null, views: [] });
   expect((await getTurn(closetItem)).state).toBe("running");
   expect(calls.every((c) => auth(calls.indexOf(c)) === "Bearer tok-a")).toBe(true);
+});
+
+test("a capture sends the fronts the user approved and reports pieces over the limit", async () => {
+  signIn();
+  const appended: [string, unknown][] = [];
+  const RealFormData = global.FormData;
+  global.FormData = class { append(name: string, value: unknown) { appended.push([name, value]); } } as unknown as typeof FormData;
+  try {
+    on("POST", "/v1/jobs", reply(job("succeeded", { item_ids: [], over_limit: 2 }), 202));
+    on("GET", "/v1/items", reply({ items: [] }));
+    const run = await postRun("file:///p.jpg", 3);
+    expect(appended).toContainEqual(["max_fronts", "3"]);
+    expect(run.over_limit).toBe(2);
+  } finally {
+    global.FormData = RealFormData;
+  }
+});
+
+test("running out of credits reads as a sentence with a way forward", async () => {
+  signIn();
+  on("POST", "/v1/jobs", reply({ error: "not enough AI credits" }, 402));
+  await expect(postRun("file:///p.jpg", 1)).rejects.toThrow(NO_CREDITS);
+});
+
+test("credits and prices come from /v1 when signed in, and don't exist in local mode", async () => {
+  expect(await getCredits()).toBeNull();
+  expect(await getPrices()).toBeNull();
+  signIn();
+  on("GET", "/v1/credits?before=7", reply({ balance: 1, held: 0, available: 1, granted: 1, used: 0, entries: [], next_before: null }));
+  on("GET", "/v1/prices", reply({ billing: true, prices: { garment: 1 } }));
+  expect((await getCredits(7))!.available).toBe(1);
+  expect((await getPrices())!.prices.garment).toBe(1);
 });

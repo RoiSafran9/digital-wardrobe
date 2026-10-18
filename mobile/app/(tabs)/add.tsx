@@ -6,6 +6,8 @@ import { PillButton } from "../../src/components/PillButton";
 import { CAPTURE_STEPS, KEEP_OPEN, ProcessingStatus } from "../../src/components/ProcessingStatus";
 import { colors, radius, type } from "../../src/theme";
 import { useCapture } from "../../src/useCapture";
+import { FrontsPicker } from "../../src/components/FrontsPicker";
+import { useFrontsChoice } from "../../src/credits/useFrontsChoice";
 
 const TIPS: { icon: IconName; label: string; detail: string }[] = [
   { icon: "flat", label: "Lay it flat", detail: "On a bed or the floor, front side up" },
@@ -15,6 +17,7 @@ const TIPS: { icon: IconName; label: string; detail: string }[] = [
 
 export default function AddScreen() {
   const { capture, loading, error } = useCapture();
+  const fronts = useFrontsChoice();
 
   return (
     <SafeAreaView edges={["top"]} style={styles.screen}>
@@ -47,8 +50,9 @@ export default function AddScreen() {
       ) : null}
 
       <View style={{ gap: 10 }}>
-        <PillButton label="Take photo" variant="primary" icon="camera" onPress={() => capture(true)} disabled={loading} />
-        <PillButton label="Choose from library" onPress={() => capture(false)} disabled={loading} />
+        {!loading ? <FrontsPicker choice={fronts} /> : null}
+        <PillButton label="Take photo" variant="primary" icon="camera" onPress={() => capture(true, fronts.maxFronts)} disabled={loading || fronts.blocked} />
+        <PillButton label="Choose from library" onPress={() => capture(false, fronts.maxFronts)} disabled={loading || fronts.blocked} />
       </View>
     </SafeAreaView>
   );

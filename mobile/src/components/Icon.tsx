@@ -12,6 +12,8 @@ const ICONS = {
   pencil: { sf: "pencil", ion: "pencil" },
   close: { sf: "xmark", ion: "close" },
   add: { sf: "plus", ion: "add" },
+  remove: { sf: "minus", ion: "remove" },
+  chevron: { sf: "chevron.right", ion: "chevron-forward" },
   check: { sf: "checkmark.circle.fill", ion: "checkmark-circle" },
   checkmark: { sf: "checkmark", ion: "checkmark" },
   alert: { sf: "exclamationmark.circle", ion: "alert-circle-outline" },

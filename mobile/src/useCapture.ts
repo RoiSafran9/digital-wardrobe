@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { postRun } from "./api/client";
+import { useCredits } from "./credits/CreditsProvider";
 import { haptics } from "./haptics";
 import { pickPhoto } from "./photoPicker";
 import { useLastRun } from "./store/lastRun";
@@ -11,8 +12,10 @@ export function useCapture(onDone?: () => void) {
   const [error, setError] = useState<string | null>(null);
   const { setLastRun } = useLastRun();
   const router = useRouter();
+  const { refresh: refreshCredits } = useCredits();
 
-  async function capture(fromCamera: boolean) {
+  // maxFronts: the front images the user approved paying for (billing on); undefined otherwise.
+  async function capture(fromCamera: boolean, maxFronts?: number) {
     setError(null);
     let uri: string | null;
     try {
@@ -24,7 +27,7 @@ export function useCapture(onDone?: () => void) {
     if (!uri) return;
     setLoading(true);
     try {
-      setLastRun(await postRun(uri));
+      setLastRun(await postRun(uri, maxFronts));
       haptics.success();
       onDone?.();
       router.push("/");
@@ -32,6 +35,7 @@ export function useCapture(onDone?: () => void) {
       setError(e instanceof Error ? e.message : "Upload failed. Try again.");
     } finally {
       setLoading(false);
+      void refreshCredits();
     }
   }
 

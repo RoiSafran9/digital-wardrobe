@@ -4,11 +4,14 @@ Anything belonging to someone else answers 404, exactly like something that does
 """
 import os
 import uuid
-from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
 from fastapi.responses import JSONResponse
 from api.auth import User, current_user
-from api.schemas import JobOut
-from api.store import get_store
+from api.facts_edit import apply_patch, patch_error
+from api.schemas import BackOut, ItemPatch, JobOut, TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse
+from api.store import INTERRUPTED, get_store
+from pipeline.types import ItemFacts
 
 router = APIRouter(prefix="/v1")
 
@@ -76,3 +79,97 @@ def _is_uuid(value: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+# A 360 job waits in the queue and then takes about a minute; one "running" for this long died.
+TURN_STALE_SECONDS = 30 * 60
+
+
+def _paths(item: dict) -> list[str]:
+    back, turn = item.get("back") or {}, item.get("turn") or {}
+    paths = [item.get("display_path"), item.get("crop_path"), item.get("cutout_path"),
+             back.get("generated_path"), back.get("cutout_path")]
+    for view in turn.get("views", []):
+        paths += [view.get("path"), view.get("cutout_path")]
+    return [p for p in paths if p]
+
+
+def _turn_out(turn: dict | None, urls: dict[str, str]) -> TurnOut | None:
+    if not turn:
+        return None
+    state = turn.get("state")
+    if state == "running":
+        started = turn.get("started_at")
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(started)).total_seconds() if started else 0
+        return TurnOut(state="failed", error=INTERRUPTED) if age > TURN_STALE_SECONDS else TurnOut(state="running")
+    if state == "failed":
+        return TurnOut(state="failed", error=turn.get("error"))
+    views = [TurnViewOut(angle=v["angle"], url=urls[v["path"]], cutout_url=urls.get(v.get("cutout_path") or ""))
+             for v in turn.get("views", []) if v.get("path") in urls]
+    return TurnOut(state="done", views=views)
+
+
+def item_out(item: dict, urls: dict[str, str]) -> V1ItemOut:
+    back = item.get("back")
+    display = urls[item["display_path"]]
+    return V1ItemOut(
+        id=item["id"], tier=item.get("tier") or "low", facts=ItemFacts.model_validate(item["facts"]),
+        generated_url=display, crop_url=urls.get(item.get("crop_path") or "", display),
+        cutout_url=urls.get(item.get("cutout_path") or ""),
+        back=BackOut(generated_url=urls[back["generated_path"]], cutout_url=urls.get(back.get("cutout_path") or ""),
+                     visible_text=back.get("visible_text") or "") if back and back.get("generated_path") in urls else None,
+        turn=_turn_out(item.get("turn"), urls),
+    )
+
+
+def _own_item(store, user: User, item_id: str) -> dict:
+    item = store.get_item(user.id, item_id) if _is_uuid(item_id) else None
+    if item is None:
+        raise NOT_FOUND
+    return item
+
+
+@router.get("/items", response_model=V1ItemsResponse)
+def list_items(user: User = Depends(current_user), store=Depends(get_store)):
+    items = store.list_items(user.id)
+    urls = store.sign([p for item in items for p in _paths(item)])
+    return V1ItemsResponse(items=[item_out(item, urls) for item in items if item["display_path"] in urls])
+
+
+@router.patch("/items/{item_id}", response_model=V1ItemOut)
+def edit_item(item_id: str, patch: ItemPatch, user: User = Depends(current_user), store=Depends(get_store)):
+    item = _own_item(store, user, item_id)
+    error = patch_error(patch)
+    if error:
+        raise HTTPException(400, error)
+    facts = apply_patch(ItemFacts.model_validate(item["facts"]), patch)
+    updated = store.update_item(user.id, item_id, {"facts": facts.model_dump(mode="json")})
+    return item_out(updated, store.sign(_paths(updated)))
+
+
+@router.delete("/items/{item_id}", status_code=204)
+def delete_item(item_id: str, user: User = Depends(current_user), store=Depends(get_store)):
+    _own_item(store, user, item_id)
+    store.update_item(user.id, item_id, {"deleted_at": datetime.now(timezone.utc).isoformat()})
+    return Response(status_code=204)
+
+
+@router.post("/items/{item_id}/back", response_model=JobOut, status_code=202)
+def add_back(item_id: str, user: User = Depends(current_user), photo: UploadFile | None = File(None),
+             key: str = Depends(idempotency_key), store=Depends(get_store)):
+    _own_item(store, user, item_id)
+    if photo is None:
+        raise HTTPException(400, "no photo provided")
+    return queue_job(store, user, "back", key, photo, item_id=item_id)
+
+
+@router.post("/items/{item_id}/turn", response_model=JobOut, status_code=202)
+def start_turn(item_id: str, user: User = Depends(current_user), key: str = Depends(idempotency_key),
+               store=Depends(get_store)):
+    _own_item(store, user, item_id)
+    if store.job_by_key(user.id, key) is None and store.active_job(user.id, item_id, "turn"):
+        raise HTTPException(409, "the 360 view is already being made")
+    response = queue_job(store, user, "turn", key, None, item_id=item_id)
+    if response.status_code == 202:
+        store.update_item(user.id, item_id, {"turn": {"state": "running", "started_at": datetime.now(timezone.utc).isoformat()}})
+    return response

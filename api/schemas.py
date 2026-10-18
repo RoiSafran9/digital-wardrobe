@@ -90,3 +90,19 @@ class JobOut(BaseModel):
     item_ids: list[str] = []
     quality: QualityOut | None = None
     failed: list[str] = []
+
+
+class V1ItemOut(BaseModel):
+    """A closet item in the multi-user API: same shape as ClosetItemOut, keyed by id, with signed image URLs."""
+    id: str
+    tier: Literal["high", "medium", "low"]
+    facts: ItemFacts
+    crop_url: str
+    generated_url: str
+    cutout_url: str | None = None
+    back: BackOut | None = None
+    turn: TurnOut | None = None
+
+
+class V1ItemsResponse(BaseModel):
+    items: list[V1ItemOut]

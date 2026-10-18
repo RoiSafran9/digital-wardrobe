@@ -54,6 +54,10 @@ class MemoryStore:
         own = [e for e in reversed(self.ledger) if e["user_id"] == user_id and (before is None or e["id"] < before)]
         return copy.deepcopy(own[:limit])
 
+    def find_grant(self, user_id, key):
+        return copy.deepcopy(next((e for e in self.ledger if e["user_id"] == user_id
+                                   and e["operation_key"] == f"grant:{key}"), None))
+
     def _wallet(self, user_id):
         if not user_id or not self.user_exists(user_id):
             raise CreditError("WC404", "unknown user")
@@ -296,6 +300,9 @@ class SupabaseStore:
         if before is not None:
             params["id"] = f"lt.{before}"
         return self._rows("credit_ledger", params)
+
+    def find_grant(self, user_id, key):
+        return self._one("credit_ledger", {"user_id": f"eq.{user_id}", "operation_key": f"eq.grant:{key}"})
 
     def _credit_rpc(self, name, args):
         r = self.http.post(f"/rest/v1/rpc/{name}", json=args)

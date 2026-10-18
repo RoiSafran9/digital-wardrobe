@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 import httpx
 from api.auth import Settings
+from api.credits import ACTIONS, CreditError
 
 BUCKET = "wardrobe"
 SIGNED_URL_SECONDS = 3600
@@ -30,6 +31,9 @@ class MemoryStore:
         self.file_times: dict[str, datetime] = {}
         self.disabled: set[str] = set()
         self.deleted_users: set[str] = set()
+        self.emails: dict[str, str] = {}  # email -> user id, for the admin grant tool
+        self.wallets: dict[str, dict] = {}
+        self.ledger: list[dict] = []
 
     # Profiles
     def profile_status(self, user_id: str) -> str:
@@ -37,6 +41,88 @@ class MemoryStore:
 
     def user_exists(self, user_id: str) -> bool:
         return user_id not in self.deleted_users
+
+    def find_user_by_email(self, email):
+        user_id = self.emails.get(email.strip().lower())
+        return {"id": user_id, "email": email, "status": self.profile_status(user_id)} if user_id else None
+
+    # AI Credits: same rules as the credit_* database functions (see the credit_wallet migration)
+    def credits(self, user_id):
+        return dict(self.wallets.get(user_id, {"balance": 0, "held": 0}))
+
+    def credit_entries(self, user_id, limit, before=None):
+        own = [e for e in reversed(self.ledger) if e["user_id"] == user_id and (before is None or e["id"] < before)]
+        return copy.deepcopy(own[:limit])
+
+    def _wallet(self, user_id):
+        if not user_id or not self.user_exists(user_id):
+            raise CreditError("WC404", "unknown user")
+        return self.wallets.setdefault(user_id, {"balance": 0, "held": 0})
+
+    def _append(self, user_id, wallet, **row):
+        entry = {"id": len(self.ledger) + 1, "user_id": user_id, "balance_after": wallet["balance"],
+                 "held_after": wallet["held"], "action": None, "job_id": None, "note": None, "granted_by": None,
+                 "created_at": _now().isoformat(), **row}
+        self.ledger.append(entry)
+        return copy.deepcopy(entry)
+
+    def _refuse_disabled(self, user_id):
+        if user_id in self.disabled:
+            raise CreditError("WC403", "this account is disabled")
+
+    def credit_grant(self, user_id, amount, key, note, granted_by):
+        if type(amount) is not int or amount <= 0:
+            raise CreditError("WC422", "a grant must be a positive whole number of credits")
+        if not (key or "").strip() or not (note or "").strip() or not (granted_by or "").strip():
+            raise CreditError("WC422", "a grant needs an operation key, a reason and the admin who gave it")
+        wallet = self._wallet(user_id)
+        done = next((e for e in self.ledger if e["user_id"] == user_id and e["operation_key"] == f"grant:{key}"), None)
+        if done:
+            if done["amount"] == amount:
+                return copy.deepcopy(done)
+            raise CreditError("WC422", f"operation key {key} was already used for a different grant")
+        self._refuse_disabled(user_id)
+        wallet["balance"] += amount
+        return self._append(user_id, wallet, kind="grant", amount=amount, operation_key=f"grant:{key}",
+                            note=note.strip(), granted_by=granted_by.strip())
+
+    def credit_reserve(self, user_id, job_id, action, amount):
+        if not job_id or action not in ACTIONS or type(amount) is not int or amount <= 0:
+            raise CreditError("WC422", "a reserve needs a job, a known action and a positive cost")
+        wallet = self._wallet(user_id)
+        hold = next((e for e in self.ledger if e["job_id"] == job_id and e["kind"] == "hold"), None)
+        if hold:
+            if (hold["user_id"], hold["action"], hold["amount"]) == (user_id, action, amount):
+                return copy.deepcopy(hold)
+            raise CreditError("WC422", f"job {job_id} already holds credits for a different operation")
+        self._refuse_disabled(user_id)
+        if wallet["balance"] - wallet["held"] < amount:
+            raise CreditError("WC402", "not enough AI credits")
+        wallet["held"] += amount
+        return self._append(user_id, wallet, kind="hold", amount=amount, action=action, job_id=job_id,
+                            operation_key=f"job:{job_id}:hold")
+
+    def _end_hold(self, job_id, kind):
+        hold = next((e for e in self.ledger if e["job_id"] == job_id and e["kind"] == "hold"), None)
+        if hold is None:
+            return None
+        wallet = self._wallet(hold["user_id"])
+        done = next((e for e in self.ledger if e["job_id"] == job_id and e["kind"] in ("charge", "release")), None)
+        if done:
+            if done["kind"] == kind:
+                return copy.deepcopy(done)
+            raise CreditError("WC409", f"job {job_id} was already {done['kind']}d")
+        wallet["held"] -= hold["amount"]
+        if kind == "charge":
+            wallet["balance"] -= hold["amount"]
+        return self._append(hold["user_id"], wallet, kind=kind, amount=hold["amount"], action=hold["action"],
+                            job_id=job_id, operation_key=f"job:{job_id}:{kind}")
+
+    def credit_settle(self, job_id):
+        return self._end_hold(job_id, "charge")
+
+    def credit_release(self, job_id):
+        return self._end_hold(job_id, "release")
 
     # Admin lookups (sweeper only: not scoped to a user)
     def job_status(self, job_id):
@@ -196,6 +282,49 @@ class SupabaseStore:
 
     def user_exists(self, user_id):
         return self._one("profiles", {"id": f"eq.{user_id}"}) is not None  # profiles go with the account
+
+    def find_user_by_email(self, email):
+        return self._one("profiles", {"email": f"eq.{email.strip().lower()}"})
+
+    # AI Credits: reads filter by the user; every change goes through a credit_* database function
+    def credits(self, user_id):
+        row = self._one("credit_wallets", {"user_id": f"eq.{user_id}"})
+        return {"balance": row["balance"], "held": row["held"]} if row else {"balance": 0, "held": 0}
+
+    def credit_entries(self, user_id, limit, before=None):
+        params = {"user_id": f"eq.{user_id}", "order": "id.desc", "limit": str(limit)}
+        if before is not None:
+            params["id"] = f"lt.{before}"
+        return self._rows("credit_ledger", params)
+
+    def _credit_rpc(self, name, args):
+        r = self.http.post(f"/rest/v1/rpc/{name}", json=args)
+        if r.status_code >= 400:
+            try:
+                body = r.json()
+            except ValueError:
+                body = {}
+            if str(body.get("code", "")).startswith("WC"):
+                raise CreditError(body["code"], body.get("message", ""))
+        rows = self._ok(r).json()
+        return rows[0] if rows else None
+
+    def credit_grant(self, user_id, amount, key, note, granted_by):
+        return self._credit_rpc("credit_grant", {"p_user_id": user_id, "p_amount": amount, "p_operation_key": key,
+                                                 "p_note": note, "p_granted_by": granted_by})
+
+    def credit_reserve(self, user_id, job_id, action, amount):
+        return self._credit_rpc("credit_reserve", {"p_user_id": user_id, "p_job_id": job_id, "p_action": action,
+                                                   "p_amount": amount})
+
+    def credit_settle(self, job_id):
+        return self._credit_rpc("credit_settle", {"p_job_id": job_id})
+
+    def credit_release(self, job_id):
+        return self._credit_rpc("credit_release", {"p_job_id": job_id})
+
+    def credit_drift(self):
+        return self._ok(self.http.post("/rest/v1/rpc/credit_wallet_drift", json={})).json()
 
     # Admin lookups (sweeper only: not scoped to a user)
     def job_status(self, job_id):

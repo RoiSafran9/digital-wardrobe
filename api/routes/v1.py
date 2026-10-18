@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from api.auth import User, current_user
 from api.credits import InsufficientCredits, get_gate, get_prices, job_cost
 from api.facts_edit import apply_patch, patch_error
-from api.schemas import BackOut, ItemPatch, JobOut, PricesOut, TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse
+from api.schemas import BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, PricesOut, TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse
 from api.store import INTERRUPTED, get_store
 from pipeline.types import ItemFacts
 
@@ -83,6 +83,31 @@ def create_garment_job(user: User = Depends(current_user), photo: UploadFile | N
 def prices_list(user: User = Depends(current_user), prices=Depends(get_prices)):
     """The AI Price List the app can show; empty while billing is off."""
     return PricesOut(billing=bool(prices), prices=prices)
+
+
+CREDIT_PAGE, CREDIT_PAGE_MAX = 20, 100
+
+
+def _whole(value: str | None, name: str, low: int, high: int | None = None) -> int | None:
+    if value is None:
+        return None
+    if not value.isdigit() or int(value) < low or (high is not None and int(value) > high):
+        raise HTTPException(400, f"{name} must be a whole number from {low}" + (f" to {high}" if high else " up"))
+    return int(value)
+
+
+@router.get("/credits", response_model=CreditsOut)
+def credits(user: User = Depends(current_user), store=Depends(get_store), limit: str | None = None, before: str | None = None):
+    """The user's AI Credits balance and activity, newest first. Read-only: credits change only on the server."""
+    size = _whole(limit, "limit", 1, CREDIT_PAGE_MAX) or CREDIT_PAGE
+    cursor = _whole(before, "before", 1)
+    wallet = store.credits(user.id)
+    rows = store.credit_entries(user.id, size + 1, cursor)
+    entries = [CreditEntryOut(id=r["id"], kind=r["kind"], amount=r["amount"], action=r.get("action"),
+                              job_id=r.get("job_id"), note=r.get("note"), created_at=str(r["created_at"]))
+               for r in rows[:size]]
+    return CreditsOut(balance=wallet["balance"], held=wallet["held"], available=wallet["balance"] - wallet["held"],
+                      entries=entries, next_before=entries[-1].id if len(rows) > size else None)
 
 
 @router.get("/jobs/{job_id}", response_model=JobOut)

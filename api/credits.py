@@ -38,6 +38,15 @@ class InsufficientCredits(Exception):
     pass
 
 
+class CreditError(Exception):
+    """A wallet operation the database refused. code is its SQLSTATE: WC402 not enough credits,
+    WC403 disabled account, WC404 unknown user, WC409 the job's hold already ended the other way,
+    WC422 invalid input or a key reused for a different operation."""
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
 class CreditGate(Protocol):
     def reserve(self, user_id: str, job_id: str, kind: str, cost: int | None) -> None:
         """Hold the job's cost before the job exists; raise InsufficientCredits to refuse it."""

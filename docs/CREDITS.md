@@ -67,6 +67,12 @@ These are **F&F implementation-planning values only**, not paid pack prices, pub
 - Monitor API/model cost separately from user credits; log action type, attempts, model cost, ledger operation, outcome and per-user usage without exposing private photos.
 - Test data isolation, atomic debit under parallel requests, insufficient-credit refusal, retries, failure releases/refunds and ledger auditability.
 
+## Planned Outfit Photo import (separate two-stage workflow; NOT BUILT)
+
+A photograph of a person wearing clothing can enter a **candidate detection + user-selection** step before final generation. That first step costs the app AI inference but consumes **zero user credits**. Only selected candidates submitted for successful high-quality catalog-front generation may be charged, using the **existing** front-image action price from the server/wallet. The user receives a quote and explicitly confirms the selected candidate IDs and total before generation; no automatic 360 or back-image charges. A final review/subjective rejection and manual regeneration refund rule remains open. Distinguish this two-stage flow from the existing laid-flat `max_fronts` pricing, which is already implemented and must continue working.
+
+See [outfit-photo design](superpowers/specs/2026-10-19-outfit-photo-two-step-design.md).
+
 ## Current repository state
 **Billing M2 (built, OFF by default):** with `WARDROBE_BILLING=on` and every action priced in `WARDROBE_CREDIT_PRICES`, the server uses a wallet-backed gate: each job holds its action price (a front image × the fronts approved via `max_fronts`), the worker charges only what the job delivered and releases the rest, a failed job costs nothing, and the worker reconciles every minute holds left by expired, crashed or never-created jobs. An unpriced action stops startup. Without the flag nothing is held or charged. **App M3 (built):** Account shows available/held credits, used-of-granted, the AI Price List and activity; capture asks how many pieces are in the photo (sent as `max_fronts`) and shows the cost; + Back and 360 show their cost, 360 asks first; running out explains how to get more. All from the server; nothing shows in local mode. [App spec](superpowers/specs/2026-10-18-ai-credits-app-design.md).
 

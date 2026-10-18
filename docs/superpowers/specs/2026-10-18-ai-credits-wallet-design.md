@@ -1,6 +1,6 @@
 # AI Credits Wallet — Research, Architecture and Milestone Plan
 
-Status: **proposal, waiting for owner approval** · Date: 2026-10-18 · Brief: [ai-credits-wallet-implementation.md](../../tasks/ai-credits-wallet-implementation.md) · Product decisions: [CREDITS.md](../../CREDITS.md)
+Status: **approved 2026-10-18; Milestone 1 built (billing off)** · Date: 2026-10-18 · Brief: [ai-credits-wallet-implementation.md](../../tasks/ai-credits-wallet-implementation.md) · Product decisions: [CREDITS.md](../../CREDITS.md)
 
 Milestone 1 builds an **inactive** wallet: schema, trusted functions, an admin grant CLI and a read-only `GET /v1/credits`. Billing stays off (`NoCharge`), no price is enforced and nothing in the app changes.
 

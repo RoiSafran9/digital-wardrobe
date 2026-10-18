@@ -37,6 +37,14 @@ Fidelity to the owner's actual garment, not an idealized product shot. Each piec
 - Optional 360 "on body" view per item: four AI ghost-mannequin angles (~16¢, ~1 min), made on request in the background and labelled as AI.
 - Undecided: outfit features, and everything required to open the product to other users.
 
+## Confirmed direction: AI Credits (future account-based app)
+
+- Each signed-in user has **one unified AI Credits balance**, not separate quotas for garment creation, back images, and 360. Paid AI generation actions consume fixed, clearly advertised credit costs.
+- The **Account** screen shows current credits, a usage/progress meter and an in-app **AI Price List**. Each action shows its price before proceeding.
+- Numerical action costs, launch packs, promotional grants and the precise charging moment still need approval; examples are not launch prices.
+- **Current status:** the local single-user FastAPI app does not yet implement accounts, wallets or purchases. The requirement applies to the upcoming hosted multi-user experience.
+- See `docs/CREDITS.md` for the decision record and safety/implementation proposal.
+
 ## Brand Commitments
 
 Standing preference: the category standard, native iOS (system font, grouped backgrounds, one blue tint),

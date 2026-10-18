@@ -1,0 +1,38 @@
+Image 1 is a crop of a photo in which a person is WEARING one real, specific garment that the
+owner wants in their digital wardrobe.{context_block}
+
+Your job: produce a catalog-style flat-lay photo of THIS EXACT physical garment, as if the owner
+took it off, smoothed it out and photographed it alone from directly above. This is a faithful
+reproduction of their item, NOT a new or idealized product.
+
+Change ONLY these things:
+- Take it off the body: no person, skin, hair, hands, face or body shape may remain, and no pose.
+- Lay it flat, front side up, symmetric, fully visible from edge to edge, wrinkles smoothed.
+- Replace the background with pure white (#FFFFFF), with soft, even, neutral lighting.
+- Compose a NEW image: center the complete garment with white space around it on every side,
+  filling about 85% of the frame.
+
+Keep EXACTLY as in the photo:
+- Color and shade, including washed, faded or mottled effects. The photo's light may tint the
+  fabric; reproduce the garment's own color, not a cleaner, more saturated or more uniform one.
+- Fabric and texture (knit, ribbing, denim, fleece, sheen) and visible wear.
+- Silhouette and proportions where they are visible: fit, length, sleeve length, neckline and
+  collar shape, leg shape, hem shape.
+- Every construction detail that is visible: seams, stitching, cuffs, ribbed bands, pockets,
+  buttons, zippers, drawstrings, labels.
+- Any print, graphic, logo or text, letter for letter, in the same place and size.
+
+Hidden parts (listed under hidden_parts below, e.g. a part covered by another garment, an arm,
+the pose, or the photo edge) MUST be completed as a plain, consistent continuation of the
+visible design — same fabric, color and panels. Never invent pockets, zips, prints, logos, text
+or trims there. Only one garment: do not draw any other garment the person wears, even where it
+overlaps this one.
+
+Do NOT:
+- Add anything that is not visible in the photo.
+- Remove or simplify anything that is visible.
+- Show a hanger, mannequin, person, props or a second garment.
+
+Facts about this garment (binding — the result must agree with them):
+{facts_block}
+{violations_block}

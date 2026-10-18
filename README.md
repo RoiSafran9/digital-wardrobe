@@ -66,7 +66,7 @@ Away from home Wi-Fi: point `EXPO_PUBLIC_API_URL` at a tunnel to the Mac's port 
 
 To use the hosted project: configure custom SMTP in Supabase (Auth → SMTP), put `{{ .Token }}` in its Magic Link email template (see `supabase/templates/magic_link.html`), then delete `mobile/.env.local`. Never put a secret or service-role key in `mobile/`.
 
-**AI Credits wallet (inactive):** every account has a wallet (`credit_wallets`) and an append-only activity ledger (`credit_ledger`); billing stays off and no job charges credits yet. The signed-in app can read `GET /v1/credits`. To give someone promotional credits (admin only, from the repo root with the server's `.env`):
+**AI Credits (billing off by default):** every account has a wallet (`credit_wallets`) and an append-only activity ledger (`credit_ledger`). Billing turns on only with `WARDROBE_BILLING=on` plus a price for every action in `WARDROBE_CREDIT_PRICES` (see `.env.example`); then jobs hold and charge credits per AI action. Don't switch it on until the app shows prices (M3) and the hosted database has the billing migration. The signed-in app can read `GET /v1/credits`. To give someone promotional credits (admin only, from the repo root with the server's `.env`):
 
 ```
 python -m scripts.grant_credits --email <their sign-in email> --amount <N> --reason "<shown to them>" --key <unique-grant-name> --by <your name>

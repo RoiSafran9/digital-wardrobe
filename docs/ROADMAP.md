@@ -31,16 +31,17 @@ See README → "Owner setup still open": hosted Supabase SMTP and email template
 - [x] Authentication and user-scoped data, migration from local files (multi-user M1–M4)
 - [x] Hooks: job `cost_credits`, server price list (off), credit gate, `GET /v1/prices` (M5)
 - [x] Select provisional F&F action rates for planning: **1 front image / 1 back image / 3 for one 360** (not active billing)
-- [ ] Approve **multi-piece photo accounting and up-front quote**, manual regeneration policy, F&F grants and public-launch pack prices
+- [ ] Approve manual regeneration policy, F&F grant size and public-launch pack prices
 - [x] Wallet M1: per-account wallet, append-only ledger, backend-only grant/reserve/settle/release with idempotency, admin F&F grant CLI, read-only `GET /v1/credits` — billing still off ([design](superpowers/specs/2026-10-18-ai-credits-wallet-design.md), [brief](tasks/ai-credits-wallet-implementation.md))
-- [ ] Wallet M2: wallet-backed `CreditGate` behind an owner opt-in; multi-piece quote, reconciliation of expired/crashed jobs, fail-closed prices (needs owner decisions, see design §9)
+- [x] Approve multi-piece accounting: the user approves a maximum number of fronts per photo; charged only for fronts made
+- [x] Billing M2: wallet-backed `CreditGate` behind `WARDROBE_BILLING=on` (off by default), `max_fronts` cap, partial settle, reconcile of expired/crashed jobs, fail-closed prices
 - [ ] Account remaining-credits/usage meter and **AI Price List** screen
 - [ ] Show price and balance before generation; handle insufficient credits in the app
 - [ ] F&F grant process, activity tracking and cost caps
 - [ ] Before paid public launch: payments and receipt verification, refunds and App Store compliance
 
 ## Next (candidates — owner to pick)
-- AI Credits: wallet M2 (connect billing to jobs), then app UX (M3); purchases later
+- AI Credits: app UX (M3: balance, price list, cost and `max_fronts` before capture, 402 state), then switch billing on for F&F; purchases later
 - A cloud host for the backend and worker (or the documented tunnel), then EAS build and TestFlight
 - Better print fidelity across 360 angles (prompt work or a better model)
 - Labeled eval set of real photos to measure fidelity

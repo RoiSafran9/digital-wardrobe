@@ -10,7 +10,8 @@ Scope: AI-generation costs only. Server hosting, storage volume, subscriptions a
 3. An in-app **AI Price List** tells users how many credits each available action costs. The action screen shows its cost before the user triggers it.
 4. The Account/profile screen shows **credits remaining** with a readable progress/usage meter. Users can continue browsing already saved items even at zero credits.
 5. Pricing uses product-defined **credits**, not the underlying provider's token count or dollars. Internal model calls, quality checks and automatic retries are NOT separate user-facing charges. One requested 360 creation produces four model-generated views but is priced as **one 360 action**.
-6. F&F participants can be granted promotional credits; real-launch users may be offered paid credit packs. Packages and specific quantities have not been finalized.
+6. **Several garments in one photo (owner decision, 2026-10-18 — option b):** before the photo, the user approves how many front images they are willing to pay for (default 1). The server holds price × that number, creates at most that many fronts (largest pieces first; extra pieces are reported, not made) and charges only for the fronts actually created; the rest of the hold goes back. A photo that produces nothing costs nothing.
+7. F&F participants can be granted promotional credits; real-launch users may be offered paid credit packs. Packages and specific quantities have not been finalized.
 
 ## Action types to price
 - Create Front Image: produce an AI-generated front catalog image from an input photo, with vision classification. **Current code uses the internal operation key `garment`; the user-facing action should be named for the generated front image rather than the wardrobe entity.**
@@ -49,7 +50,7 @@ These are **F&F implementation-planning values only**, not paid pack prices, pub
 - Keep the underlying AI API usage/cost logs independent from the user credit wallet.
 
 ## Product decisions needed before coding real billing
-1. **Provisional F&F ratio is 1 front / 1 back / 3 for 360**, but final deployment/public prices still require verification. Define the charging/confirmation rules when one photo produces several front images. Never frame the price as ownership of a wardrobe item.
+1. **Provisional F&F ratio is 1 front / 1 back / 3 for 360**, but final deployment/public prices still require verification. ~~Multi-front rule~~ decided (Confirmed §6). Never frame the price as ownership of a wardrobe item.
 2. Charge when successful generation completes versus at Save; handling created-but-unsaved previews.
 3. Number of free user-triggered regenerations, failure/refund thresholds.
 4. Initial F&F grant size, who can approve top-ups, limits and duration.
@@ -67,7 +68,9 @@ These are **F&F implementation-planning values only**, not paid pack prices, pub
 - Test data isolation, atomic debit under parallel requests, insufficient-credit refusal, retries, failure releases/refunds and ledger auditability.
 
 ## Current repository state
-**Wallet M1 (built, billing off):** one `credit_wallets` row per account (`balance`, `held`), an append-only `credit_ledger` (`grant`/`hold`/`charge`/`release`, stable operation keys), backend-only Postgres functions for grant/reserve/settle/release, an admin grant CLI (`scripts/grant_credits.py`) and a read-only `GET /v1/credits`. Nothing in the job flow calls the wallet yet; `NoCharge` stays the gate. Design and the Milestone 2 decisions still needed: [wallet design](superpowers/specs/2026-10-18-ai-credits-wallet-design.md).
+**Billing M2 (built, OFF by default):** with `WARDROBE_BILLING=on` and every action priced in `WARDROBE_CREDIT_PRICES`, the server uses a wallet-backed gate: each job holds its action price (a front image × the fronts approved via `max_fronts`), the worker charges only what the job delivered and releases the rest, a failed job costs nothing, and the worker reconciles every minute holds left by expired, crashed or never-created jobs. An unpriced action stops startup. Without the flag nothing is held or charged. Not yet: the app UI (M3) — it doesn't send `max_fronts` or show prices.
+
+**Wallet M1 (built):** one `credit_wallets` row per account (`balance`, `held`), an append-only `credit_ledger` (`grant`/`hold`/`charge`/`release`, stable operation keys), backend-only Postgres functions for grant/reserve/settle/release, an admin grant CLI (`scripts/grant_credits.py`) and a read-only `GET /v1/credits`. Nothing in the job flow calls the wallet yet; `NoCharge` stays the gate. Design and the Milestone 2 decisions still needed: [wallet design](superpowers/specs/2026-10-18-ai-credits-wallet-design.md).
 
 Accounts exist (multi-user M1–M4): Supabase email-code sign-in, per-user Postgres rows with RLS, private Storage, and AI work as server jobs on a FastAPI backend that still runs on the owner's Mac. Multi-user M5 added **credits-readiness hooks only**, described in [credits integration notes](superpowers/specs/2026-10-18-credits-readiness.md): billing is off. Wallet M1 has since added the wallet, ledger and grant tool (above); there is still no balance meter, price-list screen, charge or purchase. Real charge enforcement and credit packs remain future work.
 
@@ -76,12 +79,12 @@ This record and the built hooks were written separately. Where they differ, neit
 
 | Topic | This spec | Built in M5 |
 |---|---|---|
-| Price source | Server-owned price table (`ai_action_prices(action_type, credits, effective_at)`, see Proposed server design) | `WARDROBE_CREDIT_PRICES` env JSON read at server start; no table, no `effective_at`. Unset = billing off. |
+| Price source | Server-owned price table (`ai_action_prices(action_type, credits, effective_at)`, see Proposed server design) | `WARDROBE_CREDIT_PRICES` env JSON read at server start, used only with `WARDROBE_BILLING=on` (then every action must be priced); no table, no `effective_at`. The price is snapshotted on each job (`cost_credits`), so a restart with new prices doesn't reprice queued jobs. |
 | Action types | Create Garment, Add Back Image, Create 360, possibly Manual Regenerate | `garment`, `back`, `turn` only. There is no Regenerate action in the app. |
-| Multi-piece photos | **Action-based** billing is confirmed. The exact rule for multiple front-image creations from one source photo is still open and needs a quoted/confirmed total. | A `garment` job is priced once per photo, whatever the number of pieces, without a confirmation step. Supporting multiple billed generation actions per photo needs agreed accounting, reservation and settlement. |
-| When credits are spent | Open: on successful generation vs at Save; unsaved previews | There is no Save step: results go straight to the closet. The hook settles when the worker finishes the job successfully and refunds when it fails for good. |
+| Multi-piece photos | Decided (§6): user approves a maximum number of fronts; charge only for fronts made | Built in M2 (billing on only): `POST /v1/jobs` takes `max_fronts` (1–20, default 1), holds price × max, caps generation, charges per front made. The app doesn't send it yet (M3). |
+| When credits are spent | Open: on successful generation vs at Save; unsaved previews | There is no Save step: results go straight to the closet. M2 charges when the worker finishes, for what the job delivered (fronts made, or the back / 360), and gives everything back when it fails for good. |
 | Internal retries and failures | Must not surprise users | Matches: internal retries neither settle nor refund; a job that fails for good is refunded; a repeated `Idempotency-Key` returns the existing job without a second hold. |
-| Insufficient credits | No paid generation; wardrobe stays usable | `reserve` can raise `InsufficientCredits` → HTTP 402 "not enough AI credits" before anything is uploaded or queued. The default gate (`NoCharge`) never raises, so this path is unused today. The app has no dedicated screen for it. |
+| Insufficient credits | No paid generation; wardrobe stays usable | `reserve` can raise `InsufficientCredits` → HTTP 402 "not enough AI credits" before anything is uploaded or queued. With `WARDROBE_BILLING=on` the wallet gate raises it when available credits are short. The app has no dedicated screen for it yet (M3). |
 | Ledger shape | `credit_wallets(user_id, available_credits, updated_at)`; `credit_ledger(…, action_type, operation_id, price_version, status, …)` | Built in wallet M1 (inactive): wallet `balance` + `held` (available = balance − held, because holds need their own amount); ledger `kind` (`grant`/`hold`/`charge`/`release`), `action`, `job_id`, `operation_key` unique per user. No `purchase`/`adjustment`/`price_version` yet. |
 | Price shown to users | In-app AI Price List and price at each entry point | `GET /v1/prices` returns `{"billing": false, "prices": {}}`; no app screen uses it yet. Each job stores `cost_credits` (null while billing is off). |
 | Example figures | 1 / 1 / 3 are illustration only, not approved | The `.env.example` and integration notes reuse the same figures as a format example only; nothing is hardcoded. |

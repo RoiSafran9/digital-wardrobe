@@ -30,8 +30,9 @@ See README → "Owner setup still open": hosted Supabase SMTP and email template
 - [x] Approve **billing by requested AI generation action**, not by owned garment: front image, optional back image and one bundled 360 creation
 - [x] Authentication and user-scoped data, migration from local files (multi-user M1–M4)
 - [x] Hooks: job `cost_credits`, server price list (off), credit gate, `GET /v1/prices` (M5)
-- [ ] Approve numerical credit price per front/back/360 action, **multi-piece photo accounting and up-front quote**, manual regeneration policy, F&F grants and public packs
-- [ ] Credit wallet, auditable ledger, reservation/settlement and idempotency behind the gate
+- [x] Select provisional F&F action rates for planning: **1 front image / 1 back image / 3 for one 360** (not active billing)
+- [ ] Approve **multi-piece photo accounting and up-front quote**, manual regeneration policy, F&F grants and public-launch pack prices
+- [ ] Credit wallet, auditable ledger, reservation/settlement and idempotency behind the gate — [Claude Code implementation brief](tasks/ai-credits-wallet-implementation.md)
 - [ ] Account remaining-credits/usage meter and **AI Price List** screen
 - [ ] Show price and balance before generation; handle insufficient credits in the app
 - [ ] F&F grant process, activity tracking and cost caps

@@ -39,13 +39,13 @@ Expo (React Native + TypeScript), Expo Router, Supabase (Auth/Postgres/private S
 
 Milestone 1 adds email-code sign-in (Supabase Auth) to the app. Without Supabase settings, development builds run in **local mode** exactly like before.
 
-To sign in against a local Supabase stack (needs Docker):
+The hosted project's settings live in `mobile/.env` (git-ignored, publishable key only). Until the hosted project has custom SMTP (needed for the 6-digit code email), sign in against a local Supabase stack instead (needs Docker):
 
 1. `npx supabase start` from the repo root. It prints the API URL and the publishable key; sign-in emails land in Mailpit at http://127.0.0.1:54324.
-2. Copy `mobile/.env.example` to `mobile/.env` and set `EXPO_PUBLIC_SUPABASE_URL=http://<your-Mac-LAN-IP>:54321` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable key>`.
+2. Create `mobile/.env.local` (git-ignored; it overrides `mobile/.env`) with `EXPO_PUBLIC_SUPABASE_URL=http://<your-Mac-LAN-IP>:54321` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<local publishable key>`.
 3. Restart Expo (`npx expo start -c`) so it picks up the env.
 
-For a hosted project, use its Project URL and **publishable** key instead, and put `{{ .Token }}` in the Magic Link email template (see `supabase/templates/magic_link.html`). Never put a secret or service-role key in `mobile/`.
+To use the hosted project: configure custom SMTP in Supabase (Auth → SMTP), put `{{ .Token }}` in its Magic Link email template (see `supabase/templates/magic_link.html`), then delete `mobile/.env.local`. Never put a secret or service-role key in `mobile/`.
 
 ## Next
 

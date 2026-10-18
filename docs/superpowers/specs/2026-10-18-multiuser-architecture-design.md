@@ -80,7 +80,7 @@ generation_jobs   id uuid pk, user_id uuid not null, item_id uuid null → wardr
 ```
 
 - Indexes: `wardrobe_items (user_id, created_at desc) where deleted_at is null`, `generation_jobs (user_id, created_at desc)`, `generation_jobs (status, locked_until)` for claiming.
-- RLS: `profiles` select/update own row; `wardrobe_items` select own, update own (trigger restricts updatable columns to `facts`, `deleted_at`); no client insert/delete (backend only; hard delete = backend purge job that removes both rows and Storage objects); `generation_jobs` select own only. All policies `to authenticated` with `(select auth.uid()) = user_id`.
+- RLS: `profiles` select/update own row; `wardrobe_items` select own, update own (trigger restricts updatable columns to `facts`, `deleted_at`); no client insert/delete (backend only; hard delete = backend purge job that removes both rows and Storage objects); `generation_jobs` select own only. All policies `to authenticated` with `(select auth.uid()) = user_id`. The hosted project does not auto-expose new tables, so each migration also `grant`s exactly the needed privileges to `authenticated` (e.g. `select, update` on `wardrobe_items`, `select` on `generation_jobs`) and nothing to `anon`.
 - A trigger on `auth.users` insert creates the `profiles` row.
 - Storage: private bucket `wardrobe`; objects `<user_id>/jobs/<job_id>/upload.<ext>` (inputs) and `<user_id>/items/<item_id>/{source,generated,cutout,crop}.png`, `…/back/*`, `…/turn/*`. Select policy: own folder only. No client insert/update/delete policies (backend writes). Signed URL TTL ≤ 1 h.
 - Orphans: uploads whose job failed or was never claimed are swept after 7 days; items are written as Storage-first-then-row, and a sweep deletes Storage folders with no row.
@@ -113,11 +113,15 @@ Two real accounts on two devices: add, view, edit, soft-delete/restore, back pho
 Document the ledger/wallet integration points from §5 against PR #2's credits spec once merged; add `cost_credits` hooks where jobs are created; no purchasing.
 
 ## 7. What the owner must do (cannot be done by an agent)
-1. Create a Supabase project (region near the future backend); copy the **Project URL** and **publishable key** into `mobile/.env` (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`). Never put the secret key in `mobile/`.
-2. Auth → Email: keep email provider on; edit the **Magic Link** template so the body contains `{{ .Token }}` (template text in `supabase/templates/magic_link.html`); set OTP length 6.
-3. Before going beyond a few testers: configure custom SMTP (Supabase's built-in mailer is rate-limited for testing only).
+Status 2026-10-18: items 1 and 5 are done (hosted project `digital-wardrobe`, Europe, free plan; Docker Desktop running). Item 2 is blocked on item 3.
+
+1. ✅ Create a Supabase project; its **Project URL** and **publishable key** go in `mobile/.env` (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`). Never put the secret key in `mobile/`. The project was created with "Automatically expose new tables" **off** and automatic RLS **on**, so M2 migrations must grant table privileges to `authenticated` explicitly.
+2. ⏳ Auth → Email: put `{{ .Token }}` in the **Magic Link** template (text in `supabase/templates/magic_link.html`). Supabase only allows template edits once custom SMTP is configured; the default template contains only a link, which the app can't use.
+3. ⏳ **TODO (owner):** create an account with a mail provider (e.g. Resend, Postmark, Amazon SES), verify a sending domain or address, and enter its SMTP settings under Auth → SMTP. Then do item 2 and delete `mobile/.env.local` so the app uses the hosted project.
 4. M3: enable asymmetric JWT signing keys; create a secret key for the backend; choose a host.
-5. Optional for local work: Docker Desktop running for `npx supabase start`.
+5. ✅ Docker Desktop running for `npx supabase start`.
+
+Until item 3 is done, development uses the local CLI stack: `mobile/.env.local` (git-ignored) overrides `mobile/.env` with the local URL (`http://<Mac LAN IP>:54321`) and the local publishable key. Switching between local and hosted is env-only; no code changes.
 
 ## 8. Calls made by the designer (owner may override)
 - Supabase CLI local stack for development instead of a shared dev project.

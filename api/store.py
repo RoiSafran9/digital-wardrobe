@@ -1,0 +1,253 @@
+"""User-owned data for the multi-user API: Supabase (Postgres + private Storage) over its HTTP APIs.
+
+The backend uses the secret key, which bypasses row level security, so every method that reads or
+changes a user's data takes that user's id and filters by it. MemoryStore mirrors the same rules
+for tests.
+"""
+import copy
+import uuid
+from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
+import httpx
+from api.auth import Settings
+
+BUCKET = "wardrobe"
+SIGNED_URL_SECONDS = 3600
+ACTIVE = ("queued", "running")
+INTERRUPTED = "Interrupted — try again"
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class MemoryStore:
+    def __init__(self, public_url: str = "https://storage.test"):
+        self.public_url = public_url
+        self.jobs: dict[str, dict] = {}
+        self.items: dict[str, dict] = {}
+        self.files: dict[str, bytes] = {}
+        self.disabled: set[str] = set()
+
+    # Profiles
+    def profile_status(self, user_id: str) -> str:
+        return "disabled" if user_id in self.disabled else "active"
+
+    # Jobs
+    def _by_key(self, user_id, key):
+        return next((copy.deepcopy(j) for j in self.jobs.values()
+                     if j["user_id"] == user_id and j["idempotency_key"] == key), None)
+
+    def job_by_key(self, user_id, key):
+        return self._by_key(user_id, key)
+
+    def create_job(self, user_id, kind, idempotency_key, input_path, item_id=None, job_id=None):
+        existing = self._by_key(user_id, idempotency_key)  # the unique constraint
+        if existing:
+            return existing, False
+        job = {"id": job_id or str(uuid.uuid4()), "user_id": user_id, "item_id": item_id, "kind": kind,
+               "status": "queued", "idempotency_key": idempotency_key, "input_path": input_path, "result": None,
+               "error": None, "attempts": 0, "max_attempts": 2, "locked_until": None,
+               "created_at": _now() + timedelta(microseconds=len(self.jobs)), "started_at": None, "finished_at": None}
+        self.jobs[job["id"]] = job
+        return copy.deepcopy(job), True
+
+    def get_job(self, user_id, job_id):
+        job = self.jobs.get(job_id)
+        return copy.deepcopy(job) if job and job["user_id"] == user_id else None
+
+    def active_job(self, user_id, item_id, kind):
+        return next((copy.deepcopy(j) for j in self.jobs.values() if j["user_id"] == user_id
+                     and j["item_id"] == item_id and j["kind"] == kind and j["status"] in ACTIVE), None)
+
+    def claim_job(self, lease_seconds):
+        now = _now()
+        for job in self.jobs.values():
+            if job["status"] == "running" and job["locked_until"] < now and job["attempts"] >= job["max_attempts"]:
+                job.update(status="failed", error=INTERRUPTED, finished_at=now, locked_until=None)
+        claimable = [j for j in self.jobs.values() if j["status"] == "queued"
+                     or (j["status"] == "running" and j["locked_until"] < now)]
+        if not claimable:
+            return None
+        job = min(claimable, key=lambda j: j["created_at"])
+        job.update(status="running", attempts=job["attempts"] + 1, locked_until=now + timedelta(seconds=lease_seconds),
+                   started_at=job["started_at"] or now)
+        return copy.deepcopy(job)
+
+    def finish_job(self, job_id, status, result=None, error=None):
+        self.jobs[job_id].update(status=status, result=result, error=error, finished_at=_now(), locked_until=None)
+
+    def retry_job(self, job_id, error):
+        self.jobs[job_id].update(status="queued", error=error, locked_until=None)
+
+    # Items
+    def _visible(self, user_id, item_id):
+        item = self.items.get(item_id)
+        return item if item and item["user_id"] == user_id and item["deleted_at"] is None else None
+
+    def list_items(self, user_id):
+        own = [i for i in self.items.values() if i["user_id"] == user_id and i["deleted_at"] is None]
+        return copy.deepcopy(sorted(own, key=lambda i: i["created_at"], reverse=True))
+
+    def get_item(self, user_id, item_id):
+        return copy.deepcopy(self._visible(user_id, item_id))
+
+    def insert_item(self, row):
+        for item in self.items.values():
+            same_piece = row.get("job_id") and (item["job_id"], item["piece_index"]) == (row["job_id"], row.get("piece_index"))
+            same_legacy = row.get("legacy_key") and (item["user_id"], item["legacy_key"]) == (row["user_id"], row["legacy_key"])
+            if same_piece or same_legacy:
+                return copy.deepcopy(item)
+        for key in ("source_path", "display_path", "cutout_path", "crop_path"):
+            if row.get(key) and not row[key].startswith(row["user_id"] + "/"):
+                raise ValueError(f"{key} outside the owner's folder")
+        item = {"id": str(uuid.uuid4()), "job_id": None, "piece_index": None, "tier": None, "facts_original": None,
+                "source_kind": "original", "cutout_path": None, "crop_path": None, "back": None, "turn": None,
+                "legacy_key": None, "deleted_at": None, "created_at": _now() + timedelta(microseconds=len(self.items)),
+                **copy.deepcopy(row)}
+        item["updated_at"] = item["created_at"]
+        self.items[item["id"]] = item
+        return copy.deepcopy(item)
+
+    def update_item(self, user_id, item_id, fields):
+        item = self.items.get(item_id)
+        if not item or item["user_id"] != user_id:
+            return None
+        if "facts" in fields and fields["facts"] != item["facts"] and item["facts_original"] is None:
+            item["facts_original"] = item["facts"]
+        item.update(copy.deepcopy(fields), updated_at=_now())
+        return copy.deepcopy(item)
+
+    def find_legacy(self, user_id, legacy_key):
+        return next((copy.deepcopy(i) for i in self.items.values()
+                     if i["user_id"] == user_id and i["legacy_key"] == legacy_key), None)
+
+    # Files
+    def upload(self, path, data, content_type):
+        self.files[path] = data
+
+    def download(self, path):
+        return self.files[path]
+
+    def remove(self, paths):
+        for p in paths:
+            self.files.pop(p, None)
+
+    def sign(self, paths):
+        return {p: f"{self.public_url}/{p}?token=signed" for p in paths}
+
+
+class StoreError(Exception):
+    pass
+
+
+class SupabaseStore:
+    def __init__(self, settings: Settings, client: httpx.Client | None = None):
+        self.settings = settings
+        headers = {"apikey": settings.secret_key, "Authorization": f"Bearer {settings.secret_key}"}
+        self.http = client or httpx.Client(base_url=settings.supabase_url, headers=headers, timeout=60)
+
+    def _ok(self, response: httpx.Response) -> httpx.Response:
+        if response.status_code >= 400:
+            # Never echo headers: they carry the secret key.
+            raise StoreError(f"Supabase {response.request.method} {response.request.url.path} → {response.status_code}: {response.text[:300]}")
+        return response
+
+    def _rows(self, table, params):
+        return self._ok(self.http.get(f"/rest/v1/{table}", params={"select": "*", **params})).json()
+
+    def _one(self, table, params):
+        rows = self._rows(table, {**params, "limit": "1"})
+        return rows[0] if rows else None
+
+    def _insert(self, table, row):
+        r = self.http.post(f"/rest/v1/{table}", json=row, headers={"Prefer": "return=representation"})
+        if r.status_code == 409:
+            return None  # unique violation: the caller fetches the existing row
+        return self._ok(r).json()[0]
+
+    def _patch(self, table, params, fields):
+        r = self.http.patch(f"/rest/v1/{table}", params=params, json=fields, headers={"Prefer": "return=representation"})
+        rows = self._ok(r).json()
+        return rows[0] if rows else None
+
+    # Profiles
+    def profile_status(self, user_id):
+        row = self._one("profiles", {"id": f"eq.{user_id}"})
+        return row["status"] if row else "active"
+
+    # Jobs
+    def job_by_key(self, user_id, key):
+        return self._one("generation_jobs", {"user_id": f"eq.{user_id}", "idempotency_key": f"eq.{key}"})
+
+    def create_job(self, user_id, kind, idempotency_key, input_path, item_id=None, job_id=None):
+        row = {"user_id": user_id, "kind": kind, "idempotency_key": idempotency_key, "input_path": input_path, "item_id": item_id}
+        if job_id:
+            row["id"] = job_id
+        created = self._insert("generation_jobs", row)
+        return (created, True) if created else (self.job_by_key(user_id, idempotency_key), False)
+
+    def get_job(self, user_id, job_id):
+        return self._one("generation_jobs", {"id": f"eq.{job_id}", "user_id": f"eq.{user_id}"})
+
+    def active_job(self, user_id, item_id, kind):
+        return self._one("generation_jobs", {"user_id": f"eq.{user_id}", "item_id": f"eq.{item_id}",
+                                             "kind": f"eq.{kind}", "status": "in.(queued,running)"})
+
+    def claim_job(self, lease_seconds):
+        rows = self._ok(self.http.post("/rest/v1/rpc/claim_generation_job", json={"lease_seconds": lease_seconds})).json()
+        return rows[0] if rows else None
+
+    def finish_job(self, job_id, status, result=None, error=None):
+        self._patch("generation_jobs", {"id": f"eq.{job_id}"}, {"status": status, "result": result, "error": error,
+                                                                 "finished_at": _now().isoformat(), "locked_until": None})
+
+    def retry_job(self, job_id, error):
+        self._patch("generation_jobs", {"id": f"eq.{job_id}"}, {"status": "queued", "error": error, "locked_until": None})
+
+    # Items
+    def list_items(self, user_id):
+        return self._rows("wardrobe_items", {"user_id": f"eq.{user_id}", "deleted_at": "is.null", "order": "created_at.desc"})
+
+    def get_item(self, user_id, item_id):
+        return self._one("wardrobe_items", {"id": f"eq.{item_id}", "user_id": f"eq.{user_id}", "deleted_at": "is.null"})
+
+    def insert_item(self, row):
+        created = self._insert("wardrobe_items", row)
+        if created:
+            return created
+        if row.get("job_id"):
+            return self._one("wardrobe_items", {"job_id": f"eq.{row['job_id']}", "piece_index": f"eq.{row['piece_index']}"})
+        return self.find_legacy(row["user_id"], row["legacy_key"])
+
+    def update_item(self, user_id, item_id, fields):
+        return self._patch("wardrobe_items", {"id": f"eq.{item_id}", "user_id": f"eq.{user_id}"}, fields)
+
+    def find_legacy(self, user_id, legacy_key):
+        return self._one("wardrobe_items", {"user_id": f"eq.{user_id}", "legacy_key": f"eq.{legacy_key}"})
+
+    # Files
+    def _object(self, path):
+        return f"/storage/v1/object/{BUCKET}/{quote(path, safe='/')}"
+
+    def upload(self, path, data, content_type):
+        self._ok(self.http.post(self._object(path), content=data, headers={"Content-Type": content_type, "x-upsert": "true"}))
+
+    def download(self, path):
+        return self._ok(self.http.get(self._object(path))).content
+
+    def remove(self, paths):
+        if paths:
+            self._ok(self.http.request("DELETE", f"/storage/v1/object/{BUCKET}", json={"prefixes": list(paths)}))
+
+    def sign(self, paths):
+        if not paths:
+            return {}
+        rows = self._ok(self.http.post(f"/storage/v1/object/sign/{BUCKET}",
+                                       json={"expiresIn": SIGNED_URL_SECONDS, "paths": list(paths)})).json()
+        return {r["path"]: f"{self.settings.public_url}/storage/v1{r['signedURL']}" for r in rows if r.get("signedURL")}
+
+
+def get_store():
+    """The request's store; the multi-user app overrides this with its SupabaseStore."""
+    raise RuntimeError("no store configured")

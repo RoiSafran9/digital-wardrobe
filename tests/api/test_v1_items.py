@@ -126,3 +126,17 @@ def test_360_queues_once_and_marks_the_item_running(client, store):
 
 def test_items_routes_need_sign_in(client):
     assert client.get("/v1/items").status_code == 401
+
+
+def test_items_say_when_they_were_added(client, store):
+    add_item(store, A)
+    created = client.get("/v1/items", headers=as_user(A)).json()["items"][0]["created_at"]
+    assert created.startswith("20")  # ISO timestamp
+
+
+def test_one_item_can_be_fetched_by_its_owner_only(client, store):
+    item = add_item(store, A)
+    r = client.get(f"/v1/items/{item['id']}", headers=as_user(A))
+    assert r.status_code == 200 and r.json()["id"] == item["id"] and r.json()["generated_url"].endswith("?token=signed")
+    assert client.get(f"/v1/items/{item['id']}", headers=as_user(B)).status_code == 404
+    assert client.get("/v1/items/not-a-uuid", headers=as_user(A)).status_code == 404

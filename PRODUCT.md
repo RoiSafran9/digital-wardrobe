@@ -40,7 +40,7 @@ Fidelity to the owner's actual garment, not an idealized product shot. Each piec
 
 ## Confirmed direction: AI Credits
 
-- Each signed-in user has **one unified AI Credits balance**, not separate quotas for garment creation, back images, and 360. Paid AI generation actions consume fixed, clearly advertised credit costs.
+- Each signed-in user has **one unified AI Credits balance**, not separate quotas for front images, back images and 360. **Credits are consumed by explicitly requested AI generation actions, never by the number of garment records a user owns.** Creating a front image, adding a back image and creating a bundled four-view 360 are distinct billable action types. Enhancements can be created later for an existing item.
 - The **Account** screen shows current credits, a usage/progress meter and an in-app **AI Price List**. Each action shows its price before proceeding.
 - Numerical action costs, launch packs, promotional grants and the precise charging moment still need approval; examples are not launch prices.
 - **Current status:** accounts exist; credits are hooks only (job cost recording, a server price list that is off, a credit gate). No wallet, balance, meter, price-list screen or purchases yet.

@@ -43,7 +43,7 @@
 
 ## Multi-user phase ([design](superpowers/specs/2026-10-18-multiuser-architecture-design.md))
 - [x] M1 — Authentication foundation: email-code sign-in, encrypted persisted session, guarded navigation, Account tab, local mode for development
-- [ ] M2 — Database schema, RLS, private Storage bucket and policies, two-account isolation tests
+- [x] M2 — Database schema, RLS, private Storage bucket and policies, two-account isolation tests
 - [ ] M3 — FastAPI verifies Supabase tokens, Postgres-backed generation jobs, results in private Storage, migration of local `runs/`
 - [ ] M4 — End-to-end two-user verification on devices; update product docs
 - [ ] M5 — Credit system readiness (integration points only, no payments)

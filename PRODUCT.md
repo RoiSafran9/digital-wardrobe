@@ -36,7 +36,8 @@ Fidelity to the owner's actual garment, not an idealized product shot. Each piec
 - Removed items are soft-deleted and recoverable.
 - Optional 360 "on body" view per item: four AI ghost-mannequin angles (~16¢, ~1 min), made on request in the background and labelled as AI.
 - AI Credits are a confirmed direction (one balance per account). Jobs record their cost and the backend has the hooks to hold, charge and refund credits, but billing is off: no prices, balances or purchases yet.
-- Undecided: outfit features, the cloud host, and opening the product to other users.
+- **Planned (not implemented):** a second capture path for photos of a person wearing multiple garments: detect candidates first, let the user choose, then generate high-quality catalog fronts only for chosen candidates. Detection is free to the user; paid AI-generation actions use the same account wallet. Preserve the existing laid-flat capture route. See `docs/superpowers/specs/2026-10-19-outfit-photo-two-step-design.md`.
+- Undecided: outfit recommendations/styling, the cloud host, and opening the product to other users.
 
 ## Confirmed direction: AI Credits
 

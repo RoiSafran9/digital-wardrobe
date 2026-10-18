@@ -20,3 +20,8 @@ Read `AGENTS.md` first. It contains the shared rules for **all** AI coding agent
 
 ## Expected handoff
 In each PR provide purpose, implementation summary, manual verification steps, risks, and documentation updates.
+
+## Future AI Credits
+- Approved product direction: each user gets a single AI Credits balance; the Account screen shows remaining credits and an in-app price list for all billable AI creation actions.
+- Actual credit amounts, F&F grants and purchase packs remain unapproved. Do not hardcode example values as launch prices or claim the current local application already supports accounts/wallets.
+- Credits must be enforced by a trusted server with an append-only ledger, transaction safety and idempotent generation operations. Read `docs/CREDITS.md` before implementing monetization.

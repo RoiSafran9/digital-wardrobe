@@ -79,3 +79,14 @@ class ItemPatch(BaseModel):
     pattern: str | None = None
     trims: str | None = None
     visible_text: str | None = None
+
+
+class JobOut(BaseModel):
+    id: str
+    kind: Literal["garment", "back", "turn"]
+    status: Literal["queued", "running", "succeeded", "failed", "canceled"]
+    error: str | None = None
+    item_id: str | None = None
+    item_ids: list[str] = []
+    quality: QualityOut | None = None
+    failed: list[str] = []

@@ -10,10 +10,11 @@ import logging
 import os
 import tempfile
 import uuid
+import cv2
 from api.credits import CreditGate, NoCharge
 from api.item_loader import load_item
 from pipeline.back import BackPhotoRejected, run_back
-from pipeline.orchestrator import run_photo
+from pipeline.orchestrator import Providers, run_photo
 from pipeline.run_log import RunLogger
 from pipeline.turn import TURN_ORDER, TurnFailed, refs_for_item, run_turn
 from pipeline.types import ItemFacts
@@ -22,6 +23,11 @@ log = logging.getLogger("wardrobe.worker")
 
 GENERIC_FAILURE = "Something went wrong — try again"
 ITEM_GONE = "That item no longer exists"
+NO_GARMENT = "No garment found in the photo — lay the piece flat, in good light, and try again"
+
+# Photo crops are only a fallback picture; full-resolution PNGs went past the bucket's 25 MB limit.
+CROP_MAX_SIDE = 2048
+CROP_JPEG_QUALITY = 90
 
 
 class JobRejected(Exception):
@@ -53,6 +59,36 @@ class _Uploads:
     def put_if_exists(self, path: str, local: str) -> str | None:
         return self.put(path, local) if os.path.exists(local) else None
 
+    def put_photo_if_exists(self, path: str, local: str) -> str | None:
+        """A photo (crop) as a JPEG no larger than CROP_MAX_SIDE, so it always fits the bucket."""
+        image = cv2.imread(local) if os.path.exists(local) else None
+        if image is None:
+            return None
+        scale = CROP_MAX_SIDE / max(image.shape[:2])
+        if scale < 1:
+            image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+        ok, data = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, CROP_JPEG_QUALITY])
+        if not ok:
+            return None
+        self.store.upload(path, data.tobytes(), "image/jpeg")
+        self.paths.append(path)
+        return path
+
+
+class _RecordingVision:
+    """Keeps what detection returned, so an empty result can say why pieces were left out."""
+    def __init__(self, vision):
+        self.vision, self.detected = vision, []
+
+    async def detect_items_with_facts(self, image_path):
+        self.detected = await self.vision.detect_items_with_facts(image_path)
+        return self.detected
+
+
+def _nothing_found(detected) -> str:
+    reasons = [d.exclusion_reason for d in detected if not d.included and d.exclusion_reason]
+    return f"No garment to add: {reasons[0]}" if reasons else NO_GARMENT
+
 
 def _item_id(job_id: str, piece_index: int) -> str:
     # Stable per job and piece: a retried job overwrites the same files and finds the same row.
@@ -66,8 +102,10 @@ async def _garment(store, job, providers, tmp, uploads):
     photo = _write(os.path.join(tmp, "upload" + ext), original)
     output_dir = os.path.join(tmp, "out", "photo")
     logger = RunLogger(os.path.join(tmp, "run_log.jsonl"))
+    given = providers(logger)
+    vision = _RecordingVision(given.vision)
     try:
-        outcome = await run_photo(photo, output_dir, providers(logger), logger)
+        outcome = await run_photo(photo, output_dir, Providers(vision=vision, imagegen=given.imagegen), logger)
     except ValueError as e:
         raise JobRejected(_sentence(str(e))) from e
 
@@ -89,12 +127,15 @@ async def _garment(store, job, providers, tmp, uploads):
             "id": item_id, "user_id": user, "job_id": job["id"], "piece_index": piece, "tier": result.tier,
             "facts": facts.model_dump(mode="json"), "source_path": f"{base}/source{ext}", "source_kind": "original",
             "display_path": uploads.put(f"{base}/generated.png", os.path.join(item_dir, "generated.png")),
-            "crop_path": uploads.put_if_exists(f"{base}/crop.png", os.path.join(item_dir, "crop.png")),
+            "crop_path": uploads.put_photo_if_exists(f"{base}/crop.jpg", os.path.join(item_dir, "crop.png")),
             "cutout_path": uploads.put_if_exists(f"{base}/cutout.png", os.path.join(item_dir, "cutout.png")),
         }
         item_ids.append(store.insert_item(row)["id"])
 
     quality = outcome["quality"]
+    if quality.status == "ok" and not item_ids and not retakes and not outcome["failed"]:
+        # Nothing detected (or everything left out): a "succeeded" job with no items looked like a hang.
+        raise JobRejected(_sentence(_nothing_found(vision.detected)))
     store.remove([job["input_path"]])  # each item keeps its own copy as source
     return {"item_ids": item_ids, "quality": {"status": quality.status, "reason": quality.reason},
             "failed": outcome["failed"], "retakes": retakes}
@@ -127,7 +168,7 @@ async def _back(store, job, providers, tmp, uploads):
     back = {
         "generated_path": uploads.put(f"{base}/generated.png", os.path.join(out, "generated.png")),
         "cutout_path": uploads.put_if_exists(f"{base}/cutout.png", os.path.join(out, "cutout.png")),
-        "crop_path": uploads.put_if_exists(f"{base}/crop.png", os.path.join(out, "crop.png")),
+        "crop_path": uploads.put_photo_if_exists(f"{base}/crop.jpg", os.path.join(out, "crop.png")),
         "visible_text": _facts_text(facts),
     }
     store.update_item(job["user_id"], item["id"], {"back": back})

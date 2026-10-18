@@ -115,6 +115,38 @@ async def test_a_photo_that_needs_a_retake_finishes_with_no_items():
     assert store.list_items(A) == []
 
 
+async def test_a_photo_with_no_garment_fails_with_a_reason_instead_of_finishing_empty():
+    # A job that ends with nothing to show must say why; "succeeded" with no items looked like a hang.
+    store = MemoryStore()
+    job_id = garment_job(store)
+    await run_once(store, factory(FakeVision([])))
+    job = store.jobs[job_id]
+    assert job["status"] == "failed"
+    assert "no garment" in job["error"].lower()
+    assert store.list_items(A) == []
+
+
+async def test_a_photo_whose_pieces_were_all_left_out_gives_the_models_reason():
+    store = MemoryStore()
+    job_id = garment_job(store)
+    left_out = detected(0).model_copy(update={"included": False, "exclusion_reason": "being worn by a person"})
+    await run_once(store, factory(FakeVision([left_out])))
+    job = store.jobs[job_id]
+    assert job["status"] == "failed" and "being worn by a person" in job["error"]
+
+
+async def test_large_photo_crops_are_stored_as_bounded_jpegs():
+    # Full-resolution phone photos made crop PNGs over the bucket's 25 MB limit.
+    store = MemoryStore()
+    garment_job(store, photo_bytes(size=3000))
+    big = detected(0).model_copy(update={"box": BBox(x=0, y=0, width=2990, height=2990)})
+    await run_once(store, factory(FakeVision([big])))
+    item = store.list_items(A)[0]
+    assert item["crop_path"].endswith("/crop.jpg")
+    crop = cv2.imdecode(np.frombuffer(store.files[item["crop_path"]], np.uint8), cv2.IMREAD_COLOR)
+    assert max(crop.shape[:2]) <= 2048
+
+
 async def add_front(store):
     job_id = garment_job(store, key="front")
     await run_once(store, factory(FakeVision([detected(0)])))
@@ -140,6 +172,7 @@ async def test_a_back_job_adds_the_back_to_the_item():
     assert back["visible_text"] == "TEAM 9"
     assert back["generated_path"] == f"{A}/items/{item['id']}/back/{job_id}/generated.png"
     assert back["generated_path"] in store.files and back["crop_path"] in store.files
+    assert back["crop_path"].endswith("/crop.jpg")  # photo crops are bounded JPEGs, like the front's
 
 
 async def test_an_unusable_back_photo_fails_with_its_reason_and_is_not_retried():

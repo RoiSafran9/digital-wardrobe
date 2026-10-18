@@ -112,6 +112,15 @@ Choose an accessible **Modern & Playful** palette (background/surface, primary a
 - Only the signed-in user's wardrobe is visible.
 - Verification, network failure, camera/photo permissions, upload failure, empty and delete-confirmation states are accounted for.
 
+## Credits experience (confirmed product direction; multi-user rollout)
+
+- **Account → AI Credits:** prominently show remaining balance and a readable usage bar. The progress bar needs an honest baseline (e.g., a specific active granted pack); for combined balances or top-ups, never show a misleading percentage.
+- **Account → AI Price List:** English-language, in-app read-only list of actions and their cost in AI Credits: **Create Garment**, **Add Back Image**, **Create 360**, and **Regenerate** if separately chargeable. Actual numbers pending approval.
+- Every billable generation entry point shows its current fixed credit price and balance, with explicit confirmation where the charge or generated-item count might surprise the user.
+- Insufficient credits: show a useful explanation and a way to request/get more credits (admin-issued F&F grants initially; paid packs only after payment integration). Viewing saved items must continue working.
+- Credit History / Activity may list grants, charges and refunds; exact presentation pending screen design.
+- The local iPhone prototype has no accounts/credits yet. These are target requirements for the authenticated rollout, not shipped functionality.
+
 ## Open screen questions
 - Generated-image fidelity criteria and exact preview image sizing; the **Original / Generated pre-save comparison toggle is confirmed**.
 - Palette, typography and spacing tokens.

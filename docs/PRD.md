@@ -50,7 +50,7 @@ Today: the owner, on their own iPhone over home Wi-Fi. Intended: other people wi
 
 ## AI Credits — confirmed direction (not built beyond hooks)
 - **One AI Credits wallet per account**, not separate caps for garments, back images and 360, and not provider tokens or currency as the unit.
-- Each billable AI action consumes credits at a fixed, **user-visible** rate. An in-app **AI Price List** shows them, and each action shows its price before it starts.
+- **Billing is per requested AI generation action, not per saved garment or existing wardrobe item.** Separate actions are front-image generation, optional back-image generation and optional 360 generation (one user-facing 360 action includes its four generated views). Each billable action has a fixed, **user-visible** credit price, presented before generation and in an in-app **AI Price List**. A garment can receive a back image or 360 later without requiring a second front-image purchase.
 - Account shows **credits remaining** with a clearly labeled usage meter; no invented monthly reset or ambiguous denominator when balances come from several grants or purchases.
 - F&F participants may receive promotional credits; real-launch users may buy credit packs. **Amounts, prices and policies are not approved.**
 - No surprise charges for hidden AI retries, timeouts or failed generations. Users without enough credits can't start a chargeable action but keep full access to their wardrobe. Wallet changes are server-controlled.
@@ -71,5 +71,5 @@ Outfits and recommendations, sharing/social, shopping, payments, Sign in with Ap
 ## Open questions
 - Outfit features — undecided.
 - The cloud host, and opening the product to other users.
-- Credit prices and how multi-piece photos are charged (see the credits integration notes).
+- Exact credit prices **per front-image, back-image and 360 generation action**; multi-piece photos need an explicit counting and up-front quote rule. The number of garments stored is not itself a billing unit (see the credits integration notes).
 - Better print fidelity across 360 angles.

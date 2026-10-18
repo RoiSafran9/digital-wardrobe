@@ -89,6 +89,18 @@ docs/                # requirements and decisions
 - MVP: allowed only against an **unsaved Add Item draft**, before the initial Save Item action. A new generated preview can replace a previous unsaved preview without modifying the source photograph. Preserve user-edited metadata across image-only regeneration unless an explicit action changes it.
 - Post-MVP: potentially offer Regenerate on saved items using their private retained `source_image_path`, with preview/confirm and safe replacement of `display_image_path`. Do **not** implement this endpoint/UI in MVP merely because source images are retained.
 
+## Proposed per-user credit system (future hosted multi-user stage)
+
+- Separate product decision from implementation status: **one unified AI Credits balance per authenticated user** is approved, but the current LAN FastAPI service has no authentication, persistent wallet or purchases.
+- Proposed tables: `credit_wallets(user_id, available_credits, updated_at)`; append-only `credit_ledger(id, user_id, delta, action_type, operation_id, price_version, status, created_at)`; and server-owned `ai_action_prices(action_type, credits, effective_at)`. Schema, indexes and entitlement receipt handling require review.
+- Validate Supabase user credentials server-side for each chargeable operation. The server derives the user identity from the verified token, **not** a client-supplied `user_id`. Only the server can set prices, grant/refund/debit credits and write ledger entries; never expose service-role secrets in the iPhone app.
+- To handle costly generation safely, **atomically reserve** enough credits before invoking AI; reconcile the operation by settling its charge on a defined successful result or releasing/refunding on failed generation. Stable `operation_id` plus transaction constraints prevent duplicate debits on retries and polling. Precise business definition of *successful result* is still open.
+- A photographed image may contain several garments. Users must see the total potential charge and approve it, or explicitly select which garments to create, before one photo causes multiple charges.
+- Present the same server-authoritative prices in the in-app **AI Price List** and on action entry points. F&F admins issue promotional credits through a protected grant operation; public purchase packs/payment receipts come later.
+- Monitor API/model cost separately from user credits. Log action type, attempts, model cost, wallet ledger operation, outcome and per-user usage without exposing private photos.
+- Test data isolation, atomic debit under parallel requests, insufficient-credit refusal, retries, failure releases/refunds and ledger auditability. Never claim this is already deployed.
+- See [Credits requirements](CREDITS.md).
+
 ## Save-success UI/data consistency
 - Success means the committed database item, **private retained source photo** and private **AI-generated display image** are all saved and accessible to their authorized owner; only then report success.
 - The tab navigation must support returning from Add to Wardrobe. Keep any active filter from hiding the newly added item (switch to All when needed).

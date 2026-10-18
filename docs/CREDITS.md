@@ -1,6 +1,6 @@
 # AI Credits — Product Decision and Proposed Design
 
-Status: **Product direction approved · numerical prices and billing policies pending**
+Status: **Unified action-based credits approved · initial F&F price ratios selected for planning, not deployed; public pricing and remaining billing policies pending**
 Date: 2026-10-18
 Scope: AI-generation costs only. Server hosting, storage volume, subscriptions and financial package prices are separate decisions.
 
@@ -18,7 +18,19 @@ Scope: AI-generation costs only. Server hosting, storage volume, subscriptions a
 - Create 360 View: generate four AI ghost-mannequin angles.
 - Manual Regenerate Image: only available in contexts where product UX allows it; pre-save regeneration currently exists as a product decision. Whether/how to charge manual repeated generations is **open**.
 
-For illustration only, a possible conversion discussed was **1 credit per front-image creation / 1 per back-image creation / 3 per 360 creation**. **These figures are NOT approved** and must not be surfaced as final prices or hardcoded as business rules.
+### Initial F&F action-price baseline (2026-10-18)
+
+The owner agreed to proceed with the following **provisional pilot pricing ratios**, which are **not yet implemented**:
+
+| User-facing action | Credit cost | Current backend key |
+|---|---:|---|
+| Generate Front Image | **1 credit** | `garment` |
+| Generate Back Image | **1 credit** | `back` |
+| Generate 360 View | **3 credits total** | `turn` |
+
+A 360 action creates four internal views but is one user-facing charge. Adding a back image and/or a 360 to a previously created garment are independent optional actions. Merely viewing, editing, keeping or deleting a wardrobe item is not a new generation charge. Automatic model retries must not create additional user-facing charges.
+
+These are **F&F implementation-planning values only**, not paid pack prices, public-launch pricing or authorization to turn live billing on. The actual F&F grant amount, charging semantics, regenerated previews and bulk-photo quote remain open. The client price list and the server-side charge must always agree; never hardcode rates in mobile UI.
 
 ## UX
 - Account: balance, explanatory usage meter, links to AI Price List and eventual credit activity/purchase options.
@@ -37,7 +49,7 @@ For illustration only, a possible conversion discussed was **1 credit per front-
 - Keep the underlying AI API usage/cost logs independent from the user credit wallet.
 
 ## Product decisions needed before coding real billing
-1. Exact prices **per user-facing generation action** (front image, back image, 360); define the charging/confirmation rules when one photo produces several front images. Never frame the price as ownership of a wardrobe item.
+1. **Provisional F&F ratio is 1 front / 1 back / 3 for 360**, but final deployment/public prices still require verification. Define the charging/confirmation rules when one photo produces several front images. Never frame the price as ownership of a wardrobe item.
 2. Charge when successful generation completes versus at Save; handling created-but-unsaved previews.
 3. Number of free user-triggered regenerations, failure/refund thresholds.
 4. Initial F&F grant size, who can approve top-ups, limits and duration.
@@ -71,3 +83,7 @@ This record and the built hooks were written separately. Where they differ, neit
 | Ledger shape | `credit_wallets(user_id, available_credits, updated_at)`; `credit_ledger(…, action_type, operation_id, price_version, status, …)` | Not built. The integration notes propose a different shape: wallet `balance` + `held`, ledger `reason` (`grant`/`purchase`/`hold`/`release`/`charge`/`refund`/`adjustment`) with `unique (user_id, operation_key)`. |
 | Price shown to users | In-app AI Price List and price at each entry point | `GET /v1/prices` returns `{"billing": false, "prices": {}}`; no app screen uses it yet. Each job stores `cost_credits` (null while billing is off). |
 | Example figures | 1 / 1 / 3 are illustration only, not approved | The `.env.example` and integration notes reuse the same figures as a format example only; nothing is hardcoded. |
+
+## Next engineering delivery — wallet foundation
+
+See [Claude Code AI Credits task](tasks/ai-credits-wallet-implementation.md) for a staged research and implementation brief. First ship an **inactive** authenticated wallet, append-only ledger, admin-controlled F&F grants and transaction/idempotency tests. Do **not** enable paid-job enforcement until multi-piece quoting, terminal failure reconciliation and user-facing price confirmation are reviewed.

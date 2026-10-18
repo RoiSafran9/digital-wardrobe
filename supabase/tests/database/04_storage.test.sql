@@ -39,10 +39,12 @@ select results_eq(
 reset role;
 set local role anon;
 set local request.jwt.claims = '{"role": "anon"}';
-select is((select count(*) from storage.objects where bucket_id = 'wardrobe'), 0::bigint, 'signed-out callers see no files');
+select is((select count(*) from storage.objects where bucket_id = 'wardrobe'), 0::bigint, 'signed-out callers see no files');  -- RLS: anon sees none at all
 reset role;
 
-select is((select count(*) from storage.objects where bucket_id = 'wardrobe'), 4::bigint, 'all files are still there');
+select is((select count(*) from storage.objects where bucket_id = 'wardrobe' and (name = 'stray.png'
+            or name like 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/%' or name like 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/%')),
+  4::bigint, 'all files are still there');
 
 select * from finish();
 rollback;

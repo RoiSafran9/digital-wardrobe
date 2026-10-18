@@ -47,6 +47,8 @@ The hosted project's settings live in `mobile/.env` (git-ignored, publishable ke
 
 **Database (M2):** migrations live in `supabase/migrations/` and are applied by `npx supabase start` / `npx supabase db reset` (reset wipes local test data, including local test accounts). Run the isolation tests with `npx supabase test db`. Regenerate app types with `npx supabase gen types typescript --local > mobile/src/api/database.types.ts`. Applying the migrations to the hosted project is an owner step: `npx supabase link --project-ref xdzqwkqwfqvpovoftlyl` then `npx supabase db push` (asks for the database password).
 
+**Backend (M3a):** the API stays in local mode unless `WARDROBE_AUTH=on`. With it on (plus `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and, for the phone, `SUPABASE_PUBLIC_URL` — see `.env.example`), it serves only the token-checked `/v1` API (`/v1/jobs`, `/v1/items`, back and 360 jobs) and runs the job worker in the same process; the local `runs/` routes aren't mounted. Run the store/API integration tests against the local stack with `SUPABASE_TEST_URL`, `SUPABASE_TEST_SECRET_KEY` and `SUPABASE_TEST_PUBLISHABLE_KEY` set: `pytest tests/integration`. Move your existing items with `python -m scripts.migrate_runs` (dry run; add `--email <account> --apply` to upload).
+
 To use the hosted project: configure custom SMTP in Supabase (Auth → SMTP), put `{{ .Token }}` in its Magic Link email template (see `supabase/templates/magic_link.html`), then delete `mobile/.env.local`. Never put a secret or service-role key in `mobile/`.
 
 ## Next

@@ -3,6 +3,9 @@ import { Image } from "react-native";
 import { render, screen, fireEvent } from "@testing-library/react-native";
 import { TurnView } from "../src/components/TurnView";
 import { API_BASE_URL } from "../src/api/client";
+import { haptics } from "../src/haptics";
+
+jest.mock("../src/haptics", () => ({ haptics: { success: jest.fn(), light: jest.fn() } }));
 
 const views = ["Front", "Right side", "Back", "Left side"].map((label, i) => ({
   label, path: `/turn/${i}.png`, cutoutPath: `/turn/${i}_cutout.png`,
@@ -123,4 +126,12 @@ test("a quick flick keeps the garment spinning past the next side", () => {
   fireEvent(turner(), "responderRelease", at(290, base + 15, 296));
   // A slow 10pt drag would settle back on Front; the flick carries it two sides round.
   expect(turner().props.accessibilityValue).toEqual({ text: "Back" });
+});
+
+test("turning is silent: no vibration on drags, flicks or taps", () => {
+  render(<TurnView views={views} />);
+  drag(200, 110);
+  drag(100, 190);
+  tap();
+  for (const fn of Object.values(haptics)) expect(fn).not.toHaveBeenCalled();
 });

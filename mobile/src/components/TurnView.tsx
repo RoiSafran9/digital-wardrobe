@@ -4,8 +4,7 @@ import { GarmentImage } from "./GarmentImage";
 import { colors, type } from "../theme";
 import { useReducedMotion } from "../useReducedMotion";
 import { Rise } from "../motion/Rise";
-import { dragPosition, faceFor, flingTarget, wrap } from "../turn";
-import { haptics } from "../haptics";
+import { dragPosition, flingTarget, layersFor, wrap } from "../turn";
 
 export type TurnFrame = { label: string; path: string; cutoutPath?: string | null };
 
@@ -19,8 +18,8 @@ type Props = {
 // Less movement than this on release is a tap, not a drag.
 const TAP_SLOP = 8;
 
-// The garment on an invisible body, on a turntable: drag sideways and it turns with the finger,
-// flick and it keeps spinning, tap to turn one side. Every view stays mounted (stacked) so
+// The garment on an invisible body: drag sideways and it turns smoothly with the finger,
+// flick and it keeps turning, tap to turn one side. Every view stays mounted (stacked) so
 // turning never waits on the network.
 export function TurnView({ views, label, onDragActive }: Props) {
   const n = views.length;
@@ -30,19 +29,11 @@ export function TurnView({ views, label, onDragActive }: Props) {
   const spin = useRef(new Animated.Value(0)).current;
   const dragging = useRef(false);
   const start = useRef(0);
-  const lastTick = useRef(0);
 
-  // One source of truth for the turn: the finger and the settle spring both move `spin`.
-  // A light tick each time a new side faces you, like a detent.
+  // One source of truth for the turn: the finger and the settle animation both move `spin`.
+  // Turning is silent — no haptic per side; it should feel like one object, not detents.
   useEffect(() => {
-    const id = spin.addListener(({ value }) => {
-      setPos(value);
-      const facing = Math.round(value);
-      if (facing !== lastTick.current) {
-        lastTick.current = facing;
-        haptics.selection();
-      }
-    });
+    const id = spin.addListener(({ value }) => setPos(value));
     return () => {
       spin.stopAnimation();
       spin.removeListener(id);
@@ -54,14 +45,13 @@ export function TurnView({ views, label, onDragActive }: Props) {
     const i = wrap(target, n);
     setIndex(i);
     if (reduced) {
-      lastTick.current = i;
       spin.setValue(i);
       return;
     }
     spin.setValue(from);
-    Animated.spring(spin, { toValue: target, useNativeDriver: false, speed: 12, bounciness: 3 }).start(({ finished }) => {
+    // No bounce: an overshoot would flick back across to the previous side.
+    Animated.spring(spin, { toValue: target, useNativeDriver: false, speed: 10, bounciness: 0 }).start(({ finished }) => {
       if (!finished) return;
-      lastTick.current = i;
       spin.setValue(i);   // back on the circle, so positions never drift far from 0..n
     });
   };
@@ -100,6 +90,8 @@ export function TurnView({ views, label, onDragActive }: Props) {
     [index, n, reduced, onDragActive],
   );
 
+  const layers = layersFor(pos, n);
+
   return (
     <View>
       <View
@@ -118,21 +110,26 @@ export function TurnView({ views, label, onDragActive }: Props) {
             <GarmentImage path={views[index].path} cutoutPath={views[index].cutoutPath} style={{ width: "100%", height: "100%" }} />
           </Rise>
         ) : (
-          views.map((v, i) => {
-            const face = faceFor(i, pos, n);
-            return (
+          <View
+            pointerEvents="none"
+            style={{
+              flex: 1,
+              transform: [{ perspective: 900 }, { rotateY: `${layers.rotateY}deg` }, { scaleX: layers.scaleX }],
+            }}
+          >
+            {views.map((v, i) => (
               <View
                 key={v.path}
-                pointerEvents="none"
                 style={{
-                  position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: face.opacity,
-                  transform: [{ perspective: 900 }, { rotateY: `${face.rotateY}deg` }],
+                  position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+                  opacity: i === layers.base ? 1 : i === layers.top ? layers.topOpacity : 0,
+                  zIndex: i === layers.top ? 1 : 0,
                 }}
               >
                 <GarmentImage path={v.path} cutoutPath={v.cutoutPath} style={{ width: "100%", height: "100%" }} />
               </View>
-            );
-          })
+            ))}
+          </View>
         )}
       </View>
       <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 10 }}>

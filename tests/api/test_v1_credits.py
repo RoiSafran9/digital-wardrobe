@@ -17,11 +17,14 @@ class RecordingGate:
     def release(self, job_id):
         self.calls.append(("release", job_id))
 
-    def settle(self, job_id):
-        self.calls.append(("settle", job_id))
+    def settle(self, job_id, amount):
+        self.calls.append(("settle", job_id, amount))
 
     def refund(self, job_id):
         self.calls.append(("refund", job_id))
+
+    def reconcile(self):
+        return 0
 
 
 def client_with(store, gate, prices):

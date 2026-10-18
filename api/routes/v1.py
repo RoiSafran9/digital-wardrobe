@@ -5,10 +5,10 @@ Anything belonging to someone else answers 404, exactly like something that does
 import os
 import uuid
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Response, UploadFile
 from fastapi.responses import JSONResponse
 from api.auth import User, current_user
-from api.credits import InsufficientCredits, get_gate, get_prices, job_cost
+from api.credits import MAX_FRONTS, InsufficientCredits, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
 from api.schemas import BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, PricesOut, TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse
 from api.store import INTERRUPTED, get_store
@@ -31,10 +31,12 @@ def job_out(job: dict) -> JobOut:
     result = job.get("result") or {}
     return JobOut(id=job["id"], kind=job["kind"], status=job["status"], error=job.get("error"),
                   item_id=job.get("item_id"), item_ids=result.get("item_ids", []),
-                  quality=result.get("quality"), failed=result.get("failed", []), cost_credits=job.get("cost_credits"))
+                  quality=result.get("quality"), failed=result.get("failed", []), cost_credits=job.get("cost_credits"),
+                  max_fronts=job.get("max_items"), over_limit=result.get("over_limit", 0))
 
 
-def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, gate, prices, item_id: str | None = None):
+def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, gate, prices, item_id: str | None = None,
+              max_items: int | None = None):
     """Create (or find) the user's job for this key; a new job answers 202, a repeat 200."""
     existing = store.job_by_key(user.id, key)
     if existing:
@@ -52,7 +54,7 @@ def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, 
 
     job_id, cost = str(uuid.uuid4()), job_cost(prices, kind)
     try:
-        gate.reserve(user.id, job_id, kind, cost)  # AI Credits hook: hold the cost before any work
+        gate.reserve(user.id, job_id, kind, hold_amount(cost, max_items))  # AI Credits: hold the cost before any work
     except InsufficientCredits:
         raise HTTPException(402, "not enough AI credits")
 
@@ -61,7 +63,8 @@ def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, 
         if ext:
             input_path = f"{user.id}/jobs/{job_id}/upload{ext}"
             store.upload(input_path, photo.file.read(), PHOTO_TYPES[ext])
-        job, created = store.create_job(user.id, kind, key, input_path, item_id=item_id, job_id=job_id, cost_credits=cost)
+        job, created = store.create_job(user.id, kind, key, input_path, item_id=item_id, job_id=job_id, cost_credits=cost,
+                                        max_items=max_items)
     finally:
         if not created:
             gate.release(job_id)  # failed, or lost a race with the same key: one hold per job
@@ -72,11 +75,15 @@ def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, 
 
 @router.post("/jobs", response_model=JobOut, status_code=202)
 def create_garment_job(user: User = Depends(current_user), photo: UploadFile | None = File(None),
-                       key: str = Depends(idempotency_key), store=Depends(get_store),
-                       gate=Depends(get_gate), prices=Depends(get_prices)):
+                       max_fronts: str | None = Form(None), key: str = Depends(idempotency_key),
+                       store=Depends(get_store), gate=Depends(get_gate), prices=Depends(get_prices)):
+    """max_fronts: how many front images (one per garment in the photo) the user approved paying for;
+    default 1. Only used while billing is on: then the job holds price × max_fronts, makes at most that
+    many fronts (largest pieces first) and is charged only for the fronts it made."""
     if photo is None:
         raise HTTPException(400, "no photo provided")
-    return queue_job(store, user, "garment", key, photo, gate, prices)
+    fronts = _whole(max_fronts, "max_fronts", 1, MAX_FRONTS) or 1
+    return queue_job(store, user, "garment", key, photo, gate, prices, max_items=fronts if prices else None)
 
 
 @router.get("/prices", response_model=PricesOut)

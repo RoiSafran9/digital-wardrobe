@@ -90,7 +90,9 @@ class JobOut(BaseModel):
     item_ids: list[str] = []
     quality: QualityOut | None = None
     failed: list[str] = []
-    cost_credits: int | None = None  # AI Credits this job costs; None while billing is off
+    cost_credits: int | None = None  # AI Credits one action of this job costs; None while billing is off
+    max_fronts: int | None = None  # garment jobs with billing on: the fronts the user approved paying for
+    over_limit: int = 0  # pieces found in the photo but not made because of max_fronts
 
 
 class PricesOut(BaseModel):

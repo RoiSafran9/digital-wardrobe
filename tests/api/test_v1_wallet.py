@@ -75,12 +75,12 @@ def test_memory_store_refuses_overspend_and_replays_safely(store):
     store.credit_reserve(A, JOB1, "garment", 3)
     assert store.credits(A) == {"balance": 3, "held": 3}
     store.credit_release(JOB1)
-    assert store.credit_release(JOB1)["kind"] == "release"
+    assert [e["kind"] for e in store.credit_release(JOB1)] == ["release"]
     with pytest.raises(CreditError) as e:
         store.credit_settle(JOB1)
     assert e.value.code == "WC409"
     assert store.credits(A) == {"balance": 3, "held": 0}
-    assert store.credit_settle(JOB2) is None
+    assert store.credit_settle(JOB2) == []
 
 
 @pytest.mark.parametrize("call, code", [

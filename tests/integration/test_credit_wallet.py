@@ -46,7 +46,7 @@ def test_parallel_settle_and_release_end_a_hold_once(settings, store, users):
     def end(kind):
         s = SupabaseStore(settings)
         try:
-            return (s.credit_settle if kind == "charge" else s.credit_release)(job)["kind"]
+            return (s.credit_settle if kind == "charge" else s.credit_release)(job)[0]["kind"]
         except CreditError as e:
             return e.code
 

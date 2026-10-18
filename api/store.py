@@ -136,6 +136,10 @@ class MemoryStore:
     def sign(self, paths):
         return {p: f"{self.public_url}/{p}?token=signed" for p in paths}
 
+    def list_paths(self, prefix):
+        prefix = prefix.rstrip("/") + "/" if prefix else ""
+        return sorted(p for p in self.files if p.startswith(prefix))
+
 
 class StoreError(Exception):
     pass
@@ -239,6 +243,16 @@ class SupabaseStore:
     def remove(self, paths):
         if paths:
             self._ok(self.http.request("DELETE", f"/storage/v1/object/{BUCKET}", json={"prefixes": list(paths)}))
+
+    def list_paths(self, prefix):
+        """Every file under prefix (recursive), as full paths."""
+        prefix = prefix.rstrip("/")
+        entries = self._ok(self.http.post(f"/storage/v1/object/list/{BUCKET}", json={"prefix": prefix, "limit": 1000})).json()
+        paths = []
+        for entry in entries:
+            path = f"{prefix}/{entry['name']}" if prefix else entry["name"]
+            paths += [path] if entry.get("id") else self.list_paths(path)
+        return sorted(paths)
 
     def sign(self, paths):
         if not paths:

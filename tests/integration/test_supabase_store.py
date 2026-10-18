@@ -2,62 +2,14 @@
 
   SUPABASE_TEST_URL=http://127.0.0.1:54321 SUPABASE_TEST_SECRET_KEY=... SUPABASE_TEST_PUBLISHABLE_KEY=... pytest tests/integration
 """
-import os
 import uuid
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 from api.auth import InvalidToken, Settings, TokenVerifier
 from api.main import create_app
-from api.store import SupabaseStore
 
-URL = os.environ.get("SUPABASE_TEST_URL", "")
-SECRET = os.environ.get("SUPABASE_TEST_SECRET_KEY", "")
-PUBLISHABLE = os.environ.get("SUPABASE_TEST_PUBLISHABLE_KEY", "")
-pytestmark = pytest.mark.skipif(not (URL and SECRET and PUBLISHABLE), reason="no local Supabase stack configured")
-
-PASSWORD = "integration-Test-123"
-
-
-@pytest.fixture(scope="module")
-def settings():
-    return Settings(auth_on=True, supabase_url=URL, secret_key=SECRET, public_url=URL, issuer=f"{URL}/auth/v1")
-
-
-@pytest.fixture(scope="module")
-def admin():
-    with httpx.Client(base_url=URL, headers={"apikey": SECRET, "Authorization": f"Bearer {SECRET}"}) as client:
-        yield client
-
-
-@pytest.fixture(scope="module")
-def users(admin):
-    made = []
-    for name in ("a", "b"):
-        email = f"{name}-{uuid.uuid4().hex[:8]}@test.dev"
-        r = admin.post("/auth/v1/admin/users", json={"email": email, "password": PASSWORD, "email_confirm": True})
-        r.raise_for_status()
-        token = httpx.post(f"{URL}/auth/v1/token?grant_type=password", headers={"apikey": PUBLISHABLE},
-                           json={"email": email, "password": PASSWORD}).json()["access_token"]
-        made.append({"id": r.json()["id"], "email": email, "token": token})
-    yield made
-    for user in made:
-        _remove_folder(admin, user["id"])  # deleting an account doesn't remove its files (yet)
-        admin.delete(f"/auth/v1/admin/users/{user['id']}")  # cascades profile, items, jobs
-
-
-def _remove_folder(admin, prefix):
-    entries = admin.post("/storage/v1/object/list/wardrobe", json={"prefix": prefix, "limit": 1000}).json()
-    files = [f"{prefix}/{e['name']}" for e in entries if e.get("id")]
-    for folder in (e["name"] for e in entries if not e.get("id")):
-        _remove_folder(admin, f"{prefix}/{folder}")
-    if files:
-        admin.request("DELETE", "/storage/v1/object/wardrobe", json={"prefixes": files})
-
-
-@pytest.fixture(scope="module")
-def store(settings):
-    return SupabaseStore(settings)
+from tests.integration.conftest import PUBLISHABLE, SECRET, URL
 
 
 def test_real_tokens_verify_and_a_wrong_issuer_does_not(users):

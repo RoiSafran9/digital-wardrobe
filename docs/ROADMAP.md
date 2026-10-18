@@ -35,6 +35,17 @@
 - [ ] Item detail, edit and delete (including cleanup of both source and generated images)
 - [ ] Error/empty/loading states and security validation
 
+## Multi-user AI Credits workstream (planned, not implemented)
+
+- [x] Approve one pooled credit balance per user and a transparent in-app AI action price list
+- [ ] Approve numerical price per action, manual regeneration policy, F&F grants and public packs
+- [ ] Implement secure authentication and user-scoped data migration from local files
+- [ ] Implement credit wallet, auditable ledger, server-controlled price table, reservation/settlement and idempotency
+- [ ] Build Account remaining-credits/usage meter and **AI Price List**
+- [ ] Show credit price and available balance before generation; handle insufficient credits
+- [ ] F&F grant process, activity tracking and cost caps
+- [ ] Before paid public launch: payments and receipt verification, refunds and App Store compliance
+
 ## Phase 3 — iPhone release
 - [ ] Test camera/gallery and persistence on a physical iPhone
 - [ ] Set up EAS and App Store Connect

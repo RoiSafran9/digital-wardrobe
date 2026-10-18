@@ -90,6 +90,12 @@ class JobOut(BaseModel):
     item_ids: list[str] = []
     quality: QualityOut | None = None
     failed: list[str] = []
+    cost_credits: int | None = None  # AI Credits this job costs; None while billing is off
+
+
+class PricesOut(BaseModel):
+    billing: bool
+    prices: dict[str, int]
 
 
 class V1ItemOut(BaseModel):

@@ -51,11 +51,11 @@ class MemoryStore:
     def job_by_key(self, user_id, key):
         return self._by_key(user_id, key)
 
-    def create_job(self, user_id, kind, idempotency_key, input_path, item_id=None, job_id=None):
+    def create_job(self, user_id, kind, idempotency_key, input_path, item_id=None, job_id=None, cost_credits=None):
         existing = self._by_key(user_id, idempotency_key)  # the unique constraint
         if existing:
             return existing, False
-        job = {"id": job_id or str(uuid.uuid4()), "user_id": user_id, "item_id": item_id, "kind": kind,
+        job = {"id": job_id or str(uuid.uuid4()), "user_id": user_id, "item_id": item_id, "kind": kind, "cost_credits": cost_credits,
                "status": "queued", "idempotency_key": idempotency_key, "input_path": input_path, "result": None,
                "error": None, "attempts": 0, "max_attempts": 2, "locked_until": None,
                "created_at": _now() + timedelta(microseconds=len(self.jobs)), "started_at": None, "finished_at": None}
@@ -206,8 +206,9 @@ class SupabaseStore:
     def job_by_key(self, user_id, key):
         return self._one("generation_jobs", {"user_id": f"eq.{user_id}", "idempotency_key": f"eq.{key}"})
 
-    def create_job(self, user_id, kind, idempotency_key, input_path, item_id=None, job_id=None):
-        row = {"user_id": user_id, "kind": kind, "idempotency_key": idempotency_key, "input_path": input_path, "item_id": item_id}
+    def create_job(self, user_id, kind, idempotency_key, input_path, item_id=None, job_id=None, cost_credits=None):
+        row = {"user_id": user_id, "kind": kind, "idempotency_key": idempotency_key, "input_path": input_path,
+               "item_id": item_id, "cost_credits": cost_credits}
         if job_id:
             row["id"] = job_id
         created = self._insert("generation_jobs", row)

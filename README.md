@@ -74,4 +74,4 @@ To use the hosted project: configure custom SMTP in Supabase (Auth → SMTP), pu
 
 ## Next
 
-AI Credits readiness (one balance per account), then a cloud host for the backend and TestFlight.
+AI Credits: prices, wallet and purchases on top of the hooks described in the [credits integration notes](docs/superpowers/specs/2026-10-18-credits-readiness.md); then a cloud host for the backend and TestFlight.

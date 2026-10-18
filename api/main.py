@@ -18,15 +18,17 @@ def create_app(settings: Settings | None = None, start_worker: bool = True) -> F
         return app
 
     # Multi-user mode: only the token-checked v1 API; the local runs/ routes are not mounted at all.
+    from api.credits import NoCharge, get_gate, get_prices, load_prices
     from api.routes.v1 import router as v1_router
     from api.store import SupabaseStore, get_store
     from api.worker import run_forever
 
     store = SupabaseStore(settings)
+    prices, gate = load_prices(), NoCharge()  # a bad price list stops startup here
 
     @asynccontextmanager
     async def lifespan(_app):
-        task = asyncio.create_task(run_forever(store, default_provider_factory)) if start_worker else None
+        task = asyncio.create_task(run_forever(store, default_provider_factory, gate=gate)) if start_worker else None
         yield
         if task:
             task.cancel()
@@ -36,6 +38,8 @@ def create_app(settings: Settings | None = None, start_worker: bool = True) -> F
     app.include_router(v1_router)
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_store] = lambda: store
+    app.dependency_overrides[get_prices] = lambda: prices
+    app.dependency_overrides[get_gate] = lambda: gate
     return app
 
 

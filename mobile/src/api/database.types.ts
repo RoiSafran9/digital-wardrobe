@@ -25,14 +25,14 @@ export type Database = {
           Tables: {
             "generation_jobs": {
                   Row: {
-                    "attempts": number,"created_at": string,"error": string | null,"finished_at": string | null,"id": string,"idempotency_key": string,"input_path": string | null,"item_id": string | null,"kind": string,"locked_until": string | null,"max_attempts": number,"result": Json | null,"started_at": string | null,"status": string,"user_id": string
+                    "attempts": number,"cost_credits": number | null,"created_at": string,"error": string | null,"finished_at": string | null,"id": string,"idempotency_key": string,"input_path": string | null,"item_id": string | null,"kind": string,"locked_until": string | null,"max_attempts": number,"result": Json | null,"started_at": string | null,"status": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "attempts"?: number,"created_at"?: string,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"idempotency_key": string,"input_path"?: string | null,"item_id"?: string | null,"kind": string,"locked_until"?: string | null,"max_attempts"?: number,"result"?: Json | null,"started_at"?: string | null,"status"?: string,"user_id": string
+                    "attempts"?: number,"cost_credits"?: number | null,"created_at"?: string,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"idempotency_key": string,"input_path"?: string | null,"item_id"?: string | null,"kind": string,"locked_until"?: string | null,"max_attempts"?: number,"result"?: Json | null,"started_at"?: string | null,"status"?: string,"user_id": string
                   }
                   Update: {
-                    "attempts"?: number,"created_at"?: string,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"idempotency_key"?: string,"input_path"?: string | null,"item_id"?: string | null,"kind"?: string,"locked_until"?: string | null,"max_attempts"?: number,"result"?: Json | null,"started_at"?: string | null,"status"?: string,"user_id"?: string
+                    "attempts"?: number,"cost_credits"?: number | null,"created_at"?: string,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"idempotency_key"?: string,"input_path"?: string | null,"item_id"?: string | null,"kind"?: string,"locked_until"?: string | null,"max_attempts"?: number,"result"?: Json | null,"started_at"?: string | null,"status"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -83,7 +83,31 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            [_ in never]: never
+            "claim_generation_job":
+{ Args: { "lease_seconds"?: number }; Returns: {
+              "attempts": number,
+"cost_credits": number | null,
+"created_at": string,
+"error": string | null,
+"finished_at": string | null,
+"id": string,
+"idempotency_key": string,
+"input_path": string | null,
+"item_id": string | null,
+"kind": string,
+"locked_until": string | null,
+"max_attempts": number,
+"result": Json | null,
+"started_at": string | null,
+"status": string,
+"user_id": string
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "generation_jobs"
+        isOneToOne: false
+        isSetofReturn: true
+      } }
           }
           Enums: {
             [_ in never]: never

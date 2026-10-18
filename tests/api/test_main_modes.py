@@ -40,3 +40,20 @@ def test_a_malformed_price_list_fails_at_startup(monkeypatch):
     monkeypatch.setenv("WARDROBE_CREDIT_PRICES", '{"garment": -1}')
     with pytest.raises(RuntimeError, match="WARDROBE_CREDIT_PRICES"):
         create_app(ON, start_worker=False)
+
+
+def test_billing_is_off_unless_switched_on(monkeypatch):
+    from api.credits import NoCharge, WalletGate, get_gate
+    monkeypatch.delenv("WARDROBE_BILLING", raising=False)
+    monkeypatch.delenv("WARDROBE_CREDIT_PRICES", raising=False)
+    assert isinstance(create_app(ON, start_worker=False).dependency_overrides[get_gate](), NoCharge)
+    monkeypatch.setenv("WARDROBE_BILLING", "on")
+    monkeypatch.setenv("WARDROBE_CREDIT_PRICES", '{"garment": 1, "back": 1, "turn": 3}')
+    assert isinstance(create_app(ON, start_worker=False).dependency_overrides[get_gate](), WalletGate)
+
+
+def test_billing_on_with_a_missing_price_fails_at_startup(monkeypatch):
+    monkeypatch.setenv("WARDROBE_BILLING", "on")
+    monkeypatch.setenv("WARDROBE_CREDIT_PRICES", '{"garment": 1}')
+    with pytest.raises(RuntimeError, match="missing: back, turn"):
+        create_app(ON, start_worker=False)

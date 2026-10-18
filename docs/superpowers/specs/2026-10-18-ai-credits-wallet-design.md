@@ -1,6 +1,6 @@
 # AI Credits Wallet — Research, Architecture and Milestone Plan
 
-Status: **approved 2026-10-18; Milestone 1 built (billing off)** · Date: 2026-10-18 · Brief: [ai-credits-wallet-implementation.md](../../tasks/ai-credits-wallet-implementation.md) · Product decisions: [CREDITS.md](../../CREDITS.md)
+Status: **approved 2026-10-18; Milestone 1 built; Milestone 2 built (billing off by default)** · Date: 2026-10-18 · Brief: [ai-credits-wallet-implementation.md](../../tasks/ai-credits-wallet-implementation.md) · Product decisions: [CREDITS.md](../../CREDITS.md)
 
 Milestone 1 builds an **inactive** wallet: schema, trusted functions, an admin grant CLI and a read-only `GET /v1/credits`. Billing stays off (`NoCharge`), no price is enforced and nothing in the app changes.
 
@@ -131,7 +131,7 @@ All of `--email`/`--user-id`, `--amount`, `--reason`, `--key`, `--by` are requir
 
 **M1 (this PR):** everything above.
 
-**M2 — connect billing (plan only, needs owner decisions):**
+**M2 — connect billing (built; owner chose option (b) for multi-garment photos):**
 1. *Multi-garment photos* — choose between (a) detect first, show the pieces, user confirms N → reserve N (one extra vision call ≈ a few seconds before the confirm, but exact charges and the user picks pieces) and (b) user approves a maximum up front → reserve max, settle only the fronts actually created, release the rest (no extra latency or model call, but the quote is an upper bound). Needs `credit_settle` to accept a partial amount.
 2. *Zero usable images* — settle by count of fronts created, never by `status = succeeded`.
 3. *Expired jobs* — `claim_generation_job` fails them without the worker's refund hook; add a `credit_reconcile()` that releases holds of failed/canceled jobs and settles succeeded ones, called from the worker loop.
@@ -141,6 +141,13 @@ All of `--email`/`--user-id`, `--amount`, `--reason`, `--key`, `--by` are requir
 7. *Price snapshot* — already on the job (`cost_credits`); add a price-list version if prices move to a table.
 8. Wallet-backed `CreditGate`, opt-in flag, two-account end-to-end tests with fake AI.
 
+**M2 as built** (migration `20261018160000_credit_billing.sql`):
+- `WARDROBE_BILLING=on` switches billing on; then `WARDROBE_CREDIT_PRICES` must price `garment`, `back` and `turn` or startup stops. Off (default) = `NoCharge`, nothing held, `max_fronts` ignored, no cap.
+- `POST /v1/jobs` takes `max_fronts` (1–20, default 1), stored as `generation_jobs.max_items`. The job holds `cost_credits × max_items`; `run_photo(max_items=…)` makes the largest pieces first and reports `over_limit`.
+- `credit_settle(job, amount)` charges part of a hold and releases the rest (a charge row and/or a release row; each at most once). The worker charges `charge_for(job, result)` = price × min(fronts made, max) — one for back/360 — so a job that made nothing costs nothing.
+- Settle/refund errors never fail a finished job. `credit_reconcile(grace)` (worker, every 60 s) releases holds of failed/canceled jobs (including those `claim_generation_job` expired), settles succeeded jobs with the same counting (`credit_job_charge`), and releases holds whose job never appeared after 15 minutes.
+- Tests: pgTAP `08_credit_billing`, `tests/api/test_v1_billing.py`, `tests/integration/test_billing_e2e.py` (two accounts, fake AI).
+
 **M3 — app UX (plan only):** Account balance (+held), truthful usage display, history from `GET /v1/credits`, AI Price List from `GET /v1/prices`, cost and balance before front/back/360, multi-piece consent, 402 state, refresh after actions, clear on sign-out.
 
 **M4 — paid launch:** out of scope.
@@ -149,7 +156,7 @@ All of `--email`/`--user-id`, `--amount`, `--reason`, `--key`, `--by` are requir
 
 - Approve this design (gate before code).
 - Later: apply the migration to the hosted project (`npx supabase db push`), then decide the F&F grant size and run the CLI.
-- Open (not decided here): grant size, admin roles, expiry, regeneration pricing, unsaved previews, billable-success definition, multi-garment quote rule.
+- Open (not decided here): grant size, admin roles, expiry, regeneration pricing, unsaved previews. Decided: multi-garment = option (b); billable success = per front made / back / 360 delivered.
 
 ## Deviations found between plans and code
 

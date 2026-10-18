@@ -62,15 +62,26 @@ async def _run_item(image_path: str, item, item_dir: str, providers: Providers,
     return {"facts": facts, "verification": verification, "result": result}
 
 
+def _largest(items, max_items: int | None):
+    """At most max_items pieces, biggest in the photo first, kept in their original order."""
+    if not max_items or len(items) <= max_items:
+        return items
+    keep = set(sorted(range(len(items)), key=lambda i: -items[i].box.width * items[i].box.height)[:max_items])
+    return [item for i, item in enumerate(items) if i in keep]
+
+
 async def run_photo(image_path: str, output_dir: str, providers: Providers,
-                     logger: RunLogger, max_attempts: int = 2) -> dict:
+                     logger: RunLogger, max_attempts: int = 2, max_items: int | None = None) -> dict:
+    """max_items caps how many front images are made (the fronts the user approved paying for);
+    pieces past the cap are counted in over_limit and not generated. None = no cap."""
     quality = stage0_quality.run(image_path)
     if quality.status == "retake":
-        return {"quality": quality, "items": [], "failed": []}
+        return {"quality": quality, "items": [], "failed": [], "over_limit": 0}
 
-    included_items = await stage1_detect_facts.run(image_path, providers.vision)
-    if not included_items:
-        return {"quality": quality, "items": [], "failed": []}
+    detected_items = await stage1_detect_facts.run(image_path, providers.vision)
+    if not detected_items:
+        return {"quality": quality, "items": [], "failed": [], "over_limit": 0}
+    included_items = _largest(detected_items, max_items)
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -89,4 +100,5 @@ async def run_photo(image_path: str, output_dir: str, providers: Providers,
 
     items = [o for o in outcomes if o is not None]
     failed = [f"item_{i}" for i, o in enumerate(outcomes) if o is None]
-    return {"quality": quality, "items": items, "failed": failed}
+    return {"quality": quality, "items": items, "failed": failed,
+            "over_limit": len(detected_items) - len(included_items)}

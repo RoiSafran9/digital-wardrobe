@@ -11,7 +11,7 @@ import os
 import tempfile
 import uuid
 import cv2
-from api.credits import CreditGate, NoCharge
+from api.credits import CreditGate, NoCharge, charge_for
 from api.item_loader import load_item
 from pipeline.back import BackPhotoRejected, run_back
 from pipeline.orchestrator import Providers, run_photo
@@ -105,7 +105,9 @@ async def _garment(store, job, providers, tmp, uploads):
     given = providers(logger)
     vision = _RecordingVision(given.vision)
     try:
-        outcome = await run_photo(photo, output_dir, Providers(vision=vision, imagegen=given.imagegen), logger)
+        # With billing on, make at most the fronts the user approved paying for (largest pieces first).
+        outcome = await run_photo(photo, output_dir, Providers(vision=vision, imagegen=given.imagegen), logger,
+                                  max_items=job.get("max_items"))
     except ValueError as e:
         raise JobRejected(_sentence(str(e))) from e
 
@@ -138,7 +140,7 @@ async def _garment(store, job, providers, tmp, uploads):
         raise JobRejected(_sentence(_nothing_found(vision.detected)))
     store.remove([job["input_path"]])  # each item keeps its own copy as source
     return {"item_ids": item_ids, "quality": {"status": quality.status, "reason": quality.reason},
-            "failed": outcome["failed"], "retakes": retakes}
+            "failed": outcome["failed"], "retakes": retakes, "over_limit": outcome.get("over_limit", 0)}
 
 
 def _item_or_reject(store, job) -> dict:
@@ -213,7 +215,10 @@ HANDLERS = {"garment": _garment, "back": _back, "turn": _turn}
 def _fail(store, gate, job, uploads, message):
     store.remove(uploads.paths + ([job["input_path"]] if job.get("input_path") else []))
     store.finish_job(job["id"], "failed", error=message)
-    gate.refund(job["id"])  # AI Credits hook: a job that failed for good costs nothing
+    try:
+        gate.refund(job["id"])  # AI Credits: a job that failed for good costs nothing
+    except Exception:
+        log.exception("refund for job %s failed; reconcile will release it", job["id"])
     if job["kind"] == "turn" and store.get_item(job["user_id"], job["item_id"]):
         store.update_item(job["user_id"], job["item_id"], {"turn": {"state": "failed", "error": message}})
 
@@ -229,7 +234,6 @@ async def run_once(store, provider_factory, lease_seconds: int = 600, gate: Cred
         with tempfile.TemporaryDirectory() as tmp:
             result = await HANDLERS[job["kind"]](store, job, provider_factory, tmp, uploads)
         store.finish_job(job["id"], "succeeded", result)
-        gate.settle(job["id"])  # AI Credits hook: the hold becomes a charge
     except JobRejected as e:
         _fail(store, gate, job, uploads, str(e))
     except Exception:
@@ -238,11 +242,30 @@ async def run_once(store, provider_factory, lease_seconds: int = 600, gate: Cred
             _fail(store, gate, job, uploads, GENERIC_FAILURE)
         else:
             store.retry_job(job["id"], GENERIC_FAILURE)
+    else:
+        # AI Credits: charge only for what the job delivered; the rest of the hold goes back.
+        # Outside the try above: the job is done whatever happens here, and reconcile settles it if this fails.
+        try:
+            gate.settle(job["id"], charge_for(job, result))
+        except Exception:
+            log.exception("settle for job %s failed; reconcile will settle it", job["id"])
     return True
 
 
+RECONCILE_EVERY_SECONDS = 60
+
+
 async def run_forever(store, provider_factory, idle_seconds: float = 2.0, gate: CreditGate | None = None) -> None:
+    gate = gate or NoCharge()
+    last_reconcile = float("-inf")
     while True:
+        now = asyncio.get_running_loop().time()
+        if now - last_reconcile >= RECONCILE_EVERY_SECONDS:
+            last_reconcile = now
+            try:
+                gate.reconcile()  # AI Credits: end holds of expired, crashed or never-created jobs
+            except Exception:
+                log.exception("credit reconcile failed")
         try:
             worked = await run_once(store, provider_factory, gate=gate)
         except Exception:

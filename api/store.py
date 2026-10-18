@@ -106,27 +106,54 @@ class MemoryStore:
         return self._append(user_id, wallet, kind="hold", amount=amount, action=action, job_id=job_id,
                             operation_key=f"job:{job_id}:hold")
 
-    def _end_hold(self, job_id, kind):
+    def _end_hold(self, job_id, charge):
         hold = next((e for e in self.ledger if e["job_id"] == job_id and e["kind"] == "hold"), None)
         if hold is None:
-            return None
+            return []
+        charge = hold["amount"] if charge is None else charge
+        if type(charge) is not int or not 0 <= charge <= hold["amount"]:
+            raise CreditError("WC422", f"a charge must be between 0 and the {hold['amount']} credits held")
         wallet = self._wallet(hold["user_id"])
-        done = next((e for e in self.ledger if e["job_id"] == job_id and e["kind"] in ("charge", "release")), None)
-        if done:
-            if done["kind"] == kind:
-                return copy.deepcopy(done)
-            raise CreditError("WC409", f"job {job_id} was already {done['kind']}d")
-        wallet["held"] -= hold["amount"]
-        if kind == "charge":
-            wallet["balance"] -= hold["amount"]
-        return self._append(hold["user_id"], wallet, kind=kind, amount=hold["amount"], action=hold["action"],
-                            job_id=job_id, operation_key=f"job:{job_id}:{kind}")
+        ended = [e for e in self.ledger if e["job_id"] == job_id and e["kind"] in ("charge", "release")]
+        if ended:
+            charged = sum(e["amount"] for e in ended if e["kind"] == "charge")
+            if charged == charge:
+                return copy.deepcopy(ended)
+            raise CreditError("WC409", f"job {job_id} was already settled for {charged} credits")
+        rows, common = [], {"action": hold["action"], "job_id": job_id}
+        if charge:
+            wallet["balance"] -= charge
+            wallet["held"] -= charge
+            rows.append(self._append(hold["user_id"], wallet, kind="charge", amount=charge,
+                                     operation_key=f"job:{job_id}:charge", **common))
+        if hold["amount"] > charge:
+            wallet["held"] -= hold["amount"] - charge
+            rows.append(self._append(hold["user_id"], wallet, kind="release", amount=hold["amount"] - charge,
+                                     operation_key=f"job:{job_id}:release", **common))
+        return rows
 
-    def credit_settle(self, job_id):
-        return self._end_hold(job_id, "charge")
+    def credit_settle(self, job_id, amount=None):
+        return self._end_hold(job_id, amount)
 
     def credit_release(self, job_id):
-        return self._end_hold(job_id, "release")
+        return self._end_hold(job_id, 0)
+
+    def credit_reconcile(self, grace_seconds):
+        from api.credits import charge_for
+        rows = []
+        for hold in [e for e in self.ledger if e["kind"] == "hold"]:
+            if any(e["job_id"] == hold["job_id"] and e["kind"] in ("charge", "release") for e in self.ledger):
+                continue
+            job = self.jobs.get(hold["job_id"])
+            if job is None:
+                age = (_now() - datetime.fromisoformat(hold["created_at"])).total_seconds()
+                if age >= grace_seconds:
+                    rows += self._end_hold(hold["job_id"], 0)
+            elif job["status"] in ("failed", "canceled"):
+                rows += self._end_hold(hold["job_id"], 0)
+            elif job["status"] == "succeeded":
+                rows += self._end_hold(hold["job_id"], min(hold["amount"], charge_for(job, job["result"])))
+        return rows
 
     # Admin lookups (sweeper only: not scoped to a user)
     def job_status(self, job_id):
@@ -141,11 +168,12 @@ class MemoryStore:
     def job_by_key(self, user_id, key):
         return self._by_key(user_id, key)
 
-    def create_job(self, user_id, kind, idempotency_key, input_path, item_id=None, job_id=None, cost_credits=None):
+    def create_job(self, user_id, kind, idempotency_key, input_path, item_id=None, job_id=None, cost_credits=None,
+                   max_items=None):
         existing = self._by_key(user_id, idempotency_key)  # the unique constraint
         if existing:
             return existing, False
-        job = {"id": job_id or str(uuid.uuid4()), "user_id": user_id, "item_id": item_id, "kind": kind, "cost_credits": cost_credits,
+        job = {"id": job_id or str(uuid.uuid4()), "user_id": user_id, "item_id": item_id, "kind": kind, "cost_credits": cost_credits, "max_items": max_items,
                "status": "queued", "idempotency_key": idempotency_key, "input_path": input_path, "result": None,
                "error": None, "attempts": 0, "max_attempts": 2, "locked_until": None,
                "created_at": _now() + timedelta(microseconds=len(self.jobs)), "started_at": None, "finished_at": None}
@@ -313,19 +341,21 @@ class SupabaseStore:
                 body = {}
             if str(body.get("code", "")).startswith("WC"):
                 raise CreditError(body["code"], body.get("message", ""))
-        rows = self._ok(r).json()
-        return rows[0] if rows else None
+        return self._ok(r).json()
 
     def credit_grant(self, user_id, amount, key, note, granted_by):
         return self._credit_rpc("credit_grant", {"p_user_id": user_id, "p_amount": amount, "p_operation_key": key,
-                                                 "p_note": note, "p_granted_by": granted_by})
+                                                 "p_note": note, "p_granted_by": granted_by})[0]
 
     def credit_reserve(self, user_id, job_id, action, amount):
         return self._credit_rpc("credit_reserve", {"p_user_id": user_id, "p_job_id": job_id, "p_action": action,
-                                                   "p_amount": amount})
+                                                   "p_amount": amount})[0]
 
-    def credit_settle(self, job_id):
-        return self._credit_rpc("credit_settle", {"p_job_id": job_id})
+    def credit_settle(self, job_id, amount=None):
+        return self._credit_rpc("credit_settle", {"p_job_id": job_id, "p_amount": amount})
+
+    def credit_reconcile(self, grace_seconds):
+        return self._credit_rpc("credit_reconcile", {"p_grace_seconds": grace_seconds})
 
     def credit_release(self, job_id):
         return self._credit_rpc("credit_release", {"p_job_id": job_id})
@@ -342,9 +372,12 @@ class SupabaseStore:
     def job_by_key(self, user_id, key):
         return self._one("generation_jobs", {"user_id": f"eq.{user_id}", "idempotency_key": f"eq.{key}"})
 
-    def create_job(self, user_id, kind, idempotency_key, input_path, item_id=None, job_id=None, cost_credits=None):
+    def create_job(self, user_id, kind, idempotency_key, input_path, item_id=None, job_id=None, cost_credits=None,
+                   max_items=None):
         row = {"user_id": user_id, "kind": kind, "idempotency_key": idempotency_key, "input_path": input_path,
                "item_id": item_id, "cost_credits": cost_credits}
+        if max_items is not None:  # only sent when billing is on, so a database without M2 still works
+            row["max_items"] = max_items
         if job_id:
             row["id"] = job_id
         created = self._insert("generation_jobs", row)

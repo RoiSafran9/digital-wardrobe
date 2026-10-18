@@ -169,3 +169,31 @@ def test_scoring_marks_frame_touching_items_ok_with_a_soft_tip():
     result = stage6_score.run(passed, 1.0, 2, cut_off=True)
     assert result.tier == "medium"
     assert "step back" in result.retake_instruction
+
+
+@pytest.mark.asyncio
+async def test_run_photo_makes_at_most_max_items_fronts_largest_first(tmp_path):
+    photo_path = str(tmp_path / "photo.png")
+    _write_ok_photo(photo_path)
+    small, big, medium = _item(), _item(), _item()
+    small.box = BBox(x=0, y=0, width=50, height=50)
+    big.box = BBox(x=100, y=0, width=400, height=400)
+    medium.box = BBox(x=600, y=0, width=200, height=200)
+    small.colors = FactField(value="small", confidence=0.9, basis="observed")
+    big.colors = FactField(value="big", confidence=0.9, basis="observed")
+    medium.colors = FactField(value="medium", confidence=0.9, basis="observed")
+    providers = Providers(vision=FakeVision([small, big, medium]), imagegen=FakeImageGen())
+
+    result = await run_photo(photo_path, str(tmp_path / "out"), providers, RunLogger(str(tmp_path / "log.jsonl")), max_items=2)
+
+    assert [i["facts"].colors.value for i in result["items"]] == ["big", "medium"]  # photo order kept
+    assert result["over_limit"] == 1
+
+
+@pytest.mark.asyncio
+async def test_run_photo_without_a_cap_makes_every_piece(tmp_path):
+    photo_path = str(tmp_path / "photo.png")
+    _write_ok_photo(photo_path)
+    providers = Providers(vision=FakeVision([_item(), _item(), _item()]), imagegen=FakeImageGen())
+    result = await run_photo(photo_path, str(tmp_path / "out"), providers, RunLogger(str(tmp_path / "log.jsonl")))
+    assert len(result["items"]) == 3 and result["over_limit"] == 0

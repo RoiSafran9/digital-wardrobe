@@ -18,13 +18,15 @@ def create_app(settings: Settings | None = None, start_worker: bool = True) -> F
         return app
 
     # Multi-user mode: only the token-checked v1 API; the local runs/ routes are not mounted at all.
-    from api.credits import NoCharge, get_gate, get_prices, load_prices
+    from api.credits import NoCharge, WalletGate, get_gate, get_prices, load_prices
     from api.routes.v1 import router as v1_router
     from api.store import SupabaseStore, get_store
     from api.worker import run_forever
 
     store = SupabaseStore(settings)
-    prices, gate = load_prices(), NoCharge()  # a bad price list stops startup here
+    # Billing is off unless WARDROBE_BILLING=on (then every action must be priced, or startup stops here).
+    prices = load_prices()
+    gate = WalletGate(store) if prices else NoCharge()
 
     @asynccontextmanager
     async def lifespan(_app):

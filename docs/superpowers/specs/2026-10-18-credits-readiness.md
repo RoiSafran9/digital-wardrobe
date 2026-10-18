@@ -1,5 +1,7 @@
 # AI Credits — Integration Points (Multi-User M5)
 
+> Update: the wallet (M1) and per-action billing behind `WARDROBE_BILLING=on` (M2) are now built; see the [wallet design](2026-10-18-ai-credits-wallet-design.md). `settle` now takes the amount to charge, and the gate has `reconcile`. The notes below describe the M5 hooks as first built.
+
 Status: **hooks built, billing off** · Date: 2026-10-18 · Product direction: `docs/CREDITS.md` (PR #2, still a draft, not changed here)
 
 This note says what the multi-user build already does for credits, where a wallet and a ledger plug in, and which product decisions each code point waits for. No prices, balances, charges or purchases exist yet.

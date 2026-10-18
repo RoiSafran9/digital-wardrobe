@@ -238,15 +238,16 @@ class Gate:
 
     def reserve(self, *a): self.calls.append(("reserve",) + a)
     def release(self, job_id): self.calls.append(("release", job_id))
-    def settle(self, job_id): self.calls.append(("settle", job_id))
+    def settle(self, job_id, amount): self.calls.append(("settle", job_id, amount))
     def refund(self, job_id): self.calls.append(("refund", job_id))
+    def reconcile(self): return 0
 
 
 async def test_a_successful_job_settles_its_credits_once():
     store, gate = MemoryStore(), Gate()
     job_id = garment_job(store)
     await run_once(store, factory(), gate=gate)
-    assert gate.calls == [("settle", job_id)]
+    assert gate.calls == [("settle", job_id, 0)]  # billing was off for this job: nothing to charge
 
 
 async def test_a_failed_job_refunds_only_when_it_is_final():

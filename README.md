@@ -66,6 +66,14 @@ Away from home Wi-Fi: point `EXPO_PUBLIC_API_URL` at a tunnel to the Mac's port 
 
 To use the hosted project: configure custom SMTP in Supabase (Auth → SMTP), put `{{ .Token }}` in its Magic Link email template (see `supabase/templates/magic_link.html`), then delete `mobile/.env.local`. Never put a secret or service-role key in `mobile/`.
 
+**AI Credits wallet (inactive):** every account has a wallet (`credit_wallets`) and an append-only activity ledger (`credit_ledger`); billing stays off and no job charges credits yet. The signed-in app can read `GET /v1/credits`. To give someone promotional credits (admin only, from the repo root with the server's `.env`):
+
+```
+python -m scripts.grant_credits --email <their sign-in email> --amount <N> --reason "<shown to them>" --key <unique-grant-name> --by <your name>
+```
+
+It is a dry run until you add `--apply`; the same `--key` never grants twice. The wallet migration must be on the database first (local: `npx supabase migration up --local`; hosted: the owner's `db push`).
+
 **Storage cleanup:** deleting an account removes its rows, not its files. `python -m scripts.sweep_storage` lists files of deleted accounts and stale job uploads (finished, older than 7 days); `--apply` removes them. Item files, including removed items', are kept.
 
 **Testing:** `PYTHONPATH=$PWD .venv/bin/pytest -q` (backend), `cd mobile && npx jest && npx tsc --noEmit` (app), `npx supabase test db` (database rules). With the local stack running and `SUPABASE_TEST_URL`, `SUPABASE_TEST_SECRET_KEY`, `SUPABASE_TEST_PUBLISHABLE_KEY` set, `pytest tests/integration` runs the two-user end-to-end suite.
@@ -73,6 +81,7 @@ To use the hosted project: configure custom SMTP in Supabase (Auth → SMTP), pu
 ## Owner setup still open
 
 - Hosted Supabase: custom SMTP (so code emails can be sent), then `{{ .Token }}` in the Magic Link template; database password reset and `npx supabase db push`; a backend secret key for the server.
+- Apply the AI Credits wallet migration to the hosted project with `npx supabase db push` (after reviewing the PR); decide the F&F grant size before running `scripts/grant_credits.py` against it.
 - Move the current closet: `python -m scripts.migrate_runs --email <you> --apply`.
 - Try the app in account mode on the iPhone (steps above).
 

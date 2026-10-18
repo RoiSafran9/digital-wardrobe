@@ -15,7 +15,9 @@ This note says what the multi-user build already does for credits, where a walle
 
 One job = one hold: a repeated request with the same key returns the existing job without calling `reserve`, and a request that loses the insert race releases its hold.
 
-## Wallet and ledger (proposal, not built)
+## Wallet and ledger (proposal — superseded)
+
+Built in wallet M1 with small changes (ledger `kind` instead of `reason`, `balance_after`/`held_after`, no direct writes even for the backend): see [wallet design](2026-10-18-ai-credits-wallet-design.md). The original proposal is kept below for history.
 
 ```sql
 credit_wallets  user_id uuid pk → auth.users on delete cascade, balance int not null default 0 check (balance >= 0),

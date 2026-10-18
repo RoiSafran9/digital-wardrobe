@@ -98,6 +98,25 @@ class PricesOut(BaseModel):
     prices: dict[str, int]
 
 
+class CreditEntryOut(BaseModel):
+    id: int
+    kind: Literal["grant", "hold", "charge", "release"]
+    amount: int  # always positive; kind says which way it moved
+    action: Literal["garment", "back", "turn"] | None = None
+    job_id: str | None = None
+    note: str | None = None  # a grant's reason
+    created_at: str
+
+
+class CreditsOut(BaseModel):
+    """The signed-in user's AI Credits: available = balance - held (held = reserved for running jobs)."""
+    balance: int
+    held: int
+    available: int
+    entries: list[CreditEntryOut]
+    next_before: int | None = None  # pass as ?before= for older activity; None on the last page
+
+
 class V1ItemOut(BaseModel):
     """A closet item in the multi-user API: same shape as ClosetItemOut, keyed by id, with signed image URLs."""
     id: str

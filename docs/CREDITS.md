@@ -6,19 +6,19 @@ Scope: AI-generation costs only. Server hosting, storage volume, subscriptions a
 
 ## Confirmed
 1. Every account has **one shared AI Credits balance**. Do **not** create independent quotas such as `100 garments + 4 turns`.
-2. Each **billable user-facing AI generation action** consumes credits from that balance.
+2. **Credits are charged for user-facing AI generation actions, not for owning, counting or storing garments.** Each explicitly requested billable action deducts a published amount from the single wallet. Creating a front catalog image, adding a back image and creating a 360 view are distinct operations; the same garment can be enriched over time without buying it again.
 3. An in-app **AI Price List** tells users how many credits each available action costs. The action screen shows its cost before the user triggers it.
 4. The Account/profile screen shows **credits remaining** with a readable progress/usage meter. Users can continue browsing already saved items even at zero credits.
-5. Pricing uses product-defined **credits**, not the underlying provider's token count or dollars. Model retries remain an internal cost concern.
+5. Pricing uses product-defined **credits**, not the underlying provider's token count or dollars. Internal model calls, quality checks and automatic retries are NOT separate user-facing charges. One requested 360 creation produces four model-generated views but is priced as **one 360 action**.
 6. F&F participants can be granted promotional credits; real-launch users may be offered paid credit packs. Packages and specific quantities have not been finalized.
 
 ## Action types to price
-- Create Garment: generate an item from a supplied photo, with vision classification.
+- Create Front Image: produce an AI-generated front catalog image from an input photo, with vision classification. **Current code uses the internal operation key `garment`; the user-facing action should be named for the generated front image rather than the wardrobe entity.**
 - Add Back Image: generate a back-side catalog image from an additional back photo.
 - Create 360 View: generate four AI ghost-mannequin angles.
 - Manual Regenerate Image: only available in contexts where product UX allows it; pre-save regeneration currently exists as a product decision. Whether/how to charge manual repeated generations is **open**.
 
-For illustration only, a possible conversion discussed was **1 credit per garment / 1 per back / 3 per 360**. **These figures are NOT approved and must not be surfaced as final prices or hardcoded as business rules.**
+For illustration only, a possible conversion discussed was **1 credit per front-image creation / 1 per back-image creation / 3 per 360 creation**. **These figures are NOT approved** and must not be surfaced as final prices or hardcoded as business rules.
 
 ## UX
 - Account: balance, explanatory usage meter, links to AI Price List and eventual credit activity/purchase options.
@@ -32,12 +32,12 @@ For illustration only, a possible conversion discussed was **1 credit per garmen
 - Trusted backend handles an append-only ledger and atomic reservation/settlement/refund; mobile app never directly edits balances or prices.
 - Repeated requests share a stable operation ID and cannot double charge.
 - No hidden per-provider-model-token charging; failed generations and internal automatic retries should not surprise users.
-- A single photo might contain multiple garments: present a maximum or item-level confirmed price before generation.
+- A single source photo may lead to several AI-generated front images. **Do not equate one photo, one wardrobe item or one underlying model call with one charge automatically.** The exact counting/confirmation rule for multi-piece creation remains open; show and confirm the number and total cost of billable generation actions before charging, including an upper bound or explicit selection.
 - F&F promotional grants must be auditable and controlled by an administrator.
 - Keep the underlying AI API usage/cost logs independent from the user credit wallet.
 
 ## Product decisions needed before coding real billing
-1. Exact prices by action, and whether photo-based batch creation is per detected garment.
+1. Exact prices **per user-facing generation action** (front image, back image, 360); define the charging/confirmation rules when one photo produces several front images. Never frame the price as ownership of a wardrobe item.
 2. Charge when successful generation completes versus at Save; handling created-but-unsaved previews.
 3. Number of free user-triggered regenerations, failure/refund thresholds.
 4. Initial F&F grant size, who can approve top-ups, limits and duration.
@@ -64,7 +64,7 @@ This record and the built hooks were written separately. Where they differ, neit
 |---|---|---|
 | Price source | Server-owned price table (`ai_action_prices(action_type, credits, effective_at)`, see Proposed server design) | `WARDROBE_CREDIT_PRICES` env JSON read at server start; no table, no `effective_at`. Unset = billing off. |
 | Action types | Create Garment, Add Back Image, Create 360, possibly Manual Regenerate | `garment`, `back`, `turn` only. There is no Regenerate action in the app. |
-| Multi-piece photos | Show the maximum or per-item price and get confirmation before one photo can cause several charges | A garment job is priced once per photo, whatever the number of pieces, with no confirmation step. Per-piece pricing would need a maximum hold at reserve and the real count at settle. |
+| Multi-piece photos | **Action-based** billing is confirmed. The exact rule for multiple front-image creations from one source photo is still open and needs a quoted/confirmed total. | A `garment` job is priced once per photo, whatever the number of pieces, without a confirmation step. Supporting multiple billed generation actions per photo needs agreed accounting, reservation and settlement. |
 | When credits are spent | Open: on successful generation vs at Save; unsaved previews | There is no Save step: results go straight to the closet. The hook settles when the worker finishes the job successfully and refunds when it fails for good. |
 | Internal retries and failures | Must not surprise users | Matches: internal retries neither settle nor refund; a job that fails for good is refunded; a repeated `Idempotency-Key` returns the existing job without a second hold. |
 | Insufficient credits | No paid generation; wardrobe stays usable | `reserve` can raise `InsufficientCredits` → HTTP 402 "not enough AI credits" before anything is uploaded or queued. The default gate (`NoCharge`) never raises, so this path is unused today. The app has no dedicated screen for it. |

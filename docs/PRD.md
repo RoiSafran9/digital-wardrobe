@@ -99,6 +99,16 @@ The concrete palette, type scale and component specifications remain open. **Bot
 - Item Details and Edit Item are secondary screens accessible from Wardrobe; they do not receive new bottom tabs.
 - The precise navigation implementation of the Add flow (tab screen versus modal launched from the central action) and cancellation/discard behavior remain to be refined; **successful Save Item always returns to Wardrobe**, showing the new item and a success message.
 
+## AI Credits — confirmed product direction for account-based launch
+
+- Maintain **one AI Credits wallet per user**, rather than separate caps for garments, back images and 360, or showing provider tokens/currency as the billing unit.
+- Each billable AI creation action consumes credits at a fixed **user-visible** rate. Show a clear **AI Price List** in the app, and the price next to or before invoking an action.
+- The Account/profile screen shows **credits remaining** and a clearly labeled usage meter; do not invent a monthly reset or ambiguous denominator when balances come from several grants/purchases.
+- F&F participants may receive promotional credits, while real-launch users may purchase credit packs. **Amounts, prices and policies are not yet approved.**
+- No unexpected charges on hidden AI retries, timeouts or failed generations. Whether to charge a successful generated preview that a user does not save, and charges for extra manual Regenerate, need approval.
+- Users without sufficient credits cannot trigger a chargeable AI action; they can still access their existing wardrobe. Account ownership and wallet changes are server-controlled.
+- See [Credit Wallet & Price List](CREDITS.md) for scope, architecture considerations and pending decisions. The current local-only prototype does not yet have accounts, wallet balances or purchases.
+
 ## Non-goals for MVP
 Look/outfit generation, weather suggestions, sharing, purchasing, calendar, complex tagging and multi-image items. **AI image generation/garment completion, isolated backgrounds and metadata recognition ARE included in MVP.**
 

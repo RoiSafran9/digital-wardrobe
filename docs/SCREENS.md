@@ -48,5 +48,12 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 - Item sheet states (no back / back, 360 none / running / done / failed, edit, remove) all reachable on the phone.
 - Light and dark mode readable; Reduce Motion removes drift, count-up and scrub crossfades.
 
+## Credits experience (confirmed direction; not built)
+- **Account → AI Credits:** remaining balance and a readable usage bar with an honest baseline (e.g. a specific granted pack); for combined balances or top-ups, no misleading percentage.
+- **Account → AI Price List:** read-only list of actions and their cost in AI Credits — **Create Garment**, **Add Back Image**, **Create 360**, and **Regenerate** if it ever becomes a separately chargeable action. Numbers pending approval; the data source is `GET /v1/prices`.
+- Every billable entry point (capture, + Back, View in 360) shows its price and the balance, with explicit confirmation where the charge or the number of generated items might surprise the user.
+- Insufficient credits: a useful explanation and a way to get more (admin-issued F&F grants first; paid packs only after payment integration). Viewing saved items keeps working.
+- Credit History / Activity may list grants, charges and refunds; presentation pending screen design.
+
 ## Not built (see ROADMAP "Later")
 A pre-save Review screen with an Original/Generated toggle and Save button, saved-item Regenerate, in-app restore of removed items, a credits balance on Account.

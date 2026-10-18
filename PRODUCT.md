@@ -38,6 +38,14 @@ Fidelity to the owner's actual garment, not an idealized product shot. Each piec
 - AI Credits are a confirmed direction (one balance per account). Jobs record their cost and the backend has the hooks to hold, charge and refund credits, but billing is off: no prices, balances or purchases yet.
 - Undecided: outfit features, the cloud host, and opening the product to other users.
 
+## Confirmed direction: AI Credits
+
+- Each signed-in user has **one unified AI Credits balance**, not separate quotas for garment creation, back images, and 360. Paid AI generation actions consume fixed, clearly advertised credit costs.
+- The **Account** screen shows current credits, a usage/progress meter and an in-app **AI Price List**. Each action shows its price before proceeding.
+- Numerical action costs, launch packs, promotional grants and the precise charging moment still need approval; examples are not launch prices.
+- **Current status:** accounts exist; credits are hooks only (job cost recording, a server price list that is off, a credit gate). No wallet, balance, meter, price-list screen or purchases yet.
+- See `docs/CREDITS.md` for the decision record and safety/implementation proposal.
+
 ## Brand Commitments
 
 Standing preference: the category standard, native iOS (system font, grouped backgrounds, one blue tint),

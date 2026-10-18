@@ -48,10 +48,17 @@ Today: the owner, on their own iPhone over home Wi-Fi. Intended: other people wi
 24. Home: large title with piece count and pieces added this week; two rows of recent garments drifting slowly (touch pauses, tap opens); stats (pieces, categories, colors); quick add; Just added; category chips with counts. Empty closet shows a single empty state with the add buttons.
 25. Account: signed-in email and Sign Out, or the local-mode note.
 
+## AI Credits — confirmed direction (not built beyond hooks)
+- **One AI Credits wallet per account**, not separate caps for garments, back images and 360, and not provider tokens or currency as the unit.
+- Each billable AI action consumes credits at a fixed, **user-visible** rate. An in-app **AI Price List** shows them, and each action shows its price before it starts.
+- Account shows **credits remaining** with a clearly labeled usage meter; no invented monthly reset or ambiguous denominator when balances come from several grants or purchases.
+- F&F participants may receive promotional credits; real-launch users may buy credit packs. **Amounts, prices and policies are not approved.**
+- No surprise charges for hidden AI retries, timeouts or failed generations. Users without enough credits can't start a chargeable action but keep full access to their wardrobe. Wallet changes are server-controlled.
+- Built today: job cost recording, the server price list (off), credit gate hooks and `GET /v1/prices`; an over-budget request would get "not enough AI credits" (HTTP 402) before anything is uploaded. No wallet, balance, meter, price-list screen or purchases. Details and open decisions: [CREDITS.md](CREDITS.md).
+
 ## Cross-cutting
 - English-only UI. Light and dark mode follow the system. Reduce Motion is honored everywhere.
 - Paid model calls cost money: no extra calls or waiting beyond what a feature needs.
-- AI Credits are a confirmed direction; jobs already record their cost and the backend has the hooks, but billing is off (no prices, balances or purchases).
 - Photos are sent to Gemini for processing; no secret key is ever in the app.
 
 ## Non-goals (current)

@@ -20,3 +20,8 @@ Read `AGENTS.md` first. It holds the shared rules for **all** AI coding agents.
 
 ## Expected handoff
 Summarize purpose, what changed, how it was verified (tests run, manual steps on the phone), risks, and doc updates.
+
+## AI Credits
+- Approved product direction: each account gets a single AI Credits balance; Account shows remaining credits and an in-app price list for all billable AI actions. Only the M5 hooks exist (billing off).
+- Credit amounts, F&F grants and purchase packs are unapproved. Do not hardcode example values as launch prices or claim wallets/balances exist.
+- Credits must be enforced by the trusted server with an append-only ledger, transaction safety and idempotent jobs. Read `docs/CREDITS.md` before implementing monetization.

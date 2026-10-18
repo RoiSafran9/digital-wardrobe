@@ -67,7 +67,7 @@ Every model call is appended to a `run_log.jsonl` (stage, model, prompt version,
 | DELETE | `/v1/items/{id}` | soft delete (`deleted_at`) |
 | POST | `/v1/items/{id}/back`, `/v1/items/{id}/turn` | start a back or 360 job |
 
-**Credits (hooks only):** jobs record `cost_credits` from `WARDROBE_CREDIT_PRICES` (unset = billing off); a `CreditGate` is called at reserve/release/settle/refund and is a no-op today. Wallet and ledger are designed, not built.
+**Credits (hooks only):** jobs record `cost_credits` from `WARDROBE_CREDIT_PRICES` (unset = billing off); a `CreditGate` is called at reserve/release/settle/refund and is a no-op today. Wallet and ledger are designed, not built. Product requirements: [CREDITS.md](CREDITS.md) (one wallet per account, server-owned prices, atomic reserve → settle/refund, confirmation before a multi-piece photo can charge more than once); its "Spec vs built hooks" section lists where the M5 hooks differ.
 
 **Operations:** `scripts/migrate_runs.py` moves an existing `runs/` closet into an account (dry run by default, idempotent by `legacy_key`, `.trash` → `deleted_at`). `scripts/sweep_storage.py` removes files of deleted accounts and stale job uploads (dry run by default).
 

@@ -58,5 +58,17 @@ All figures come from the server (`GET /v1/credits`, `GET /v1/prices`); nothing 
 - **View in 360** (billing on): the note adds the cost; pressing asks "Make a 360 view?" first.
 - Out of credits anywhere: "Not enough AI credits. Ask the app owner for more."
 
+## Outfit Photo import — planned experience (NOT BUILT)
+
+The owner approved a second Add path for photographs of **a person wearing clothes**. These are future screens, not current functionality:
+- **Photo-mode route:** automatically detect garment-only vs person-outfit where reliable; always allow an explicit override and an ambiguity prompt.
+- **Detected items:** show original outfit photo with detected candidate crops/overlays and category labels; select/deselect, correct, retry, choose none. No high-quality AI image generation yet.
+- **Confirm selection:** list selected items, show exact server-owned AI Credits quote and available balance before the user opts in; no credits charged for the detection step.
+- **Generate selected:** generate only the selected items; handle per-item partial success, progress and resumable jobs.
+- **Final review:** generated flat-lay image alongside real-photo crop, with an honest warning about reconstructed hidden details; save or decline each result (manual regenerate/refund rules pending).
+- **Out of scope for initial experiment:** accessories, multi-person photo handling, automatically generating back/360 and full public launch.
+
+Design: [two-stage import spec](superpowers/specs/2026-10-19-outfit-photo-two-step-design.md).
+
 ## Not built (see ROADMAP "Later")
 A pre-save Review screen with an Original/Generated toggle and Save button, saved-item Regenerate, in-app restore of removed items, buying credits.

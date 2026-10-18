@@ -45,6 +45,8 @@ The hosted project's settings live in `mobile/.env` (git-ignored, publishable ke
 2. Create `mobile/.env.local` (git-ignored; it overrides `mobile/.env`) with `EXPO_PUBLIC_SUPABASE_URL=http://<your-Mac-LAN-IP>:54321` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<local publishable key>`.
 3. Restart Expo (`npx expo start -c`) so it picks up the env.
 
+**Database (M2):** migrations live in `supabase/migrations/` and are applied by `npx supabase start` / `npx supabase db reset` (reset wipes local test data, including local test accounts). Run the isolation tests with `npx supabase test db`. Regenerate app types with `npx supabase gen types typescript --local > mobile/src/api/database.types.ts`. Applying the migrations to the hosted project is an owner step: `npx supabase link --project-ref xdzqwkqwfqvpovoftlyl` then `npx supabase db push` (asks for the database password).
+
 To use the hosted project: configure custom SMTP in Supabase (Auth → SMTP), put `{{ .Token }}` in its Magic Link email template (see `supabase/templates/magic_link.html`), then delete `mobile/.env.local`. Never put a secret or service-role key in `mobile/`.
 
 ## Next

@@ -59,7 +59,9 @@ Key decisions:
 - **Idempotency:** every job-creating request carries an `Idempotency-Key` header (UUID made by the app per user action); `unique (user_id, idempotency_key)` makes retries return the existing job instead of paying Gemini twice. Item rows created by a job carry `(job_id, piece_index)` unique, so a retried job can't duplicate items.
 - **Local dev:** Supabase CLI (`npx supabase start`, Docker) gives a local Auth/Postgres/Storage with a mail catcher (Mailpit) for codes; the server keeps a `WARDROBE_AUTH=off` local mode during the transition so the owner's current loop keeps working until M3 lands. No production data or keys in development.
 
-## 5. Data and storage model (proposal; finalized in M2)
+## 5. Data and storage model (built in M2)
+
+> **As built (M2, `supabase/migrations/2026101812*`):** the model below, with these refinements. `profiles` is read-only to users (no update grant, so a disabled account can't re-enable itself). Client edits on items are limited by a **column-level grant** (`update (facts, deleted_at)`) rather than a trigger; a `before update` trigger bumps `updated_at` and keeps the first `facts` in `facts_original`. **Same-owner composite FKs** (`(job_id, user_id)` and `(item_id, user_id)`) make it impossible to link an item to another user's job or a job to another user's item, and **check constraints** require every stored path to start with `<user_id>/`. A garment job has no `item_id`; back/turn jobs must have one. Deleting a job keeps its items (`job_id` set null, `piece_index` kept); deleting an item cascades its back/turn jobs; deleting an account cascades everything. The bucket allows PNG/JPEG/HEIC/HEIF/WebP up to 25 MiB. pgTAP suites in `supabase/tests/database/` prove all of this with two accounts.
 
 ```sql
 profiles          id uuid pk → auth.users(id) on delete cascade, email text, status text check in ('active','disabled') default 'active', created_at
@@ -80,7 +82,7 @@ generation_jobs   id uuid pk, user_id uuid not null, item_id uuid null → wardr
 ```
 
 - Indexes: `wardrobe_items (user_id, created_at desc) where deleted_at is null`, `generation_jobs (user_id, created_at desc)`, `generation_jobs (status, locked_until)` for claiming.
-- RLS: `profiles` select/update own row; `wardrobe_items` select own, update own (trigger restricts updatable columns to `facts`, `deleted_at`); no client insert/delete (backend only; hard delete = backend purge job that removes both rows and Storage objects); `generation_jobs` select own only. All policies `to authenticated` with `(select auth.uid()) = user_id`. The hosted project does not auto-expose new tables, so each migration also `grant`s exactly the needed privileges to `authenticated` (e.g. `select, update` on `wardrobe_items`, `select` on `generation_jobs`) and nothing to `anon`.
+- RLS: `profiles` select own row; `wardrobe_items` select own, update own (column grant limits updatable columns to `facts`, `deleted_at`); no client insert/delete (backend only; hard delete = backend purge job that removes both rows and Storage objects); `generation_jobs` select own only. All policies `to authenticated` with `(select auth.uid()) = user_id`. The hosted project does not auto-expose new tables, so each migration also `grant`s exactly the needed privileges to `authenticated` (e.g. `select, update` on `wardrobe_items`, `select` on `generation_jobs`) and nothing to `anon`.
 - A trigger on `auth.users` insert creates the `profiles` row.
 - Storage: private bucket `wardrobe`; objects `<user_id>/jobs/<job_id>/upload.<ext>` (inputs) and `<user_id>/items/<item_id>/{source,generated,cutout,crop}.png`, `…/back/*`, `…/turn/*`. Select policy: own folder only. No client insert/update/delete policies (backend writes). Signed URL TTL ≤ 1 h.
 - Orphans: uploads whose job failed or was never claimed are swept after 7 days; items are written as Storage-first-then-row, and a sweep deletes Storage folders with no row.

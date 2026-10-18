@@ -72,6 +72,14 @@ Every model call is appended to a `run_log.jsonl` (stage, model, prompt version,
 
 **Operations:** `scripts/migrate_runs.py` moves an existing `runs/` closet into an account (dry run by default, idempotent by `legacy_key`, `.trash` → `deleted_at`). `scripts/sweep_storage.py` removes files of deleted accounts and stale job uploads (dry run by default). `scripts/grant_credits.py` gives an account promotional AI Credits (dry run by default, idempotent by `--key`).
 
+## Proposed new input path (NOT BUILT)
+
+The current Stage-1 Gemini prompt `stage1_detect_facts_v4.txt` excludes clothing worn by a person. **Do not change that prompt in place.** A proposed second route handles person-outfit photos via **candidate detection/crops → user selection + price consent → high-quality reconstruction of selected garments**. Keep the existing garment-only processing unchanged; evaluate an input-mode router (with manual override), versioned outfit-specific prompts, secure owner-scoped candidate sessions, optional segmentation and an explicit final review.
+
+Stage-1 detection is free of *user credits* but must be monitored/rate-limited for actual AI cost. Stage-2 generated fronts use the **existing** wallet/ledger, worker and transaction protections; candidate selection should specify exact authenticated item IDs and quote before any charge. The design is not production code and its schema/API details require a POC.
+
+See [outfit-photo feature design](superpowers/specs/2026-10-19-outfit-photo-two-step-design.md) and [Claude Code research/POC brief](tasks/outfit-photo-two-step-flow.md).
+
 ## Local mode (`runs/`, gitignored)
 ```text
 runs/<run_id>/run_log.jsonl

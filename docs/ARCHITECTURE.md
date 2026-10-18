@@ -1,7 +1,12 @@
 # Technical Architecture — Digital Wardrobe
 Status: **Proposed**, not yet implemented · Updated: 2026-10-15
 
-> **Superseded for accounts, storage and backend:** the current multi-user plan is [2026-10-18 multi-user architecture design](superpowers/specs/2026-10-18-multiuser-architecture-design.md) — FastAPI stays the AI backend (no Edge Functions), Supabase provides Auth/Postgres/private Storage, and the built app's behavior is preserved. This document is kept for the product requirements it records.
+> **Current architecture (built 2026-10-18).** The sections below are the original proposal and are kept for the product requirements they record. What runs today:
+> - **App** (`mobile/`, Expo Go): Supabase Auth with a 6-digit email code, session encrypted on the device; signed in, it calls the backend's `/v1` API with the access token and polls jobs; without Supabase settings it runs in local mode against the original endpoints.
+> - **Backend** (`api/`, FastAPI on the owner's Mac): `WARDROBE_AUTH=on` verifies tokens against the project's JWKS, serves only user-scoped `/v1` routes (someone else's IDs answer 404), and runs an in-process worker that claims jobs from Postgres (`claim_generation_job`) and runs the unchanged pipeline. Off (default) = the original file-based API over `runs/`.
+> - **Data** (Supabase): `profiles`, `wardrobe_items`, `generation_jobs` with row level security, column-limited client updates, same-owner foreign keys and owner-folder path checks; private bucket `wardrobe` with owner-only reads; signed URLs for images. No Edge Functions.
+> - **Proof:** pgTAP (`supabase/tests/database/`), API tests with two users (`tests/api/test_v1_*.py`), and a two-user end-to-end suite on the local stack (`tests/integration/`).
+> - Details and decisions: [multi-user architecture design](superpowers/specs/2026-10-18-multiuser-architecture-design.md).
 
 ## Guiding principles
 iPhone-first, easy iteration, minimal operational overhead, private by default, **multiple isolated user accounts from V1**, and GitHub as the code/documentation source of truth.

@@ -47,7 +47,7 @@
 - [x] M3 — FastAPI verifies Supabase tokens, Postgres-backed generation jobs, results in private Storage, migration of local `runs/`
   - [x] M3a — backend: token verification, `/v1` jobs/items API, worker, `claim_generation_job`, `runs/` migration script
   - [x] M3b — app: send the token, use `/v1`, poll jobs, signed image URLs (server stays on the Mac for now; tunnel documented, not set up)
-- [ ] M4 — End-to-end two-user verification on devices; update product docs
+- [x] M4 — End-to-end two-user verification (automated on the local stack; on-device check by the owner), storage sweeper, product docs updated
 - [ ] M5 — Credit system readiness (integration points only, no payments)
 
 ## Post-MVP ideas (not committed)

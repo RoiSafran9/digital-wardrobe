@@ -27,11 +27,21 @@ class MemoryStore:
         self.jobs: dict[str, dict] = {}
         self.items: dict[str, dict] = {}
         self.files: dict[str, bytes] = {}
+        self.file_times: dict[str, datetime] = {}
         self.disabled: set[str] = set()
+        self.deleted_users: set[str] = set()
 
     # Profiles
     def profile_status(self, user_id: str) -> str:
         return "disabled" if user_id in self.disabled else "active"
+
+    def user_exists(self, user_id: str) -> bool:
+        return user_id not in self.deleted_users
+
+    # Admin lookups (sweeper only: not scoped to a user)
+    def job_status(self, job_id):
+        job = self.jobs.get(job_id)
+        return job["status"] if job else None
 
     # Jobs
     def _by_key(self, user_id, key):
@@ -125,6 +135,7 @@ class MemoryStore:
     # Files
     def upload(self, path, data, content_type):
         self.files[path] = data
+        self.file_times[path] = _now()
 
     def download(self, path):
         return self.files[path]
@@ -135,6 +146,13 @@ class MemoryStore:
 
     def sign(self, paths):
         return {p: f"{self.public_url}/{p}?token=signed" for p in paths}
+
+    def list_files(self, prefix=""):
+        prefix = prefix.rstrip("/") + "/" if prefix else ""
+        return {p: self.file_times.get(p, _now()) for p in self.files if p.startswith(prefix)}
+
+    def list_paths(self, prefix):
+        return sorted(self.list_files(prefix))
 
 
 class StoreError(Exception):
@@ -175,6 +193,14 @@ class SupabaseStore:
     def profile_status(self, user_id):
         row = self._one("profiles", {"id": f"eq.{user_id}"})
         return row["status"] if row else "active"
+
+    def user_exists(self, user_id):
+        return self._one("profiles", {"id": f"eq.{user_id}"}) is not None  # profiles go with the account
+
+    # Admin lookups (sweeper only: not scoped to a user)
+    def job_status(self, job_id):
+        row = self._one("generation_jobs", {"id": f"eq.{job_id}"})
+        return row["status"] if row else None
 
     # Jobs
     def job_by_key(self, user_id, key):
@@ -239,6 +265,26 @@ class SupabaseStore:
     def remove(self, paths):
         if paths:
             self._ok(self.http.request("DELETE", f"/storage/v1/object/{BUCKET}", json={"prefixes": list(paths)}))
+
+    def list_files(self, prefix=""):
+        """Every file under prefix (recursive) with its last-modified time."""
+        prefix = prefix.rstrip("/")
+        files, offset = {}, 0
+        while True:
+            entries = self._ok(self.http.post(f"/storage/v1/object/list/{BUCKET}",
+                                              json={"prefix": prefix, "limit": 1000, "offset": offset})).json()
+            for entry in entries:
+                path = f"{prefix}/{entry['name']}" if prefix else entry["name"]
+                if entry.get("id"):
+                    files[path] = datetime.fromisoformat(entry["updated_at"].replace("Z", "+00:00"))
+                else:
+                    files.update(self.list_files(path))
+            if len(entries) < 1000:
+                return files
+            offset += 1000
+
+    def list_paths(self, prefix):
+        return sorted(self.list_files(prefix))
 
     def sign(self, paths):
         if not paths:

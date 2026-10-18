@@ -110,6 +110,7 @@ generation_jobs   id uuid pk, user_id uuid not null, item_id uuid null → wardr
 - **Acceptance:** API tests with two signed test tokens prove 404 on cross-user job/item/image access; job retry creates no duplicates; pipeline tests unchanged.
 
 ### M4 — End-to-end multi-user flow
+> **As built:** `tests/integration/test_two_users.py` runs the flow with two real accounts on the local stack (fake model, real Auth/DB/Storage/RLS), including direct Storage reads with the other user's token. `scripts/sweep_storage.py` removes files of deleted accounts and stale job uploads (dry run by default). The two-device phone test is the owner's.
 Two real accounts on two devices: add, view, edit, soft-delete/restore, back photo, 360, failures and retries, restart persistence, sign-out clears local caches. Update PRODUCT.md, README, ARCHITECTURE, ROADMAP to the shipped state.
 
 ### M5 — Credit system readiness

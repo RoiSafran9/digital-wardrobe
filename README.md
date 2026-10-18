@@ -2,7 +2,7 @@
 
 A private, personal iPhone wardrobe catalog built with **Expo / React Native / TypeScript**. Capture clothes, browse your closet, and grow the product iteratively.
 
-> Status: **working single-owner app, moving to multiple users.** An Expo app (`mobile/`) talks to a local FastAPI server (`api/`) that runs the Gemini pipeline (`pipeline/`). Accounts are being added in milestones — see the [multi-user design](docs/superpowers/specs/2026-10-18-multiuser-architecture-design.md). Older planning docs below predate the built app; where they disagree, the design's "discrepancies" section explains which is current.
+> Status: **working app with accounts.** An Expo app (`mobile/`) talks to a FastAPI server (`api/`) on the owner's Mac that runs the Gemini pipeline (`pipeline/`). Signed in, each person's items, photos and AI jobs live in Supabase (Postgres + private Storage) and are isolated by row level security and the API; without Supabase settings the app and server run in **local mode**, the original single-owner setup over `runs/`. Design and decisions: [multi-user design](docs/superpowers/specs/2026-10-18-multiuser-architecture-design.md). The MVP section below is the original plan; where it disagrees with the app, the design's "discrepancies" section explains which is current.
 
 ## MVP
 
@@ -24,9 +24,12 @@ A private, personal iPhone wardrobe catalog built with **Expo / React Native / T
 
 GitHub is the authoritative source for **code and project decisions**. User clothing photos belong in private object storage, **not Git**.
 
-## Intended stack (proposed)
+## Stack
 
-Expo (React Native + TypeScript), Expo Router, Supabase (Auth/Postgres/private Storage plus secure server-side **image generation/editing and vision metadata** inference), and EAS Build → App Store Connect → TestFlight.
+- **App:** Expo SDK 57 (React Native + TypeScript, Expo Router), run in Expo Go; tests with Jest.
+- **Accounts and data:** Supabase Auth (6-digit email code), Postgres with row level security, a private Storage bucket (`supabase/` holds migrations, pgTAP tests and the local CLI config).
+- **AI backend:** FastAPI + the Python pipeline (Gemini vision/image models, OpenCV, local rembg cutouts), with a Postgres-backed job queue and an in-process worker. Hosted on the owner's Mac for now.
+- **Later:** EAS Build → App Store Connect → TestFlight; a cloud host for the backend.
 
 ## Working agreement
 
@@ -35,9 +38,9 @@ Expo (React Native + TypeScript), Expo Router, Supabase (Auth/Postgres/private S
 3. Document material product/architecture changes alongside the code.
 4. Never commit credentials, tokens, personal photos, or generated build artifacts.
 
-## Accounts (multi-user, in progress)
+## Accounts
 
-Milestone 1 adds email-code sign-in (Supabase Auth) to the app. Without Supabase settings, development builds run in **local mode** exactly like before.
+The app signs in with a 6-digit email code (Supabase Auth). Without Supabase settings, development builds run in **local mode** exactly like before.
 
 The hosted project's settings live in `mobile/.env` (git-ignored, publishable key only). Until the hosted project has custom SMTP (needed for the 6-digit code email), sign in against a local Supabase stack instead (needs Docker):
 
@@ -59,6 +62,16 @@ Away from home Wi-Fi: point `EXPO_PUBLIC_API_URL` at a tunnel to the Mac's port 
 
 To use the hosted project: configure custom SMTP in Supabase (Auth → SMTP), put `{{ .Token }}` in its Magic Link email template (see `supabase/templates/magic_link.html`), then delete `mobile/.env.local`. Never put a secret or service-role key in `mobile/`.
 
+**Storage cleanup:** deleting an account removes its rows, not its files. `python -m scripts.sweep_storage` lists files of deleted accounts and stale job uploads (finished, older than 7 days); `--apply` removes them. Item files, including removed items', are kept.
+
+**Testing:** `PYTHONPATH=$PWD .venv/bin/pytest -q` (backend), `cd mobile && npx jest && npx tsc --noEmit` (app), `npx supabase test db` (database rules). With the local stack running and `SUPABASE_TEST_URL`, `SUPABASE_TEST_SECRET_KEY`, `SUPABASE_TEST_PUBLISHABLE_KEY` set, `pytest tests/integration` runs the two-user end-to-end suite.
+
+## Owner setup still open
+
+- Hosted Supabase: custom SMTP (so code emails can be sent), then `{{ .Token }}` in the Magic Link template; database password reset and `npx supabase db push`; a backend secret key for the server.
+- Move the current closet: `python -m scripts.migrate_runs --email <you> --apply`.
+- Try the app in account mode on the iPhone (steps above).
+
 ## Next
 
-Review the planning documents, resolve the [open product decisions](docs/PRD.md#open-decisions), then scaffold the Expo application on a separate branch.
+AI Credits readiness (one balance per account), then a cloud host for the backend and TestFlight.

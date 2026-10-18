@@ -1,6 +1,8 @@
 # Technical Architecture — Digital Wardrobe
 Status: **Proposed**, not yet implemented · Updated: 2026-10-15
 
+> **Superseded for accounts, storage and backend:** the current multi-user plan is [2026-10-18 multi-user architecture design](superpowers/specs/2026-10-18-multiuser-architecture-design.md) — FastAPI stays the AI backend (no Edge Functions), Supabase provides Auth/Postgres/private Storage, and the built app's behavior is preserved. This document is kept for the product requirements it records.
+
 ## Guiding principles
 iPhone-first, easy iteration, minimal operational overhead, private by default, **multiple isolated user accounts from V1**, and GitHub as the code/documentation source of truth.
 

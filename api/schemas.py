@@ -95,6 +95,7 @@ class JobOut(BaseModel):
 class V1ItemOut(BaseModel):
     """A closet item in the multi-user API: same shape as ClosetItemOut, keyed by id, with signed image URLs."""
     id: str
+    created_at: str
     tier: Literal["high", "medium", "low"]
     facts: ItemFacts
     crop_url: str

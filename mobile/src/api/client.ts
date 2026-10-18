@@ -1,30 +1,22 @@
-import Constants from "expo-constants";
 import { File } from "expo-file-system";
-import { resolveApiBaseUrl } from "./baseUrl";
-import type { RunResponse, ItemsResponse, ApiError, ClosetItem, ItemPatch, Turn } from "./types";
+import { API_BASE_URL, UNREACHABLE, parseJsonOrThrow } from "./http";
+import type { RunResponse, ItemsResponse, ClosetItem, ItemPatch, Turn } from "./types";
+import * as v1 from "./v1";
 
-export const API_BASE_URL = resolveApiBaseUrl({
-  envUrl: process.env.EXPO_PUBLIC_API_URL,
-  hostUri: Constants.expoConfig?.hostUri,
-});
+export { API_BASE_URL };
 
-const UNREACHABLE = "Can't reach your wardrobe server. Check that your phone and computer are on the same Wi-Fi.";
+// Signed in (AuthProvider calls configureApi): every call goes to the account API (/v1) with the
+// user's token. Otherwise (local mode) the same calls use the single-owner endpoints, as before.
+let account: v1.Account | null = null;
 
-// Server messages are lowercase fragments; show them as sentences.
-function sentence(message: string): string {
-  return message ? message[0].toUpperCase() + message.slice(1) : message;
+export function configureApi(config: v1.Account | null): void {
+  account = config;
 }
 
-async function parseJsonOrThrow<T>(response: Response): Promise<T> {
-  const body = await response.json();
-  if (!response.ok) {
-    const message = (body as ApiError).error ?? `Something went wrong (error ${response.status}). Try again.`;
-    throw new Error(sentence(message));
-  }
-  return body as T;
-}
+const current = () => account;
 
 export async function postRun(photoUri: string): Promise<RunResponse> {
+  if (account) return v1.postRun(account, current, photoUri);
   // Expo's global fetch rejects RN-style {uri, name, type} parts; File is a Blob it can read.
   const formData = new FormData();
   formData.append("photo", new File(photoUri));
@@ -39,6 +31,7 @@ export async function postRun(photoUri: string): Promise<RunResponse> {
 }
 
 export async function getItems(): Promise<ItemsResponse> {
+  if (account) return v1.getItems(account);
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}/items`);
@@ -50,6 +43,7 @@ export async function getItems(): Promise<ItemsResponse> {
 
 // The API returns image paths relative to itself; React Native needs a full URL.
 export function imageUrl(path: string): string {
+  if (/^https?:\/\//.test(path)) return path;  // signed storage URLs from the account API
   return API_BASE_URL + encodeURI(path);
 }
 
@@ -58,6 +52,7 @@ function itemPath(item: ClosetItem): string {
 }
 
 export async function updateItem(item: ClosetItem, patch: ItemPatch): Promise<ClosetItem> {
+  if (account) return v1.updateItem(account, item, patch);
   let response: Response;
   try {
     response = await fetch(itemPath(item), {
@@ -72,6 +67,7 @@ export async function updateItem(item: ClosetItem, patch: ItemPatch): Promise<Cl
 }
 
 export async function deleteItem(item: ClosetItem): Promise<void> {
+  if (account) return v1.deleteItem(account, item);
   let response: Response;
   try {
     response = await fetch(itemPath(item), { method: "DELETE" });
@@ -84,6 +80,7 @@ export async function deleteItem(item: ClosetItem): Promise<void> {
 }
 
 export async function addBack(item: ClosetItem, photoUri: string): Promise<ClosetItem> {
+  if (account) return v1.addBack(account, current, item, photoUri);
   const formData = new FormData();
   formData.append("photo", new File(photoUri));
   let response: Response;
@@ -96,6 +93,7 @@ export async function addBack(item: ClosetItem, photoUri: string): Promise<Close
 }
 
 export async function startTurn(item: ClosetItem): Promise<Turn> {
+  if (account) return v1.startTurn(account, item);
   let response: Response;
   try {
     response = await fetch(`${itemPath(item)}/turn`, { method: "POST" });
@@ -106,6 +104,7 @@ export async function startTurn(item: ClosetItem): Promise<Turn> {
 }
 
 export async function getTurn(item: ClosetItem): Promise<Turn> {
+  if (account) return v1.getTurn(account, item);
   let response: Response;
   try {
     response = await fetch(`${itemPath(item)}/turn`);

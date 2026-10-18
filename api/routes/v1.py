@@ -112,8 +112,9 @@ def _turn_out(turn: dict | None, urls: dict[str, str]) -> TurnOut | None:
 def item_out(item: dict, urls: dict[str, str]) -> V1ItemOut:
     back = item.get("back")
     display = urls[item["display_path"]]
+    created = item["created_at"]
     return V1ItemOut(
-        id=item["id"], tier=item.get("tier") or "low", facts=ItemFacts.model_validate(item["facts"]),
+        id=item["id"], created_at=created.isoformat() if isinstance(created, datetime) else str(created), tier=item.get("tier") or "low", facts=ItemFacts.model_validate(item["facts"]),
         generated_url=display, crop_url=urls.get(item.get("crop_path") or "", display),
         cutout_url=urls.get(item.get("cutout_path") or ""),
         back=BackOut(generated_url=urls[back["generated_path"]], cutout_url=urls.get(back.get("cutout_path") or ""),
@@ -134,6 +135,12 @@ def list_items(user: User = Depends(current_user), store=Depends(get_store)):
     items = store.list_items(user.id)
     urls = store.sign([p for item in items for p in _paths(item)])
     return V1ItemsResponse(items=[item_out(item, urls) for item in items if item["display_path"] in urls])
+
+
+@router.get("/items/{item_id}", response_model=V1ItemOut)
+def get_item(item_id: str, user: User = Depends(current_user), store=Depends(get_store)):
+    item = _own_item(store, user, item_id)
+    return item_out(item, store.sign(_paths(item)))
 
 
 @router.patch("/items/{item_id}", response_model=V1ItemOut)

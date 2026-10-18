@@ -17,6 +17,7 @@ export type ItemFacts = {
 };
 
 export type RunItem = {
+  id?: string;  // set by the account API (/v1); local items are addressed by run/photo/item
   item_id: string;
   photo_name: string;
   tier: Tier;
@@ -57,6 +58,7 @@ export type Turn = {
 };
 
 export type ClosetItem = {
+  id?: string;  // set by the account API (/v1); local items are addressed by run/photo/item
   run_id: string;
   photo_name: string;
   item_id: string;

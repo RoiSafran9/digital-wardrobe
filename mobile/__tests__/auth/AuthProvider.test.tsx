@@ -4,6 +4,8 @@ import { act, render, screen, waitFor } from "@testing-library/react-native";
 import { AuthProvider, useAuth } from "../../src/auth/AuthProvider";
 
 jest.mock("../../src/auth/supabase", () => ({ createSupabase: jest.fn(), watchAppState: jest.fn(() => () => {}) }));
+jest.mock("../../src/api/client", () => ({ configureApi: jest.fn() }));
+import { configureApi } from "../../src/api/client";
 
 const URL_CONFIG = { mode: "supabase" as const, url: "https://x.supabase.co", publishableKey: "sb_publishable_x" };
 const session = (email: string) => ({ access_token: "t", user: { id: `id-${email}`, email } });
@@ -127,4 +129,39 @@ test("unmounting unsubscribes", async () => {
   await waitFor(() => expect(client.auth.onAuthStateChange).toHaveBeenCalled());
   view.unmount();
   expect(client.unsubscribe).toHaveBeenCalled();
+});
+
+
+describe("account API wiring", () => {
+  beforeEach(() => (configureApi as jest.Mock).mockClear());
+
+  test("signed in: the API gets the session's current token", async () => {
+    const client = fakeClient(session("a@b.com"));
+    renderWith({ config: URL_CONFIG, client: client as never });
+    await screen.findByText("signedIn|a@b.com|id-a@b.com");
+    const config = (configureApi as jest.Mock).mock.calls.at(-1)[0];
+    client.auth.getSession.mockResolvedValueOnce({ data: { session: { ...session("a@b.com"), access_token: "fresh" } }, error: null } as never);
+    await expect(config.getToken()).resolves.toBe("fresh");
+  });
+
+  test("an expired session reported by the API signs out", async () => {
+    const client = fakeClient(session("a@b.com"));
+    renderWith({ config: URL_CONFIG, client: client as never });
+    await screen.findByText("signedIn|a@b.com|id-a@b.com");
+    await act(async () => (configureApi as jest.Mock).mock.calls.at(-1)[0].onUnauthorized());
+    expect(screen.getByText("signedOut|-|-")).toBeTruthy();
+  });
+
+  test("signing out disconnects the API", async () => {
+    const client = fakeClient(session("a@b.com"));
+    renderWith({ config: URL_CONFIG, client: client as never });
+    await screen.findByText("signedIn|a@b.com|id-a@b.com");
+    await act(() => api.signOut());
+    expect((configureApi as jest.Mock).mock.calls.at(-1)[0]).toBeNull();
+  });
+
+  test("local mode never configures the account API", () => {
+    renderWith({ config: { mode: "local" } });
+    expect((configureApi as jest.Mock).mock.calls.every(([c]) => c === null)).toBe(true);
+  });
 });

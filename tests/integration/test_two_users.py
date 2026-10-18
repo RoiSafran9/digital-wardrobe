@@ -115,8 +115,9 @@ async def test_an_unusable_photo_fails_with_its_reason_and_leaves_no_files(clien
     job_id = capture(client, a["token"])
     await drain(store, factory(FakeVision([])))
     job = client.get(f"/v1/jobs/{job_id}", headers=bearer(a["token"])).json()
-    # No garment found is not an error: the job finishes with no pieces, like the local app.
-    assert job["status"] == "succeeded" and job["item_ids"] == []
+    # No garment found fails with a reason the app shows; finishing "succeeded" with no pieces
+    # looked like a hang on the phone.
+    assert job["status"] == "failed" and "no garment" in job["error"].lower()
     assert {i["id"] for i in closet(client, a["token"])} == before
     assert store.list_paths(f"{a['id']}/jobs/{job_id}") == []
 

@@ -10,6 +10,7 @@ export type AuthContextValue = {
   status: AuthStatus;
   email: string | null;
   userId: string | null;
+  reason?: string;  // why sign-in isn't configured (status "unconfigured")
   sendCode(email: string): Promise<void>;
   verifyCode(email: string, code: string): Promise<void>;
   signOut(): Promise<void>;
@@ -69,6 +70,7 @@ export function AuthProvider({ children, config = authConfig, client: injected }
     setState(fromSession(null));
   }, [client]);
 
-  const value = useMemo(() => ({ ...state, sendCode, verifyCode, signOut }), [state, sendCode, verifyCode, signOut]);
+  const reason = config.mode === "unconfigured" ? config.reason : undefined;
+  const value = useMemo(() => ({ ...state, reason, sendCode, verifyCode, signOut }), [state, reason, sendCode, verifyCode, signOut]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -45,6 +45,7 @@ test("local mode never touches Supabase", async () => {
 test("unconfigured builds report it", () => {
   renderWith({ config: { mode: "unconfigured", reason: "missing" } });
   expect(screen.getByText("unconfigured|-|-")).toBeTruthy();
+  expect(api.reason).toBe("missing");
 });
 
 test("no stored session → signed out", async () => {

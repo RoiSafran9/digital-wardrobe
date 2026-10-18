@@ -2,15 +2,15 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getItems } from "../src/api/client";
-import { GarmentImage } from "../src/components/GarmentImage";
-import { ItemSheet } from "../src/components/ItemSheet";
-import { PillButton } from "../src/components/PillButton";
-import { Rise } from "../src/motion/Rise";
-import type { ClosetItem } from "../src/api/types";
-import { categoryOf } from "../src/categories";
-import { asList, capitalize, colors, hitSlopFor, radius, type } from "../src/theme";
-import { PressScale } from "../src/motion/PressScale";
+import { getItems } from "../../src/api/client";
+import { GarmentImage } from "../../src/components/GarmentImage";
+import { ItemSheet } from "../../src/components/ItemSheet";
+import { PillButton } from "../../src/components/PillButton";
+import { Rise } from "../../src/motion/Rise";
+import type { ClosetItem } from "../../src/api/types";
+import { categoryOf } from "../../src/categories";
+import { asList, capitalize, colors, hitSlopFor, radius, type } from "../../src/theme";
+import { PressScale } from "../../src/motion/PressScale";
 
 const ALL = "All";
 

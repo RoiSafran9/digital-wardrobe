@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
-import HomeScreen from "../app/index";
+import HomeScreen from "../app/(tabs)/index";
 import { LastRunProvider } from "../src/store/lastRun";
 import { getItems, postRun, updateItem } from "../src/api/client";
 import { pickPhoto } from "../src/photoPicker";

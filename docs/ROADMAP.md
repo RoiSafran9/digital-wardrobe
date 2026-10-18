@@ -41,6 +41,19 @@ See README → "Owner setup still open": hosted Supabase SMTP and email template
 - [ ] F&F grant process, activity tracking and cost caps
 - [ ] Before paid public launch: payments and receipt verification, refunds and App Store compliance
 
+## Outfit Photo import — planned, NOT BUILT
+
+- [x] Agree product direction: keep existing garment-only photos, add a **worn-outfit two-stage import** for a photo of a person wearing clothes.
+- [x] Agree Stage 1 detection/candidate preview + user selection, followed by Stage 2 quality generation **only for selected garments**.
+- [x] Agree Stage 1 detection is **free to the user**; confirmed successful high-quality front-image actions use the existing wallet and server price list.
+- [x] Document [feature spec](superpowers/specs/2026-10-19-outfit-photo-two-step-design.md) and [Claude Code research/POC task](tasks/outfit-photo-two-step-flow.md).
+- [ ] Research current worn-garment extraction methods, quality and commercial/privacy licenses.
+- [ ] Offline POC on consented person photos compared to the same real garments laid flat; report fidelity and cost.
+- [ ] Approve launch scope, candidate UI, uncertainty disclosure and subjective failure/regeneration credit policy.
+- [ ] Implement secure candidate scan with previews, selection and confirmation (do not modify existing garment-only route).
+- [ ] Integrate HQ generation, per-selected action billing, privacy tests and resumable jobs, all behind feature flag.
+- [ ] Implement iPhone candidate selection and final review; limited F&F experiment.
+
 ## Next (candidates — owner to pick)
 - AI Credits: try the credits UI on the phone, choose prices, switch billing on for F&F; purchases later
 - A cloud host for the backend and worker (or the documented tunnel), then EAS build and TestFlight

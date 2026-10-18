@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import { configureApi } from "../api/client";
 import { authConfig, type AuthConfig } from "./config";
 import { authErrorMessage, normalizeEmail } from "./messages";
 import { createSupabase, watchAppState } from "./supabase";
@@ -69,6 +70,19 @@ export function AuthProvider({ children, config = authConfig, client: injected }
     if (error) await client.auth.signOut({ scope: "local" });
     setState(fromSession(null));
   }, [client]);
+
+  // Signed in, the wardrobe API uses the account endpoints with the session's current token.
+  useEffect(() => {
+    if (!client || state.status !== "signedIn") {
+      configureApi(null);
+      return;
+    }
+    configureApi({
+      getToken: async () => (await client.auth.getSession()).data.session?.access_token ?? null,
+      onUnauthorized: () => { void signOut(); },
+    });
+    return () => configureApi(null);
+  }, [client, state.status, state.userId, signOut]);
 
   const reason = config.mode === "unconfigured" ? config.reason : undefined;
   const value = useMemo(() => ({ ...state, reason, sendCode, verifyCode, signOut }), [state, reason, sendCode, verifyCode, signOut]);

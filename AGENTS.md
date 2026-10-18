@@ -22,3 +22,7 @@ This repository is the **single source of truth** for Digital Wardrobe code, con
 
 ## Coordination across ChatGPT and Claude Code
 Both agents work on the same GitHub repository. Check recent commits and PRs before editing overlapping areas. Prefer separate branches, scoped files and reviewed merges; GitHub is authoritative over remembered chat instructions.
+
+## Credits decision
+- Target user-account rollout has **one unified AI Credits wallet per account**, a remaining-balance meter in Account, and an in-app price list. This is approved product direction, not existing implementation.
+- Do not invent numerical credit prices or purchase plans. Implement only on reviewed scope: server-owned price table, authenticated user identity, atomic/idempotent ledger changes, clear user confirmation and failure reconciliation. See `docs/CREDITS.md`.

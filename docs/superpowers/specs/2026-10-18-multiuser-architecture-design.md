@@ -114,6 +114,7 @@ generation_jobs   id uuid pk, user_id uuid not null, item_id uuid null → wardr
 Two real accounts on two devices: add, view, edit, soft-delete/restore, back photo, 360, failures and retries, restart persistence, sign-out clears local caches. Update PRODUCT.md, README, ARCHITECTURE, ROADMAP to the shipped state.
 
 ### M5 — Credit system readiness
+> **As built:** see [credits integration notes](2026-10-18-credits-readiness.md) — `cost_credits` on jobs, a server price list (unset = off), a `CreditGate` called at reserve/release/settle/refund, `GET /v1/prices`. Wallet/ledger designed, not built.
 Document the ledger/wallet integration points from §5 against PR #2's credits spec once merged; add `cost_credits` hooks where jobs are created; no purchasing.
 
 ## 7. What the owner must do (cannot be done by an agent)

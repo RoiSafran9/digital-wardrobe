@@ -35,7 +35,7 @@ Fidelity to the owner's actual garment, not an idealized product shot. Each piec
 - Backend runs on the owner's Mac (FastAPI); the phone reaches it over the LAN. Signed in, items, photos and AI jobs are stored per account in Supabase and follow the account across devices; work keeps running on the server if the phone disconnects. Without Supabase settings the app runs in local mode over `runs/`. No cloud host yet.
 - Removed items are soft-deleted and recoverable.
 - Optional 360 "on body" view per item: four AI ghost-mannequin angles (~16¢, ~1 min), made on request in the background and labelled as AI.
-- AI Credits are a confirmed direction (one balance per account); prices, charging and purchases are not built.
+- AI Credits are a confirmed direction (one balance per account). Jobs record their cost and the backend has the hooks to hold, charge and refund credits, but billing is off: no prices, balances or purchases yet.
 - Undecided: outfit features, the cloud host, and opening the product to other users.
 
 ## Brand Commitments

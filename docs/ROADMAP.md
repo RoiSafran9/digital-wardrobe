@@ -48,7 +48,7 @@
   - [x] M3a — backend: token verification, `/v1` jobs/items API, worker, `claim_generation_job`, `runs/` migration script
   - [x] M3b — app: send the token, use `/v1`, poll jobs, signed image URLs (server stays on the Mac for now; tunnel documented, not set up)
 - [x] M4 — End-to-end two-user verification (automated on the local stack; on-device check by the owner), storage sweeper, product docs updated
-- [ ] M5 — Credit system readiness (integration points only, no payments)
+- [x] M5 — Credit system readiness: job `cost_credits`, server price list (off), credit gate hooks, `GET /v1/prices`, [integration notes](superpowers/specs/2026-10-18-credits-readiness.md); no payments
 
 ## Post-MVP ideas (not committed)
 Regeneration of **already-saved** items using retained originals (**explicitly deferred post-MVP**); advanced AI wardrobe search; outfit creation; outfit recommendations; weather/context-based suggestions. **Private retention of originals, normalized AI-generated garment images and basic metadata suggestions are part of MVP.**

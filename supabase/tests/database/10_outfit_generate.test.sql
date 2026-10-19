@@ -24,8 +24,8 @@ select throws_ok($$insert into public.generation_jobs (user_id, kind, idempotenc
   values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'outfit_generate', 'gen-4', 'a0000000-0000-4000-8000-00000000000a', '{}')$$,
   '23514', null, 'a generate job needs at least one pick');
 select throws_ok($$insert into public.generation_jobs (user_id, kind, idempotency_key, scan_job_id, candidate_ids)
-  values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'garment', 'gen-5', 'a0000000-0000-4000-8000-00000000000a', '{c1}')$$,
-  '23514', null, 'only a generate job points at a scan');
+  values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'outfit_scan', 'gen-5', 'a0000000-0000-4000-8000-00000000000a', '{c1}')$$,
+  '23514', null, 'only generate jobs (and garment jobs from a pre-scan) point at a scan');
 select throws_ok($$insert into public.generation_jobs (user_id, kind, idempotency_key, max_items) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'outfit_scan', 'scan-x', 1)$$,
   '23514', null, 'a scan still approves no fronts');
 

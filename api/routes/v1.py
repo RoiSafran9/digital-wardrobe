@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from api.auth import User, current_user
 from api.credits import MAX_FRONTS, InsufficientCredits, action_for, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
-from api.schemas import (AccountDeleteIn, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
+from api.schemas import (AccountDeleteIn, GarmentGenerateIn, GarmentScanOut, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
                          TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse)
 from api.store import INTERRUPTED, get_store
 from pipeline.types import ItemFacts
@@ -38,7 +38,7 @@ def job_out(job: dict) -> JobOut:
 
 
 def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, gate, prices, item_id: str | None = None,
-              max_items: int | None = None, out=job_out, extra: dict | None = None):
+              max_items: int | None = None, out=job_out, extra: dict | None = None, input_path: str | None = None):
     """Create (or find) the user's job for this key; a new job answers 202, a repeat 200."""
     existing = store.job_by_key(user.id, key)
     if existing:
@@ -60,18 +60,18 @@ def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, 
     except InsufficientCredits:
         raise HTTPException(402, "not enough AI credits")
 
-    input_path, created = None, False
+    uploaded, created = None, False
     try:
         if ext:
-            input_path = f"{user.id}/jobs/{job_id}/upload{ext}"
+            input_path = uploaded = f"{user.id}/jobs/{job_id}/upload{ext}"
             store.upload(input_path, photo.file.read(), PHOTO_TYPES[ext])
         job, created = store.create_job(user.id, kind, key, input_path, item_id=item_id, job_id=job_id, cost_credits=cost,
                                         max_items=max_items, extra=extra)
     finally:
         if not created:
             gate.release(job_id)  # failed, or lost a race with the same key: one hold per job
-            if input_path:
-                store.remove([input_path])
+            if uploaded:
+                store.remove([uploaded])
     return JSONResponse(status_code=202 if created else 200, content=out(job).model_dump())
 
 
@@ -477,3 +477,65 @@ def add_push_token(body: PushTokenIn | None = None, user: User = Depends(current
 def remove_push_token(body: PushTokenIn | None = None, user: User = Depends(current_user), store=Depends(get_store)):
     store.remove_push_token(user.id, _push_token(body))
     return Response(status_code=204)
+
+
+GARMENT_SCAN_PICKS_MAX = MAX_FRONTS
+
+
+def garment_scan_out(job: dict) -> GarmentScanOut:
+    r = job.get("result") or {}
+    return GarmentScanOut(id=job["id"], status=job["status"], error=job.get("error"), quality=r.get("quality"),
+                          pieces=r.get("pieces") or [], reason=r.get("reason"), image=r.get("image"),
+                          expires_at=r.get("expires_at"))
+
+
+def _own_garment_scan(store, user: User, scan_id: str) -> dict:
+    job = store.get_job(user.id, scan_id) if _is_uuid(scan_id) else None
+    if job is None or job["kind"] != "garment_scan":
+        raise NOT_FOUND
+    if _scan_expired(job):
+        raise HTTPException(410, "this scan has expired — take the photo again")
+    return job
+
+
+@router.post("/garment-scans", response_model=GarmentScanOut, status_code=202)
+def create_garment_scan(user: User = Depends(current_user), photo: UploadFile | None = File(None),
+                        key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
+                        prices=Depends(get_prices)):
+    """Find the pieces in a garment photo before paying for any (spec D6 b). Free: no hold, no charge, nothing made."""
+    if photo is None:
+        raise HTTPException(400, "no photo provided")
+    existing = store.job_by_key(user.id, key)
+    if existing and existing["kind"] != "garment_scan":
+        raise HTTPException(409, "this Idempotency-Key was already used for another request")
+    return queue_job(store, user, "garment_scan", key, photo, gate, prices, out=garment_scan_out)
+
+
+@router.get("/garment-scans/{scan_id}", response_model=GarmentScanOut)
+def get_garment_scan(scan_id: str, user: User = Depends(current_user), store=Depends(get_store)):
+    return garment_scan_out(_own_garment_scan(store, user, scan_id))
+
+
+@router.post("/garment-scans/{scan_id}/generate", response_model=JobOut, status_code=202)
+def generate_from_garment_scan(scan_id: str, body: GarmentGenerateIn, user: User = Depends(current_user),
+                               key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
+                               prices=Depends(get_prices)):
+    """Front images for the picked pieces only, from the scan's stored detection (no second detection call).
+    Holds price × picks and charges per front made, like max_fronts; 409 if the price changed."""
+    existing = store.job_by_key(user.id, key)
+    if existing:
+        if existing["kind"] != "garment":
+            raise HTTPException(409, "this Idempotency-Key was already used for another request")
+        return JSONResponse(status_code=200, content=job_out(existing).model_dump())
+    scan = _own_garment_scan(store, user, scan_id)
+    if scan["status"] != "succeeded":
+        raise HTTPException(409, "the scan isn't finished yet")
+    picks = list(dict.fromkeys(body.piece_indexes))
+    known = {p["index"] for p in (scan.get("result") or {}).get("pieces") or []}
+    if not 1 <= len(picks) <= GARMENT_SCAN_PICKS_MAX or any(p not in known for p in picks):
+        raise HTTPException(400, "pick pieces found in this photo")
+    if body.expected_unit_price != job_cost(prices, "garment"):
+        raise HTTPException(409, "the price changed — check it and confirm again")
+    return queue_job(store, user, "garment", key, None, gate, prices, max_items=len(picks) if prices else None,
+                     input_path=scan["input_path"],
+                     extra={"scan_job_id": scan["id"], "candidate_ids": [f"p{i}" for i in picks]})

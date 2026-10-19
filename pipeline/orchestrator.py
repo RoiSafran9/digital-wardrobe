@@ -73,7 +73,8 @@ def _largest(items, max_items: int | None):
 
 async def run_photo(image_path: str, output_dir: str, providers: Providers,
                      logger: RunLogger, max_attempts: int = 2, max_items: int | None = None,
-                     on_progress: Callable[[int, int], None] | None = None) -> dict:
+                     on_progress: Callable[[int, int], None] | None = None,
+                     detected_items: list | None = None) -> dict:
     """max_items caps how many front images are made (the fronts the user approved paying for);
     pieces past the cap are counted in over_limit and not generated. None = no cap.
     on_progress(done, total) is told the piece count after detection and again as each piece finishes
@@ -82,7 +83,9 @@ async def run_photo(image_path: str, output_dir: str, providers: Providers,
     if quality.status == "retake":
         return {"quality": quality, "items": [], "failed": [], "over_limit": 0}
 
-    detected_items = await stage1_detect_facts.run(image_path, providers.vision)
+    # A free garment pre-scan already ran detection: the picked pieces come in and no second call is made.
+    if detected_items is None:
+        detected_items = await stage1_detect_facts.run(image_path, providers.vision)
     if not detected_items:
         return {"quality": quality, "items": [], "failed": [], "over_limit": 0}
     included_items = _largest(detected_items, max_items)

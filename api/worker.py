@@ -20,7 +20,8 @@ from pipeline.orchestrator import Providers, run_photo
 from api import push
 from pipeline.run_log import RunLogger
 from pipeline.turn import TURN_ORDER, TurnFailed, refs_for_item, run_turn
-from pipeline.types import ItemFacts
+from pipeline.types import DetectedItemWithFacts, ItemFacts
+from pipeline.stages import stage0_quality
 
 log = logging.getLogger("wardrobe.worker")
 
@@ -98,6 +99,47 @@ def _item_id(job_id: str, piece_index: int) -> str:
     return str(uuid.uuid5(uuid.UUID(job_id), f"piece-{piece_index}"))
 
 
+GARMENT_SCAN_TTL = timedelta(hours=24)
+
+
+async def _garment_scan(store, job, providers, tmp, uploads):
+    """Free pre-scan (spec D6 b): the quality check and the usual detection call; nothing is generated.
+    The photo stays for the generate step; the detection is kept so that step makes no second call."""
+    ext = os.path.splitext(job["input_path"])[1] or ".jpg"
+    photo = _write(os.path.join(tmp, "upload" + ext), store.download(job["input_path"]))
+    image = cv2.imread(photo)
+    size = {"width": int(image.shape[1]), "height": int(image.shape[0])} if image is not None else None
+    expires = (datetime.now(timezone.utc) + GARMENT_SCAN_TTL).isoformat()
+    quality = stage0_quality.run(photo)
+    base = {"quality": {"status": quality.status, "reason": quality.reason}, "image": size, "expires_at": expires}
+    if quality.status == "retake":
+        return {**base, "pieces": [], "detected": []}
+    vision = providers(RunLogger(os.path.join(tmp, "scan_log.jsonl"))).vision
+    try:
+        found = await vision.detect_items_with_facts(photo)
+    except ValueError as e:
+        raise JobRejected(_sentence(str(e))) from e
+    included = [d for d in found if d.included]
+    pieces = [{"index": i, "category": str(d.category.value), "colors": list(d.colors.value) if isinstance(d.colors.value, list) else [d.colors.value],
+               "box": d.box.model_dump()} for i, d in enumerate(included)]
+    return {**base, "pieces": pieces, "detected": [d.model_dump(mode="json") for d in included],
+            "reason": None if included else _sentence(_nothing_found(found))}
+
+
+def _picked_detection(store, job) -> list | None:
+    """For a garment job made from a pre-scan: the stored detection of the picked pieces, in pick order."""
+    if not job.get("scan_job_id"):
+        return None
+    scan = store.get_job(job["user_id"], job["scan_job_id"])
+    result = (scan or {}).get("result") or {}
+    expires = result.get("expires_at")
+    if not scan or scan["kind"] != "garment_scan" or not expires or datetime.fromisoformat(expires) <= datetime.now(timezone.utc):
+        raise JobRejected("This photo's scan has expired — take the photo again")
+    detected = [DetectedItemWithFacts.model_validate(d) for d in result.get("detected") or []]
+    picks = [int(cid[1:]) for cid in job.get("candidate_ids") or []]
+    return [detected[i] for i in picks if 0 <= i < len(detected)]
+
+
 async def _garment(store, job, providers, tmp, uploads):
     user = job["user_id"]
     ext = os.path.splitext(job["input_path"])[1] or ".jpg"
@@ -109,8 +151,9 @@ async def _garment(store, job, providers, tmp, uploads):
     vision = _RecordingVision(given.vision)
     try:
         # With billing on, make at most the fronts the user approved paying for (largest pieces first).
+        picked = _picked_detection(store, job)
         outcome = await run_photo(photo, output_dir, Providers(vision=vision, imagegen=given.imagegen), logger,
-                                  max_items=job.get("max_items"),
+                                  max_items=None if picked is not None else job.get("max_items"), detected_items=picked,
                                   on_progress=lambda done, total: store.set_job_progress(job["id"], done, total))
     except ValueError as e:
         raise JobRejected(_sentence(str(e))) from e
@@ -338,7 +381,7 @@ async def _outfit_regenerate(store, job, providers, tmp, uploads):
 
 
 HANDLERS = {"garment": _garment, "back": _back, "turn": _turn, "outfit_scan": _outfit_scan,
-            "outfit_generate": _outfit_generate, "outfit_regenerate": _outfit_regenerate}
+            "outfit_generate": _outfit_generate, "outfit_regenerate": _outfit_regenerate, "garment_scan": _garment_scan}
 
 
 def _fail(store, gate, job, uploads, message):

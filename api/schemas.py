@@ -106,7 +106,7 @@ class AccountDeleteIn(BaseModel):
 
 class JobOut(BaseModel):
     id: str
-    kind: Literal["garment", "back", "turn", "outfit_scan", "outfit_generate", "outfit_regenerate"]
+    kind: Literal["garment", "back", "turn", "outfit_scan", "outfit_generate", "outfit_regenerate", "garment_scan"]
     status: Literal["queued", "running", "succeeded", "failed", "canceled"]
     error: str | None = None
     item_id: str | None = None
@@ -196,6 +196,30 @@ class OutfitGenerateIn(BaseModel):
     candidate_ids: list[str]
     expected_unit_price: int | None = None
     corrections: dict[str, str] | None = None  # candidate id -> the type the user corrected it to
+
+
+class GarmentPieceOut(BaseModel):
+    index: int
+    category: str
+    colors: list[str] = []
+    box: dict[str, float]  # pixels on the uploaded photo
+
+
+class GarmentScanOut(BaseModel):
+    """A free pre-scan of a garment photo: the pieces found, before anything is made or charged."""
+    id: str
+    status: Literal["queued", "running", "succeeded", "failed", "canceled"]
+    error: str | None = None
+    quality: QualityOut | None = None
+    pieces: list[GarmentPieceOut] = []
+    reason: str | None = None  # why nothing can be added, when no piece was found
+    image: dict[str, int] | None = None  # the photo's size, for drawing the boxes
+    expires_at: str | None = None
+
+
+class GarmentGenerateIn(BaseModel):
+    piece_indexes: list[int]
+    expected_unit_price: int | None = None
 
 
 class RegionBox(BaseModel):

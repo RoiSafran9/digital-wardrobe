@@ -1,7 +1,8 @@
 """Remove Storage files nobody can reach any more.
 
 - every file of an account that was deleted (deleting an account removes its rows, not its files);
-- job uploads whose job finished or was never recorded, once older than 7 days.
+- job uploads whose job finished or was never recorded, once older than 7 days;
+- Outfit Photo scans (the person photo and its preview crops), once older than 24 hours.
 
 Item files are always kept, including those of removed (soft-deleted) items, so removal stays recoverable.
 Dry run by default.
@@ -18,6 +19,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 MAX_UPLOAD_AGE = timedelta(days=7)
+# Outfit Photo scans: the person photo and its preview crops go after 24 hours (they may show faces and homes).
+MAX_SCAN_AGE = timedelta(hours=24)
 FINISHED = {"succeeded", "failed", "canceled", None}  # None: the job row doesn't exist
 
 
@@ -47,11 +50,17 @@ def plan_sweep(store, now: datetime) -> Sweep:
             users[owner] = store.user_exists(owner)
         if not users[owner]:
             sweep.remove.append(path)
+        elif parts[1] == "scans" and len(parts) >= 3:
+            if now - modified < MAX_SCAN_AGE:
+                sweep.kept[path] = "scan preview newer than 24 hours"
+            else:
+                sweep.remove.append(path)
         elif parts[1] == "jobs" and len(parts) >= 3:
+            scan = store.job_kind(parts[2]) == "outfit_scan"
             if store.job_status(parts[2]) not in FINISHED:
                 sweep.kept[path] = "job still running"
-            elif now - modified < MAX_UPLOAD_AGE:
-                sweep.kept[path] = "newer than 7 days"
+            elif now - modified < (MAX_SCAN_AGE if scan else MAX_UPLOAD_AGE):
+                sweep.kept[path] = "scan photo newer than 24 hours" if scan else "newer than 7 days"
             else:
                 sweep.remove.append(path)
     return sweep

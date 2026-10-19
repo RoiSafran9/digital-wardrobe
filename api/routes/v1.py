@@ -10,7 +10,8 @@ from fastapi.responses import JSONResponse
 from api.auth import User, current_user
 from api.credits import MAX_FRONTS, InsufficientCredits, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
-from api.schemas import BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, PricesOut, TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse
+from api.schemas import (BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitScanOut, PricesOut,
+                         TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse)
 from api.store import INTERRUPTED, get_store
 from pipeline.types import ItemFacts
 
@@ -36,11 +37,11 @@ def job_out(job: dict) -> JobOut:
 
 
 def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, gate, prices, item_id: str | None = None,
-              max_items: int | None = None):
+              max_items: int | None = None, out=job_out):
     """Create (or find) the user's job for this key; a new job answers 202, a repeat 200."""
     existing = store.job_by_key(user.id, key)
     if existing:
-        return JSONResponse(status_code=200, content=job_out(existing).model_dump())
+        return JSONResponse(status_code=200, content=out(existing).model_dump())
     if store.profile_status(user.id) == "disabled":
         raise HTTPException(403, "this account is disabled")
 
@@ -70,7 +71,7 @@ def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, 
             gate.release(job_id)  # failed, or lost a race with the same key: one hold per job
             if input_path:
                 store.remove([input_path])
-    return JSONResponse(status_code=202 if created else 200, content=job_out(job).model_dump())
+    return JSONResponse(status_code=202 if created else 200, content=out(job).model_dump())
 
 
 @router.post("/jobs", response_model=JobOut, status_code=202)
@@ -234,3 +235,52 @@ def start_turn(item_id: str, user: User = Depends(current_user), key: str = Depe
     if response.status_code == 202:
         store.update_item(user.id, item_id, {"turn": {"state": "running", "started_at": datetime.now(timezone.utc).isoformat()}})
     return response
+
+
+# --- Outfit Photo (M1): free candidate scan of a photo of a person wearing clothes -------------------
+# Off unless the server starts with WARDROBE_OUTFIT=on: then the routes answer 404 like any unknown path.
+
+def outfit_on():
+    if os.environ.get("WARDROBE_OUTFIT", "").strip().lower() != "on":
+        raise NOT_FOUND
+
+
+def _scan_expired(job: dict) -> bool:
+    expires = (job.get("result") or {}).get("expires_at")
+    return bool(expires) and datetime.fromisoformat(expires) <= datetime.now(timezone.utc)
+
+
+def scan_out(job: dict, store) -> OutfitScanOut:
+    result = job.get("result") or {}
+    candidates = result.get("candidates") or []
+    urls = store.sign([c["preview_path"] for c in candidates if c.get("preview_path")])
+    return OutfitScanOut(
+        id=job["id"], status=job["status"], error=job.get("error"), scene_kind=result.get("scene_kind"),
+        person_count=result.get("person_count"), expires_at=result.get("expires_at"),
+        candidates=[OutfitCandidateOut(**{k: v for k, v in c.items() if k in OutfitCandidateOut.model_fields},
+                                       preview_url=urls.get(c.get("preview_path") or ""))
+                    for c in candidates])
+
+
+@router.post("/outfit-scans", response_model=OutfitScanOut, status_code=202, dependencies=[Depends(outfit_on)])
+def create_outfit_scan(user: User = Depends(current_user), photo: UploadFile | None = File(None),
+                       key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
+                       prices=Depends(get_prices)):
+    """Stage 1: find the garments a person is wearing. Free to the user (no hold, no charge); nothing is generated."""
+    if photo is None:
+        raise HTTPException(400, "no photo provided")
+    existing = store.job_by_key(user.id, key)
+    if existing and existing["kind"] != "outfit_scan":
+        raise HTTPException(409, "this Idempotency-Key was already used for another request")
+    return queue_job(store, user, "outfit_scan", key, photo, gate, prices, out=lambda job: scan_out(job, store))
+
+
+@router.get("/outfit-scans/{scan_id}", response_model=OutfitScanOut, dependencies=[Depends(outfit_on)])
+def get_outfit_scan(scan_id: str, user: User = Depends(current_user), store=Depends(get_store)):
+    """The scan and its candidates with short-lived preview URLs; someone else's scan answers 404, an expired one 410."""
+    job = store.get_job(user.id, scan_id) if _is_uuid(scan_id) else None
+    if job is None or job["kind"] != "outfit_scan":
+        raise NOT_FOUND
+    if _scan_expired(job):
+        raise HTTPException(410, "this scan has expired — scan the photo again")
+    return scan_out(job, store)

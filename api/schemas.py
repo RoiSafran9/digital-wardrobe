@@ -83,7 +83,7 @@ class ItemPatch(BaseModel):
 
 class JobOut(BaseModel):
     id: str
-    kind: Literal["garment", "back", "turn"]
+    kind: Literal["garment", "back", "turn", "outfit_scan"]
     status: Literal["queued", "running", "succeeded", "failed", "canceled"]
     error: str | None = None
     item_id: str | None = None
@@ -136,3 +136,29 @@ class V1ItemOut(BaseModel):
 
 class V1ItemsResponse(BaseModel):
     items: list[V1ItemOut]
+
+
+class OutfitCandidateOut(BaseModel):
+    """One garment found on the person. Plain-language uncertainty, no numeric confidence."""
+    id: str
+    category: str
+    layer: Literal["outer", "inner", "single"]
+    visibility: Literal["full", "partial", "low"]
+    colors: list[str]
+    pattern: str
+    visible_text: str
+    description: str
+    hidden_parts: list[str]
+    uncertainty: str
+    box: dict[str, float]  # pixels on the uploaded photo
+    preview_url: str | None = None  # short-lived signed crop of the real photo
+
+
+class OutfitScanOut(BaseModel):
+    id: str
+    status: Literal["queued", "running", "succeeded", "failed", "canceled"]
+    error: str | None = None
+    scene_kind: Literal["worn", "flat", "mixed", "none"] | None = None
+    person_count: int | None = None
+    candidates: list[OutfitCandidateOut] = []
+    expires_at: str | None = None

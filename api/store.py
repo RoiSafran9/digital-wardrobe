@@ -163,6 +163,10 @@ class MemoryStore:
         job = self.jobs.get(job_id)
         return job["status"] if job else None
 
+    def job_kind(self, job_id):
+        job = self.jobs.get(job_id)
+        return job["kind"] if job else None
+
     # Jobs
     def _by_key(self, user_id, key):
         return next((copy.deepcopy(j) for j in self.jobs.values()
@@ -374,6 +378,10 @@ class SupabaseStore:
     def job_status(self, job_id):
         row = self._one("generation_jobs", {"id": f"eq.{job_id}"})
         return row["status"] if row else None
+
+    def job_kind(self, job_id):
+        row = self._one("generation_jobs", {"id": f"eq.{job_id}"})
+        return row["kind"] if row else None
 
     # Jobs
     def job_by_key(self, user_id, key):

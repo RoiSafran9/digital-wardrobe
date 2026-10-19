@@ -1,6 +1,6 @@
 # Outfit Photo Import — M0 Research, Proof of Concept and Integration Proposal
 
-**Status:** M0 (research + offline PoC). Nothing here is wired into the app, the API, the worker, the database or billing.
+**Status:** M0 (research + offline PoC) done. **M1 (free scan backend) built behind `WARDROBE_OUTFIT=on`, off by default** (§8). No generation, app or billing changes.
 **Spec:** [Two Input Flows — Garment Photo and Worn Outfit Photo](2026-10-19-outfit-photo-two-step-design.md) · **Task:** [execution brief](../../tasks/outfit-photo-two-step-flow.md)
 **Date:** 2026-10-19
 
@@ -168,6 +168,8 @@ Run on 2026-10-19 with the owner's approval (cap US$1.50). **Tiny, synthetic sam
 - No real person photos, no same-garment pairs photographed by the owner on a body → the core fidelity question on **real phone photos is still open** [needs owner, D7].
 - No FASHN parser / TryOffDiff comparison (licenses rule them out for the product; GPU needed).
 - No routing measurement on ordinary garment photos (v4 behaviour on worn photos is an assumption).
+- **Real web photos (attempted 2026-10-19):** the owner allowed public photos of people. I chose Creative Commons street-style photos via Openverse instead of paparazzi shots (copyright). The search worked (198 candidates), but the session's permission policy blocked bulk-downloading photos of people, so none were evaluated. To unblock: the owner downloads or approves a set, or puts 30–50 photos in `runs/outfit_poc/photos/`, and the harness runs as is.
+- **Newer image models (attempted 2026-10-19):** a try-off comparison of `gemini-3.1-flash-image` and `gemini-nano-banana-2.1` on the 4 hardest pieces was refused by the API: `402 RESOURCE_EXHAUSTED — prepayment credits are depleted` ($0 spent). That also stops every image call the live app makes until the AI Studio balance is topped up. The harness takes `--model` and is ready to rerun.
 - No app, API, DB, billing or pgTAP changes; Jest/tsc/pgTAP not needed.
 
 ---
@@ -266,7 +268,21 @@ Thresholds are set **with the owner after the baseline**, not invented here. Sug
 
 ---
 
-## 8. סיכום לבעלים (עברית)
+## 8. M1 as built (2026-10-19)
+
+The owner said to continue with everything, so M1 uses the recommended defaults: D1 explicit mode, D6 24 h retention, D9 JSONB result. Changing any of them later is cheap.
+
+- **Migration** `20261019120000_outfit_scan_jobs.sql`: job kind `outfit_scan`; the item rule is now "only back/360 have an item"; a scan can never carry `cost_credits` or `max_items`. pgTAP `09_outfit_scan.test.sql` checks a free scan with no item, refused prices and fronts, refused cross-user upload paths, a 360 that still needs its item, and two-account isolation. It was run together with the existing 03/05/06/08 tests in a rolled-back transaction on the local stack (58 assertions, all pass). The local database was left unmigrated.
+- **API** (`api/routes/v1.py`): `POST /v1/outfit-scans` (photo + `Idempotency-Key`; a key already used for another kind → 409) and `GET /v1/outfit-scans/{id}` (owner only, else 404; expired → 410). Both answer 404 unless `WARDROBE_OUTFIT=on`.
+- **Worker** (`api/worker.py`): the `outfit_scan` handler uses `GeminiProvider.detect_outfit` (prompt `outfit_detect_v2`), uploads up to 8 preview crops, stores the candidates and `expires_at`, and never generates. Free kinds skip settle and refund. Existing jobs behave exactly as before.
+- **Credits** (`api/credits.py`): `FREE_KINDS = ("outfit_scan",)` → no price lookup, no hold, even with billing on.
+- **Retention** (`scripts/sweep_storage.py`): scan photos and previews go after 24 h; other job uploads keep their 7-day rule.
+- **Tests:** `tests/api/test_outfit_scan.py` (10) and a provider test. Full suite 321 passed, 25 skipped.
+- **Not built:** M2 (select → quote → generate → review, wallet hold/settle), the M3 app screens, and quality-gate thresholds for person photos (stage0 is not run on scans: its blur and size thresholds were tuned for flat-lays).
+
+---
+
+## 9. סיכום לבעלים (עברית)
 
 **מה נעשה:** מחקר, ארכיטקטורה מוצעת, ו-PoC מקומי בלבד (לא באפליקציה, לא ב-API, לא בחיוב). נבנה מבחן "לולאה סגורה": מתמונות אמיתיות של הבגדים שלך נוצרו 4 תמונות סינתטיות של אדם לובש אותם (בלי פנים), ואז זיהוי → בחירה → יצירת תמונת קטלוג, והשוואה לתמונה האמיתית של אותו בגד.
 
@@ -274,4 +290,6 @@ Thresholds are set **with the owner after the baseline**, not invented here. Sug
 
 **חשוב:** הדגימה קטנה וסינתטית, ולכן זו ראיה לכיוון ולא אחוז הצלחה. השאלה המרכזית, נאמנות בתמונות טלפון אמיתיות, עדיין פתוחה.
 
-**החלטות שצריך ממך לפני M1/M2:** D1 בחירת מצב מפורשת במסך ההוספה · D2 בלי נעליים בגרסה הראשונה · D3 מה עושים עם בגד שרובו מוסתר · D4 חיוב כשמשתמש פוסל תוצאה שהצליחה · D5 שלב אישור לפני שמירה · D6 מחיקת תמונת האדם (מוצע: עד 24 שעות) · D7 ‏30–50 תמונות שלך/של חברים עם אישור, ותקציב של ~‎$3–5 · D8 מעבר מ-gemini-2.5-flash-image שהוכרז כ-deprecated · D9 שמירת הסריקה ב-JSONB · D10 לאמץ את פרומפט היצירה v2 כבסיס ל-M2 ולהמשיך לשפר אותו על תמונות אמיתיות.
+**עדכון:** M1 נבנה (סריקה חינמית בצד השרת, כבויה כברירת מחדל, `WARDROBE_OUTFIT=on`). שני דברים חסומים: יתרת ה-Gemini נגמרה (שגיאה 402, שעוצרת גם את יצירת התמונות באפליקציה החיה) — צריך להטעין ב-AI Studio; והורדה מרובה של תמונות אנשים מהאינטרנט נחסמה על ידי מדיניות ההרשאות — צריך לאשר או לשים תמונות בתיקייה.
+
+**החלטות שצריך ממך לפני M2:** D1 בחירת מצב מפורשת במסך ההוספה · D2 בלי נעליים בגרסה הראשונה · D3 מה עושים עם בגד שרובו מוסתר · D4 חיוב כשמשתמש פוסל תוצאה שהצליחה · D5 שלב אישור לפני שמירה · D6 מחיקת תמונת האדם (מוצע: עד 24 שעות) · D7 ‏30–50 תמונות שלך/של חברים עם אישור, ותקציב של ~‎$3–5 · D8 מעבר מ-gemini-2.5-flash-image שהוכרז כ-deprecated · D9 שמירת הסריקה ב-JSONB · D10 לאמץ את פרומפט היצירה v2 כבסיס ל-M2 ולהמשיך לשפר אותו על תמונות אמיתיות.

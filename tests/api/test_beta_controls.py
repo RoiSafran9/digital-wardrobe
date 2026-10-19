@@ -85,3 +85,37 @@ def test_health_needs_no_sign_in_and_reports_the_queue(store):
     body = TestClient(app).get("/healthz").json()
     assert body["status"] == "ok" and body["queued"] == 1 and body["oldest_queued_seconds"] >= 0
     assert "generation" in body
+
+
+# --- daily AI budget -----------------------------------------------------------------------------------
+
+def test_a_daily_cap_on_ai_jobs_stops_new_paid_work_for_everyone(client, store, monkeypatch):
+    monkeypatch.setenv("WARDROBE_DAILY_AI_JOBS", "2")
+    codes = [client.post("/v1/jobs", files={"photo": PHOTO}, headers=as_user(u, f"j{i}")).status_code
+             for i, u in enumerate([A, B, A])]
+    assert codes == [202, 202, 503]
+    r = client.post("/v1/jobs", files={"photo": PHOTO}, headers=as_user(B, "j9"))
+    assert "today" in r.json()["error"].lower()
+    # Free scans are limited separately, not by the daily AI budget.
+    assert client.post("/v1/garment-scans", files={"photo": PHOTO}, headers=as_user(A, "s1")).status_code == 202
+
+
+def test_no_daily_cap_by_default(client):
+    codes = [client.post("/v1/jobs", files={"photo": PHOTO}, headers=as_user(A, f"j{i}")).status_code for i in range(3)]
+    assert codes == [202, 202, 202]
+
+
+# --- scheduled cleanup --------------------------------------------------------------------------------
+
+async def test_the_worker_sweeps_storage_on_schedule_only_when_asked(store, monkeypatch):
+    from api import worker
+    calls = []
+    monkeypatch.setattr(worker, "_sweep_now", lambda s: calls.append(s))
+    monkeypatch.delenv("WARDROBE_SWEEP_EVERY_HOURS", raising=False)
+    assert worker.maybe_sweep(store, now=10_000.0) is False and calls == []
+    monkeypatch.setenv("WARDROBE_SWEEP_EVERY_HOURS", "6")
+    worker._last_sweep = None
+    assert worker.maybe_sweep(store, now=10_000.0) is True
+    assert worker.maybe_sweep(store, now=10_000.0 + 3600) is False  # not yet due
+    assert worker.maybe_sweep(store, now=10_000.0 + 6 * 3600) is True
+    assert len(calls) == 2

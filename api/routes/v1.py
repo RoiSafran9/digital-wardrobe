@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Respo
 from fastapi.responses import JSONResponse
 from api.auth import User, current_user
 from api.credits import CreditError
-from api.controls import WELCOME_KEY, free_scans_per_hour, generation_on, invited, require_generation, welcome_credits
+from api.controls import BUDGET_USED, PAID_KINDS, WELCOME_KEY, daily_ai_jobs, start_of_day, free_scans_per_hour, generation_on, invited, require_generation, welcome_credits
 from api.credits import MAX_FRONTS, InsufficientCredits, action_for, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
 from api.schemas import (AccountDeleteIn, GarmentGenerateIn, GarmentScanOut, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
@@ -45,6 +45,9 @@ def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, 
     existing = store.job_by_key(user.id, key)
     if existing:
         return JSONResponse(status_code=200, content=out(existing).model_dump())
+    cap = daily_ai_jobs()
+    if cap and kind in PAID_KINDS and store.count_jobs_since(PAID_KINDS, start_of_day()) >= cap:
+        raise HTTPException(503, BUDGET_USED)  # the operator's cost guard: nothing is held or uploaded
     if store.profile_status(user.id) == "disabled":
         raise HTTPException(403, "this account is disabled")
 

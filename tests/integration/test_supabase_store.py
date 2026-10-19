@@ -126,3 +126,13 @@ def test_recent_job_count_and_queue_stats(settings, users):
     assert store.count_recent_jobs(uid, ("garment_scan", "outfit_scan"), 3600) == before + 1
     stats = store.queue_stats()
     assert stats["queued"] >= 1 and stats["oldest_queued_seconds"] >= 0
+
+
+def test_count_jobs_since_counts_across_accounts(settings, users):
+    from datetime import datetime, timedelta, timezone
+    from api.store import SupabaseStore
+    store = SupabaseStore(settings)
+    since = datetime.now(timezone.utc) - timedelta(seconds=5)
+    before = store.count_jobs_since(("garment",), since)
+    store.create_job(users[1]["id"], "garment", "count-me", None)
+    assert store.count_jobs_since(("garment",), since) == before + 1

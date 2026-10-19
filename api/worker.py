@@ -431,6 +431,29 @@ async def run_once(store, provider_factory, lease_seconds: int = 600, gate: Cred
 
 RECONCILE_EVERY_SECONDS = 60
 _last_beat: float | None = None
+_last_sweep: float | None = None
+
+
+def _sweep_now(store) -> None:
+    from scripts.sweep_storage import apply_sweep, plan_sweep
+    sweep = plan_sweep(store, datetime.now(timezone.utc))
+    apply_sweep(store, sweep)
+    log.info("storage sweep removed %s files", len(sweep.remove))
+
+
+def maybe_sweep(store, now: float) -> bool:
+    """Run the Storage cleanup when WARDROBE_SWEEP_EVERY_HOURS says it's due. True if it ran."""
+    global _last_sweep
+    from api.controls import sweep_every_hours
+    every = sweep_every_hours() * 3600
+    if not every or (_last_sweep is not None and now - _last_sweep < every):
+        return False
+    _last_sweep = now
+    try:
+        _sweep_now(store)
+    except Exception:
+        log.exception("storage sweep failed; it will run again next time")
+    return True
 
 
 def last_beat() -> float | None:
@@ -451,6 +474,10 @@ async def run_forever(store, provider_factory, idle_seconds: float = 2.0, gate: 
                 gate.reconcile()  # AI Credits: end holds of expired, crashed or never-created jobs
             except Exception:
                 log.exception("credit reconcile failed")
+        try:
+            await asyncio.to_thread(maybe_sweep, store, now)
+        except Exception:
+            log.exception("storage sweep check failed")
         try:
             worked = await run_once(store, provider_factory, gate=gate)
         except Exception:

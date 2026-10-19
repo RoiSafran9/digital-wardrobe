@@ -129,7 +129,7 @@ The closet is a directory scan (newest first). The full original photo is not ke
 `pytest` (providers faked), `npx jest`, `npx tsc --noEmit`, `npx supabase test db`; `pytest tests/integration` with the local Supabase stack running. Manual runs on real photos for prompt or generation changes; manual phone checks for UI.
 
 ## Beta controls
-Server environment only (`api/controls.py`): `WARDROBE_GENERATION=off` pauses every route that starts AI work (503; `/v1/prices` says `generation: false`, Add shows a notice); `WARDROBE_FREE_SCANS_PER_HOUR` caps free scans per account (429, default 30); `WARDROBE_WELCOME_CREDITS` + `WARDROBE_BETA_INVITES` control the one-time welcome grant. Gemini calls time out (detection 60 s, images 120 s).
+Server environment only (`api/controls.py`): `WARDROBE_GENERATION=off` pauses every route that starts AI work (503; `/v1/prices` says `generation: false`, Add shows a notice); `WARDROBE_FREE_SCANS_PER_HOUR` caps free scans per account (429, default 30); `WARDROBE_WELCOME_CREDITS` + `WARDROBE_BETA_INVITES` control the one-time welcome grant; `WARDROBE_DAILY_AI_JOBS` caps paid AI jobs per UTC day across all accounts (503, nothing held); `WARDROBE_SWEEP_EVERY_HOURS` runs the Storage cleanup inside the worker. Gemini calls time out (detection 60 s, images 120 s). `/healthz` also reports `ai_jobs_today`.
 
 ## Known limits
 - The server and worker run on the owner's Mac; off-LAN access (tunnel) is documented, not set up. No cloud host.

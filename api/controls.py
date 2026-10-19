@@ -5,6 +5,8 @@
                                per hour; they cost the app real AI calls. Default 30.
 - WARDROBE_WELCOME_CREDITS     the one-time welcome grant for an invited account; unset/0 = off.
 - WARDROBE_BETA_INVITES        who gets it: "*" for everyone, or a comma list of emails and @domains.
+- WARDROBE_DAILY_AI_JOBS       a hard cap on paid AI jobs per UTC day across all accounts (cost guard); unset = none.
+- WARDROBE_SWEEP_EVERY_HOURS   run the Storage cleanup (scripts/sweep_storage.py) in the worker this often; unset = never.
 """
 import os
 from fastapi import HTTPException
@@ -47,3 +49,21 @@ def invited(email: str | None) -> bool:
         return False
     domain = "@" + email.rsplit("@", 1)[-1]
     return email in entries or domain in entries
+
+
+PAID_KINDS = ("garment", "back", "turn", "outfit_generate", "outfit_regenerate")
+BUDGET_USED = "Today's AI budget is used up — try again tomorrow"
+
+
+def daily_ai_jobs() -> int:
+    return _int_env("WARDROBE_DAILY_AI_JOBS", 0)
+
+
+def sweep_every_hours() -> int:
+    return _int_env("WARDROBE_SWEEP_EVERY_HOURS", 0)
+
+
+def start_of_day():
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    return now.replace(hour=0, minute=0, second=0, microsecond=0)

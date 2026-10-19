@@ -19,6 +19,13 @@ from typing import Mapping, Protocol
 ACTIONS = ("garment", "back", "turn")
 # Job kinds that are never charged (Outfit Photo scans: detection and previews are free to the user).
 FREE_KINDS = ("outfit_scan",)
+# Job kinds billed as another action: an Outfit Photo generate job makes front images, one per picked garment.
+ACTION_OF = {"outfit_generate": "garment"}
+
+
+def action_for(kind: str) -> str:
+    """The priced action a job kind is billed as (its own name unless mapped)."""
+    return ACTION_OF.get(kind, kind)
 MAX_FRONTS = 20  # matches the generation_jobs.max_items check
 RECONCILE_GRACE_SECONDS = 900  # a hold whose job never appeared is released after this
 
@@ -54,9 +61,10 @@ def job_cost(prices: dict[str, int], kind: str) -> int | None:
     """Credits one action of this kind costs; None while billing is off. Unpriced is an error, not free."""
     if not prices or kind in FREE_KINDS:
         return None
-    if kind not in prices:
-        raise RuntimeError(f"no AI Credits price for {kind!r}")
-    return prices[kind]
+    action = action_for(kind)
+    if action not in prices:
+        raise RuntimeError(f"no AI Credits price for {action!r}")
+    return prices[action]
 
 
 def hold_amount(cost: int | None, max_items: int | None) -> int | None:

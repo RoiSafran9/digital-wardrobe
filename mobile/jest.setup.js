@@ -15,3 +15,8 @@ jest.mock("expo-camera", () => {
 });
 // jest-expo's native image-size mock expects a callback RN no longer passes; answer like the real one.
 require("react-native").Image.getSize = jest.fn((uri, success) => { if (success) success(300, 400); return Promise.resolve({ width: 300, height: 400 }); });
+jest.mock("expo-notifications", () => ({
+  setNotificationHandler: jest.fn(),
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  getExpoPushTokenAsync: jest.fn(async () => ({ data: "ExponentPushToken[test]" })),
+}));

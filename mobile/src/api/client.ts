@@ -133,6 +133,15 @@ export async function setDisplayName(name: string): Promise<v1.Profile> {
   return v1.setDisplayName(account, name);
 }
 
+export async function registerPushToken(token: string): Promise<void> {
+  if (!account) throw new Error("Notifications need a signed-in account.");
+  return v1.registerPushToken(account, token);
+}
+
+export async function unregisterPushToken(token: string): Promise<void> {
+  if (account) return v1.unregisterPushToken(account, token);
+}
+
 export const DELETE_NEEDS_ACCOUNT = "There's no account to delete in local mode.";
 
 export async function deleteAccount(): Promise<void> {

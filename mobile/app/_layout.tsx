@@ -8,6 +8,7 @@ import { colors } from "../src/theme";
 import { ToastProvider } from "../src/ui";
 import { AppearanceProvider } from "../src/appearance";
 import { ProfileProvider } from "../src/profile";
+import { NotifyProvider } from "../src/notifications";
 
 export default function RootLayout() {
   // Instrument Serif, for the editorial headlines only. If it fails to load, iOS falls back to the
@@ -19,10 +20,12 @@ export default function RootLayout() {
       <AuthProvider>
         <CreditsProvider>
           <ProfileProvider>
-            <ToastProvider>
-              <StatusBar style="auto" />
-              <AppShell />
-            </ToastProvider>
+            <NotifyProvider>
+              <ToastProvider>
+                <StatusBar style="auto" />
+                <AppShell />
+              </ToastProvider>
+            </NotifyProvider>
           </ProfileProvider>
         </CreditsProvider>
       </AuthProvider>

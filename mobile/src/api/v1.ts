@@ -167,6 +167,19 @@ export async function setDisplayName(account: Account, name: string): Promise<Pr
   });
 }
 
+// 'Notify when ready': this phone's Expo push token, on or off.
+export async function registerPushToken(account: Account, token: string): Promise<void> {
+  await call<void>(account, "/v1/push-token", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }),
+  });
+}
+
+export async function unregisterPushToken(account: Account, token: string): Promise<void> {
+  await call<void>(account, "/v1/push-token", {
+    method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }),
+  });
+}
+
 // Deletes the signed-in account and everything in it (the server takes the user from the token).
 export async function deleteAccount(account: Account): Promise<void> {
   await call<void>(account, "/v1/account", {

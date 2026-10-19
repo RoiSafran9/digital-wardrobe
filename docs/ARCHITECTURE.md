@@ -70,6 +70,7 @@ Every model call is appended to a `run_log.jsonl` (stage, model, prompt version,
 | DELETE | `/v1/items/{id}` | soft delete (`deleted_at`) |
 | POST | `/v1/items/{id}/back`, `/v1/items/{id}/turn` | start a back or 360 job |
 | GET / PATCH | `/v1/profile` | the user's email and `display_name` (1–40 trimmed characters, set at sign-up; backend-only writes) |
+| POST / DELETE | `/v1/push-token` | `{token}`: this phone's Expo push token for "Notify when ready" (`push_tokens`, backend-only). The worker pushes through Expo's push service (`api/push.py`, on a side thread) when a garment, back, 360 or outfit job finishes or fails for good. The app's Expo project id is in `mobile/app.json` (`extra.eas.projectId`). |
 | DELETE | `/v1/account` | body `{"confirm": "DELETE"}`: deletes the signed-in user through the Supabase admin API (profile, items, jobs, wallet and ledger cascade), then removes their files; leftovers are caught by `scripts/sweep_storage.py` |
 | POST | `/v1/outfit-scans` | **Outfit Photo M1, off unless `WARDROBE_OUTFIT=on`:** free scan of a photo of a person wearing clothes (job kind `outfit_scan`, never priced or held) |
 | GET | `/v1/outfit-scans/{id}` | the scan's candidates (category, layer, visibility, plain-language uncertainty, box) with signed preview crops; `410` after it expires (24 h) |

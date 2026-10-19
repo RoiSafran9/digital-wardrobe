@@ -7,15 +7,18 @@ import { Icon } from "../../src/components/Icon";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { TRY_AS_OUTFIT, isWornRejection } from "../../src/outfit/outfit";
 import { useCaptureJobs } from "../../src/store/captureJobs";
+import { useNotify } from "../../src/notifications";
 import { colors, hitSlopFor, radius, type } from "../../src/theme";
 import { Button, InsufficientCreditsSheet } from "../../src/ui";
 
 export const LEAVE_NOTE = "You can leave this screen — your pieces will appear in your closet.";
+export const LEAVE_NOTE_NOTIFY = "You can leave this screen. We'll notify you when your pieces are ready.";
 
 export default function ProcessingScreen() {
   const router = useRouter();
   const { current, retry, clear } = useCaptureJobs();
   const { billing, outfit: outfitOn, prices } = useCredits();
+  const { enabled: notifying } = useNotify();
 
   useEffect(() => {
     if (current?.status === "done") router.replace("/capture/results");
@@ -77,7 +80,7 @@ export default function ProcessingScreen() {
           stages={GARMENT_STAGES}
           startedAt={current.startedAt}
           title={fronts ? `Creating up to ${fronts} catalog ${fronts === 1 ? "image" : "images"}` : "Creating catalog images"}
-          note={LEAVE_NOTE}
+          note={notifying ? LEAVE_NOTE_NOTIFY : LEAVE_NOTE}
           count={current.progress}
         />
       </ScrollView>

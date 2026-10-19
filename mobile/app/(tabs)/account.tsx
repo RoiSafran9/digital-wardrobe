@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { deleteAccount, getCredits } from "../../src/api/client";
@@ -10,6 +10,7 @@ import { APP_NAME } from "../../src/appName";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { NAME_MAX, useProfile, validName } from "../../src/profile";
+import { useNotify } from "../../src/notifications";
 import { BILLING_OFF, creditsLabel, entryLabel, entrySign, visibleEntries } from "../../src/credits/credits";
 import { colors, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
 import { Button, GroupedList, ProgressBar, Row, Segmented, Sheet } from "../../src/ui";
@@ -36,6 +37,7 @@ export default function AccountScreen() {
   const { status, email, signOut } = useAuth();
   const { billing, prices, credits, outfit, refresh } = useCredits();
   const { mode, setMode } = useAppearance();
+  const notify = useNotify();
   const [how, setHow] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -97,6 +99,13 @@ export default function AccountScreen() {
           value={mode} onChange={(m) => void setMode(m)}
         />
       </View>
+      {status === "signedIn" ? (
+        <Row label="Notify when ready" accessory={
+          <Switch accessibilityLabel="Notify when ready" value={notify.enabled} disabled={notify.busy}
+            onValueChange={(on) => void notify.setEnabled(on)} />
+        } />
+      ) : null}
+      {notify.error ? <Text style={{ ...type.footnote, color: colors.destructive, paddingHorizontal: 16, paddingBottom: 10 }}>{notify.error}</Text> : null}
       <Row label="Help & Support" accessory="chevron" onPress={() => router.push("/help")} />
       <Row label="Privacy" accessory="chevron" onPress={() => router.push("/privacy")} />
     </GroupedList>

@@ -3,7 +3,6 @@ import { Alert } from "react-native";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import AccountScreen from "../app/(tabs)/account";
 import { AuthContext, type AuthContextValue } from "../src/auth/AuthProvider";
-import { pressAlertButton } from "./helpers/alert";
 import { CreditsContext, type CreditsValue } from "../src/credits/CreditsProvider";
 import type { Credits } from "../src/api/types";
 
@@ -37,50 +36,61 @@ function renderAccount(overrides: Partial<AuthContextValue>, credits: Partial<Cr
 beforeEach(() => jest.spyOn(Alert, "alert").mockImplementation(() => {}));
 afterEach(() => jest.restoreAllMocks());
 
-test("signed in: shows the email and signs out after confirming", () => {
+test("signed in: shows the email with initials and signs out after confirming", () => {
   const auth = renderAccount({});
   expect(screen.getByText("Account")).toBeTruthy();
   expect(screen.getByText("me@example.com")).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "Sign out" }));
-  expect(Alert.alert).toHaveBeenCalledWith("Sign out?", "You'll need a new email code to sign back in.", expect.any(Array));
+  expect(screen.getByText("M")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "Sign Out" }));
+  expect(screen.getByText("You'll need a new email code to sign back in.")).toBeTruthy();
   expect(auth.signOut).not.toHaveBeenCalled();
-  pressAlertButton("Sign out");
+  const buttons = screen.getAllByRole("button", { name: "Sign Out" });
+  fireEvent.press(buttons[buttons.length - 1]);
   expect(auth.signOut).toHaveBeenCalled();
 });
 
 test("cancelling keeps you signed in", () => {
   const auth = renderAccount({});
-  fireEvent.press(screen.getByRole("button", { name: "Sign out" }));
-  pressAlertButton("Cancel");
+  fireEvent.press(screen.getByRole("button", { name: "Sign Out" }));
+  fireEvent.press(screen.getByRole("button", { name: "Cancel" }));
   expect(auth.signOut).not.toHaveBeenCalled();
 });
 
-test("local mode: explains it and offers no sign out", () => {
-  renderAccount({ status: "local", email: null, userId: null });
+test("local mode: explains it, offers appearance, no sign out and no credits", () => {
+  renderAccount({ status: "local", email: null, userId: null }, { credits: CREDITS, billing: true });
   expect(screen.getByText("Local mode")).toBeTruthy();
   expect(screen.getByText("Not signed in. Your items live on your computer's wardrobe server.")).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Sign Out" })).toBeNull();
+  expect(screen.queryByText("AI Credits")).toBeNull();
+  expect(screen.getByRole("tab", { name: "System" })).toBeTruthy();
 });
 
-test("shows available credits, what's held and an honest used-of-granted line", () => {
+test("the balance is out of what the server granted, never a fixed number", () => {
   const { refreshCredits } = renderAccount({}, { credits: CREDITS, billing: true, prices: { garment: 1, back: 1, turn: 3 } });
   expect(refreshCredits).toHaveBeenCalled();  // refreshed when Account comes into view
-  expect(screen.getByText("196 available")).toBeTruthy();
+  expect(screen.getByLabelText("196 AI credits available")).toBeTruthy();
+  expect(screen.getByText("of 200 granted")).toBeTruthy();
+  expect(screen.getByText("3 used so far · enough for about 196 more garments")).toBeTruthy();
   expect(screen.getByText("1 held for work in progress")).toBeTruthy();
-  expect(screen.getByText("Used 3 of 200 credits granted")).toBeTruthy();
-  expect(screen.queryByText(/Billing is off/)).toBeNull();
+  expect(screen.getByLabelText("Credits left").props.accessibilityValue).toEqual({ min: 0, max: 100, now: 98 });
+});
+
+test("three credits or fewer turns the meter amber and says so", () => {
+  renderAccount({}, { credits: { ...CREDITS, available: 3, balance: 3, held: 0 }, billing: true, prices: { garment: 1 } });
+  expect(screen.getByText("Running low. Ask the app owner for more credits.")).toBeTruthy();
 });
 
 test("billing off: the balance shows, with no price list and a plain note", () => {
   renderAccount({}, { credits: { ...CREDITS, held: 0 }, billing: false });
-  expect(screen.getByText("196 available")).toBeTruthy();
+  expect(screen.getByLabelText("196 AI credits available")).toBeTruthy();
   expect(screen.getByText("Billing is off — AI actions don't use credits yet.")).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "AI Price List" })).toBeNull();
+  expect(screen.queryByText("Price list")).toBeNull();
 });
 
 test("the price list comes from the server", () => {
-  renderAccount({}, { credits: CREDITS, billing: true, prices: { garment: 1, back: 2, turn: 5 } });
-  fireEvent.press(screen.getByRole("button", { name: "AI Price List" }));
+  renderAccount({}, { credits: CREDITS, billing: true, prices: { garment: 1, back: 2, turn: 5 }, outfit: true });
+  expect(screen.getByText("Garment detection")).toBeTruthy();
+  expect(screen.getByText("Free")).toBeTruthy();
   expect(screen.getByText("Front image")).toBeTruthy();
   expect(screen.getByText("2 credits")).toBeTruthy();
   expect(screen.getByText("5 credits")).toBeTruthy();
@@ -88,7 +98,6 @@ test("the price list comes from the server", () => {
 
 test("activity lists grants and charges, not internal holds and releases", () => {
   renderAccount({}, { credits: CREDITS });
-  fireEvent.press(screen.getByRole("button", { name: "Credit activity" }));
   expect(screen.getByText("F&F pilot")).toBeTruthy();
   expect(screen.getByText("+200")).toBeTruthy();
   expect(screen.getByText("360 view")).toBeTruthy();
@@ -96,7 +105,21 @@ test("activity lists grants and charges, not internal holds and releases", () =>
   expect(screen.queryByText("−1")).toBeNull();
 });
 
-test("no credits card before credits load or in local mode", () => {
+test("How it works explains the three rules", () => {
+  renderAccount({}, { credits: CREDITS, billing: true, prices: { garment: 1 } });
+  fireEvent.press(screen.getByRole("button", { name: "How it works" }));
+  expect(screen.getByText("Finding garments is free")).toBeTruthy();
+  expect(screen.getByText("You always see the cost first")).toBeTruthy();
+});
+
+test("no credits card before credits load", () => {
   renderAccount({});
   expect(screen.queryByText("AI Credits")).toBeNull();
+});
+
+test("initials come from the email's name part", () => {
+  const { initials } = require("../app/(tabs)/account");
+  expect(initials("maya.chen@icloud.com")).toBe("MC");
+  expect(initials("roi@x.com")).toBe("R");
+  expect(initials("1234@x.com")).toBe("?");
 });

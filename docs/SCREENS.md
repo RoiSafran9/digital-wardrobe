@@ -1,5 +1,5 @@
 # Screen Map — Digital Wardrobe
-Status: **As built** · Updated: 2026-10-19 (redesign M6)
+Status: **As built** · Updated: 2026-10-19 (redesign M7)
 
 Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: system font, grouped backgrounds, one blue tint, light/dark, Reduce Motion). Feature specs: `docs/superpowers/specs/`.
 
@@ -40,8 +40,14 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 - **Saved** (`capture/saved.tsx`, shared with outfits): fan of up to three tiles with a green check, "Added to your closet" (Instrument Serif), "N new pieces · N credits used" (credits only while billing is on), View Closet / Add More Clothes.
 
 ## 4. Account (`mobile/app/(tabs)/account.tsx`)
-- Signed in: email, the AI Credits card (see Credits below) and Sign Out (confirmed).
-- Local mode: a "Local mode" row: "Not signed in. Your items live on your computer's wardrobe server."
+- Grouped list on the warm-grey background.
+- Profile card: initials from the email in an accent-wash circle, and the email (no name is stored).
+- **AI Credits** card (account mode): the available balance (54pt), "of N granted" from the server, an 8pt bar of available/granted that turns amber at ≤ 3 credits, "N used so far · enough for about N more garments" (or "Running low. Ask the app owner for more credits."), "N held for work in progress". Billing off: "Billing is off — AI actions don't use credits yet." **How it works** opens a sheet with three points (detection free · pay per image created · cost always shown first).
+- **Price list** (billing on): Garment detection Free (when outfits are offered), Front image, Back image, 360° view — all from the server.
+- **Recent activity:** grants (+N, green) and charges (−N) with dates, newest first, "Show more".
+- **Settings:** Appearance System / Light / Dark (remembered on the device; default System). No notification switch, help or privacy rows yet (spec D10, D17).
+- **Sign Out** (confirmed in a sheet). Version footer. Delete Account arrives with its backend (M8).
+- Local mode: a "Local mode" card ("Not signed in. Your items live on your computer's wardrobe server.") and Appearance.
 
 ## 5. Garment Details (`mobile/src/components/ItemSheet.tsx`)
 - Native page sheet that pages between items; × (round fill button), "N / M" counter, **Edit** (accent text).
@@ -63,14 +69,11 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 - Light and dark mode readable; Reduce Motion removes drift, count-up and scrub crossfades.
 
 ## Credits (account mode; [spec](superpowers/specs/2026-10-18-ai-credits-app-design.md))
-All figures come from the server (`GET /v1/credits`, `GET /v1/prices`); nothing is shown in local mode.
-- **Account → AI Credits card:** "N available", "N held for work in progress" while a job runs, a 2pt bar with "Used X of Y credits granted". Billing off: "Billing is off — AI actions don't use credits yet." and no price list.
-- **AI Price List** (billing on): Front image / Back image / 360 view with their credits, and how multi-piece photos, 360 and failures are charged.
-- **Credit activity:** grants (+N, with the grant's reason) and charges (−N, the action), newest first, "Show more".
-- **Capture (Add and Home), billing on:** "Pieces in this photo" stepper (1 up to what you can afford, max 20) with "Up to N front images · N credits · M available. You pay only for the pieces made; extra pieces aren't made." Not enough credits: buttons off and an explanation. Just added notes pieces left out over the limit.
-- **+ Back** (billing on): the photo-source sheet says the cost and balance; not enough credits → an explanation instead.
-- **View in 360** (billing on): the note adds the cost; pressing asks "Make a 360 view?" first.
-- Out of credits anywhere: "Not enough AI credits. Ask the app owner for more."
+All figures come from the server (`GET /v1/credits`, `GET /v1/prices`); nothing is shown in local mode, and no amount is shown while billing is off.
+- **Account:** balance of what was granted, meter, price list and activity (§4). Home shows the balance as a pill.
+- **Every paid action** (front images, back image, 360, outfit pieces) confirms its cost first: a sheet with the line items, Total and "Balance X → Y" (garment photos: the preview's "Pieces in this photo" quote, CREDITS §6).
+- **Not enough credits** (before starting, or when the server answers 402): a sheet with "available / needed credits needed", an amber bar, the reason and "Ask the app owner for more credits."; Adjust Selection where the user can lower the cost, View Price List otherwise. No purchase UI.
+- **Starter credits:** a one-time "A welcome gift" screen after sign-in when the server has granted credits (§0).
 
 ## Outfit Photo import (built behind `WARDROBE_OUTFIT=on`, off by default; account mode only)
 

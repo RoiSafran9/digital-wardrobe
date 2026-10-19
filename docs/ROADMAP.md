@@ -1,5 +1,5 @@
 # Roadmap — Digital Wardrobe
-Updated: 2026-10-18
+Updated: 2026-10-19
 
 ## Done — single-owner app
 - [x] Pipeline: quality check → one Gemini call for detection + facts → crop → catalog image with color/text check and retries → tier
@@ -31,7 +31,8 @@ See README → "Owner setup still open": hosted Supabase SMTP and email template
 - [x] Authentication and user-scoped data, migration from local files (multi-user M1–M4)
 - [x] Hooks: job `cost_credits`, server price list (off), credit gate, `GET /v1/prices` (M5)
 - [x] Select provisional F&F action rates for planning: **1 front image / 1 back image / 3 for one 360** (not active billing)
-- [ ] Approve manual regeneration policy, F&F grant size and public-launch pack prices
+- [x] Approve **free one-time automatic starter Credits for each new eligible F&F beta user**, no in-app purchases; exact amount not finalized (40 proposed)
+- [ ] Approve starter size (40 suggested), invite/eligibility policy and manual top-up limits; manual regeneration policy and any later public pricing
 - [x] Wallet M1: per-account wallet, append-only ledger, backend-only grant/reserve/settle/release with idempotency, admin F&F grant CLI, read-only `GET /v1/credits` — billing still off ([design](superpowers/specs/2026-10-18-ai-credits-wallet-design.md), [brief](tasks/ai-credits-wallet-implementation.md))
 - [x] Approve multi-piece accounting: the user approves a maximum number of fronts per photo; charged only for fronts made
 - [x] Billing M2: wallet-backed `CreditGate` behind `WARDROBE_BILLING=on` (off by default), `max_fronts` cap, partial settle, reconcile of expired/crashed jobs, fail-closed prices
@@ -54,9 +55,25 @@ See README → "Owner setup still open": hosted Supabase SMTP and email template
 - [ ] Integrate HQ generation, per-selected action billing, privacy tests and resumable jobs, all behind feature flag.
 - [ ] Implement iPhone candidate selection and final review; limited F&F experiment.
 
+## TestFlight Friends & Family Beta — next main delivery
+
+**Master plan:** [Beta TestFlight launch master plan](tasks/testflight-beta-launch-master-plan.md)  
+**Claude Code kickoff:** [Beta TestFlight staged execution](tasks/testflight-beta-launch-execution.md)
+
+- [x] Set beta direction: real iOS TestFlight build, external friends, per-account private wardrobe, free welcome Credits, **no purchases/subscriptions/payments**.
+- [ ] Freeze beta scope and migrate to a supported image-generation model with full regression evaluation; decide whether Outfit import is ready or feature-flagged for a follow-up.
+- [ ] Complete hosted Supabase auth SMTP, verified 6-digit email codes, database migrations, private storage and off-LAN account tests.
+- [ ] Implement secure **exactly-once welcome-credit grant** after verified eligible signup (40 proposed, configurable; reuse existing wallet/ledger).
+- [ ] Host FastAPI + durable worker behind HTTPS, with bounded concurrency, timeouts, restarts and cost controls; demonstrate mobile data usage with Mac off.
+- [ ] Ship user-initiated account deletion covering private photos, privacy/support links and safe data retention policy.
+- [ ] Add operational health, AI cost monitoring, free Outfit-detection rate limits, provider-failure kill switch, privacy-respecting basic analytics.
+- [ ] Configure Apple Developer / Expo EAS / `mobile/app.json` app identity / `mobile/eas.json`; build and upload store-signed TestFlight IPA.
+- [ ] Run end-to-end phone checks and Apple external Beta App Review; invite 3–5 testers, then 10–20 if stable.
+- [ ] Confirm 5 friends can complete sign-in → free credits → create → reopen closet with no help, on networks other than home Wi-Fi.
+
 ## Next (candidates — owner to pick)
-- AI Credits: try the credits UI on the phone, choose prices, switch billing on for F&F; purchases later
-- A cloud host for the backend and worker (or the documented tunnel), then EAS build and TestFlight
+- Main priority: follow the [Friends & Family Beta Master Plan](tasks/testflight-beta-launch-master-plan.md) — no payment integration in beta
+- Complete startup credit grant, cloud hosting, hosted auth and native iOS/TestFlight distribution
 - Better print fidelity across 360 angles (prompt work or a better model)
 - Labeled eval set of real photos to measure fidelity
 - Restore a removed item inside the app

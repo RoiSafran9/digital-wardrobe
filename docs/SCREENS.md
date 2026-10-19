@@ -1,5 +1,5 @@
 # Screen Map — Digital Wardrobe
-Status: **As built** · Updated: 2026-10-19 (redesign M3)
+Status: **As built** · Updated: 2026-10-19 (redesign M4)
 
 Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: system font, grouped backgrounds, one blue tint, light/dark, Reduce Motion). Feature specs: `docs/superpowers/specs/`.
 
@@ -40,12 +40,17 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 - Signed in: email, the AI Credits card (see Credits below) and Sign Out (confirmed).
 - Local mode: a "Local mode" row: "Not signed in. Your items live on your computer's wardrobe server."
 
-## 5. Item sheet (`mobile/src/components/ItemSheet.tsx`)
-- Large garment image (cutout → white image → crop fallback); Front/Back segmented control when a back exists, "+ Back" when not.
-- 360: "View in 360" with a cost/time note → staged status while running (sheet can close and reopen) → turnable view labelled "360 · AI view" → on failure the error and "Try again".
-- Facts as a grouped list: Colors, Pattern, Details, Text, Back text.
-- Edit (category, colors, pattern, details, text), with an unsaved-changes guard.
-- "Remove from closet" as the last row, confirmed; recoverable on the server.
+## 5. Garment Details (`mobile/src/components/ItemSheet.tsx`)
+- Native page sheet that pages between items; × (round fill button), "N / M" counter, **Edit** (accent text).
+- 372pt image stage on the stone tile; segmented **Front / Back / 360°** (Back and 360° shown for closet items, or when they exist).
+  - **Back, none yet:** dashed frame, "No back image yet", "Add Back Image" (+ "· N credit" while billing is on). While it runs: shimmer + "Creating back image…".
+  - **360°, none yet:** four fading thumbnails, "See it from every angle", "Generate 360°" (+ price); running: "Creating four angles…"; failed: the reason and "Try Again".
+  - **360° ready:** the turntable (drag, ‹ › buttons, angle pill, "Drag to rotate · AI view").
+- Title = the garment's name, then "Group · Type · Added Oct 18", tier badge; grouped facts: Color, Pattern, Details, Text, Back text (no Material — never guessed).
+- Actions list: Add Back Image (price), Generate 360° View (price), Remove from closet.
+- Paid actions (billing on) confirm with the cost sheet first (line, total, "Balance X → Y"); short of credits, or a server "not enough credits", opens the Not enough credits sheet. Finished work shows a toast ("✓ Back image ready · 1 credit used", "✓ 360° view ready").
+- **Edit:** Name (placeholder = the derived name), Type with group shortcuts, Colors, Pattern chips, Details, Text; Save → "Changes saved" toast; unsaved-changes guard kept.
+- **Remove:** confirmation sheet ("You can't undo this in the app." + "Credits used for its images are not returned." while billing is on); soft delete on the server.
 
 ## Screen-level acceptance
 - Signed out you see Welcome on first launch, then Sign In; after the code you land on Home (or once, A welcome gift); restart keeps you signed in; Sign Out returns to Sign In.

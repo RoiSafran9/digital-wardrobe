@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert } from "react-native";
 import { useCredits } from "./credits/CreditsProvider";
-import { ASK_FOR_MORE, canAfford, creditsLabel } from "./credits/credits";
+import { canAfford } from "./credits/credits";
+import { NO_CREDITS } from "./api/v1";
 import { getTurn, startTurn } from "./api/client";
 import type { ClosetItem, Turn, TurnAngle } from "./api/types";
 
@@ -15,6 +15,7 @@ export const TURN_LABELS: Record<TurnAngle, string> = {
 // (via onUpdated), so closing and reopening the sheet resumes where it was.
 export function useTurn(item: ClosetItem | null, onUpdated?: (item: ClosetItem) => void) {
   const [error, setError] = useState<string | null>(null);
+  const [insufficient, setInsufficient] = useState(false);
   const { billing, prices, credits, refresh: refreshCredits } = useCredits();
   const price = billing ? prices.turn : undefined;
   const turn = item?.turn ?? null;
@@ -53,24 +54,19 @@ export function useTurn(item: ClosetItem | null, onUpdated?: (item: ClosetItem) 
     try {
       onUpdated({ ...item, turn: await startTurn(item) });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't start the 360 view.");
+      const message = e instanceof Error ? e.message : "Couldn't start the 360 view.";
+      if (message === NO_CREDITS) setInsufficient(true);
+      else setError(message);
     } finally {
       void refreshCredits();
     }
   }
 
-  // With billing on, a 360 is the priciest action: say what it costs and ask first.
-  function start() {
-    if (!price) return begin();
-    if (!canAfford(credits, price)) {
-      setError(`A 360 view uses ${creditsLabel(price)}; you have ${credits?.available ?? 0}. ${ASK_FOR_MORE}`);
-      return;
-    }
-    Alert.alert("Make a 360 view?", `Uses ${creditsLabel(price)}. You have ${credits?.available ?? 0}.`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Make 360", onPress: () => { void begin(); } },
-    ]);
-  }
+  // The caller confirms the price (CostSheet) before starting; billing off starts straight away.
+  const start = () => begin();
 
-  return { start, turn, error, price };
+  return {
+    start, turn, error, price, affordable: canAfford(credits, price),
+    insufficient, clearInsufficient: () => setInsufficient(false),
+  };
 }

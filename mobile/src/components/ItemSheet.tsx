@@ -1,11 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { creditsLabel } from "../credits/credits";
-import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Icon } from "./Icon";
 import { deleteItem } from "../api/client";
 import { useAddBack } from "../useAddBack";
-import { BACK_STEPS, KEEP_OPEN, ProcessingStatus, TURN_NOTE, TURN_STEPS } from "./ProcessingStatus";
-import { PillButton } from "./PillButton";
 import { TurnView } from "./TurnView";
 import { TURN_LABELS, useTurn } from "../useTurn";
 import type { BackView, ClosetItem, RunItem } from "../api/types";
@@ -17,6 +14,11 @@ import { GarmentImage } from "./GarmentImage";
 import { ItemEditForm } from "./ItemEditForm";
 import { RetakeNote } from "./RetakeNote";
 import { TierBadge } from "./TierBadge";
+import { garmentName } from "../garmentName";
+import { groupOf } from "../categoryGroups";
+import { useCredits } from "../credits/CreditsProvider";
+import { creditsLabel } from "../credits/credits";
+import { Button, CostSheet, GroupedList, InsufficientCreditsSheet, Row, Segmented, Sheet, Shimmer, useToast } from "../ui";
 
 type Item = RunItem | ClosetItem;
 
@@ -24,7 +26,7 @@ function FactRow({ label, children, first }: { label: string; children: React.Re
   return (
     <View
       style={{
-        flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 16,
+        flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 16, minHeight: 48,
         paddingVertical: 12, borderTopWidth: first ? 0 : StyleSheet.hairlineWidth, borderTopColor: colors.separator,
       }}
     >
@@ -93,71 +95,52 @@ type PagerProps = Omit<Props, "index"> & {
 };
 
 function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setEditing }: PagerProps) {
+  const toast = useToast();
   const { width } = useWindowDimensions();
   const [current, setCurrent] = useState(startIndex);
   const [busy, setBusy] = useState(false);
   const currentItem = items[current];
   const canEdit = !!onUpdated && !!currentItem && isClosetItem(currentItem);
 
-  function confirmRemove(item: ClosetItem) {
-    Alert.alert("Remove this item?", "It leaves your closet. You can restore it from the server's trash.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteItem(item);
-            haptics.success();
-            onDeleted?.(item);
-          } catch (e) {
-            Alert.alert("Couldn't remove it", e instanceof Error ? e.message : "Try again.");
-          }
-        },
-      },
-    ]);
+  const { billing } = useCredits();
+  const [removing, setRemoving] = useState<ClosetItem | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  async function remove(item: ClosetItem) {
+    setRemoveError(null);
+    try {
+      await deleteItem(item);
+      haptics.success();
+      setRemoving(null);
+      onDeleted?.(item);
+    } catch (e) {
+      setRemoveError(e instanceof Error ? e.message : "Couldn't remove it. Try again.");
+    }
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View
-        style={{
-          flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-          paddingHorizontal: 20, paddingTop: 16,
-        }}
-      >
-        <Text style={{ color: colors.secondaryLabel, fontSize: 13, fontVariant: ["tabular-nums"] }}>
-          {editing ? "Editing" : items.length > 1 ? `${current + 1} / ${items.length}` : ""}
-        </Text>
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          {canEdit && !editing ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Edit"
-              onPress={() => setEditing(true)}
-              hitSlop={8}
-              style={({ pressed }) => ({
-                height: 36, borderRadius: 18, flexDirection: "row", alignItems: "center", gap: 6,
-                paddingHorizontal: 14, backgroundColor: colors.tile, transform: [{ scale: pressed ? 0.95 : 1 }],
-              })}
-            >
-              <Icon name="pencil" size={15} color={colors.label} />
-              <Text style={{ color: colors.label, fontSize: 14 }}>Edit</Text>
-            </Pressable>
-          ) : null}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close"
           onPress={onClose}
-          hitSlop={12}
+          hitSlop={hitSlopFor(32, 32)}
           style={({ pressed }) => ({
-            width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center",
-            backgroundColor: colors.tile, transform: [{ scale: pressed ? 0.92 : 1 }],
+            width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center",
+            backgroundColor: colors.fill, transform: [{ scale: pressed ? 0.92 : 1 }],
           })}
         >
-          <Icon name="close" size={20} color={colors.label} />
+          <Icon name="close" size={15} color={colors.label} />
         </Pressable>
-        </View>
+        <Text style={{ ...type.footnote, color: colors.secondaryLabel, fontVariant: ["tabular-nums"] }}>
+          {editing ? "Editing" : items.length > 1 ? `${current + 1} / ${items.length}` : ""}
+        </Text>
+        {canEdit && !editing ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Edit" onPress={() => setEditing(true)} hitSlop={hitSlopFor(28, 44)}>
+            <Text style={{ ...type.body, fontWeight: "600", color: colors.tint }}>Edit</Text>
+          </Pressable>
+        ) : <View style={{ width: 32 }} />}
       </View>
 
       <FlatList
@@ -186,6 +169,7 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
                   onSaved={(updated) => {
                     setEditing(false);
                     onUpdated?.(updated);
+                    toast.show("Changes saved");
                   }}
                 />
                 </Rise>
@@ -193,7 +177,7 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
             ) : (
               <SheetContent
                 item={item}
-                onRemove={onDeleted && isClosetItem(item) ? () => confirmRemove(item) : undefined}
+                onRemove={onDeleted && isClosetItem(item) ? () => { setRemoveError(null); setRemoving(item); } : undefined}
                 onUpdated={onUpdated}
                 onBusy={setBusy}
               />
@@ -201,42 +185,44 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
           </View>
         )}
       />
+      <Sheet visible={!!removing} onClose={() => setRemoving(null)} title="Remove from closet?" floating>
+        <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginBottom: 20 }}>
+          {`It leaves your closet. You can't undo this in the app.${billing ? " Credits used for its images are not returned." : ""}`}
+        </Text>
+        {removeError ? <Text style={{ ...type.footnote, color: colors.destructive, marginBottom: 12 }}>{removeError}</Text> : null}
+        <View style={{ gap: 6 }}>
+          <Button title="Remove" variant="destructive" onPress={() => removing && remove(removing)} />
+          <Button title="Cancel" variant="text" onPress={() => setRemoving(null)} />
+        </View>
+      </Sheet>
     </View>
   );
 }
 
-// Front and back as an iOS segmented control; when there's no back, the second segment adds one.
 type Side = "front" | "back" | "360";
 
-function SideStrip({ back, side, onChange, onAddBack, has360 }: {
-  item: Item;
-  back: BackView | null;
-  side: Side;
-  onChange: (s: Side) => void;
-  has360: boolean;
-  onAddBack?: () => void;
-}) {
-  const segment = (label: string, selected: boolean, onPress: () => void, a11y: string) => (
-    <Pressable
-      accessibilityRole="button" accessibilityLabel={a11y} accessibilityState={{ selected }} onPress={onPress}
-      hitSlop={hitSlopFor(32, 120)}
-      style={{ flex: 1, paddingVertical: 7, borderRadius: 8, alignItems: "center", backgroundColor: selected ? colors.grouped : "transparent" }}
-    >
-      <Text style={{ ...type.subhead, fontWeight: selected ? "600" : "400", color: colors.label }}>{label}</Text>
-    </Pressable>
-  );
+const STAGE = 372;
+
+// The image stage: the garment on the stone tile, or the empty/working states of Back and 360°.
+function Stage({ children }: { children: React.ReactNode }) {
   return (
-    <View style={{ flexDirection: "row", marginTop: 14, padding: 2, borderRadius: 10, backgroundColor: colors.tile }}>
-      {segment("Front", side === "front", () => onChange("front"), "Front")}
-      {back
-        ? segment("Back", side === "back", () => onChange("back"), "Back")
-        : onAddBack
-          ? segment("+ Back", false, onAddBack, "Add back photo")
-          : null}
-      {has360 ? segment("360", side === "360", () => onChange("360"), "360") : null}
+    <View style={{ height: STAGE, borderRadius: radius.stage, backgroundColor: colors.tile, overflow: "hidden", alignItems: "center", justifyContent: "center" }}>
+      {children}
     </View>
   );
 }
+
+function Working({ label }: { label: string }) {
+  return (
+    <View accessibilityLiveRegion="polite" style={{ alignItems: "center", gap: 12 }}>
+      <Shimmer />
+      <ActivityIndicator color={colors.secondaryLabel} />
+      <Text style={{ ...type.subhead, fontWeight: "600", color: colors.label }}>{label}</Text>
+    </View>
+  );
+}
+
+const withPrice = (label: string, price?: number) => (price ? `${label} · ${creditsLabel(price)}` : label);
 
 type SheetContentProps = {
   item: Item;
@@ -247,89 +233,156 @@ type SheetContentProps = {
 
 function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) {
   const { facts } = item;
+  const toast = useToast();
   const trims = asList(facts.trims.value).filter((t) => t.toLowerCase() !== "not visible");
   const text = asList(facts.visible_text.value);
   const added = "run_id" in item ? addedLabel(item.run_id) : null;
   const back = isClosetItem(item) ? item.back ?? null : null;
   const closetItem = isClosetItem(item) ? item : null;
-  const { start: start360, turn, error: turnError, price: turnPrice } = useTurn(closetItem, onUpdated);
+  const actions = !!(closetItem && onUpdated);
+  const turnState = useTurn(closetItem, onUpdated);
+  const { turn, error: turnError } = turnState;
   const turnViews = turn?.state === "done" && turn.views.length > 0
     ? turn.views.map((v) => ({ label: TURN_LABELS[v.angle], path: v.url, cutoutPath: v.cutout_url }))
     : null;
   // A finished 360 is the most complete view of the garment, so the sheet opens on it.
   const [side, setSide] = useState<Side>(turnViews ? "360" : "front");
-  useEffect(() => {
-    if (turnViews) setSide("360");
-  }, [turn?.state]);
-  const { ask: askForBack, uploading, error: backError } = useAddBack(
+  const [confirm, setConfirm] = useState<"back" | "turn" | null>(null);
+  const [short, setShort] = useState<number | null>(null);  // credits needed, when the user can't afford it
+  const backState = useAddBack(
     closetItem,
-    onUpdated && ((updated) => { onUpdated(updated); setSide("back"); }),
+    onUpdated && ((updated) => {
+      onUpdated(updated);
+      setSide("back");
+      toast.show(backState.price ? `✓ Back image ready · ${creditsLabel(backState.price)} used` : "✓ Back image ready");
+    }),
     onBusy,
   );
-  const showBack = side === "back" && back !== null;
+  const { uploading, error: backError } = backState;
 
-  return (
-    <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 12, paddingBottom: 48 }}>
-        {/* Same garment turning over: a quick crossfade, not a hard cut. */}
-        {side === "360" && turnViews ? (
-          <TurnView views={turnViews} label="360 · AI view" onDragActive={onBusy} />
-        ) : (
-          <Rise key={side} distance={0}>
-            {showBack ? (
-              <GarmentImage path={back.generated_url} cutoutPath={back.cutout_url} style={{ width: "100%", aspectRatio: 1 }} />
-            ) : (
-              <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: "100%", aspectRatio: 1 }} />
-            )}
-          </Rise>
-        )}
-        {back || turnViews || (onUpdated && closetItem) ? (
-          <SideStrip item={item} back={back} side={side} onChange={setSide} has360={!!turnViews} onAddBack={!back && onUpdated && closetItem && !uploading ? askForBack : undefined} />
-        ) : null}
-        {uploading ? (
-          <View style={{ paddingVertical: 18 }}>
-            <ProcessingStatus steps={BACK_STEPS} note={KEEP_OPEN} estimateSeconds={30} />
-          </View>
-        ) : null}
-        {backError ? <Text style={{ ...type.footnote, color: colors.destructive, marginTop: 10, textAlign: "center" }}>{backError}</Text> : null}
+  // Say when a 360 that was running while the sheet was open finishes.
+  const lastTurn = useRef(turn?.state);
+  useEffect(() => {
+    if (lastTurn.current === "running" && turn?.state === "done") {
+      setSide("360");
+      toast.show(turnState.price ? `✓ 360° view ready · ${creditsLabel(turnState.price)} used` : "✓ 360° view ready");
+    }
+    lastTurn.current = turn?.state;
+  }, [turn?.state]);
 
-        {closetItem && onUpdated && !turnViews ? (
-          <View style={{ marginTop: 16 }}>
-            {turn?.state === "running" ? (
-              <ProcessingStatus steps={TURN_STEPS} note={TURN_NOTE} estimateSeconds={60} />
-            ) : (
-              <>
-                {turn?.state === "failed" && turn.error ? (
-                  <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center", marginBottom: 10 }}>{turn.error}</Text>
-                ) : null}
-                <PillButton
-                  label={turn?.state === "failed" ? "Try again" : "View in 360"}
-                  icon="turn"
-                  onPress={start360}
-                />
-                {turn?.state !== "failed" ? (
-                  <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center", marginTop: 8 }}>
-                    See it on an invisible body from every side. AI-made, about a minute{turnPrice ? ` · ${creditsLabel(turnPrice)}` : ""}.
-                  </Text>
-                ) : null}
-              </>
-            )}
-            {turnError ? (
-              <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center", marginTop: 10 }}>{turnError}</Text>
+  useEffect(() => {
+    if (backState.insufficient) { setShort(backState.price ?? 0); backState.clearInsufficient(); }
+    if (turnState.insufficient) { setShort(turnState.price ?? 0); turnState.clearInsufficient(); }
+  }, [backState.insufficient, turnState.insufficient]);
+
+  // Every paid action is confirmed with its price first; billing off goes straight on.
+  const requestBack = () => {
+    if (!backState.price) return backState.ask();
+    if (!backState.affordable) return setShort(backState.price);
+    setConfirm("back");
+  };
+  const requestTurn = () => {
+    if (!turnState.price) return turnState.start();
+    if (!turnState.affordable) return setShort(turnState.price);
+    setConfirm("turn");
+  };
+
+  const segments = [
+    { value: "front" as Side, label: "Front" },
+    ...(back || actions ? [{ value: "back" as Side, label: "Back" }] : []),
+    ...(turnViews || actions ? [{ value: "360" as Side, label: "360°" }] : []),
+  ];
+
+  let stage: React.ReactNode;
+  if (side === "360" && turnViews) {
+    stage = <TurnView views={turnViews} label="AI view" onDragActive={onBusy} />;
+  } else if (side === "360") {
+    stage = (
+      <Stage>
+        {turn?.state === "running" ? <Working label="Creating four angles…" /> : (
+          <View style={{ alignItems: "center", gap: 12, paddingHorizontal: 24 }}>
+            <View style={{ flexDirection: "row", gap: 6 }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+              {[1, 0.7, 0.45, 0.25].map((opacity, i) => (
+                <View key={i} style={{ opacity }}>
+                  <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} tile={colors.grouped} style={{ width: 54, height: 66, borderRadius: 12 }} />
+                </View>
+              ))}
+            </View>
+            <Text style={{ ...type.headline, color: colors.label }}>See it from every angle</Text>
+            <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>
+              Four AI views on an invisible body, about a minute. Labelled as AI.
+            </Text>
+            {turn?.state === "failed" && turn.error ? <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center" }}>{turn.error}</Text> : null}
+            {turnError ? <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center" }}>{turnError}</Text> : null}
+            {actions ? (
+              <Button
+                title={withPrice(turn?.state === "failed" ? "Try Again" : "Generate 360°", turnState.price)}
+                size="medium" icon="turn" onPress={requestTurn}
+              />
             ) : null}
           </View>
-        ) : null}
+        )}
+      </Stage>
+    );
+  } else if (side === "back" && !back) {
+    stage = (
+      <Stage>
+        {uploading ? <Working label="Creating back image…" /> : (
+          <View style={{ alignSelf: "stretch", flex: 1, margin: 16, borderRadius: radius.feature, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.separatorStrong, alignItems: "center", justifyContent: "center", gap: 10, paddingHorizontal: 24 }}>
+            <Icon name="cameraBack" size={30} color={colors.secondaryLabel} />
+            <Text style={{ ...type.headline, color: colors.label }}>No back image yet</Text>
+            <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>
+              Take a photo of the back and we'll create a matching catalog image.
+            </Text>
+            {backError ? <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center" }}>{backError}</Text> : null}
+            {actions ? <Button title={withPrice("Add Back Image", backState.price)} size="medium" onPress={requestBack} /> : null}
+          </View>
+        )}
+      </Stage>
+    );
+  } else {
+    const showBack = side === "back" && back;
+    stage = (
+      // Same garment turning over: a quick crossfade, not a hard cut.
+      <Rise key={side} distance={0}>
+        <Stage>
+          {showBack ? (
+            <GarmentImage path={back.generated_url} cutoutPath={back.cutout_url} style={{ width: "100%", height: "100%" }} />
+          ) : (
+            <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: "100%", height: "100%" }} />
+          )}
+        </Stage>
+      </Rise>
+    );
+  }
 
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
-          <Text accessibilityRole="header" style={{ ...type.title2, color: colors.label, flexShrink: 1 }}>
-            {capitalize(asList(facts.category.value)[0] ?? "Item")}
+  const groupLabel = groupOf(item);
+  return (
+    <View style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, paddingBottom: 48 }}>
+        {stage}
+        {segments.length > 1 ? (
+          <View style={{ marginTop: 14 }}>
+            <Segmented options={segments} value={side} onChange={setSide} />
+          </View>
+        ) : null}
+        {uploading && side !== "back" ? (
+          <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center", marginTop: 10 }}>Creating back image…</Text>
+        ) : null}
+        {backError && side !== "back" ? <Text style={{ ...type.footnote, color: colors.destructive, marginTop: 10, textAlign: "center" }}>{backError}</Text> : null}
+
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 22, gap: 12 }}>
+          <Text accessibilityRole="header" style={{ ...type.pageTitle, color: colors.label, flexShrink: 1 }}>
+            {garmentName(item)}
           </Text>
           <TierBadge tier={item.tier} />
         </View>
-        {added ? <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 4 }}>{added}</Text> : null}
+        <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 4 }}>
+          {[groupLabel === "Other" ? capitalize(asList(facts.category.value)[0] ?? "Item") : `${groupLabel} · ${capitalize(asList(facts.category.value)[0] ?? "")}`, added].filter(Boolean).join(" · ")}
+        </Text>
 
-        <View testID="facts-card" style={{ marginTop: 20, backgroundColor: colors.grouped, borderRadius: radius.card, paddingHorizontal: 16 }}>
-          <FactRow label="Colors" first>
+        <View testID="facts-card" style={{ marginTop: 20, backgroundColor: colors.grouped, borderRadius: radius.list, paddingHorizontal: 16 }}>
+          <FactRow label="Color" first>
             <ColorSwatches value={facts.colors.value} />
           </FactRow>
           <FactRow label="Pattern">
@@ -356,14 +409,34 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
           <RetakeNote tier={item.tier} text={item.retake_instruction} />
         ) : null}
 
-        {onRemove ? (
-          <View style={{ marginTop: 24, backgroundColor: colors.grouped, borderRadius: radius.card }}>
-            <Pressable accessibilityRole="button" onPress={onRemove} style={{ padding: 16, alignItems: "center" }}>
-              <Text style={{ ...type.body, color: colors.destructive }}>Remove from closet</Text>
-            </Pressable>
+        {actions || onRemove ? (
+          <View style={{ marginTop: 24 }}>
+            <GroupedList>
+              {actions && !back && !uploading ? (
+                <Row label="Add Back Image" value={backState.price ? creditsLabel(backState.price) : undefined} onPress={() => { setSide("back"); requestBack(); }} />
+              ) : null}
+              {actions && !turnViews && turn?.state !== "running" ? (
+                <Row label="Generate 360° View" value={turnState.price ? creditsLabel(turnState.price) : undefined} onPress={() => { setSide("360"); requestTurn(); }} />
+              ) : null}
+              {onRemove ? <Row label="Remove from closet" destructive onPress={onRemove} /> : null}
+            </GroupedList>
           </View>
         ) : null}
       </ScrollView>
+
+      <CostSheet
+        visible={confirm === "back"} title="Add a back image" subtitle="Lay the item flat, back side up. We'll create a matching catalog image."
+        lines={[{ label: "Back image", action: "back", count: 1 }]}
+        confirmLabel={withPrice("Continue", backState.price)}
+        onConfirm={() => { setConfirm(null); backState.ask(); }} onClose={() => setConfirm(null)}
+      />
+      <CostSheet
+        visible={confirm === "turn"} title="Generate 360° view" subtitle="Four AI views on an invisible body, about a minute. Labelled as AI."
+        lines={[{ label: "360° view", action: "turn", count: 1 }]}
+        confirmLabel={withPrice("Generate", turnState.price)}
+        onConfirm={() => { setConfirm(null); turnState.start(); }} onClose={() => setConfirm(null)}
+      />
+      <InsufficientCreditsSheet visible={short !== null} needed={short ?? 0} onClose={() => setShort(null)} />
     </View>
   );
 }

@@ -68,10 +68,19 @@ test("all views are loaded up front so turning never waits on the network", () =
   expect(uris).toEqual(views.map((v) => `${API_BASE_URL}${v.cutoutPath}`));
 });
 
-test("shows dots and the label", () => {
+test("shows the angle pill, the drag hint and the AI label", () => {
   render(<TurnView views={views} label="360 · AI view" />);
-  expect(screen.getByText("360 · AI view")).toBeTruthy();
-  expect(screen.getAllByTestId(/^turn-dot-/)).toHaveLength(4);
+  expect(screen.getByText("Drag to rotate · 360 · AI view")).toBeTruthy();
+  expect(screen.getByTestId("turn-angle")).toBeTruthy();
+});
+
+test("the arrow buttons turn the garment both ways", () => {
+  render(<TurnView views={views} />);
+  fireEvent.press(screen.getByRole("button", { name: "Turn right" }));
+  expect(turner().props.accessibilityValue).toEqual({ text: views[1].label });
+  fireEvent.press(screen.getByRole("button", { name: "Turn left" }));
+  fireEvent.press(screen.getByRole("button", { name: "Turn left" }));
+  expect(turner().props.accessibilityValue).toEqual({ text: views[3].label });
 });
 
 test("the view claims touches so its own handlers run, not a press handler", () => {

@@ -23,9 +23,9 @@ const item: ClosetItem = {
 
 test("shows the item's title, tier, date, and facts", () => {
   render(<ItemSheet items={[item]} index={0} onClose={() => {}} />);
-  expect(screen.getByText("T-shirt")).toBeTruthy();
+  expect(screen.getByRole("header", { name: "Gray t-shirt" })).toBeTruthy();
   expect(screen.getByText("Great")).toBeTruthy();
-  expect(screen.getByText("Added Oct 15")).toBeTruthy();
+  expect(screen.getByText("Tops · T-shirt · Added Oct 15")).toBeTruthy();
   expect(screen.getByText("Gray")).toBeTruthy();
   expect(screen.getByText("Black")).toBeTruthy();
   expect(screen.getByText("Solid")).toBeTruthy();
@@ -81,9 +81,9 @@ test("swiping to another page updates the counter", () => {
 
 test("every item in the list is a swipeable page", () => {
   render(<ItemSheet items={[item, shorts, jacket]} index={0} onClose={() => {}} />);
-  expect(screen.getByText("T-shirt")).toBeTruthy();
-  expect(screen.getByText("Shorts")).toBeTruthy();
-  expect(screen.getByText("Jacket")).toBeTruthy();
+  expect(screen.getByText("Gray t-shirt")).toBeTruthy();
+  expect(screen.getByText("Gray shorts")).toBeTruthy();
+  expect(screen.getByText("Gray jacket")).toBeTruthy();
 });
 
 test("hides the counter for a single item", () => {
@@ -93,6 +93,7 @@ test("hides the counter for a single item", () => {
 
 test("facts sit in one grouped card with the title as a header", () => {
   render(<ItemSheet items={[item]} index={0} onClose={() => {}} />);
-  expect(screen.getByRole("header", { name: "T-shirt" })).toBeTruthy();
+  expect(screen.getByRole("header", { name: "Gray t-shirt" })).toBeTruthy();
   expect(screen.getByTestId("facts-card")).toBeTruthy();
+  expect(screen.queryByText("Material")).toBeNull();  // never guessed (spec D5)
 });

@@ -6,6 +6,7 @@ import { ItemSheet } from "../src/components/ItemSheet";
 import { addBack, API_BASE_URL } from "../src/api/client";
 import { pickPhoto } from "../src/photoPicker";
 import type { ClosetItem } from "../src/api/types";
+import { ToastProvider } from "../src/ui";
 
 jest.mock("../src/api/client", () => ({ ...jest.requireActual("../src/api/client"), addBack: jest.fn() }));
 jest.mock("../src/photoPicker", () => ({ pickPhoto: jest.fn() }));
@@ -33,36 +34,40 @@ beforeEach(() => jest.clearAllMocks());
 
 test("offers to add a back only for closet items without one", () => {
   const { rerender } = render(<ItemSheet items={[front]} index={0} onClose={() => {}} />);
-  expect(screen.queryByLabelText("Add back photo")).toBeNull();  // read-only results view
+  expect(screen.queryByRole("button", { name: "Add Back Image" })).toBeNull();  // read-only results view
+  expect(screen.queryByRole("tab", { name: "Back" })).toBeNull();
   rerender(<ItemSheet items={[front]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
-  expect(screen.getByLabelText("Add back photo")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Add Back Image" })).toBeTruthy();
+  fireEvent.press(screen.getByRole("tab", { name: "Back" }));
+  expect(screen.getByText("No back image yet")).toBeTruthy();
   rerender(<ItemSheet items={[withBack]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
-  expect(screen.queryByLabelText("Add back photo")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Add Back Image" })).toBeNull();
 });
 
-test("front/back toggle switches the image and shows the back's text", () => {
+test("front/back tabs switch the image and show the back's text", () => {
   render(<ItemSheet items={[withBack]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
   expect(shownImage()).toBe(`${API_BASE_URL}/front/cutout.png`);
-  fireEvent.press(screen.getByRole("button", { name: "Back" }));
+  fireEvent.press(screen.getByRole("tab", { name: "Back" }));
   expect(shownImage()).toBe(`${API_BASE_URL}/back/cutout.png`);
   expect(screen.getByText("“TEAM 9”")).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "Front" }));
+  fireEvent.press(screen.getByRole("tab", { name: "Front" }));
   expect(shownImage()).toBe(`${API_BASE_URL}/front/cutout.png`);
 });
 
-test("adding a back picks a photo, uploads it and reports the updated item", async () => {
+test("adding a back picks a photo, uploads it, reports the updated item and says it's ready", async () => {
   const sheet = mockActionSheet();
   mockedPick.mockResolvedValue("file:///back.jpg");
   mockedAddBack.mockResolvedValue(withBack);
   const onUpdated = jest.fn();
-  render(<ItemSheet items={[front]} index={0} onClose={() => {}} onUpdated={onUpdated} onDeleted={() => {}} />);
+  render(<ToastProvider><ItemSheet items={[front]} index={0} onClose={() => {}} onUpdated={onUpdated} onDeleted={() => {}} /></ToastProvider>);
 
-  fireEvent.press(screen.getByLabelText("Add back photo"));
+  fireEvent.press(screen.getByRole("button", { name: "Add Back Image" }));
   await act(async () => { await sheet.choose("Take photo"); });
 
   expect(mockedPick).toHaveBeenCalledWith(true);
   await waitFor(() => expect(onUpdated).toHaveBeenCalledWith(withBack));
   expect(mockedAddBack).toHaveBeenCalledWith(front, "file:///back.jpg");
+  expect(screen.getByText("✓ Back image ready")).toBeTruthy();
 });
 
 test("a rejected back photo shows the server's instruction", async () => {
@@ -71,7 +76,7 @@ test("a rejected back photo shows the server's instruction", async () => {
   mockedAddBack.mockRejectedValue(new Error("Part of this piece is outside the photo — step back"));
   render(<ItemSheet items={[front]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
 
-  fireEvent.press(screen.getByLabelText("Add back photo"));
+  fireEvent.press(screen.getByRole("button", { name: "Add Back Image" }));
   await act(async () => { await sheet.choose("Choose from library"); });
 
   expect(await screen.findByText(/step back/)).toBeTruthy();
@@ -81,7 +86,7 @@ test("cancelling the picker uploads nothing", async () => {
   const sheet = mockActionSheet();
   mockedPick.mockResolvedValue(null);
   render(<ItemSheet items={[front]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
-  fireEvent.press(screen.getByLabelText("Add back photo"));
+  fireEvent.press(screen.getByRole("button", { name: "Add Back Image" }));
   await act(async () => { await sheet.choose("Take photo"); });
   expect(mockedAddBack).not.toHaveBeenCalled();
 });
@@ -96,18 +101,35 @@ describe("with billing on", () => {
   );
   afterEach(() => jest.restoreAllMocks());
 
-  test("+ Back says what it costs before choosing a photo", () => {
+  test("the back's price is confirmed before choosing a photo", () => {
     const sheet = mockActionSheet();
     billed(4);
-    fireEvent.press(screen.getByLabelText("Add back photo"));
+    expect(screen.getByText("1 credit")).toBeTruthy();  // price in the actions list
+    fireEvent.press(screen.getByRole("button", { name: "Add Back Image" }));
+    expect(sheet.spy).not.toHaveBeenCalled();
+    expect(screen.getByText("Balance 4 → 3")).toBeTruthy();
+    fireEvent.press(screen.getByRole("button", { name: "Continue · 1 credit" }));
     expect(sheet.spy.mock.calls[0][0].message).toBe("Lay the item flat, back side up. Uses 1 credit · 4 available.");
   });
 
-  test("without credits + Back explains instead of opening the camera", () => {
+  test("without credits the back explains instead of opening the camera", () => {
     const sheet = mockActionSheet();
     billed(0);
-    fireEvent.press(screen.getByLabelText("Add back photo"));
+    fireEvent.press(screen.getByRole("button", { name: "Add Back Image" }));
     expect(sheet.spy).not.toHaveBeenCalled();
-    expect(screen.getByText(/Adding the back uses 1 credit; you have 0. Ask the app owner for more credits./)).toBeTruthy();
+    expect(screen.getByText("Not enough credits")).toBeTruthy();
+    expect(screen.getByText(/Ask the app owner for more credits\./)).toBeTruthy();
+  });
+
+  test("a server 'not enough credits' answer opens the same explanation", async () => {
+    const sheet = mockActionSheet();
+    const { NO_CREDITS } = require("../src/api/v1");
+    mockedPick.mockResolvedValue("file:///back.jpg");
+    mockedAddBack.mockRejectedValue(new Error(NO_CREDITS));
+    billed(4);
+    fireEvent.press(screen.getByRole("button", { name: "Add Back Image" }));
+    fireEvent.press(screen.getByRole("button", { name: "Continue · 1 credit" }));
+    await act(async () => { await sheet.choose("Take photo"); });
+    expect(await screen.findByText("Not enough credits")).toBeTruthy();
   });
 });

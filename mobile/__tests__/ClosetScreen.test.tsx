@@ -105,15 +105,12 @@ test("reloads items every time the closet tab regains focus", async () => {
 });
 
 test("removing an item takes it off the grid and closes the sheet", async () => {
-  const alertSpy = jest.spyOn(Alert, "alert");
   mockedDeleteItem.mockResolvedValue(undefined);
   mockedGetItems.mockResolvedValue({ items: [fakeItem, fakeShorts] });
   render(<ClosetScreen />);
   fireEvent.press(await screen.findByTestId("thumb-r1-item_0"));
-  fireEvent.press((await screen.findAllByText("Remove from closet"))[0]);  // one per swipe page; first is the opened item
-  await act(async () => {
-    await alertSpy.mock.calls[0][2]!.find((b) => b.style === "destructive")!.onPress!();
-  });
+  fireEvent.press((await screen.findAllByRole("button", { name: "Remove from closet" }))[0]);  // one per swipe page; first is the opened item
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Remove" })));
 
   await waitFor(() => expect(screen.queryByTestId("thumb-r1-item_0")).toBeNull());
   expect(screen.getByTestId("thumb-r1-item_1")).toBeTruthy();

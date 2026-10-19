@@ -4,12 +4,15 @@ import { addBack } from "./api/client";
 import type { ClosetItem } from "./api/types";
 import { pickPhoto } from "./photoPicker";
 import { useCredits } from "./credits/CreditsProvider";
-import { ASK_FOR_MORE, canAfford, creditsLabel } from "./credits/credits";
+import { canAfford, creditsLabel } from "./credits/credits";
+import { NO_CREDITS } from "./api/v1";
 
-// Shared "add a back photo" flow: choose camera/library, upload, report the updated item.
+// Shared "add a back photo" flow: choose camera/library, upload, report the updated item. The price is
+// confirmed by the caller (CostSheet) before ask(); a server "not enough credits" sets `insufficient`.
 export function useAddBack(item: ClosetItem | null, onUpdated?: (item: ClosetItem) => void, onBusy?: (busy: boolean) => void) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [insufficient, setInsufficient] = useState(false);
   const { billing, prices, credits, refresh: refreshCredits } = useCredits();
   const price = billing ? prices.back : undefined;
 
@@ -29,7 +32,9 @@ export function useAddBack(item: ClosetItem | null, onUpdated?: (item: ClosetIte
     try {
       onUpdated(await addBack(item, uri));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "couldn't add the back");
+      const message = e instanceof Error ? e.message : "couldn't add the back";
+      if (message === NO_CREDITS) setInsufficient(true);
+      else setError(message);
     } finally {
       setUploading(false);
       onBusy?.(false);
@@ -39,10 +44,7 @@ export function useAddBack(item: ClosetItem | null, onUpdated?: (item: ClosetIte
 
   // iOS chooses a photo source from an action sheet, not an alert box.
   function ask() {
-    if (!canAfford(credits, price)) {
-      setError(`Adding the back uses ${creditsLabel(price!)}; you have ${credits?.available ?? 0}. ${ASK_FOR_MORE}`);
-      return;
-    }
+    setError(null);
     const message = price
       ? `Lay the item flat, back side up. Uses ${creditsLabel(price)} · ${credits?.available ?? 0} available.`
       : "Lay the item flat, back side up.";
@@ -65,5 +67,8 @@ export function useAddBack(item: ClosetItem | null, onUpdated?: (item: ClosetIte
     ]);
   }
 
-  return { ask, uploading, error };
+  return {
+    ask, uploading, error, price, affordable: canAfford(credits, price),
+    insufficient, clearInsufficient: () => setInsufficient(false),
+  };
 }

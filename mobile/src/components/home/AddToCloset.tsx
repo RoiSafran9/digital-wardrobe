@@ -1,6 +1,6 @@
 import React from "react";
 import { Text, View } from "react-native";
-import { Icon } from "../Icon";
+import { Icon, type IconName } from "../Icon";
 import { GlyphTile } from "../onboarding/GlyphTile";
 import { colors, radius, type } from "../../theme";
 import { PressScale } from "../../motion/PressScale";
@@ -11,12 +11,18 @@ export type PhotoActions = {
   onOutfitPhoto?: () => void;  // only when the server offers outfit import
 };
 
-function SmallButton({ title, onPress, primary, label }: { title: string; onPress: () => void; primary?: boolean; label: string }) {
+// Equal-width buttons that share the tile's row. The flex sits on a wrapper: PressScale styles the
+// view inside its Pressable, so without it the buttons shrink to their labels.
+function SmallButton({ title, onPress, primary, label, icon }: { title: string; onPress: () => void; primary?: boolean; label: string; icon?: IconName }) {
+  const fg = primary ? colors.onTint : colors.label;
   return (
-    <PressScale onPress={onPress} accessibilityRole="button" accessibilityLabel={label} scaleTo={0.97}
-      style={{ flex: 1, height: 36, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: primary ? colors.tint : colors.card }}>
-      <Text style={{ ...type.footnote, fontWeight: "600", color: primary ? colors.onTint : colors.label }}>{title}</Text>
-    </PressScale>
+    <View style={{ flex: 1 }}>
+      <PressScale onPress={onPress} accessibilityRole="button" accessibilityLabel={label} scaleTo={0.97}
+        style={{ height: 38, borderRadius: 11, flexDirection: "row", gap: 5, alignItems: "center", justifyContent: "center", paddingHorizontal: 6, backgroundColor: primary ? colors.tint : colors.card }}>
+        {icon ? <Icon name={icon} size={14} color={fg} /> : null}
+        <Text numberOfLines={1} style={{ ...type.footnote, fontWeight: "600", color: fg }}>{title}</Text>
+      </PressScale>
+    </View>
   );
 }
 
@@ -71,14 +77,14 @@ export function AddToCloset({ onGarmentCamera, onGarmentLibrary, onOutfitPhoto }
     <View style={{ flexDirection: "row", gap: 10 }}>
       <View style={{ flex: 1 }}>
         <Tile tag="FLAT LAY" art={flatLay} title="Garments" caption="Each piece becomes an item">
-          <SmallButton title="Camera" primary onPress={onGarmentCamera} label="Add garments, flat lay photo, Camera" />
-          <SmallButton title="Library" onPress={onGarmentLibrary} label="Add garments, flat lay photo, Library" />
+          <SmallButton title="Camera" icon="camera" primary onPress={onGarmentCamera} label="Add garments, flat lay photo, Camera" />
+          <SmallButton title="Library" icon="photos" onPress={onGarmentLibrary} label="Add garments, flat lay photo, Library" />
         </Tile>
       </View>
       {onOutfitPhoto ? (
         <View style={{ flex: 1 }}>
           <Tile tag="WORN" art={worn} title="Outfit photo" caption="We find each piece you wear">
-            <SmallButton title="Choose Photo" onPress={onOutfitPhoto} label="Add from outfit photo, Choose photo" />
+            <SmallButton title="Choose Photo" icon="photos" onPress={onOutfitPhoto} label="Add from outfit photo, Choose photo" />
           </Tile>
         </View>
       ) : null}
@@ -89,7 +95,7 @@ export function AddToCloset({ onGarmentCamera, onGarmentLibrary, onOutfitPhoto }
 function Pill({ title, onPress, primary, label }: { title: string; onPress: () => void; primary?: boolean; label: string }) {
   return (
     <PressScale onPress={onPress} accessibilityRole="button" accessibilityLabel={label}
-      style={{ height: 34, paddingHorizontal: 14, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", backgroundColor: primary ? colors.tint : colors.fill }}>
+      style={{ height: 34, paddingHorizontal: 16, minWidth: 64, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", backgroundColor: primary ? colors.tint : colors.fill }}>
       <Text style={{ ...type.footnote, fontWeight: "600", color: primary ? colors.onTint : colors.label }}>{title}</Text>
     </PressScale>
   );

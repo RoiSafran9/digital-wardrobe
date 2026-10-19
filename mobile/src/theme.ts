@@ -77,7 +77,8 @@ export const type = {
   hero: { fontSize: 64, fontWeight: "700", fontVariant: TABULAR },
   balance: { fontSize: 54, fontWeight: "700", fontVariant: TABULAR },
   stat: { fontSize: 26, fontWeight: "600", fontVariant: TABULAR },
-  display: (size: 46 | 42 | 40) => ({ fontFamily: DISPLAY_FONT, fontSize: size, lineHeight: size }),
+  // Instrument Serif's ascenders and descenders reach past the font size: give the line room, or iOS clips them.
+  display: (size: 46 | 42 | 40) => ({ fontFamily: DISPLAY_FONT, fontSize: size, lineHeight: Math.round(size * 1.18) }),
 } as const;
 
 export const radius = {

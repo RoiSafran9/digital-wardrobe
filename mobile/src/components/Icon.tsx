@@ -36,6 +36,7 @@ const ICONS = {
   shoe: { sf: "shoe", ion: "footsteps-outline" },
   person2: { sf: "figure.stand", ion: "body-outline" },
   arrowRight: { sf: "arrow.right", ion: "arrow-forward" },
+  photos: { sf: "photo.on.rectangle", ion: "images-outline" },
 } as const satisfies Record<string, { sf: SFSymbol; ion: keyof typeof Ionicons.glyphMap }>;
 
 export type IconName = keyof typeof ICONS;

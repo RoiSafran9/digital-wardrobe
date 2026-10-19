@@ -165,8 +165,17 @@ export async function getOutfitScan(scanId: string): Promise<OutfitScan> {
   return v1.getOutfitScan(signedIn(), scanId);
 }
 
-export async function generateOutfit(scanId: string, candidateIds: string[], unitPrice: number | null): Promise<OutfitResult> {
-  return v1.generateOutfit(signedIn(), current, scanId, candidateIds, unitPrice);
+export async function generateOutfit(scanId: string, candidateIds: string[], unitPrice: number | null,
+                                     corrections: Record<string, string> = {}): Promise<OutfitResult> {
+  return v1.generateOutfit(signedIn(), current, scanId, candidateIds, unitPrice, corrections);
+}
+
+export async function markRegion(scanId: string, box: { x: number; y: number; width: number; height: number }, category: string): Promise<OutfitScan> {
+  return v1.markRegion(signedIn(), scanId, box, category);
+}
+
+export async function regenerateItem(item: ClosetItem, unitPrice: number | null): Promise<ClosetItem> {
+  return v1.regenerateItem(signedIn(), current, item, unitPrice);
 }
 
 export async function getPendingItems(): Promise<ClosetItem[]> {

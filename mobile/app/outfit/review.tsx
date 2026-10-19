@@ -2,7 +2,10 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { deleteItem, getPendingItems, imageUrl, keepItem } from "../../src/api/client";
+import { deleteItem, getPendingItems, imageUrl, keepItem, regenerateItem } from "../../src/api/client";
+import { NO_CREDITS } from "../../src/api/v1";
+import { creditsLabel } from "../../src/credits/credits";
+import { ActivityIndicator } from "react-native";
 import type { ClosetItem } from "../../src/api/types";
 import { groupOf } from "../../src/categoryGroups";
 import { GarmentImage } from "../../src/components/GarmentImage";
@@ -13,11 +16,11 @@ import { haptics } from "../../src/haptics";
 import { AI_NOTE } from "../../src/outfit/outfit";
 import { useCaptureJobs } from "../../src/store/captureJobs";
 import { colors, hitSlopFor, radius, type } from "../../src/theme";
-import { Button } from "../../src/ui";
+import { Button, CostSheet, InsufficientCreditsSheet } from "../../src/ui";
 
 // Outfit Photo results wait here until the user keeps or discards each one: the crop of their photo
 // next to the generated image. Listed from the server, so it works after an app restart. Credits were
-// charged when an image was made (owner decision D4); there is no regenerate yet (spec D14).
+// charged when an image was made (owner decision D4). Regenerate remakes one result as a new front image (D14).
 export default function ReviewScreen() {
   const { failed } = useLocalSearchParams<{ failed?: string }>();
   const router = useRouter();
@@ -28,6 +31,27 @@ export default function ReviewScreen() {
   const [at, setAt] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [regenerating, setRegenerating] = useState<string | null>(null);
+  const [confirmRegen, setConfirmRegen] = useState(false);
+  const [short, setShort] = useState(false);
+  const unit = billing ? prices.garment : undefined;
+
+  async function regenerate(target: ClosetItem) {
+    setConfirmRegen(false);
+    setRegenerating(target.item_id);
+    setError(null);
+    try {
+      const fresh = await regenerateItem(target, unit ?? null);
+      setItems((list) => (list ?? []).map((i) => (i.item_id === target.item_id ? fresh : i)));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Couldn't make a new image. Try again.";
+      if (message === NO_CREDITS) setShort(true);
+      else setError(message);
+    } finally {
+      setRegenerating(null);
+      void refresh();
+    }
+  }
 
   const load = useCallback(() => {
     getPendingItems().then(setItems).catch((e) => setError(e instanceof Error ? e.message : "Couldn't load your pieces."));
@@ -103,7 +127,13 @@ export default function ReviewScreen() {
               <View style={{ flex: 1.1, gap: 6 }}>
                 <Text style={{ ...type.eyebrow, color: colors.secondaryLabel }}>Generated</Text>
                 <View style={{ aspectRatio: 4 / 5, borderRadius: radius.list, backgroundColor: colors.tile, overflow: "hidden" }}>
-                  <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} tile={colors.tile} style={{ width: "100%", height: "100%" }} />
+                  <GarmentImage key={item.generated_url} path={item.generated_url} cutoutPath={item.cutout_url} tile={colors.tile} style={{ width: "100%", height: "100%" }} />
+                  {regenerating === item.item_id ? (
+                    <View accessibilityLiveRegion="polite" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.6)", gap: 8 }}>
+                      <ActivityIndicator color={colors.tint} />
+                      <Text style={{ ...type.footnote, fontWeight: "600", color: "#131315" }}>Making a new image…</Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
             </View>
@@ -115,6 +145,12 @@ export default function ReviewScreen() {
               <TierBadge tier={item.tier} />
             </View>
             <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>{AI_NOTE}</Text>
+            <Button
+              title={unit ? `↻ Regenerate · ${creditsLabel(unit)}` : "↻ Regenerate"}
+              variant="secondary" size="medium"
+              disabled={regenerating !== null}
+              onPress={() => (unit ? setConfirmRegen(true) : void regenerate(item))}
+            />
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: colors.grouped, borderRadius: radius.list, paddingHorizontal: 16, paddingVertical: 10 }}>
               <Text style={{ ...type.body, color: colors.label }}>Keep</Text>
               <Switch accessibilityLabel={`Keep ${garmentName(item)}`} value={!off.has(item.item_id)} onValueChange={(v) => setKeep(item, v)} />
@@ -149,6 +185,16 @@ export default function ReviewScreen() {
           <Button title="Go to Closet" variant="secondary" onPress={() => router.replace("/closet")} />
         </View>
       )}
+      <CostSheet
+        visible={confirmRegen}
+        title="Make a new image"
+        subtitle="A new catalog image from the same photo. It replaces the current one."
+        lines={[{ label: "Front image", action: "garment", count: 1 }]}
+        confirmLabel={unit ? `Regenerate · ${creditsLabel(unit)}` : "Regenerate"}
+        onConfirm={() => item && void regenerate(item)}
+        onClose={() => setConfirmRegen(false)}
+      />
+      <InsufficientCreditsSheet visible={short} needed={unit ?? 0} onClose={() => setShort(false)} />
     </SafeAreaView>
   );
 }

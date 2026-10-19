@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { generateOutfit, getOutfitScan } from "../../src/api/client";
+import { generateOutfit, getOutfitScan, markRegion } from "../../src/api/client";
 import { NO_CREDITS } from "../../src/api/v1";
 import type { OutfitCandidate, OutfitScan } from "../../src/api/types";
 import { groupFor } from "../../src/categoryGroups";
@@ -13,15 +13,20 @@ import { creditsLabel } from "../../src/credits/credits";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { haptics } from "../../src/haptics";
 import { candidateTitle, defaultPicks, pickable, sceneNote, visibilityNote } from "../../src/outfit/outfit";
-import { cachedScan } from "../../src/outfit/scanCache";
+import { cachedScan, rememberScan } from "../../src/outfit/scanCache";
+import { MarkRegion, type PhotoBox } from "../../src/components/outfit/MarkRegion";
 import { colors, hitSlopFor, radius, type } from "../../src/theme";
-import { BackButton, Button, CostSheet, InsufficientCreditsSheet } from "../../src/ui";
+import { TextInput } from "react-native";
+import { BackButton, Button, Chip, CostSheet, InsufficientCreditsSheet, Sheet } from "../../src/ui";
 
 export const OUTFIT_STAGES: Stage[] = [
   { label: "Taking them off the photo", at: 0 },
   { label: "Laying them flat", at: 8 },
   { label: "Adding final details", at: 20 },
 ];
+
+// Quick types for correcting or marking a garment; the free text takes anything else.
+const TYPE_SHORTCUTS = ["shirt", "t-shirt", "sweater", "jacket", "coat", "jeans", "pants", "skirt", "dress", "shorts", "belt", "bag"];
 
 // "Not sure — please check" when the garment is partly hidden or the model said it was unsure.
 export function unsure(c: OutfitCandidate): boolean {
@@ -41,6 +46,33 @@ export default function PickScreen() {
   const [confirming, setConfirming] = useState(false);
   const [short, setShort] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [corrections, setCorrections] = useState<Record<string, string>>({});
+  const [editing, setEditing] = useState<OutfitCandidate | null>(null);
+  const [draft, setDraft] = useState("");
+  const [marking, setMarking] = useState(false);
+  const [markBox, setMarkBox] = useState<PhotoBox | null>(null);
+  const [markType, setMarkType] = useState("");
+  const [markBusy, setMarkBusy] = useState(false);
+  const [markError, setMarkError] = useState<string | null>(null);
+
+  async function addMarked() {
+    if (!scan || !markBox || !markType.trim()) return;
+    setMarkBusy(true);
+    setMarkError(null);
+    try {
+      const before = new Set(scan.candidates.map((c) => c.id));
+      const updated = await markRegion(scan.id, markBox, markType.trim());
+      rememberScan(updated);
+      setScan(updated);
+      const added = updated.candidates.find((c) => !before.has(c.id));
+      if (added) setPicks([...selected, added.id]);
+      setMarking(false);
+    } catch (e) {
+      setMarkError(e instanceof Error ? e.message : "Couldn't add it. Try again.");
+    } finally {
+      setMarkBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (scan || !scanId) return;
@@ -74,7 +106,8 @@ export default function PickScreen() {
     setError(null);
     try {
       const ordered = candidates.map((c) => c.id).filter((id) => selected.includes(id));
-      const result = await generateOutfit(scan.id, ordered, unitPrice ?? null);
+      const fixes = Object.fromEntries(Object.entries(corrections).filter(([id]) => ordered.includes(id)));
+      const result = await generateOutfit(scan.id, ordered, unitPrice ?? null, fixes);
       haptics.success();
       const failed = result.failed.map((id) => scan.candidates.find((c) => c.id === id)).filter(Boolean)
         .map((c) => candidateTitle(c as OutfitCandidate).toLowerCase());
@@ -126,10 +159,16 @@ export default function PickScreen() {
         {scan && candidates.length === 0 ? <Note text="No pieces to add were found. Try a photo where the clothes are clearly in view." /> : null}
         <View style={{ gap: 10 }}>
           {candidates.map((c, i) => (
-            <CandidateRow key={c.id} index={i} candidate={c} selected={selected.includes(c.id)}
-              onPress={() => toggle(c.id)} onRemove={() => setRemoved((r) => [...r, c.id])} />
+            <CandidateRow key={c.id} index={i} candidate={corrections[c.id] ? { ...c, category: corrections[c.id] } : c} selected={selected.includes(c.id)}
+              onPress={() => toggle(c.id)} onEdit={() => { setDraft(corrections[c.id] ?? c.category); setEditing(c); }} />
           ))}
         </View>
+        {uri && scan && scan.candidates.length < 8 ? (
+          <Pressable onPress={() => { setMarkBox(null); setMarkType(""); setMarkError(null); setMarking(true); }} accessibilityRole="button"
+            style={{ height: 48, borderRadius: radius.list, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.separatorStrong, alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ ...type.subhead, fontWeight: "600", color: colors.tint }}>+ Mark a missed garment</Text>
+          </Pressable>
+        ) : null}
         {error ? <Note text={error} destructive /> : null}
       </ScrollView>
 
@@ -149,6 +188,35 @@ export default function PickScreen() {
         </View>
       </View>
 
+      <Sheet visible={!!editing} onClose={() => setEditing(null)} title="Correct this garment" floating>
+        <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginBottom: 6 }}>Type</Text>
+        <TextInput accessibilityLabel="Garment type" value={draft} onChangeText={setDraft} autoCapitalize="none" maxLength={40}
+          style={{ ...type.body, color: colors.label, backgroundColor: colors.grouped, height: 48, borderRadius: radius.input, paddingHorizontal: 14 }} />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10, marginBottom: 18 }}>
+          {TYPE_SHORTCUTS.map((t) => <Chip key={t} label={t} selected={draft.trim().toLowerCase() === t} onPress={() => setDraft(t)} />)}
+        </View>
+        <View style={{ gap: 6 }}>
+          <Button title="Done" disabled={!draft.trim()} onPress={() => {
+            if (editing) setCorrections((c) => ({ ...c, [editing.id]: draft.trim() }));
+            setEditing(null);
+          }} />
+          <Button title="Not a garment" variant="destructive" onPress={() => {
+            if (editing) setRemoved((r) => [...r, editing.id]);
+            setEditing(null);
+          }} />
+        </View>
+      </Sheet>
+      <Sheet visible={marking} onClose={() => setMarking(false)} title="Mark a missed garment" floating>
+        {uri ? <MarkRegion uri={uri} onBox={setMarkBox} /> : null}
+        <TextInput accessibilityLabel="Missed garment type" placeholder="What is it? (e.g. belt)" placeholderTextColor={colors.tertiaryLabel}
+          value={markType} onChangeText={setMarkType} autoCapitalize="none" maxLength={40}
+          style={{ ...type.body, color: colors.label, backgroundColor: colors.grouped, height: 48, borderRadius: radius.input, paddingHorizontal: 14, marginTop: 14 }} />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10, marginBottom: 14 }}>
+          {TYPE_SHORTCUTS.map((t) => <Chip key={t} label={t} selected={markType.trim().toLowerCase() === t} onPress={() => setMarkType(t)} />)}
+        </View>
+        {markError ? <Text style={{ ...type.footnote, color: colors.destructive, marginBottom: 10 }}>{markError}</Text> : null}
+        <Button title="Add Garment" onPress={addMarked} disabled={!markBox || !markType.trim()} loading={markBusy} />
+      </Sheet>
       <CostSheet
         visible={confirming}
         title={selected.length === 1 ? "Generate 1 garment" : `Generate ${selected.length} garments`}
@@ -170,8 +238,8 @@ export default function PickScreen() {
   );
 }
 
-function CandidateRow({ candidate, index, selected, onPress, onRemove }: {
-  candidate: OutfitCandidate; index: number; selected: boolean; onPress: () => void; onRemove: () => void;
+function CandidateRow({ candidate, index, selected, onPress, onEdit }: {
+  candidate: OutfitCandidate; index: number; selected: boolean; onPress: () => void; onEdit: () => void;
 }) {
   const note = visibilityNote(candidate);
   const title = candidateTitle(candidate);
@@ -203,8 +271,8 @@ function CandidateRow({ candidate, index, selected, onPress, onRemove }: {
           {selected ? <Icon name="checkmark" size={15} color={colors.onTint} /> : null}
         </View>
       </Pressable>
-      <Pressable onPress={onRemove} accessibilityRole="button" accessibilityLabel={`${title} is not a garment`} hitSlop={hitSlopFor(22)} style={{ alignSelf: "flex-end" }}>
-        <Text style={{ ...type.footnote, color: colors.destructive }}>Not a garment</Text>
+      <Pressable onPress={onEdit} accessibilityRole="button" accessibilityLabel={`Edit ${title}`} hitSlop={hitSlopFor(22)} style={{ alignSelf: "flex-end" }}>
+        <Text style={{ ...type.footnote, fontWeight: "600", color: colors.tint }}>Edit</Text>
       </Pressable>
     </View>
   );

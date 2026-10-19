@@ -254,11 +254,13 @@ export async function scanOutfit(account: Account, current: () => Account | null
 // Stage 2: make images for the picked garments only. unitPrice is the per-image price the user saw
 // (null while billing is off); the server refuses with 409 if it changed. Results wait for review.
 export async function generateOutfit(account: Account, current: () => Account | null, scanId: string,
-                                     candidateIds: string[], unitPrice: number | null): Promise<OutfitResult> {
+                                     candidateIds: string[], unitPrice: number | null,
+                                     corrections: Record<string, string> = {}): Promise<OutfitResult> {
   const key = randomUUID();
   const attempt = () => call<Job>(account, `${scanPath(scanId)}/generate`, {
     method: "POST", headers: { "Idempotency-Key": key, "Content-Type": "application/json" },
-    body: JSON.stringify({ candidate_ids: candidateIds, expected_unit_price: unitPrice }),
+    body: JSON.stringify({ candidate_ids: candidateIds, expected_unit_price: unitPrice,
+                           ...(Object.keys(corrections).length ? { corrections } : {}) }),
   });
   let started: Job;
   try {
@@ -270,6 +272,26 @@ export async function generateOutfit(account: Account, current: () => Account | 
   const job = await waitFor(account, current, started);
   const items = await Promise.all(job.item_ids.map((id) => call<V1Item>(account, `/v1/items/${encodeURIComponent(id)}`)));
   return { items: items.map(toClosetItem), failed: job.failed };
+}
+
+// A garment the scan missed: the area the user marked (photo pixels) and its type. Free; returns the scan.
+export async function markRegion(account: Account, scanId: string,
+                                 box: { x: number; y: number; width: number; height: number }, category: string): Promise<OutfitScan> {
+  return call<OutfitScan>(account, `${scanPath(scanId)}/regions`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ box, category }),
+  });
+}
+
+// A new image for an outfit result still in review, at the front price the user saw; waits for it.
+export async function regenerateItem(account: Account, current: () => Account | null, item: ClosetItem,
+                                     unitPrice: number | null): Promise<ClosetItem> {
+  const key = randomUUID();
+  const started = await call<Job>(account, `${itemPath(item)}/regenerate`, {
+    method: "POST", headers: { "Idempotency-Key": key, "Content-Type": "application/json" },
+    body: JSON.stringify({ expected_unit_price: unitPrice }),
+  });
+  await waitFor(account, current, started);
+  return toClosetItem(await call<V1Item>(account, itemPath(item)));
 }
 
 export async function getPendingItems(account: Account): Promise<ClosetItem[]> {

@@ -4,7 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import PickScreen from "../app/outfit/pick";
 import DetectScreen from "../app/outfit/detect";
 import ReviewScreen from "../app/outfit/review";
-import { deleteItem, generateOutfit, getOutfitScan, getPendingItems, keepItem, postRun, scanOutfit } from "../src/api/client";
+import { deleteItem, generateOutfit, getOutfitScan, getPendingItems, keepItem, markRegion, postRun, regenerateItem, scanOutfit } from "../src/api/client";
 import type { ClosetItem, OutfitCandidate, OutfitScan } from "../src/api/types";
 import { CreditsContext, type CreditsValue } from "../src/credits/CreditsProvider";
 import { CaptureJobsProvider } from "../src/store/captureJobs";
@@ -70,7 +70,8 @@ test("Not a garment takes a detection off the list", async () => {
   (getOutfitScan as jest.Mock).mockResolvedValue(SCAN);
   withCredits(<PickScreen />);
   await screen.findByText("Blazer");
-  fireEvent.press(screen.getByRole("button", { name: "Blazer is not a garment" }));
+  fireEvent.press(screen.getByRole("button", { name: "Edit Blazer" }));
+  fireEvent.press(screen.getByRole("button", { name: "Not a garment" }));
   expect(screen.queryByText("Blazer")).toBeNull();
   expect(screen.getByText("1 selected")).toBeTruthy();
 });
@@ -87,7 +88,7 @@ test("creating confirms the cost first, then sends only the picks and the price 
   expect(screen.getByText("Detection was free")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "Generate · 2 credits" }));
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/review", params: { failed: "trousers" } }));
-  expect(generateOutfit).toHaveBeenCalledWith("scan-1", ["c1", "c3"], 1);
+  expect(generateOutfit).toHaveBeenCalledWith("scan-1", ["c1", "c3"], 1, {});
 });
 
 test("too few credits: says how many to deselect; billing off sends no price and asks nothing", async () => {
@@ -106,7 +107,7 @@ test("too few credits: says how many to deselect; billing off sends no price and
   await screen.findByText("Blazer");
   expect(screen.queryByText(/credit/)).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "Generate" }));
-  await waitFor(() => expect(generateOutfit).toHaveBeenCalledWith("scan-1", ["c1", "c3"], null));
+  await waitFor(() => expect(generateOutfit).toHaveBeenCalledWith("scan-1", ["c1", "c3"], null, {}));
 });
 
 test("a changed price re-opens the cost sheet instead of charging", async () => {
@@ -133,7 +134,7 @@ test("review shows photo and generated image side by side; Save keeps the kept a
   expect(screen.getByText(/Couldn't make: trousers/)).toBeTruthy();
   expect(screen.getByText("Your photo")).toBeTruthy();
   expect(screen.getByText("2 kept")).toBeTruthy();
-  expect(screen.queryByText(/Regenerate/)).toBeNull();
+  expect(screen.getByRole("button", { name: "↻ Regenerate" })).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "Next" }));
   expect(screen.getByText("Review 2 of 2")).toBeTruthy();
   fireEvent(screen.getByLabelText("Keep Black shirt"), "valueChange", false);
@@ -164,4 +165,52 @@ test("a failed scan offers another photo", async () => {
   expect(await screen.findByText("Can't reach your wardrobe server.")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "Try Another Outfit Photo" }));
   expect(mockReplace).toHaveBeenCalledWith({ pathname: "/capture/camera", params: { mode: "outfit" } });
+});
+
+test("a corrected type shows on the row and goes with the generate request", async () => {
+  mockParams = { scanId: "scan-1" };
+  (getOutfitScan as jest.Mock).mockResolvedValue(SCAN);
+  (generateOutfit as jest.Mock).mockResolvedValue({ items: [], failed: [] });
+  withCredits(<PickScreen />);
+  await screen.findByText("Blazer");
+  fireEvent.press(screen.getByRole("button", { name: "Edit Blazer" }));
+  fireEvent.changeText(screen.getByLabelText("Garment type"), "coat");
+  fireEvent.press(screen.getByRole("button", { name: "Done" }));
+  expect(screen.getByText("Coat")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "Generate" }));
+  await waitFor(() => expect(generateOutfit).toHaveBeenCalledWith("scan-1", ["c1", "c3"], null, { c1: "coat" }));
+});
+
+test("marking a missed garment adds it to the list, selected", async () => {
+  mockParams = { scanId: "scan-1", uri: "file:///outfit.jpg" };
+  (getOutfitScan as jest.Mock).mockResolvedValue(SCAN);
+  const withBelt = { ...SCAN, candidates: [...SCAN.candidates, { ...cand("m1", "belt"), uncertainty: "Marked by you — the details come from your photo." }] };
+  (markRegion as jest.Mock).mockResolvedValue(withBelt);
+  withCredits(<PickScreen />);
+  await screen.findByText("Blazer");
+  fireEvent.press(screen.getByRole("button", { name: "+ Mark a missed garment" }));
+  fireEvent(screen.getByTestId("mark-region-frame"), "layout", { nativeEvent: { layout: { width: 300, height: 400, x: 0, y: 0 } } });
+  const area = screen.getByTestId("mark-region");
+  const touch = (x: number, y: number) => ({ nativeEvent: { locationX: x, locationY: y, touches: [], changedTouches: [] },
+    touchHistory: { numberActiveTouches: 1, indexOfSingleActiveTouch: 0, mostRecentTimeStamp: 1, touchBank: [{ touchActive: true, startPageX: 0, startPageY: 0, startTimeStamp: 0, currentPageX: x, currentPageY: y, currentTimeStamp: 1, previousPageX: 0, previousPageY: 0, previousTimeStamp: 0 }] } });
+  fireEvent(area, "responderGrant", touch(10, 10));
+  fireEvent(area, "responderMove", touch(80, 90));
+  fireEvent(area, "responderRelease", touch(80, 90));
+  fireEvent.changeText(screen.getByLabelText("Missed garment type"), "belt");
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Add Garment" })));
+  expect(markRegion).toHaveBeenCalledWith("scan-1", expect.objectContaining({ width: expect.any(Number) }), "belt");
+  expect(screen.getByText("Belt")).toBeTruthy();
+  expect(screen.getByText("3 selected")).toBeTruthy();
+});
+
+test("regenerate asks for the front price first, then replaces the image", async () => {
+  mockParams = {};
+  (getPendingItems as jest.Mock).mockResolvedValue([item("i1", "blazer")]);
+  (regenerateItem as jest.Mock).mockResolvedValue({ ...item("i1", "blazer"), generated_url: "https://sb.test/g2.png" });
+  withCredits(<ReviewScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(5) });
+  fireEvent.press(await screen.findByRole("button", { name: "↻ Regenerate · 1 credit" }));
+  expect(regenerateItem).not.toHaveBeenCalled();
+  expect(screen.getByText("Balance 5 → 4")).toBeTruthy();
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Regenerate · 1 credit" })));
+  expect(regenerateItem).toHaveBeenCalledWith(expect.objectContaining({ item_id: "i1" }), 1);
 });

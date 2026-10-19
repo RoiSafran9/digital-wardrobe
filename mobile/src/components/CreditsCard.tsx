@@ -24,7 +24,7 @@ export function CreditsCard() {
   );
 
   return (
-    <View style={{ backgroundColor: colors.card, borderRadius: radius.card, paddingHorizontal: 16, paddingTop: 14, marginBottom: 20 }}>
+    <View style={{ backgroundColor: colors.grouped, borderRadius: radius.card, paddingHorizontal: 16, paddingTop: 14, marginBottom: 20 }}>
       <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>AI Credits</Text>
       <Text accessibilityLabel={`${credits.available} AI credits available`}
             style={{ ...type.title2, color: colors.label, fontVariant: ["tabular-nums"], marginTop: 2 }}>

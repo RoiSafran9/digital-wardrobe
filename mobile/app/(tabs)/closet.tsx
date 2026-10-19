@@ -89,7 +89,7 @@ export default function ClosetScreen() {
                 hitSlop={hitSlopFor(30)}
                 style={{
                   paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill,
-                  backgroundColor: selected ? colors.tint : colors.card,
+                  backgroundColor: selected ? colors.tint : colors.grouped,
                 }}
               >
                 <Text style={{ ...type.subhead, color: selected ? colors.onTint : colors.label }}>{name}</Text>
@@ -131,7 +131,7 @@ export default function ClosetScreen() {
             style={{ marginBottom: 22 }}
           >
             <View>
-              <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} tile={colors.card} style={{ width: "100%", aspectRatio: 0.85 }} />
+              <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} tile={colors.grouped} style={{ width: "100%", aspectRatio: 0.85 }} />
               {item.turn?.state === "done" ? (
                 <View
                   testID={`badge-360-${item.run_id}-${item.item_id}`}

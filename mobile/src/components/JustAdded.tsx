@@ -99,7 +99,7 @@ export function JustAdded({ onClosetChanged }: { onClosetChanged: () => void }) 
           No pieces found in that photo. Try again with each piece laid flat, in good light.
         </Text>
       ) : (
-        <View style={{ backgroundColor: colors.card, borderRadius: radius.card, overflow: "hidden" }}>
+        <View style={{ backgroundColor: colors.grouped, borderRadius: radius.card, overflow: "hidden" }}>
           {items.map((item, index) => (
             <NewRow key={`${item.photo_name}-${item.item_id}`} item={item} first={index === 0} onOpen={() => setSelectedIndex(index)} onUpdated={replaceItem} />
           ))}

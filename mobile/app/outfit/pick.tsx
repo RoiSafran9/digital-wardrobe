@@ -61,7 +61,7 @@ export default function PickScreen() {
   if (busy) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, padding: 24, justifyContent: "center" }}>
-        <View style={{ backgroundColor: colors.card, borderRadius: radius.card, paddingVertical: 24 }}>
+        <View style={{ backgroundColor: colors.grouped, borderRadius: radius.card, paddingVertical: 24 }}>
           <ProcessingStatus steps={OUTFIT_STEPS} note={KEEP_OPEN} estimateSeconds={12 + selected.length * 10} />
         </View>
       </SafeAreaView>
@@ -115,7 +115,7 @@ function CandidateRow({ candidate, selected, onPress }: { candidate: OutfitCandi
       accessibilityRole="checkbox" accessibilityState={{ checked: selected }}
       accessibilityLabel={`${title}. ${candidate.description}${note ? `. ${note}` : ""}`}
       onPress={onPress}
-      style={{ flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: colors.card, borderRadius: radius.card, padding: 12 }}
+      style={{ flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: colors.grouped, borderRadius: radius.card, padding: 12 }}
     >
       {/* A crop of the real photo keeps its background, so it sits on a tile. */}
       <View style={{ width: 72, height: 88, borderRadius: radius.tile, overflow: "hidden", backgroundColor: colors.tile }}>

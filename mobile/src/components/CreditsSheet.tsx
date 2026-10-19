@@ -15,7 +15,7 @@ const dateLabel = (iso: string) => new Date(iso).toLocaleDateString("en-US", { m
 
 function Rows({ children }: { children: React.ReactNode[] }) {
   return (
-    <View style={{ backgroundColor: colors.card, borderRadius: radius.card, paddingHorizontal: 16 }}>
+    <View style={{ backgroundColor: colors.grouped, borderRadius: radius.card, paddingHorizontal: 16 }}>
       {children.map((child, i) => (
         <View key={i} style={{ paddingVertical: 12, borderTopWidth: i ? 0.5 : 0, borderTopColor: colors.separator }}>{child}</View>
       ))}

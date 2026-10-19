@@ -427,9 +427,10 @@ class SupabaseStore:
 
     # Items
     def list_items(self, user_id):
-        # Outfit results waiting for review (review_state 'pending') are not in the closet yet.
-        return self._rows("wardrobe_items", {"user_id": f"eq.{user_id}", "deleted_at": "is.null",
-                                             "or": "(review_state.is.null,review_state.eq.kept)", "order": "created_at.desc"})
+        # Outfit results waiting for review (review_state 'pending') are not in the closet yet. Filtered here,
+        # not in the query, so the closet still loads on a database without the outfit migration.
+        rows = self._rows("wardrobe_items", {"user_id": f"eq.{user_id}", "deleted_at": "is.null", "order": "created_at.desc"})
+        return [r for r in rows if r.get("review_state") in (None, "kept")]
 
     def get_item(self, user_id, item_id):
         return self._one("wardrobe_items", {"id": f"eq.{item_id}", "user_id": f"eq.{user_id}", "deleted_at": "is.null"})

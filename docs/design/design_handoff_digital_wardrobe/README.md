@@ -25,13 +25,15 @@ Tabs are hidden during onboarding, camera, processing and flow screens. Garment 
 5. **Starter credits**: 168pt circle `accentSoft` with "25" (64/700 accent) + "AI credits". Title "A welcome gift" (Instrument Serif 40). Price chips: Front · 1, Back · 1, 360° · 3. CTA "Digitize Your First Piece" → Add tab with first-piece hint; "Explore first" → empty Home.
 
 ### Home
-- Date eyebrow (13/600 uppercase, tracking .05em) + "Good morning,\nMaya" Instrument Serif 42. Credit pill top-right (fill bg, accent dot, balance) → Account.
-- Auto-scrolling horizontal marquee of garment tiles 118×148, radius 20, alternating 10pt vertical offset, linear loop (~4s per item). Tap a tile → details. Respect Reduce Motion (stop the animation).
-- Stats row with 3 columns separated by hairlines: Pieces / Categories / New this week (26/600).
-- "Digitize clothes" card (bg2, radius 26, padding 20) with **Take Photo** (primary) and **From Library** (white) buttons, 48pt tall, radius 14.
-- "Recently Added" horizontal list of 150×188 cards, name 15/600 + "Added Oct 18" 13 secondary, "See All" → Closet.
-- "Browse by category": outlined pills with counts → Closet pre-filtered.
-- **Empty state**: three dashed 78×98 frames (middle one accent with "+"), "Your closet starts here", two buttons, then 3 numbered tips.
+Updated 2026-10-19 by [CHANGE_home_photo_type.md](CHANGE_home_photo_type.md) (prototype: "Home dashboard" and "Empty state"; "Alt A" / "Alt B" are rejected alternatives). **Rule, app-wide:** every photo entry point says which kind of photo it expects — garment photo (flat lay or hanger → Flow A) or outfit photo (someone wearing it → Flow B). No unlabelled "Take Photo / From Library" pair.
+- Header: date eyebrow (13/600 uppercase, tracking .05em) + greeting in Instrument Serif 42. Credit pill top-right (fill bg, accent dot, balance) → Account.
+- Search field 44pt, radius 12, fill bg, "Search N pieces" → Closet with search focused.
+- "ADD TO CLOSET": two tiles (bg2, radius 22, image area 130pt with a small tag):
+  - **Garments** (`FLAT LAY`), "Each piece becomes an item": **Camera** (accent) → Flow A camera, **Library** (card) → photo picker → Flow A preview & cost.
+  - **Outfit photo** (`WORN`), "We find each piece you wear": **Choose Photo** → photo picker → Flow B.
+- "YOUR CLOSET": one row per category (48×58 thumbnail of its first item, name 17/500, count, chevron) → Closet filtered.
+- Removed: marquee, stats row, "Digitize clothes" card, "Recently Added", category pills.
+- **Empty state**: dashed frames, "Your closet starts here", body; then two labelled rows (card bg, radius 16): **Garment photo** "Laid flat or on a hanger" [Camera] [Library], **Outfit photo** "You wearing it" [Choose Photo]; then the 3 numbered tips.
 
 ### Closet
 - Large title "Closet" 34/700 + count. Search field 40pt, radius 12, fill bg. It searches name/category/color/material.

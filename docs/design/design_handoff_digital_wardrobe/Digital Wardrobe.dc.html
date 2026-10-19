@@ -189,7 +189,7 @@ input::placeholder{color:var(--ink3,#a1a1a6)}
     <button onClick="{{ toAccount }}" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:0;border-radius:17px;background:var(--fill,rgba(120,120,128,.12));color:var(--ink,#131315);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;margin-top:4px"><span style="width:8px;height:8px;border-radius:50%;background:var(--accent,#1f6bff)"></span>{{ credits }}</button>
   </div>
 
-  <sc-if value="{{ hasItems }}" hint-placeholder-val="{{ true }}">
+  <sc-if value="{{ hA }}" hint-placeholder-val="{{ true }}">
     <div style="overflow:hidden;margin-top:24px;padding:6px 0 16px">
       <div style="display:flex;gap:10px;width:max-content;animation:{{ marqueeAnim }}">
         <sc-for list="{{ marquee }}" as="it" hint-placeholder-count="8">
@@ -202,14 +202,27 @@ input::placeholder{color:var(--ink3,#a1a1a6)}
       <div style="padding:14px 0 14px 16px;border-left:1px solid var(--line,rgba(0,0,0,.08));display:flex;flex-direction:column;gap:2px"><div style="font-size:26px;font-weight:600;letter-spacing:-.02em">{{ stats.cats }}</div><div style="font-size:13px;color:var(--ink2,#6e6e73)">Categories</div></div>
       <div style="padding:14px 0 14px 16px;border-left:1px solid var(--line,rgba(0,0,0,.08));display:flex;flex-direction:column;gap:2px"><div style="font-size:26px;font-weight:600;letter-spacing:-.02em">{{ stats.week }}</div><div style="font-size:13px;color:var(--ink2,#6e6e73)">New this week</div></div>
     </div>
-    <div style="margin:20px 16px 0;padding:20px;border-radius:26px;background:var(--bg2,#f4f4f2);display:flex;flex-direction:column;gap:14px">
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <div style="font-size:20px;font-weight:700;letter-spacing:-.01em">Digitize clothes</div>
-        <div style="font-size:15px;line-height:1.4;color:var(--ink2,#6e6e73)">Snap garments or an outfit. AI turns them into catalog images.</div>
+    <div style="margin:20px 16px 0;padding:20px 18px 8px;border-radius:26px;background:var(--bg2,#f4f4f2);display:flex;flex-direction:column">
+      <div style="font-size:20px;font-weight:700;letter-spacing:-.01em">Digitize clothes</div>
+      <div style="font-size:15px;line-height:1.4;color:var(--ink2,#6e6e73);margin-top:4px">Pick the kind of photo you have.</div>
+      <div style="display:flex;gap:14px;align-items:center;padding:16px 0;margin-top:6px;border-bottom:1px solid var(--line,rgba(0,0,0,.08))">
+        <div style="position:relative;width:56px;height:76px;border-radius:12px;overflow:hidden;flex:none;background:var(--card,#fff)"><div style="position:absolute;left:0;top:6px;width:36px;height:40px"><dc-import name="GarmentArt" item="{{ gNew.0 }}" bare="{{ true }}" rotate="-10" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div><div style="position:absolute;right:0;top:28px;width:30px;height:44px"><dc-import name="GarmentArt" item="{{ gNew.2 }}" bare="{{ true }}" rotate="8" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div></div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+          <div><div style="font-size:16px;font-weight:700">Garment photo</div><div style="font-size:13px;line-height:1.35;color:var(--ink2,#6e6e73)">Clothes laid flat or on a hanger</div></div>
+          <div style="display:flex;gap:8px">
+            <button onClick="{{ toCamera }}" style="height:34px;padding:0 14px;border:0;border-radius:17px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Camera</button>
+            <button onClick="{{ toPreview }}" style="height:34px;padding:0 14px;border:0;border-radius:17px;background:var(--card,#fff);color:var(--ink,#131315);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Library</button>
+          </div>
+        </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <button onClick="{{ toCamera }}" style="height:48px;border:0;border-radius:14px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer">Take Photo</button>
-        <button onClick="{{ toLibrary }}" style="height:48px;border:0;border-radius:14px;background:var(--card,#fff);color:var(--ink,#131315);font-family:inherit;font-size:16px;font-weight:600;cursor:pointer">From Library</button>
+      <div style="display:flex;gap:14px;align-items:center;padding:16px 0">
+        <div style="position:relative;width:56px;height:76px;border-radius:12px;overflow:hidden;flex:none;background:repeating-linear-gradient(135deg,var(--ph1,#ecebe7) 0 6px,var(--ph2,#e4e2dd) 6px 12px)"><sc-for list="{{ candMini }}" as="c" hint-placeholder-count="4"><div style="position:absolute;left:{{ c.l }};top:{{ c.t }};width:{{ c.w }};height:{{ c.h }}"><dc-import name="GarmentArt" item="{{ c }}" bare="{{ true }}" scale="1.2" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div><div style="position:absolute;left:{{ c.l }};top:{{ c.t }};width:{{ c.w }};height:{{ c.h }};border:1px dashed var(--accent,#1f6bff);border-radius:3px;box-sizing:border-box"></div></sc-for></div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+          <div><div style="font-size:16px;font-weight:700">Outfit photo</div><div style="font-size:13px;line-height:1.35;color:var(--ink2,#6e6e73)">You wearing it. We find each piece.</div></div>
+          <div style="display:flex;gap:8px">
+            <button onClick="{{ toLibrary }}" style="height:34px;padding:0 14px;border:0;border-radius:17px;background:var(--card,#fff);color:var(--ink,#131315);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Choose Photo</button>
+          </div>
+        </div>
       </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:baseline;padding:28px 20px 12px">
@@ -232,6 +245,93 @@ input::placeholder{color:var(--ink3,#a1a1a6)}
     </div>
   </sc-if>
 
+  <sc-if value="{{ hB }}" hint-placeholder-val="{{ false }}">
+    <div style="margin:26px 16px 0;padding:20px 16px 16px;border-radius:28px;background:var(--bg2,#f4f4f2);display:flex;flex-direction:column;gap:14px">
+      <div style="font-size:20px;font-weight:700;letter-spacing:-.01em;padding:0 4px">What are you photographing?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div onClick="{{ pickG }}" style="border-radius:20px;background:var(--card,#fff);box-shadow:inset 0 0 0 2px {{ bRingG }};padding:10px 10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:10px">
+          <div style="position:relative;height:120px;border-radius:12px;overflow:hidden;background:var(--tile,#f3f2ef)">
+            <div style="position:absolute;left:6%;top:10%;width:52%;height:52%"><dc-import name="GarmentArt" item="{{ gNew.0 }}" bare="{{ true }}" rotate="-10" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+            <div style="position:absolute;right:4%;top:20%;width:42%;height:70%"><dc-import name="GarmentArt" item="{{ gNew.2 }}" bare="{{ true }}" rotate="6" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+            <div style="position:absolute;left:14%;bottom:4%;width:44%;height:40%"><dc-import name="GarmentArt" item="{{ gNew.1 }}" bare="{{ true }}" rotate="12" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+          </div>
+          <div style="padding:0 2px"><div style="font-size:15px;font-weight:700">Clothes</div><div style="font-size:12.5px;line-height:1.3;color:var(--ink2,#6e6e73)">Laid flat or hung</div></div>
+        </div>
+        <div onClick="{{ pickO }}" style="border-radius:20px;background:var(--card,#fff);box-shadow:inset 0 0 0 2px {{ bRingO }};padding:10px 10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:10px">
+          <div style="height:120px;border-radius:12px;overflow:hidden;background:var(--tile,#f3f2ef);display:flex;justify-content:center">
+            <div style="position:relative;width:82px;height:120px;background:repeating-linear-gradient(135deg,var(--ph1,#ecebe7) 0 8px,var(--ph2,#e4e2dd) 8px 16px)"><sc-for list="{{ candMini }}" as="c" hint-placeholder-count="4"><div style="position:absolute;left:{{ c.l }};top:{{ c.t }};width:{{ c.w }};height:{{ c.h }}"><dc-import name="GarmentArt" item="{{ c }}" bare="{{ true }}" scale="1.2" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div><div style="position:absolute;left:{{ c.l }};top:{{ c.t }};width:{{ c.w }};height:{{ c.h }};border:1px dashed var(--accent,#1f6bff);border-radius:4px;box-sizing:border-box"></div></sc-for></div>
+          </div>
+          <div style="padding:0 2px"><div style="font-size:15px;font-weight:700">An outfit</div><div style="font-size:12.5px;line-height:1.3;color:var(--ink2,#6e6e73)">Me wearing it</div></div>
+        </div>
+      </div>
+      <sc-if value="{{ typeG }}" hint-placeholder-val="{{ true }}">
+        <div style="font-size:14px;line-height:1.4;color:var(--ink2,#6e6e73);padding:0 4px">One or several pieces per photo. Each becomes its own item · 1 credit per garment.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button onClick="{{ toCamera }}" style="height:48px;border:0;border-radius:14px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer">Take Photo</button>
+          <button onClick="{{ toPreview }}" style="height:48px;border:0;border-radius:14px;background:var(--card,#fff);color:var(--ink,#131315);font-family:inherit;font-size:16px;font-weight:600;cursor:pointer">From Library</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{ typeO }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:14px;line-height:1.4;color:var(--ink2,#6e6e73);padding:0 4px">Mirror selfies and full-body shots work best. Detection is free, then pick the pieces to keep.</div>
+        <button onClick="{{ toLibrary }}" style="height:48px;border:0;border-radius:14px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer">Choose Outfit Photo</button>
+      </sc-if>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding:28px 20px 12px">
+      <div style="font-size:22px;font-weight:700;letter-spacing:-.01em">Recently Added</div>
+      <button onClick="{{ toCloset }}" style="border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:16px;cursor:pointer">See All</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px">
+      <sc-for list="{{ recent4 }}" as="it" hint-placeholder-count="4">
+        <div onClick="{{ it.open }}" style="display:flex;flex-direction:column;gap:8px;cursor:pointer;min-width:0">
+          <div style="aspect-ratio:4/5;border-radius:20px;overflow:hidden"><dc-import name="GarmentArt" item="{{ it }}" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+          <div style="padding:0 2px"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.name }}</div><div style="font-size:13px;color:var(--ink2,#6e6e73)">Added {{ it.added }}</div></div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hC }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ toCloset }}" style="margin:22px 16px 0;height:44px;border-radius:12px;background:var(--fill,rgba(120,120,128,.12));display:flex;align-items:center;gap:8px;padding:0 14px;color:var(--ink3,#a1a1a6);font-size:16px;cursor:pointer"><span style="width:13px;height:13px;border:2px solid currentColor;border-radius:50%;box-sizing:border-box"></span>Search {{ stats.total }} pieces</div>
+    <div style="font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2,#6e6e73);padding:26px 20px 10px">Add to closet</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px">
+      <div style="border-radius:22px;background:var(--bg2,#f4f4f2);overflow:hidden;display:flex;flex-direction:column">
+        <div style="position:relative;height:130px;background:var(--tile,#f3f2ef)">
+          <div style="position:absolute;left:8%;top:10%;width:50%;height:52%"><dc-import name="GarmentArt" item="{{ gNew.0 }}" bare="{{ true }}" rotate="-10" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+          <div style="position:absolute;right:6%;top:18%;width:40%;height:70%"><dc-import name="GarmentArt" item="{{ gNew.2 }}" bare="{{ true }}" rotate="6" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+          <div style="position:absolute;left:4%;bottom:6px;font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.06em;color:var(--ink2,#6e6e73);background:var(--card,#fff);padding:4px 6px;border-radius:6px;margin-left:6px">FLAT LAY</div>
+        </div>
+        <div style="padding:12px 12px 12px;display:flex;flex-direction:column;gap:10px;flex:1">
+          <div><div style="font-size:15px;font-weight:700">Garments</div><div style="font-size:12.5px;line-height:1.3;color:var(--ink2,#6e6e73)">Each piece becomes an item</div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:auto">
+            <button onClick="{{ toCamera }}" style="height:36px;border:0;border-radius:11px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Camera</button>
+            <button onClick="{{ toPreview }}" style="height:36px;border:0;border-radius:11px;background:var(--card,#fff);color:var(--ink,#131315);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Library</button>
+          </div>
+        </div>
+      </div>
+      <div style="border-radius:22px;background:var(--bg2,#f4f4f2);overflow:hidden;display:flex;flex-direction:column">
+        <div style="position:relative;height:130px;background:var(--tile,#f3f2ef);display:flex;justify-content:center">
+          <div style="position:relative;width:88px;height:130px;background:repeating-linear-gradient(135deg,var(--ph1,#ecebe7) 0 8px,var(--ph2,#e4e2dd) 8px 16px)"><sc-for list="{{ candMini }}" as="c" hint-placeholder-count="4"><div style="position:absolute;left:{{ c.l }};top:{{ c.t }};width:{{ c.w }};height:{{ c.h }}"><dc-import name="GarmentArt" item="{{ c }}" bare="{{ true }}" scale="1.2" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div><div style="position:absolute;left:{{ c.l }};top:{{ c.t }};width:{{ c.w }};height:{{ c.h }};border:1px dashed var(--accent,#1f6bff);border-radius:4px;box-sizing:border-box"></div></sc-for></div>
+          <div style="position:absolute;left:4%;bottom:6px;font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.06em;color:var(--ink2,#6e6e73);background:var(--card,#fff);padding:4px 6px;border-radius:6px;margin-left:6px">WORN</div>
+        </div>
+        <div style="padding:12px 12px 12px;display:flex;flex-direction:column;gap:10px;flex:1">
+          <div><div style="font-size:15px;font-weight:700">Outfit photo</div><div style="font-size:12.5px;line-height:1.3;color:var(--ink2,#6e6e73)">We find each piece you wear</div></div>
+          <button onClick="{{ toLibrary }}" style="height:36px;margin-top:auto;border:0;border-radius:11px;background:var(--card,#fff);color:var(--ink,#131315);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Choose Photo</button>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2,#6e6e73);padding:28px 20px 6px">Your closet</div>
+    <div style="display:flex;flex-direction:column;padding:0 16px">
+      <sc-for list="{{ catRows }}" as="c" hint-placeholder-count="5">
+        <div onClick="{{ c.go }}" style="display:flex;align-items:center;gap:14px;padding:10px 4px;border-bottom:1px solid var(--line,rgba(0,0,0,.08));cursor:pointer">
+          <div style="width:48px;height:58px;border-radius:12px;overflow:hidden;flex:none"><dc-import name="GarmentArt" item="{{ c.item }}" style="width:100%;height:100%" hint-size="48px,58px"></dc-import></div>
+          <div style="flex:1;font-size:17px;font-weight:500">{{ c.name }}</div>
+          <div style="font-size:15px;color:var(--ink3,#a1a1a6)">{{ c.n }}</div>
+          <span style="font-size:22px;color:var(--ink3,#a1a1a6)">›</span>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ noItems }}" hint-placeholder-val="{{ false }}">
     <div style="margin:28px 16px 0;padding:28px 20px 22px;border-radius:30px;background:var(--bg2,#f4f4f2);display:flex;flex-direction:column;align-items:center;text-align:center">
       <div style="display:flex;gap:10px;margin-bottom:24px">
@@ -241,9 +341,16 @@ input::placeholder{color:var(--ink3,#a1a1a6)}
       </div>
       <div style="font-size:22px;font-weight:700;letter-spacing:-.01em">Your closet starts here</div>
       <div style="font-size:15px;line-height:1.45;color:var(--ink2,#6e6e73);margin-top:6px;text-wrap:pretty;max-width:290px">Photograph a garment or import an outfit photo. Your first pieces take under a minute.</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:22px">
-        <button onClick="{{ toCamera }}" style="height:48px;border:0;border-radius:14px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer">Take Photo</button>
-        <button onClick="{{ toLibrary }}" style="height:48px;border:0;border-radius:14px;background:var(--card,#fff);color:var(--ink,#131315);font-family:inherit;font-size:16px;font-weight:600;cursor:pointer">From Library</button>
+      <div style="display:flex;flex-direction:column;gap:10px;width:100%;margin-top:22px;text-align:left">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 12px 12px 14px;border-radius:16px;background:var(--card,#fff)">
+          <div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:700">Garment photo</div><div style="font-size:13px;color:var(--ink2,#6e6e73)">Laid flat or on a hanger</div></div>
+          <button onClick="{{ toCamera }}" style="height:34px;padding:0 12px;border:0;border-radius:17px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Camera</button>
+          <button onClick="{{ toPreview }}" style="height:34px;padding:0 12px;border:0;border-radius:17px;background:var(--fill,rgba(120,120,128,.12));color:var(--ink,#131315);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Library</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 12px 12px 14px;border-radius:16px;background:var(--card,#fff)">
+          <div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:700">Outfit photo</div><div style="font-size:13px;color:var(--ink2,#6e6e73)">You wearing it</div></div>
+          <button onClick="{{ toLibrary }}" style="height:34px;padding:0 12px;border:0;border-radius:17px;background:var(--fill,rgba(120,120,128,.12));color:var(--ink,#131315);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Choose Photo</button>
+        </div>
       </div>
     </div>
     <div style="padding:22px 24px;display:flex;flex-direction:column;gap:14px">
@@ -840,7 +947,7 @@ input::placeholder{color:var(--ink3,#a1a1a6)}
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;startCredits&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:25,&quot;step&quot;:1,&quot;default&quot;:18,&quot;tsType&quot;:&quot;number&quot;},&quot;homeMotion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;startCredits&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:25,&quot;step&quot;:1,&quot;default&quot;:18,&quot;tsType&quot;:&quot;number&quot;},&quot;homeMotion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;homeLayout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;A&quot;,&quot;B&quot;,&quot;C&quot;],&quot;default&quot;:&quot;C&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
 const SAMPLE = [
   { id: 'g1', name: 'Oxford Shirt', cat: 'Tops', color: '#eef0f3', colorName: 'White', shape: 'shirt', pattern: 'Solid', material: 'Cotton poplin', details: 'Button-down collar, chest pocket', added: 'Oct 18', back: true, v360: false },
   { id: 'g2', name: 'Cable Knit Sweater', cat: 'Tops', color: '#e7dcc6', colorName: 'Cream', shape: 'sweater', pattern: 'Cable knit', material: 'Merino wool', details: 'Crew neck, ribbed cuffs', added: 'Oct 18', back: false, v360: false },
@@ -884,12 +991,13 @@ const LIGHT = { '--bg': '#ffffff', '--bg2': '#f4f4f2', '--card': '#ffffff', '--t
 const DARK = { '--bg': '#000000', '--bg2': '#1c1c1e', '--card': '#1c1c1e', '--tile': '#1b1b1d', '--ink': '#f5f5f7', '--ink2': '#98989f', '--ink3': '#636366', '--line': 'rgba(255,255,255,.1)', '--fill': 'rgba(120,120,128,.26)', '--accent': '#3d86ff', '--accentSoft': 'rgba(61,134,255,.18)', '--bar': 'rgba(18,18,20,.94)', '--sheet': '#1c1c1e', '--ph1': '#242426', '--ph2': '#1e1e20', '--dim': 'rgba(0,0,0,.6)', '--success': '#30c26a', '--danger': '#ff5a5f' };
 
 class Component extends DCLogic {
-  state = { screen: 'home', jk: 'home', theme: null, credits: null, closet: SAMPLE, detailId: null, view: 'front', angle: 0, sheet: null, cat: 'All', color: 'All', q: '', email: 'maya.chen@icloud.com', code: '', introIdx: 0, progress: 0, flow: 'g', gKeep: { n1: true, n2: true, n3: true }, cands: CANDS.map(c => ({ ...c })), editCand: null, rIdx: 0, toast: null, saved: [], savedCredits: 0, activity: ACTIVITY, busy: null, notif: true, lowNeed: 0, editDraft: null };
+  state = { screen: 'home', jk: 'home', theme: null, credits: null, closet: SAMPLE, detailId: null, view: 'front', angle: 0, sheet: null, cat: 'All', color: 'All', q: '', email: 'maya.chen@icloud.com', code: '', introIdx: 0, progress: 0, flow: 'g', gKeep: { n1: true, n2: true, n3: true }, cands: CANDS.map(c => ({ ...c })), editCand: null, rIdx: 0, toast: null, saved: [], savedCredits: 0, activity: ACTIVITY, homeV: null, homeType: 'g', busy: null, notif: true, lowNeed: 0, editDraft: null };
 
   componentWillUnmount() { clearInterval(this.t); clearTimeout(this.tt); clearTimeout(this.bt); }
   componentDidUpdate(pp) {
     if (pp.startCredits !== this.props.startCredits) this.setState({ credits: null });
     if (pp.theme !== this.props.theme) this.setState({ theme: null });
+    if (pp.homeLayout !== this.props.homeLayout) this.setState({ homeV: null });
   }
   get credits() { return this.state.credits ?? (this.props.startCredits ?? 18); }
   get theme() { return this.state.theme ?? (this.props.theme ?? 'light'); }
@@ -914,7 +1022,9 @@ class Component extends DCLogic {
     const base = { jk: k };
     const map = {
       welcome: () => this.go('welcome', base), intro: () => this.go('intro', { ...base, introIdx: 0 }), email: () => this.go('email', base), code: () => this.go('code', { ...base, code: '' }), starter: () => this.go('starter', base),
-      home: () => this.go('home', { ...base, closet: this.state.closet.length ? this.state.closet : SAMPLE }),
+      'home-a': () => this.go('home', { ...base, homeV: 'a', closet: this.state.closet.length ? this.state.closet : SAMPLE }),
+      'home-b': () => this.go('home', { ...base, homeV: 'b', homeType: 'g', closet: this.state.closet.length ? this.state.closet : SAMPLE }),
+      home: () => this.go('home', { ...base, homeV: 'c', closet: this.state.closet.length ? this.state.closet : SAMPLE }),
       'home-empty': () => this.go('home', { ...base, closet: [] }),
       closet: () => this.go('closet', { ...base, closet: this.state.closet.length ? this.state.closet : SAMPLE, cat: 'All', color: 'All', q: '' }),
       detail: () => { this.go('closet', { ...base, closet: this.state.closet.length ? this.state.closet : SAMPLE }); setTimeout(() => this.openItem('g2'), 0); },
@@ -942,7 +1052,7 @@ class Component extends DCLogic {
 
     const J = [
       ['Onboarding', [['Welcome', 'welcome'], ['Intro', 'intro'], ['Email sign-in', 'email'], ['Verification code', 'code'], ['Starter credits', 'starter']]],
-      ['Home', [['Home dashboard', 'home'], ['Empty state', 'home-empty']]],
+      ['Home', [['Home dashboard', 'home'], ['Empty state', 'home-empty'], ['Alt A · clear paths', 'home-a'], ['Alt B · ask first', 'home-b']]],
       ['Closet', [['Grid, search & filters', 'closet'], ['Garment details', 'detail'], ['360° viewer', 'detail-360'], ['Back image · empty', 'detail-back']]],
       ['Add · garment photo', [['Choose method', 'add'], ['Camera', 'g-camera'], ['Preview & cost', 'g-preview'], ['AI processing', 'g-proc'], ['Error & retry', 'g-error'], ['Results', 'g-results']]],
       ['Add · outfit photo', [['Choose photo', 'o-upload'], ['Detecting', 'o-detecting'], ['Select & correct', 'o-select'], ['Confirm cost', 'o-cost'], ['Review vs. original', 'o-review'], ['Saved', 'saved']]],
@@ -980,6 +1090,11 @@ class Component extends DCLogic {
     const motion = this.props.homeMotion ?? true;
     const marquee = [...closet, ...closet].map((it, i) => ({ ...withOpen(it), y: i % 2 ? '10px' : '0px' }));
     const recent = closet.slice(0, 6).map(withOpen);
+    const hv = (st.homeV ?? (this.props.homeLayout ?? 'C')).toLowerCase(), full = closet.length > 0;
+    const homeVals = { hA: full && hv === 'a', hB: full && hv === 'b', hC: full && hv === 'c', typeG: st.homeType === 'g', typeO: st.homeType === 'o',
+      bRingG: st.homeType === 'g' ? 'var(--accent,#1f6bff)' : 'transparent', bRingO: st.homeType === 'o' ? 'var(--accent,#1f6bff)' : 'transparent',
+      pickG: () => this.setState({ homeType: 'g' }), pickO: () => this.setState({ homeType: 'o' }), recent4: recent.slice(0, 4),
+      catRows: CATS.map(c => { const its = closet.filter(i => i.cat === c); return { name: c, n: its.length, item: its[0], go: () => this.go('closet', { cat: c, color: 'All', q: '', jk: 'closet' }) }; }).filter(c => c.n) };
     const catCounts = CATS.map(c => ({ name: c, n: closet.filter(i => i.cat === c).length, go: () => this.go('closet', { cat: c, color: 'All', q: '', jk: 'closet' }) })).filter(c => c.n);
 
     // closet
@@ -1087,7 +1202,7 @@ class Component extends DCLogic {
     const pct = Math.max(0, Math.min(100, credits / 25 * 100));
     const used = 25 - credits;
     return {
-      s, journey, tabs, showTabs: s.home || s.closet || s.add || s.account,
+      ...homeVals, s, journey, tabs, showTabs: s.home || s.closet || s.add || s.account,
       themeVars: dark ? DARK : LIGHT, statusColor: s.gcamera ? '#fff' : (dark ? '#f5f5f7' : '#131315'),
       credits, toast: st.toast, hasToast: !!st.toast,
       welcomeTiles, intro, introItem: SAMPLE[1], introGrid: SAMPLE.slice(0, 9),

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
@@ -32,6 +32,7 @@ export function initials(email: string | null, displayName?: string | null): str
 }
 
 export default function AccountScreen() {
+  const router = useRouter();
   const { status, email, signOut } = useAuth();
   const { billing, prices, credits, outfit, refresh } = useCredits();
   const { mode, setMode } = useAppearance();
@@ -96,6 +97,8 @@ export default function AccountScreen() {
           value={mode} onChange={(m) => void setMode(m)}
         />
       </View>
+      <Row label="Help & Support" accessory="chevron" onPress={() => router.push("/help")} />
+      <Row label="Privacy" accessory="chevron" onPress={() => router.push("/privacy")} />
     </GroupedList>
   );
 

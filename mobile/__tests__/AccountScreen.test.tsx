@@ -8,7 +8,11 @@ import { CreditsContext, type CreditsValue } from "../src/credits/CreditsProvide
 import type { Credits } from "../src/api/types";
 
 jest.mock("../src/api/client", () => ({ ...jest.requireActual("../src/api/client"), deleteAccount: jest.fn() }));
-jest.mock("expo-router", () => ({ useFocusEffect: (effect: () => void) => require("react").useEffect(effect, [effect]) }));
+const mockPush = jest.fn();
+jest.mock("expo-router", () => ({
+  useFocusEffect: (effect: () => void) => require("react").useEffect(effect, [effect]),
+  useRouter: () => ({ push: mockPush }),
+}));
 
 const CREDITS: Credits = {
   balance: 197, held: 1, available: 196, granted: 200, used: 3, next_before: null,
@@ -157,4 +161,12 @@ test("initials prefer the chosen name", () => {
   const { initials } = require("../app/(tabs)/account");
   expect(initials("x@y.com", "Maya Chen")).toBe("MC");
   expect(initials("x@y.com", "רועי")).toBe("ר");
+});
+
+test("Help and Privacy open from Settings", () => {
+  renderAccount({}, { credits: CREDITS });
+  fireEvent.press(screen.getByRole("button", { name: "Help & Support" }));
+  expect(mockPush).toHaveBeenCalledWith("/help");
+  fireEvent.press(screen.getByRole("button", { name: "Privacy" }));
+  expect(mockPush).toHaveBeenCalledWith("/privacy");
 });

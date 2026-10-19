@@ -45,7 +45,7 @@ Rule (handoff [CHANGE_home_photo_type.md](design/design_handoff_digital_wardrobe
 - **AI Credits** card (account mode): the available balance (54pt), "of N granted" from the server, an 8pt bar of available/granted that turns amber at ≤ 3 credits, "N used so far · enough for about N more garments" (or "Running low. Ask the app owner for more credits."), "N held for work in progress". Billing off: "Billing is off — AI actions don't use credits yet." **How it works** opens a sheet with three points (detection free · pay per image created · cost always shown first).
 - **Price list** (billing on): Garment detection Free (when outfits are offered), Front image, Back image, 360° view — all from the server.
 - **Recent activity:** grants (+N, green) and charges (−N) with dates, newest first, "Show more".
-- **Settings:** Appearance System / Light / Dark (remembered on the device; default System). No notification switch, help or privacy rows yet (spec D10, D17).
+- **Settings:** Appearance System / Light / Dark (remembered on the device; default System); **Help & Support** (`app/help.tsx`: how garment photos, outfits, back/360, credits and editing work; a Contact Support button only when `EXPO_PUBLIC_SUPPORT_EMAIL` is set) and **Privacy** (`app/privacy.tsx`: what is stored, who can see it, AI processing, where it lives, removing and deleting — a plain-language summary, not a legal policy).
 - **Sign Out** (confirmed in a sheet) and **Delete Account** (danger; sheet: "Your closet, photos and AI credits are removed for good. This can't be undone."; deletes on the server, then signs out). Version footer.
 - Local mode: a "Local mode" card ("Not signed in. Your items live on your computer's wardrobe server.") and Appearance.
 

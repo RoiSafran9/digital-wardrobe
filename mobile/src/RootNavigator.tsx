@@ -25,6 +25,8 @@ export function RootNavigator() {
         <Stack.Screen name="outfit/detect" />
         <Stack.Screen name="outfit/pick" />
         <Stack.Screen name="outfit/review" />
+        <Stack.Screen name="help" />
+        <Stack.Screen name="privacy" />
         <Stack.Screen name="your-name" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
         <Stack.Screen name="welcome-credits" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
       </Stack.Protected>

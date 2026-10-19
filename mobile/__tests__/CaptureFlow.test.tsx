@@ -55,7 +55,7 @@ describe("camera", () => {
     fireEvent.press(screen.getByRole("button", { name: "Close camera" }));
     expect(mockBack).toHaveBeenCalled();
     // Even when the modal reports no safe-area inset, the controls start below the status bar.
-    const padded = screen.UNSAFE_root.findAll((n) => typeof n.props.style?.paddingTop === "number" && n.props.style.paddingTop >= 60);
+    const padded = screen.UNSAFE_root.findAll((n: { props: { style?: { paddingTop?: unknown } } }) => typeof n.props.style?.paddingTop === "number" && n.props.style.paddingTop >= 60);
     expect(padded.length).toBeGreaterThan(0);
   });
 

@@ -1,18 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { FlatList, RefreshControl, ScrollView, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getItems } from "../../src/api/client";
-import { GarmentImage } from "../../src/components/GarmentImage";
+import { Icon } from "../../src/components/Icon";
+import { GarmentTile } from "../../src/components/GarmentTile";
 import { ItemSheet } from "../../src/components/ItemSheet";
-import { PillButton } from "../../src/components/PillButton";
 import { Rise } from "../../src/motion/Rise";
 import type { ClosetItem } from "../../src/api/types";
-import { categoryOf } from "../../src/categories";
-import { asList, capitalize, colors, hitSlopFor, radius, type } from "../../src/theme";
-import { PressScale } from "../../src/motion/PressScale";
+import { CATEGORY_GROUPS, groupFor, groupOf } from "../../src/categoryGroups";
+import { ALL, colorsPresent, filterCloset } from "../../src/closetFilter";
+import { garmentName } from "../../src/garmentName";
+import { asList, capitalize, colors, radius, swatchFor, TAB_BAR_HEIGHT, type } from "../../src/theme";
+import { Button, Chip, Swatch } from "../../src/ui";
 
-const ALL = "All";
+const GAP = 12;
 
 function sameItem(a: ClosetItem, b: ClosetItem): boolean {
   return a.run_id === b.run_id && a.photo_name === b.photo_name && a.item_id === b.item_id;
@@ -20,17 +22,20 @@ function sameItem(a: ClosetItem, b: ClosetItem): boolean {
 
 export default function ClosetScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const [items, setItems] = useState<ClosetItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [category, setCategory] = useState(ALL);
-  const params = useLocalSearchParams<{ category?: string; at?: string }>();
-  // Home's category chips open the closet pre-filtered; normalize like everywhere else.
+  const [group, setGroup] = useState<string>(ALL);
+  const [color, setColor] = useState<string>(ALL);
+  const [query, setQuery] = useState("");
+  const params = useLocalSearchParams<{ group?: string; category?: string; at?: string }>();
+  // Home's group pills open the closet pre-filtered (an older link may still send a category word).
   useEffect(() => {
-    if (!params.category) return;
-    setCategory(categoryOf({ facts: { category: { value: params.category } } } as never));
-  }, [params.category, params.at]);  // `at` changes on every chip tap, so the same chip re-applies
+    const wanted = params.group ?? (params.category ? groupFor(params.category) : null);
+    if (wanted) setGroup(wanted);
+  }, [params.group, params.category, params.at]);  // `at` changes on every tap, so the same pill re-applies
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -47,11 +52,7 @@ export default function ClosetScreen() {
   }, []);
 
   // Tabs stay mounted, so reload on every focus to pick up items from new runs.
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   async function onRefresh() {
     setRefreshing(true);
@@ -59,105 +60,131 @@ export default function ClosetScreen() {
     setRefreshing(false);
   }
 
-  const categories = useMemo(() => [ALL, ...new Set(items.map(categoryOf))], [items]);
-  // A category that's gone (deleted, recategorized) falls back to everything, never a blank closet.
-  const active = categories.includes(category) ? category : ALL;
-  const visible = active === ALL ? items : items.filter((item) => categoryOf(item) === active);
+  const groups = useMemo(() => {
+    const present = new Set(items.map(groupOf));
+    return [ALL, ...CATEGORY_GROUPS.filter((g) => present.has(g))];
+  }, [items]);
+  const swatches = useMemo(() => colorsPresent(items), [items]);
+  // A filter whose pieces are gone (deleted, recategorized) falls back to everything, never a blank closet.
+  const activeGroup = groups.includes(group) ? group : ALL;
+  const activeColor = swatches.includes(color.toLowerCase()) ? color : ALL;
+  const visible = filterCloset(items, { group: activeGroup, color: activeColor, query });
+  const filtered = activeGroup !== ALL || activeColor !== ALL || query.trim() !== "";
+  const clearFilters = () => { setGroup(ALL); setColor(ALL); setQuery(""); };
+  const tileWidth = (width - 40 - GAP) / 2;
 
   const header = (
-    <View style={{ paddingTop: 8, paddingBottom: 16 }}>
-      <Text accessibilityRole="header" style={{ ...type.largeTitle, color: colors.label }}>Closet</Text>
-      <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 2, marginBottom: 12 }}>
-        {items.length === 1 ? "1 piece" : `${items.length} pieces`}
-      </Text>
+    <View style={{ paddingTop: 8, paddingBottom: 18, gap: 14 }}>
+      <View>
+        <Text accessibilityRole="header" style={{ ...type.largeTitle, color: colors.label }}>Closet</Text>
+        <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 2 }}>
+          {items.length === 1 ? "1 piece" : `${items.length} pieces`}
+        </Text>
+      </View>
       {loadError ? (
-        <View style={{ padding: 16, borderRadius: radius.card, backgroundColor: colors.destructiveBg, gap: 10, marginBottom: 12 }}>
+        <View style={{ padding: 16, borderRadius: radius.list, backgroundColor: colors.destructiveBg, gap: 10 }}>
           <Text style={{ ...type.subhead, color: colors.destructive }}>{loadError}</Text>
-          <PillButton label="Try again" onPress={load} />
+          <Button title="Try again" size="medium" variant="secondary" onPress={load} />
         </View>
       ) : null}
       {items.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }} contentContainerStyle={{ gap: 8 }}>
-          {categories.map((name) => {
-            const selected = name === active;
-            return (
-              <Pressable
-                key={name}
-                accessibilityRole="button"
-                accessibilityState={{ selected: selected }}
-                onPress={() => setCategory(name)}
-                hitSlop={hitSlopFor(30)}
-                style={{
-                  paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill,
-                  backgroundColor: selected ? colors.tint : colors.grouped,
-                }}
-              >
-                <Text style={{ ...type.subhead, color: selected ? colors.onTint : colors.label }}>{name}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 40, borderRadius: radius.input, backgroundColor: colors.fill, paddingHorizontal: 10 }}>
+            <Icon name="search" size={16} color={colors.secondaryLabel} />
+            <TextInput
+              accessibilityLabel="Search your closet"
+              placeholder="Search name, color, details"
+              placeholderTextColor={colors.secondaryLabel}
+              value={query}
+              onChangeText={setQuery}
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+              returnKeyType="search"
+              style={{ ...type.body, color: colors.label, flex: 1, paddingVertical: 0 }}
+            />
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {groups.map((name) => (
+              <Chip key={name} label={name} selected={name === activeGroup} onPress={() => setGroup(name)} />
+            ))}
+          </ScrollView>
+          {swatches.length > 1 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, alignItems: "center" }}>
+              {swatches.map((c) => (
+                <Swatch
+                  key={c} color={swatchFor(c)} label={capitalize(c)} selected={c === activeColor.toLowerCase()}
+                  onPress={() => setColor(c === activeColor.toLowerCase() ? ALL : c)}
+                />
+              ))}
+            </ScrollView>
+          ) : null}
+        </>
       ) : null}
     </View>
   );
+
+  const emptyState = loaded && !loadError ? (
+    items.length === 0 ? (
+      <View style={{ paddingTop: 48, alignItems: "center", gap: 8 }}>
+        <Text style={{ ...type.section, color: colors.label }}>Your closet is empty</Text>
+        <Text style={{ ...type.body, color: colors.secondaryLabel, textAlign: "center", marginBottom: 16 }}>
+          Photograph a piece and it'll land here as a clean catalog image.
+        </Text>
+        <Button title="Add Clothes" icon="camera" onPress={() => router.push("/add")} />
+      </View>
+    ) : filtered ? (
+      <View style={{ paddingTop: 48, alignItems: "center", gap: 8 }}>
+        <Text style={{ ...type.section, color: colors.label }}>No matches</Text>
+        <Text style={{ ...type.body, color: colors.secondaryLabel, textAlign: "center", marginBottom: 16 }}>
+          Nothing in your closet fits these filters.
+        </Text>
+        <Button title="Clear Filters" size="medium" variant="secondary" onPress={clearFilters} />
+      </View>
+    ) : null
+  ) : null;
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
       <FlatList
         data={visible}
         numColumns={2}
-        keyExtractor={(item) => `${item.run_id}-${item.item_id}`}
+        keyExtractor={(item) => `${item.run_id}-${item.photo_name}-${item.item_id}`}
         ListHeaderComponent={header}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
-        columnWrapperStyle={{ gap: 12 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: TAB_BAR_HEIGHT + 24 }}
+        columnWrapperStyle={{ gap: GAP }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.secondaryLabel} />}
-        ListEmptyComponent={
-          loaded && !loadError && items.length === 0 ? (
-            <View style={{ paddingTop: 48, alignItems: "center", gap: 8 }}>
-              <Text style={{ ...type.title2, color: colors.label }}>Your closet is empty</Text>
-              <Text style={{ ...type.body, color: colors.secondaryLabel, textAlign: "center", marginBottom: 16 }}>
-                Photograph a piece and it'll land here as a clean catalog shot.
+        ListEmptyComponent={emptyState}
+        renderItem={({ item, index }) => {
+          const name = garmentName(item);
+          const firstColor = asList(item.facts.colors.value)[0];
+          return (
+            // The collection lays itself out: short stagger, capped so long closets don't wait.
+            <Rise delay={Math.min(index, 8) * 30} style={{ width: tileWidth, marginBottom: 18 }}>
+              <View>
+                <GarmentTile
+                  testID={`thumb-${item.run_id}-${item.item_id}`}
+                  item={item} width={tileWidth} height={tileWidth * 1.25} label={`Open ${name}`}
+                  onPress={() => setSelectedIndex(index)}
+                  badge={item.turn?.state === "done" ? "360°" : null}
+                />
+              </View>
+              {item.turn?.state === "done" ? <View testID={`badge-360-${item.run_id}-${item.item_id}`} accessibilityLabel="Has a 360 view" /> : null}
+              <Text numberOfLines={1} style={{ ...type.subhead, fontWeight: "600", color: colors.label, marginTop: 10 }}>{name}</Text>
+              <Text numberOfLines={1} style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 1 }}>
+                {[groupOf(item), firstColor ? capitalize(firstColor) : null].filter(Boolean).join(" · ")}
               </Text>
-              <PillButton label="Add a piece" variant="primary" icon="camera" onPress={() => router.push("/add")} />
-            </View>
-          ) : null
-        }
-        renderItem={({ item, index }) => (
-          // The collection lays itself out: short stagger, capped so long closets don't wait.
-          <Rise delay={Math.min(index, 8) * 30} style={{ flex: 1 / 2 }}>
-          <PressScale
-            testID={`thumb-${item.run_id}-${item.item_id}`}
-            onPress={() => setSelectedIndex(index)}
-            style={{ marginBottom: 22 }}
-          >
-            <View>
-              <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} tile={colors.grouped} style={{ width: "100%", aspectRatio: 0.85 }} />
-              {item.turn?.state === "done" ? (
-                <View
-                  testID={`badge-360-${item.run_id}-${item.item_id}`}
-                  accessibilityLabel="Has a 360 view"
-                  style={{ position: "absolute", top: 8, right: 8, paddingHorizontal: 7, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: colors.background }}
-                >
-                  <Text style={{ ...type.caption, fontWeight: "600", color: colors.label }}>360</Text>
-                </View>
-              ) : null}
-            </View>
-            <Text style={{ ...type.subhead, color: colors.label, marginTop: 8 }}>{categoryOf(item)}</Text>
-            <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 1 }} numberOfLines={1}>
-              {asList(item.facts.colors.value).map(capitalize).join(", ")}
-            </Text>
-          </PressScale>
-          </Rise>
-        )}
+            </Rise>
+          );
+        }}
       />
       {/* Swipes through the grid as currently filtered. */}
       <ItemSheet
         items={visible}
         index={selectedIndex}
         onClose={() => setSelectedIndex(null)}
-        onUpdated={(updated) =>
-          setItems((all) => all.map((i) => (sameItem(i, updated) ? updated : i)))
-        }
+        onUpdated={(updated) => setItems((all) => all.map((i) => (sameItem(i, updated) ? updated : i)))}
         onDeleted={(removed) => {
           setSelectedIndex(null);
           setItems((all) => all.filter((i) => !sameItem(i, removed)));

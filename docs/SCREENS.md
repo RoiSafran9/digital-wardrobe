@@ -1,5 +1,5 @@
 # Screen Map — Digital Wardrobe
-Status: **As built** · Updated: 2026-10-19 (redesign M1)
+Status: **As built** · Updated: 2026-10-19 (redesign M3)
 
 Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: system font, grouped backgrounds, one blue tint, light/dark, Reduce Motion). Feature specs: `docs/superpowers/specs/`.
 
@@ -15,18 +15,21 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 - **A welcome gift** (`app/welcome-credits.tsx`): once per account, right after a sign-in, only when billing is on and the server has granted credits. Shows the server's available balance ("about N garments" at the front price) and server price chips; **Digitize Your First Piece** → Add, **Explore first** → Home. Never a fixed amount.
 
 ## 1. Home (`mobile/app/(tabs)/index.tsx`)
-- Large title "Wardrobe" with "N pieces · M added this week".
-- Running garments: two rows of recent cutouts drifting in opposite directions; touch pauses, tap opens the item. Static under Reduce Motion.
-- Stats tiles: Pieces, Categories, Colors (count up on first appearance).
-- Quick add: "Take photo" (primary) and "Choose from library" start capture without leaving Home.
-- **Just added** (`src/components/JustAdded.tsx`): the latest capture's pieces with tier, retake instruction or edge-completion tip, and "+ Back"; "N pieces couldn't be processed"; "No pieces found in that photo…" when nothing was detected or the photo failed the quality check; "Done" clears it.
-- By category: chips with counts; tapping opens Closet filtered to that category.
-- Empty closet: one empty state with the two add buttons.
+- Date eyebrow ("SUNDAY, OCTOBER 19"), "Good morning / afternoon / evening" in Instrument Serif (no name is stored), and the balance pill (billing on only) → Account.
+- One marquee row of recent garments on stone tiles (118×148, alternating offset, about 4 s per tile); touch pauses, tap opens the item. Still under Reduce Motion.
+- Stats row divided by hairlines: Pieces / Categories (groups present) / New this week, counting up.
+- **Digitize clothes** card: Take Photo / From Library capture from Home (with "Pieces in this photo" while billing is on) and the outfit link when the server offers outfits. Moves to the camera flow in M5.
+- **Just added** (`src/components/JustAdded.tsx`): the latest capture's results, as before (replaced by the flow's Results screen in M5).
+- **Recently Added**: horizontal 150×188 cards with the garment's name and "Added Oct 18"; See All → Closet.
+- **Browse by category**: outlined pills per group with counts → Closet filtered to the group.
+- Empty closet: three dashed frames, "Your closet starts here", the add buttons and numbered tips.
 
 ## 2. Closet (`mobile/app/(tabs)/closet.tsx`)
-- Large title, scrollable category filter chips (accepts a `category` route param from Home).
-- Two-column grid of garment tiles (cutout on tile, category and colors below); "360" badge when a 360 view is done.
-- Pull to refresh; tapping a tile opens the item sheet, which swipes between items. Failed loads show an error instead of crashing.
+- Large title "Closet" + "N pieces"; search field (name, category, group, colors, pattern, details, printed text — `src/closetFilter.ts`).
+- Group chips (All + groups present: Tops, Outerwear, Bottoms, Dresses, Shoes, Bags, Accessories, Other — `src/categoryGroups.ts`); selected = ink fill. Accepts `group` (and an older `category`) from Home.
+- Color swatches for colors present; selected = double ring; tapping it again clears it.
+- Two-column grid of 4:5 stone tiles with a soft shadow, "360°" badge when done, the garment's name (user's name or "Cream sweater") and "Group · Color".
+- Empty closet → "Add Clothes"; no matches → "Clear Filters". Pull to refresh; tapping a tile opens the item sheet, which swipes through the filtered grid.
 
 ## 3. Add (`mobile/app/(tabs)/add.tsx`)
 - "Add a piece" with three shooting tips (lay it flat, shoot from above, a few at once works).

@@ -13,11 +13,12 @@ type Props = {
   label: string;  // VoiceOver: "Open <name>"
   rounded?: number;
   badge?: string | null;  // e.g. "360°"
+  testID?: string;
 };
 
 // A garment on the stone tile with the handoff's soft shadow. The cutout sits straight on the tile;
 // images that keep their own background are inset on it (GarmentImage decides).
-export function GarmentTile({ item, width, height, onPress, label, rounded = radius.tile, badge }: Props) {
+export function GarmentTile({ item, width, height, onPress, label, rounded = radius.tile, badge, testID }: Props) {
   const body = (
     <View style={{ width, height, borderRadius: rounded, backgroundColor: colors.tile, ...shadow.tile }}>
       <GarmentImage
@@ -32,5 +33,5 @@ export function GarmentTile({ item, width, height, onPress, label, rounded = rad
     </View>
   );
   if (!onPress) return body;
-  return <PressScale onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>{body}</PressScale>;
+  return <PressScale testID={testID} onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>{body}</PressScale>;
 }

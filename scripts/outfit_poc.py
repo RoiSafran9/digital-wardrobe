@@ -187,9 +187,9 @@ async def cmd_generate(args):
     client = _client()
     total = outfit.Usage()
     budget = Budget(args.max_usd, total)
-    variant = "crop_only" if args.crop_only else "with_context"
+    variant = args.variant or ("crop_only" if args.crop_only else "with_context")
     for name, photo in _photos(args.only):
-        scan_path = os.path.join(OUT, name, "scan.json")
+        scan_path = os.path.join(OUT, name, args.scan_dir or "", "scan.json")
         if not os.path.exists(scan_path):
             continue
         scan = outfit.OutfitScan.model_validate(_load(scan_path, {}))
@@ -203,7 +203,8 @@ async def cmd_generate(args):
             budget.check((outfit.IMAGE_USD_PER_IMAGE + 0.001) * args.max_attempts)
             usage = outfit.Usage()
             done.update(await outfit.generate_selected(client, photo, scan, [cid], out_dir, usage,
-                                                       with_context=not args.crop_only, max_attempts=args.max_attempts))
+                                                       with_context=not args.crop_only, max_attempts=args.max_attempts,
+                                                       prompt_name=args.prompt))
             total.calls += usage.calls
             _append_usage(name, usage, f"generate:{variant}")
             _save(os.path.join(out_dir, "results.json"), done)
@@ -259,7 +260,7 @@ def cmd_report(args):
             ref = _ref_for(c, refs)
             figs = [_img(os.path.join(out, "previews", f"{c['id']}.jpg"), f"{c['id']} preview crop")]
             # detect_v2: a re-scan with the v2 detect prompt, then with_context (IDs happened to match v1 here)
-            for variant in ("with_context", "crop_only", "detect_v2"):
+            for variant in ("with_context", "crop_only", "detect_v2", "gen_v2"):
                 res = _load(os.path.join(out, variant, "results.json"), {}).get(c["id"])
                 if res:
                     v = (res.get("verification") or {})
@@ -309,6 +310,9 @@ def main(argv=None):
             q.add_argument("--select", required=True, help='"all" or "photo:c1,c2;other:c1"')
             q.add_argument("--crop-only", action="store_true", help="variant without the outlined full photo")
             q.add_argument("--max-attempts", type=int, default=2)
+            q.add_argument("--prompt", default=outfit.GENERATE_PROMPT, help="generation prompt file to compare")
+            q.add_argument("--variant", help="output folder name for this run (default with_context / crop_only)")
+            q.add_argument("--scan-dir", help="read scan.json from this subfolder (e.g. detect_v2)")
     r = sub.add_parser("report")
     r.add_argument("--only", nargs="*")
     args = p.parse_args(argv)

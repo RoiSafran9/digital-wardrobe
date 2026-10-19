@@ -22,7 +22,7 @@ from pipeline.stages import cutout, stage5_verify
 from pipeline.types import BBox, FactField, ItemFacts
 
 DETECT_PROMPT = "outfit_detect_v2.txt"
-GENERATE_PROMPT = "outfit_generate_v1.txt"
+GENERATE_PROMPT = "outfit_generate_v2.txt"
 
 # Paid-tier list prices (ai.google.dev/gemini-api/docs/pricing, read 2026-10-19), for the PoC report only.
 VISION_USD_PER_M_IN, VISION_USD_PER_M_OUT = 0.25, 1.50
@@ -195,13 +195,14 @@ async def detect_candidates(client, image_path: str, usage: Usage) -> OutfitScan
 
 
 async def generate_flatlay(client, crop_path: str, context_path: str | None, candidate: OutfitCandidate,
-                           violations: list[str] | None, out_path: str, usage: Usage) -> str:
+                           violations: list[str] | None, out_path: str, usage: Usage,
+                           prompt_name: str = GENERATE_PROMPT) -> str:
     """Stage 2 for one selected candidate. context_path (the photo with this candidate outlined) is optional."""
     start = time.monotonic()
     ok, usd = False, 0.0
     try:
         violations_block = "\nPrevious attempt violations to fix:\n" + "\n".join(violations) if violations else ""
-        prompt = _read_prompt(GENERATE_PROMPT).format(facts_block=facts_block(candidate), violations_block=violations_block,
+        prompt = _read_prompt(prompt_name).format(facts_block=facts_block(candidate), violations_block=violations_block,
                                                       context_block=CONTEXT_BLOCK if context_path else "")
         contents = ["Image 1:", _image_part(crop_path)]
         if context_path:
@@ -221,7 +222,8 @@ async def generate_flatlay(client, crop_path: str, context_path: str | None, can
 
 
 async def generate_selected(client, image_path: str, scan: OutfitScan, selected: list[str], out_dir: str,
-                            usage: Usage, with_context: bool = True, max_attempts: int = 2) -> dict[str, dict]:
+                            usage: Usage, with_context: bool = True, max_attempts: int = 2,
+                            prompt_name: str = GENERATE_PROMPT) -> dict[str, dict]:
     """Stage 2: generate ONLY the selected candidate IDs; one failure never stops the others.
     Unknown IDs are refused before any paid call."""
     by_id = {c.id: c for c in scan.candidates}
@@ -239,7 +241,7 @@ async def generate_selected(client, image_path: str, scan: OutfitScan, selected:
         for attempt in range(1, max_attempts + 1):
             try:
                 generated = await generate_flatlay(client, crop, context, c, violations,
-                                                   os.path.join(item_dir, f"generated_{attempt}.png"), usage)
+                                                   os.path.join(item_dir, f"generated_{attempt}.png"), usage, prompt_name)
             except Exception as e:
                 results[cid] = {"status": "failed", "error": str(e)[:200]}
                 generated = None

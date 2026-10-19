@@ -110,7 +110,8 @@ Run on 2026-10-19 with the owner's approval (cap US$1.50). **Tiny, synthetic sam
 | **Stage 2 generate** (with context) | 9 | gemini-2.5-flash-image | **8.2–10.4 s** | $0.354 ≈ **$0.039 per garment** |
 | Stage 2 generate (crop only, comparison) | 4 (+1 hung) | gemini-2.5-flash-image | 9.0–9.7 s | $0.157 |
 | Detect v2 + 1 generate (fix check) | 2 | both | — | $0.041 |
-| **Total** | 23 (+1 hung) | | | **$0.714** (≤ $0.753 if the hung call was billed) |
+| Generate prompt v2 check (§4.5) | 6 | gemini-2.5-flash-image | — | $0.236 |
+| **Total** | 29 (+1 hung) | | | **$0.950** (≤ $0.989 if the hung call was billed), cap $1.50 |
 
 - Every generation passed the existing Lab color check on the first attempt → **cost per accepted front = one image call ($0.039)** in this sample; no automatic retries were triggered. The color check cannot catch invented details (below).
 - One crop-only generation request **never returned** (killed after ~15 min). The harness now has a 120 s timeout. The production `GeminiProvider` has **no request timeout** either; the job lease (600 s) eventually recycles the job — worth a follow-up.
@@ -149,7 +150,21 @@ Run on 2026-10-19 with the owner's approval (cap US$1.50). **Tiny, synthetic sam
 - **Inner layer (s2 tee): crop-only produced only the visible strip** (a cut-off half-tee); with the outlined full photo it produced a complete tee. → keep the context image (no extra cost: same single call, one more input image ≈ 260 input tokens).
 - Fleece: crop-only produced a *more* legible fake "Supreme" wordmark — context does not cure the text hallucination; the detect fix does more.
 
-### 4.5 What did not run
+### 4.5 Generation prompt v2 (D10) [measured, n = 6]
+`outfit_generate_v2.txt` adds: draw cords, tabs, labels or patches only if visible, in the exact color and place; never write letters that can't be read (unreadable print → indistinct mark). Re-run on the 3 failures plus 3 clean controls, same scans (fleece with the v2 scan):
+
+| Garment | v1 | v2 |
+|---|---|---|
+| s3 gray shorts | white rope drawstring (invented) | thin gray cord as in the photo ✓ |
+| s4 navy shorts | white drawstring (invented) | thin dark cord as in the photo ✓ |
+| s2 fleece (detect v2) | unreadable print → fake letters "OYTO FRONT" | small indistinct mark ✓; **but body rendered shorter and boxier** than the source |
+| s1 white tee (control) | ok | same ✓ |
+| s3 striped tee (control) | ok | same, but **a small neck label appeared** that the photo doesn't show |
+| s4 pink tee (control) | ok | same, pink slightly more saturated (passed the color check) |
+
+→ v2 fixes the three failures it targeted and introduced one smaller new invention (a neck label) and one proportion change. v2 is now the PoC default. Remaining work is prompt iteration on real photos, not a blocker for the M1 scan API. "Invented detail" needs to be a labelled metric in the real eval (§6), because the color/OCR checks never catch it.
+
+### 4.6 What did not run
 - No real person photos, no same-garment pairs photographed by the owner on a body → the core fidelity question on **real phone photos is still open** [needs owner, D7].
 - No FASHN parser / TryOffDiff comparison (licenses rule them out for the product; GPU needed).
 - No routing measurement on ordinary garment photos (v4 behaviour on worn photos is an assumption).
@@ -246,7 +261,7 @@ Thresholds are set **with the owner after the baseline**, not invented here. Sug
 | D6 | Person-photo retention | Delete after generation, max 24 h |
 | D7 | Provide 30–50 consented photos + same-garment flat-lays, and a paid-call budget for the real eval | Measured unit costs: ~$0.0012/detect, ~$0.039/front → 50 photos + ~80 fronts ≈ **$3.20** at list price, plus re-runs |
 | D8 | Migrate off `gemini-2.5-flash-image` (deprecated) — whole product | Separate task, before M2 |
-| D10 | Generation prompt v2 before M2: forbid adding drawstrings/tabs/labels not visible; unreadable prints as plain texture, not letters | Yes — then re-run this loop |
+| D10 | Adopt generation prompt v2 (§4.5: fixed drawstrings and fake letters, one new neck label) as the M2 baseline, then iterate on real photos | Yes |
 | D9 | JSONB scan result (M1) vs dedicated tables | JSONB now; tables when corrections/manual selection land |
 
 ---
@@ -255,8 +270,8 @@ Thresholds are set **with the owner after the baseline**, not invented here. Sug
 
 **מה נעשה:** מחקר, ארכיטקטורה מוצעת, ו-PoC מקומי בלבד (לא באפליקציה, לא ב-API, לא בחיוב). נבנה מבחן "לולאה סגורה": מתמונות אמיתיות של הבגדים שלך נוצרו 4 תמונות סינתטיות של אדם לובש אותם (בלי פנים), ואז זיהוי → בחירה → יצירת תמונת קטלוג, והשוואה לתמונה האמיתית של אותו בגד.
 
-**מה נמדד:** עלות כוללת ‎$0.71‎ (מתוך תקרה ‎$1.50‎). זיהוי: ~2.5 שניות ו-~0.1 סנט לתמונה; זוהו נכון כל 11 הבגדים, כולל חולצה שמתחת לפליז. יצירה: ~9 שניות ו-~4 סנט לבגד; כל 9 הבגדים מזוהים כאותו פריט, אבל ב-3 מתוך 9 הומצאו פרטים (תווית אדומה בסגנון Supreme, שרוכים לבנים במכנסיים קצרים). תיקון בפרומפט הזיהוי (v2) העלים את התווית, אבל טקסט קטן ולא קריא עדיין יוצא כאותיות מומצאות.
+**מה נמדד:** עלות כוללת ‎$0.95‎ (מתוך תקרה ‎$1.50‎). זיהוי: ~2.5 שניות ו-~0.1 סנט לתמונה; זוהו נכון כל 11 הבגדים, כולל חולצה שמתחת לפליז. יצירה: ~9 שניות ו-~4 סנט לבגד; כל 9 הבגדים מזוהים כאותו פריט, אבל ב-3 מתוך 9 הומצאו פרטים (תווית אדומה בסגנון Supreme, שרוכים לבנים במכנסיים קצרים). תיקון בפרומפט הזיהוי (v2) העלים את התווית. פרומפט יצירה v2 תיקן את השרוכים (עכשיו בצבע ובעובי כמו בתמונה) ואת האותיות המומצאות (סימן לא ברור במקום מילים), אבל הוסיף תווית צוואר קטנה לחולצה אחת וקיצר מעט את הפליז.
 
 **חשוב:** הדגימה קטנה וסינתטית, ולכן זו ראיה לכיוון ולא אחוז הצלחה. השאלה המרכזית, נאמנות בתמונות טלפון אמיתיות, עדיין פתוחה.
 
-**החלטות שצריך ממך לפני M1/M2:** D1 בחירת מצב מפורשת במסך ההוספה · D2 בלי נעליים בגרסה הראשונה · D3 מה עושים עם בגד שרובו מוסתר · D4 חיוב כשמשתמש פוסל תוצאה שהצליחה · D5 שלב אישור לפני שמירה · D6 מחיקת תמונת האדם (מוצע: עד 24 שעות) · D7 ‏30–50 תמונות שלך/של חברים עם אישור, ותקציב של ~‎$3–5 · D8 מעבר מ-gemini-2.5-flash-image שהוכרז כ-deprecated · D9 שמירת הסריקה ב-JSONB · D10 פרומפט יצירה v2 שאוסר להוסיף שרוכים, תוויות וטקסט.
+**החלטות שצריך ממך לפני M1/M2:** D1 בחירת מצב מפורשת במסך ההוספה · D2 בלי נעליים בגרסה הראשונה · D3 מה עושים עם בגד שרובו מוסתר · D4 חיוב כשמשתמש פוסל תוצאה שהצליחה · D5 שלב אישור לפני שמירה · D6 מחיקת תמונת האדם (מוצע: עד 24 שעות) · D7 ‏30–50 תמונות שלך/של חברים עם אישור, ותקציב של ~‎$3–5 · D8 מעבר מ-gemini-2.5-flash-image שהוכרז כ-deprecated · D9 שמירת הסריקה ב-JSONB · D10 לאמץ את פרומפט היצירה v2 כבסיס ל-M2 ולהמשיך לשפר אותו על תמונות אמיתיות.

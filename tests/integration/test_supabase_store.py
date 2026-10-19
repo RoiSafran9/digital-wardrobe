@@ -115,3 +115,14 @@ def test_push_tokens_round_trip(settings, users):
     assert store.push_tokens(users[1]["id"]) == []
     store.remove_push_token(users[0]["id"], "ExponentPushToken[it]")
     assert store.push_tokens(users[0]["id"]) == []
+
+
+def test_recent_job_count_and_queue_stats(settings, users):
+    from api.store import SupabaseStore
+    store = SupabaseStore(settings)
+    uid = users[0]["id"]
+    before = store.count_recent_jobs(uid, ("garment_scan", "outfit_scan"), 3600)
+    store.create_job(uid, "garment_scan", f"rate-{before}", None)
+    assert store.count_recent_jobs(uid, ("garment_scan", "outfit_scan"), 3600) == before + 1
+    stats = store.queue_stats()
+    assert stats["queued"] >= 1 and stats["oldest_queued_seconds"] >= 0

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import time
@@ -27,18 +28,24 @@ def _model_gone(error: Exception) -> bool:
     return getattr(error, "code", None) in (404, 410)
 
 
+# A request that never comes back must not hold a job (and its credits) forever: give up and let the
+# job's own retry/failure handling take over.
+VISION_TIMEOUT_S = 60
+IMAGE_TIMEOUT_S = 120
+
+
 async def image_content(client, contents):
     """One image-generation call: MODEL_IMAGE first, the fallback once Google has retired it."""
     global _image_model_gone
     model = image_model()
     try:
-        return await client.aio.models.generate_content(model=model, contents=contents)
+        return await asyncio.wait_for(client.aio.models.generate_content(model=model, contents=contents), IMAGE_TIMEOUT_S)
     except Exception as e:
         if model != MODEL_IMAGE or not _model_gone(e):
             raise
         _image_model_gone = True
         log.warning("%s is gone (%s); using %s from now on", MODEL_IMAGE, e, MODEL_IMAGE_FALLBACK)
-        return await client.aio.models.generate_content(model=MODEL_IMAGE_FALLBACK, contents=contents)
+        return await asyncio.wait_for(client.aio.models.generate_content(model=MODEL_IMAGE_FALLBACK, contents=contents), IMAGE_TIMEOUT_S)
 
 
 PROMPTS_DIR = __file__.rsplit("/providers/", 1)[0] + "/prompts"
@@ -152,12 +159,14 @@ class GeminiProvider:
             with open(image_path, "rb") as f:
                 image_bytes = f.read()
             prompt = _read_prompt("stage1_detect_facts_v4.txt")
-            response = self.client.models.generate_content(
+            # The sync client in a thread, so the server keeps answering while detection runs.
+            response = await asyncio.wait_for(asyncio.to_thread(
+                self.client.models.generate_content,
                 model=MODEL_VISION,
                 contents=[{"inline_data": {"mime_type": "image/jpeg", "data": image_bytes}}, prompt],
                 config=types.GenerateContentConfig(response_mime_type="application/json",
                                                     response_schema=list[_RawDetection]),
-            )
+            ), VISION_TIMEOUT_S)
             # Same decode as crop_item, so box pixels line up with the crop.
             height, width = cv2.imread(image_path).shape[:2]
             items = []

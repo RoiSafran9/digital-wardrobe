@@ -238,6 +238,15 @@ class MemoryStore:
     def set_job_progress(self, job_id, done, total):
         self.jobs[job_id]["progress"] = {"done": done, "total": total}
 
+    def count_recent_jobs(self, user_id, kinds, seconds):
+        since = _now() - timedelta(seconds=seconds)
+        return sum(1 for j in self.jobs.values() if j["user_id"] == user_id and j["kind"] in kinds and j["created_at"] >= since)
+
+    def queue_stats(self):
+        queued = [j for j in self.jobs.values() if j["status"] == "queued"]
+        oldest = min((j["created_at"] for j in queued), default=None)
+        return {"queued": len(queued), "oldest_queued_seconds": 0 if oldest is None else round((_now() - oldest).total_seconds(), 1)}
+
     # Accounts
     def delete_account(self, user_id):
         """Like deleting the auth user: every row cascades away, then the user's files go."""
@@ -508,6 +517,19 @@ class SupabaseStore:
 
     def set_job_progress(self, job_id, done, total):
         self._patch("generation_jobs", {"id": f"eq.{job_id}"}, {"progress": {"done": done, "total": total}})
+
+    def count_recent_jobs(self, user_id, kinds, seconds):
+        since = (datetime.now(timezone.utc) - timedelta(seconds=seconds)).isoformat()
+        rows = self._rows("generation_jobs", {"select": "id", "user_id": f"eq.{user_id}",
+                                              "kind": f"in.({','.join(kinds)})", "created_at": f"gte.{since}"})
+        return len(rows)
+
+    def queue_stats(self):
+        rows = self._rows("generation_jobs", {"select": "created_at", "status": "eq.queued", "order": "created_at.asc", "limit": "1000"})
+        if not rows:
+            return {"queued": 0, "oldest_queued_seconds": 0}
+        oldest = datetime.fromisoformat(rows[0]["created_at"].replace("Z", "+00:00"))
+        return {"queued": len(rows), "oldest_queued_seconds": round((datetime.now(timezone.utc) - oldest).total_seconds(), 1)}
 
     # Accounts
     def delete_account(self, user_id):

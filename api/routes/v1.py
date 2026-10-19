@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Response, UploadFile
 from fastapi.responses import JSONResponse
 from api.auth import User, current_user
+from api.credits import CreditError
+from api.controls import WELCOME_KEY, free_scans_per_hour, generation_on, invited, require_generation, welcome_credits
 from api.credits import MAX_FRONTS, InsufficientCredits, action_for, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
 from api.schemas import (AccountDeleteIn, GarmentGenerateIn, GarmentScanOut, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
@@ -75,7 +77,7 @@ def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, 
     return JSONResponse(status_code=202 if created else 200, content=out(job).model_dump())
 
 
-@router.post("/jobs", response_model=JobOut, status_code=202)
+@router.post("/jobs", response_model=JobOut, status_code=202, dependencies=[Depends(require_generation)])
 def create_garment_job(user: User = Depends(current_user), photo: UploadFile | None = File(None),
                        max_fronts: str | None = Form(None), key: str = Depends(idempotency_key),
                        store=Depends(get_store), gate=Depends(get_gate), prices=Depends(get_prices)):
@@ -92,7 +94,7 @@ def create_garment_job(user: User = Depends(current_user), photo: UploadFile | N
 def prices_list(user: User = Depends(current_user), prices=Depends(get_prices)):
     """The AI Price List the app can show; empty while billing is off. `outfit` says whether the
     Outfit Photo flow is switched on (WARDROBE_OUTFIT=on), so the app shows that mode only then."""
-    return PricesOut(billing=bool(prices), prices=prices, outfit=_outfit_enabled())
+    return PricesOut(billing=bool(prices), prices=prices, outfit=_outfit_enabled(), generation=generation_on())
 
 
 CREDIT_PAGE, CREDIT_PAGE_MAX = 20, 100
@@ -221,7 +223,7 @@ def delete_item(item_id: str, user: User = Depends(current_user), store=Depends(
     return Response(status_code=204)
 
 
-@router.post("/items/{item_id}/back", response_model=JobOut, status_code=202)
+@router.post("/items/{item_id}/back", response_model=JobOut, status_code=202, dependencies=[Depends(require_generation)])
 def add_back(item_id: str, user: User = Depends(current_user), photo: UploadFile | None = File(None),
              key: str = Depends(idempotency_key), store=Depends(get_store),
              gate=Depends(get_gate), prices=Depends(get_prices)):
@@ -231,7 +233,7 @@ def add_back(item_id: str, user: User = Depends(current_user), photo: UploadFile
     return queue_job(store, user, "back", key, photo, gate, prices, item_id=item_id)
 
 
-@router.post("/items/{item_id}/turn", response_model=JobOut, status_code=202)
+@router.post("/items/{item_id}/turn", response_model=JobOut, status_code=202, dependencies=[Depends(require_generation)])
 def start_turn(item_id: str, user: User = Depends(current_user), key: str = Depends(idempotency_key),
                store=Depends(get_store), gate=Depends(get_gate), prices=Depends(get_prices)):
     _own_item(store, user, item_id)
@@ -272,7 +274,7 @@ def scan_out(job: dict, store) -> OutfitScanOut:
                     for c in candidates])
 
 
-@router.post("/outfit-scans", response_model=OutfitScanOut, status_code=202, dependencies=[Depends(outfit_on)])
+@router.post("/outfit-scans", response_model=OutfitScanOut, status_code=202, dependencies=[Depends(outfit_on), Depends(require_generation)])
 def create_outfit_scan(user: User = Depends(current_user), photo: UploadFile | None = File(None),
                        key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
                        prices=Depends(get_prices)):
@@ -282,6 +284,8 @@ def create_outfit_scan(user: User = Depends(current_user), photo: UploadFile | N
     existing = store.job_by_key(user.id, key)
     if existing and existing["kind"] != "outfit_scan":
         raise HTTPException(409, "this Idempotency-Key was already used for another request")
+    if not existing:
+        _limit_free_scans(store, user)
     return queue_job(store, user, "outfit_scan", key, photo, gate, prices, out=lambda job: scan_out(job, store))
 
 
@@ -304,7 +308,7 @@ def get_outfit_scan(scan_id: str, user: User = Depends(current_user), store=Depe
 MAX_PICKS = 8
 
 
-@router.post("/outfit-scans/{scan_id}/generate", response_model=JobOut, status_code=202, dependencies=[Depends(outfit_on)])
+@router.post("/outfit-scans/{scan_id}/generate", response_model=JobOut, status_code=202, dependencies=[Depends(outfit_on), Depends(require_generation)])
 def generate_from_scan(scan_id: str, body: OutfitGenerateIn, user: User = Depends(current_user),
                        key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
                        prices=Depends(get_prices)):
@@ -393,7 +397,7 @@ def mark_region(scan_id: str, body: RegionIn, user: User = Depends(current_user)
     return scan_out(store.get_job(user.id, scan["id"]), store)
 
 
-@router.post("/items/{item_id}/regenerate", response_model=JobOut, status_code=202, dependencies=[Depends(outfit_on)])
+@router.post("/items/{item_id}/regenerate", response_model=JobOut, status_code=202, dependencies=[Depends(outfit_on), Depends(require_generation)])
 def regenerate_item(item_id: str, body: RegenerateIn, user: User = Depends(current_user),
                     key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
                     prices=Depends(get_prices)):
@@ -498,7 +502,7 @@ def _own_garment_scan(store, user: User, scan_id: str) -> dict:
     return job
 
 
-@router.post("/garment-scans", response_model=GarmentScanOut, status_code=202)
+@router.post("/garment-scans", response_model=GarmentScanOut, status_code=202, dependencies=[Depends(require_generation)])
 def create_garment_scan(user: User = Depends(current_user), photo: UploadFile | None = File(None),
                         key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
                         prices=Depends(get_prices)):
@@ -508,6 +512,8 @@ def create_garment_scan(user: User = Depends(current_user), photo: UploadFile | 
     existing = store.job_by_key(user.id, key)
     if existing and existing["kind"] != "garment_scan":
         raise HTTPException(409, "this Idempotency-Key was already used for another request")
+    if not existing:
+        _limit_free_scans(store, user)
     return queue_job(store, user, "garment_scan", key, photo, gate, prices, out=garment_scan_out)
 
 
@@ -516,7 +522,7 @@ def get_garment_scan(scan_id: str, user: User = Depends(current_user), store=Dep
     return garment_scan_out(_own_garment_scan(store, user, scan_id))
 
 
-@router.post("/garment-scans/{scan_id}/generate", response_model=JobOut, status_code=202)
+@router.post("/garment-scans/{scan_id}/generate", response_model=JobOut, status_code=202, dependencies=[Depends(require_generation)])
 def generate_from_garment_scan(scan_id: str, body: GarmentGenerateIn, user: User = Depends(current_user),
                                key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
                                prices=Depends(get_prices)):
@@ -539,3 +545,28 @@ def generate_from_garment_scan(scan_id: str, body: GarmentGenerateIn, user: User
     return queue_job(store, user, "garment", key, None, gate, prices, max_items=len(picks) if prices else None,
                      input_path=scan["input_path"],
                      extra={"scan_job_id": scan["id"], "candidate_ids": [f"p{i}" for i in picks]})
+
+
+FREE_SCAN_KINDS = ("garment_scan", "outfit_scan")
+
+
+def _limit_free_scans(store, user: User):
+    """Free scans still cost the app a model call: cap them per account per hour."""
+    if store.count_recent_jobs(user.id, FREE_SCAN_KINDS, 3600) >= free_scans_per_hour():
+        raise HTTPException(429, "too many photo scans in the last hour — try again in a little while")
+
+
+@router.post("/bootstrap")
+def bootstrap(user: User = Depends(current_user), store=Depends(get_store)):
+    """Called by the app after each sign-in. Grants the welcome credits once per invited account (a fixed
+    operation key makes repeats, second devices and reinstalls no-ops). Off unless WARDROBE_WELCOME_CREDITS is set."""
+    amount = welcome_credits()
+    if not amount or not invited(user.email) or store.profile_status(user.id) == "disabled":
+        return {"welcome_granted": 0}
+    if store.find_grant(user.id, WELCOME_KEY):
+        return {"welcome_granted": 0}
+    try:
+        store.credit_grant(user.id, amount, WELCOME_KEY, "Welcome credits", "welcome")
+    except CreditError:
+        return {"welcome_granted": 0}
+    return {"welcome_granted": amount}

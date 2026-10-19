@@ -9,6 +9,7 @@ import glob
 import logging
 import os
 import tempfile
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 import cv2
@@ -429,12 +430,20 @@ async def run_once(store, provider_factory, lease_seconds: int = 600, gate: Cred
 
 
 RECONCILE_EVERY_SECONDS = 60
+_last_beat: float | None = None
+
+
+def last_beat() -> float | None:
+    """When the worker loop last went round (time.monotonic), for /healthz; None before it starts."""
+    return _last_beat
 
 
 async def run_forever(store, provider_factory, idle_seconds: float = 2.0, gate: CreditGate | None = None) -> None:
     gate = gate or NoCharge()
     last_reconcile = float("-inf")
+    global _last_beat
     while True:
+        _last_beat = time.monotonic()
         now = asyncio.get_running_loop().time()
         if now - last_reconcile >= RECONCILE_EVERY_SECONDS:
             last_reconcile = now

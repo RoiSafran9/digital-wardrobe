@@ -306,3 +306,32 @@ async def test_outfit_images_use_the_same_fallback(monkeypatch, tmp_path):
     response = await outfit.image_content(client, ["prompt"])
     assert response.candidates[0].content.parts[0].inline_data.data == b"outfit"
     assert client.aio.models.generate_content.call_args.kwargs["model"] == "gemini-3.1-flash-image"
+
+
+@pytest.mark.asyncio
+async def test_a_hung_image_call_times_out_instead_of_blocking_the_job(monkeypatch):
+    import asyncio
+    from pipeline.providers import gemini
+    monkeypatch.setattr(gemini, "IMAGE_TIMEOUT_S", 0.05)
+    client = MagicMock()
+
+    async def hang(**kwargs):
+        await asyncio.sleep(5)
+    client.aio.models.generate_content = hang
+    with pytest.raises(asyncio.TimeoutError):
+        await gemini.image_content(client, ["prompt"])
+
+
+@pytest.mark.asyncio
+async def test_a_hung_detection_call_times_out(monkeypatch, tmp_path):
+    import asyncio
+    import time as _time
+    from pipeline.providers import gemini
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    monkeypatch.setattr(gemini, "VISION_TIMEOUT_S", 0.05)
+    img = tmp_path / "p.jpg"
+    cv2.imwrite(str(img), np.zeros((50, 50, 3), dtype=np.uint8))
+    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
+        MockClient.return_value.models.generate_content.side_effect = lambda **kw: _time.sleep(0.5)
+        with pytest.raises(asyncio.TimeoutError):
+            await gemini.GeminiProvider().detect_items_with_facts(str(img))

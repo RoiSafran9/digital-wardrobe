@@ -123,6 +123,7 @@ class PricesOut(BaseModel):
     billing: bool
     prices: dict[str, int]
     outfit: bool = False  # the Outfit Photo flow is on (WARDROBE_OUTFIT=on)
+    generation: bool = True  # False while the operator has paused new AI work (WARDROBE_GENERATION=off)
 
 
 class CreditEntryOut(BaseModel):

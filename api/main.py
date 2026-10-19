@@ -20,6 +20,7 @@ def create_app(settings: Settings | None = None, start_worker: bool = True) -> F
     # Multi-user mode: only the token-checked v1 API; the local runs/ routes are not mounted at all.
     from api.credits import NoCharge, WalletGate, get_gate, get_prices, load_prices
     from api.routes.v1 import router as v1_router
+    from api.routes.health import router as health_router
     from api.store import SupabaseStore, get_store
     from api.worker import run_forever
 
@@ -38,6 +39,7 @@ def create_app(settings: Settings | None = None, start_worker: bool = True) -> F
     app = FastAPI(lifespan=lifespan)
     add_error_handlers(app)
     app.include_router(v1_router)
+    app.include_router(health_router)
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_store] = lambda: store
     app.dependency_overrides[get_prices] = lambda: prices

@@ -331,7 +331,8 @@ The owner said to continue with everything, so M1 uses the recommended defaults:
 - **Credits** (`api/credits.py`): `FREE_KINDS = ("outfit_scan",)` → no price lookup, no hold, even with billing on.
 - **Retention** (`scripts/sweep_storage.py`): scan photos and previews go after 24 h; other job uploads keep their 7-day rule.
 - **Tests:** `tests/api/test_outfit_scan.py` (10) and a provider test. Full suite 321 passed, 25 skipped.
-- **Not built:** M2 (select → quote → generate → review, wallet hold/settle), the M3 app screens, and quality-gate thresholds for person photos (stage0 is not run on scans: its blur and size thresholds were tuned for flat-lays).
+- **M2 (built in the stacked PR, flagged):** `POST /v1/outfit-scans/{id}/generate` with `{candidate_ids, expected_unit_price}` (picks validated against the scan, 1–8, duplicates count once; price mismatch → 409 before any hold), job kind `outfit_generate` billed as the existing `garment` action (hold price × picks, charge per image made, refund if all fail or the scan expired), items saved as `origin = outfit_photo`, `review_state = pending` until `POST /v1/items/{id}/keep`; discard = existing soft delete. Defaults taken: D2 no shoes in the app picker, D4 charge on a successful image even if later discarded, D5 review before closet. Migration `20261019130000_outfit_generate.sql` + pgTAP `10_outfit_generate` (9) run with all earlier suites in a rolled-back transaction: 153 assertions pass. `tests/api/test_outfit_generate.py` (14).
+- **Not built:** the M3 app screens, and quality-gate thresholds for person photos (stage0 is not run on scans: its blur and size thresholds were tuned for flat-lays).
 
 ---
 

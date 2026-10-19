@@ -83,7 +83,7 @@ class ItemPatch(BaseModel):
 
 class JobOut(BaseModel):
     id: str
-    kind: Literal["garment", "back", "turn", "outfit_scan"]
+    kind: Literal["garment", "back", "turn", "outfit_scan", "outfit_generate"]
     status: Literal["queued", "running", "succeeded", "failed", "canceled"]
     error: str | None = None
     item_id: str | None = None
@@ -132,6 +132,8 @@ class V1ItemOut(BaseModel):
     cutout_url: str | None = None
     back: BackOut | None = None
     turn: TurnOut | None = None
+    origin: Literal["garment_photo", "outfit_photo"] = "garment_photo"
+    review_state: Literal["pending", "kept"] | None = None  # outfit results wait for the user's keep/discard
 
 
 class V1ItemsResponse(BaseModel):
@@ -162,3 +164,9 @@ class OutfitScanOut(BaseModel):
     person_count: int | None = None
     candidates: list[OutfitCandidateOut] = []
     expires_at: str | None = None
+
+
+class OutfitGenerateIn(BaseModel):
+    """Stage 2: the garments the user picked and the per-front price they were shown (null while billing is off)."""
+    candidate_ids: list[str]
+    expected_unit_price: int | None = None

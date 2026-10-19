@@ -176,14 +176,15 @@ class MemoryStore:
         return self._by_key(user_id, key)
 
     def create_job(self, user_id, kind, idempotency_key, input_path, item_id=None, job_id=None, cost_credits=None,
-                   max_items=None):
+                   max_items=None, extra=None):
         existing = self._by_key(user_id, idempotency_key)  # the unique constraint
         if existing:
             return existing, False
         job = {"id": job_id or str(uuid.uuid4()), "user_id": user_id, "item_id": item_id, "kind": kind, "cost_credits": cost_credits, "max_items": max_items,
                "status": "queued", "idempotency_key": idempotency_key, "input_path": input_path, "result": None,
                "error": None, "attempts": 0, "max_attempts": 2, "locked_until": None,
-               "created_at": _now() + timedelta(microseconds=len(self.jobs)), "started_at": None, "finished_at": None}
+               "created_at": _now() + timedelta(microseconds=len(self.jobs)), "started_at": None, "finished_at": None,
+               "scan_job_id": None, "candidate_ids": None, **copy.deepcopy(extra or {})}
         self.jobs[job["id"]] = job
         return copy.deepcopy(job), True
 
@@ -221,7 +222,9 @@ class MemoryStore:
         return item if item and item["user_id"] == user_id and item["deleted_at"] is None else None
 
     def list_items(self, user_id):
-        own = [i for i in self.items.values() if i["user_id"] == user_id and i["deleted_at"] is None]
+        # Outfit results waiting for review are not in the closet yet.
+        own = [i for i in self.items.values() if i["user_id"] == user_id and i["deleted_at"] is None
+               and i.get("review_state") in (None, "kept")]
         return copy.deepcopy(sorted(own, key=lambda i: i["created_at"], reverse=True))
 
     def get_item(self, user_id, item_id):
@@ -237,6 +240,7 @@ class MemoryStore:
             if row.get(key) and not row[key].startswith(row["user_id"] + "/"):
                 raise ValueError(f"{key} outside the owner's folder")
         item = {"id": str(uuid.uuid4()), "job_id": None, "piece_index": None, "tier": None, "facts_original": None,
+                "origin": "garment_photo", "review_state": None,
                 "source_kind": "original", "cutout_path": None, "crop_path": None, "back": None, "turn": None,
                 "legacy_key": None, "deleted_at": None, "created_at": _now() + timedelta(microseconds=len(self.items)),
                 **copy.deepcopy(row)}
@@ -388,9 +392,9 @@ class SupabaseStore:
         return self._one("generation_jobs", {"user_id": f"eq.{user_id}", "idempotency_key": f"eq.{key}"})
 
     def create_job(self, user_id, kind, idempotency_key, input_path, item_id=None, job_id=None, cost_credits=None,
-                   max_items=None):
+                   max_items=None, extra=None):
         row = {"user_id": user_id, "kind": kind, "idempotency_key": idempotency_key, "input_path": input_path,
-               "item_id": item_id, "cost_credits": cost_credits}
+               "item_id": item_id, "cost_credits": cost_credits, **(extra or {})}
         if max_items is not None:  # only sent when billing is on, so a database without M2 still works
             row["max_items"] = max_items
         if job_id:
@@ -418,7 +422,9 @@ class SupabaseStore:
 
     # Items
     def list_items(self, user_id):
-        return self._rows("wardrobe_items", {"user_id": f"eq.{user_id}", "deleted_at": "is.null", "order": "created_at.desc"})
+        # Outfit results waiting for review (review_state 'pending') are not in the closet yet.
+        return self._rows("wardrobe_items", {"user_id": f"eq.{user_id}", "deleted_at": "is.null",
+                                             "or": "(review_state.is.null,review_state.eq.kept)", "order": "created_at.desc"})
 
     def get_item(self, user_id, item_id):
         return self._one("wardrobe_items", {"id": f"eq.{item_id}", "user_id": f"eq.{user_id}", "deleted_at": "is.null"})

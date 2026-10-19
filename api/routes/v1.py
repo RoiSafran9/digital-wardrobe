@@ -8,9 +8,9 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Response, UploadFile
 from fastapi.responses import JSONResponse
 from api.auth import User, current_user
-from api.credits import MAX_FRONTS, InsufficientCredits, get_gate, get_prices, hold_amount, job_cost
+from api.credits import MAX_FRONTS, InsufficientCredits, action_for, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
-from api.schemas import (BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitScanOut, PricesOut,
+from api.schemas import (BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
                          TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse)
 from api.store import INTERRUPTED, get_store
 from pipeline.types import ItemFacts
@@ -37,7 +37,7 @@ def job_out(job: dict) -> JobOut:
 
 
 def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, gate, prices, item_id: str | None = None,
-              max_items: int | None = None, out=job_out):
+              max_items: int | None = None, out=job_out, extra: dict | None = None):
     """Create (or find) the user's job for this key; a new job answers 202, a repeat 200."""
     existing = store.job_by_key(user.id, key)
     if existing:
@@ -55,7 +55,7 @@ def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, 
 
     job_id, cost = str(uuid.uuid4()), job_cost(prices, kind)
     try:
-        gate.reserve(user.id, job_id, kind, hold_amount(cost, max_items))  # AI Credits: hold the cost before any work
+        gate.reserve(user.id, job_id, action_for(kind), hold_amount(cost, max_items))  # AI Credits: hold the cost before any work
     except InsufficientCredits:
         raise HTTPException(402, "not enough AI credits")
 
@@ -65,7 +65,7 @@ def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, 
             input_path = f"{user.id}/jobs/{job_id}/upload{ext}"
             store.upload(input_path, photo.file.read(), PHOTO_TYPES[ext])
         job, created = store.create_job(user.id, kind, key, input_path, item_id=item_id, job_id=job_id, cost_credits=cost,
-                                        max_items=max_items)
+                                        max_items=max_items, extra=extra)
     finally:
         if not created:
             gate.release(job_id)  # failed, or lost a race with the same key: one hold per job
@@ -174,6 +174,7 @@ def item_out(item: dict, urls: dict[str, str]) -> V1ItemOut:
         back=BackOut(generated_url=urls[back["generated_path"]], cutout_url=urls.get(back.get("cutout_path") or ""),
                      visible_text=back.get("visible_text") or "") if back and back.get("generated_path") in urls else None,
         turn=_turn_out(item.get("turn"), urls),
+        origin=item.get("origin") or "garment_photo", review_state=item.get("review_state"),
     )
 
 
@@ -275,12 +276,57 @@ def create_outfit_scan(user: User = Depends(current_user), photo: UploadFile | N
     return queue_job(store, user, "outfit_scan", key, photo, gate, prices, out=lambda job: scan_out(job, store))
 
 
-@router.get("/outfit-scans/{scan_id}", response_model=OutfitScanOut, dependencies=[Depends(outfit_on)])
-def get_outfit_scan(scan_id: str, user: User = Depends(current_user), store=Depends(get_store)):
-    """The scan and its candidates with short-lived preview URLs; someone else's scan answers 404, an expired one 410."""
+def _own_scan(store, user: User, scan_id: str) -> dict:
+    """The caller's scan; someone else's or unknown answers 404, an expired one 410."""
     job = store.get_job(user.id, scan_id) if _is_uuid(scan_id) else None
     if job is None or job["kind"] != "outfit_scan":
         raise NOT_FOUND
     if _scan_expired(job):
         raise HTTPException(410, "this scan has expired — scan the photo again")
-    return scan_out(job, store)
+    return job
+
+
+@router.get("/outfit-scans/{scan_id}", response_model=OutfitScanOut, dependencies=[Depends(outfit_on)])
+def get_outfit_scan(scan_id: str, user: User = Depends(current_user), store=Depends(get_store)):
+    """The scan and its candidates with short-lived preview URLs."""
+    return scan_out(_own_scan(store, user, scan_id), store)
+
+
+MAX_PICKS = 8
+
+
+@router.post("/outfit-scans/{scan_id}/generate", response_model=JobOut, status_code=202, dependencies=[Depends(outfit_on)])
+def generate_from_scan(scan_id: str, body: OutfitGenerateIn, user: User = Depends(current_user),
+                       key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
+                       prices=Depends(get_prices)):
+    """Stage 2: make catalog images for the picked candidates only. With billing on, holds one front price per pick
+    (the action 'garment') and charges only for the images made. 409 if the price changed since the user saw it."""
+    existing = store.job_by_key(user.id, key)
+    if existing:
+        if existing["kind"] != "outfit_generate":
+            raise HTTPException(409, "this Idempotency-Key was already used for another request")
+        return JSONResponse(status_code=200, content=job_out(existing).model_dump())
+    scan = _own_scan(store, user, scan_id)
+    if scan["status"] != "succeeded":
+        raise HTTPException(409, "the scan isn't finished yet")
+    picks = list(dict.fromkeys(body.candidate_ids))
+    known = {c["id"] for c in (scan.get("result") or {}).get("candidates") or []}
+    if not 1 <= len(picks) <= MAX_PICKS:
+        raise HTTPException(400, f"pick 1 to {MAX_PICKS} garments")
+    if any(p not in known for p in picks):
+        raise HTTPException(400, "unknown garment in this scan")
+    unit = job_cost(prices, "outfit_generate")
+    if body.expected_unit_price != unit:
+        raise HTTPException(409, "the price changed — check it and confirm again")
+    return queue_job(store, user, "outfit_generate", key, None, gate, prices,
+                     max_items=len(picks) if prices else None,
+                     extra={"scan_job_id": scan["id"], "candidate_ids": picks})
+
+
+@router.post("/items/{item_id}/keep", response_model=V1ItemOut, dependencies=[Depends(outfit_on)])
+def keep_item(item_id: str, user: User = Depends(current_user), store=Depends(get_store)):
+    """The user accepts an outfit result: it joins the closet. Discarding is DELETE /v1/items/{id} (soft delete)."""
+    item = _own_item(store, user, item_id)
+    if item.get("review_state") == "pending":
+        item = store.update_item(user.id, item_id, {"review_state": "kept"})
+    return item_out(item, store.sign(_paths(item)))

@@ -153,6 +153,16 @@ class GeminiProvider:
             self._log("outfit_detect", MODEL_VISION, outfit.DETECT_PROMPT, start, "error", str(e))
             raise
 
+    async def generate_outfit(self, image_path: str, scan, candidate_ids: list[str], out_dir: str) -> dict[str, dict]:
+        """Outfit Photo Stage 2: catalog images for the picked candidates only (pipeline/outfit.py)."""
+        from pipeline import outfit
+        start = time.monotonic()
+        results = await outfit.generate_selected(self.client, image_path, scan, candidate_ids, out_dir, outfit.Usage())
+        failed = [cid for cid, r in results.items() if r["status"] != "generated"]
+        self._log("outfit_generate", MODEL_IMAGE, outfit.GENERATE_PROMPT, start, "error" if failed else "ok",
+                  f"failed: {failed}" if failed else None)
+        return results
+
     async def generate(self, crop_path: str, facts: ItemFacts, violations: list[str] | None,
                        complete_edges: bool = False) -> str:
         start = time.monotonic()

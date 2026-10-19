@@ -236,7 +236,66 @@ async def _outfit_scan(store, job, providers, tmp, uploads):
             "expires_at": expires.isoformat()}
 
 
-HANDLERS = {"garment": _garment, "back": _back, "turn": _turn, "outfit_scan": _outfit_scan}
+SCAN_GONE = "This scan has expired — scan the photo again"
+# Tier from how much of the garment the photo showed: the rest of the catalog image is the model's completion.
+VISIBILITY_TIER = {"full": "high", "partial": "medium", "low": "low"}
+
+
+def _scan_for(store, job) -> tuple[dict, "outfit.OutfitScan"]:
+    scan_job = store.get_job(job["user_id"], job["scan_job_id"])
+    result = (scan_job or {}).get("result") or {}
+    expires = result.get("expires_at")
+    if (not scan_job or scan_job["kind"] != "outfit_scan" or scan_job["status"] != "succeeded"
+            or not expires or datetime.fromisoformat(expires) <= datetime.now(timezone.utc)):
+        raise JobRejected(SCAN_GONE)
+    return scan_job, outfit.OutfitScan.model_validate(result)
+
+
+async def _outfit_generate(store, job, providers, tmp, uploads):
+    """Stage 2: catalog images ONLY for the picked candidates. Each result waits in review ('pending') until the
+    user keeps it. A candidate that fails doesn't stop the others and isn't charged (charge_for counts item_ids)."""
+    user = job["user_id"]
+    scan_job, scan = _scan_for(store, job)
+    try:
+        original = store.download(scan_job["input_path"])
+    except Exception as e:
+        raise JobRejected(SCAN_GONE) from e
+    photo = _write(os.path.join(tmp, "upload" + (os.path.splitext(scan_job["input_path"])[1] or ".jpg")), original)
+    out_dir = os.path.join(tmp, "out")
+    imagegen = providers(RunLogger(os.path.join(tmp, "outfit_log.jsonl"))).imagegen
+    try:
+        results = await imagegen.generate_outfit(photo, scan, list(job["candidate_ids"]), out_dir)
+    except ValueError as e:  # unknown candidate IDs or an unreadable photo
+        raise JobRejected(_sentence(str(e))) from e
+    by_id = {c.id: c for c in scan.candidates}
+    item_ids, failed = [], []
+    for cid in job["candidate_ids"]:
+        item_dir = os.path.join(out_dir, cid)
+        if (results.get(cid) or {}).get("status") != "generated" or not os.path.exists(os.path.join(item_dir, "generated.png")):
+            failed.append(cid)
+            continue
+        candidate = by_id[cid]
+        piece = int(cid[1:])
+        item_id = _item_id(job["id"], piece)
+        base = f"{user}/items/{item_id}"
+        crop = uploads.put_photo_if_exists(f"{base}/crop.jpg", os.path.join(item_dir, "crop.png"))
+        row = {
+            "id": item_id, "user_id": user, "job_id": job["id"], "piece_index": piece,
+            "tier": VISIBILITY_TIER[candidate.visibility], "facts": outfit.facts_for(candidate).model_dump(mode="json"),
+            # The garment crop is the item's source: the full photo of the person is never kept with an item.
+            "source_path": crop, "source_kind": "crop", "crop_path": crop,
+            "display_path": uploads.put(f"{base}/generated.png", os.path.join(item_dir, "generated.png")),
+            "cutout_path": uploads.put_if_exists(f"{base}/cutout.png", os.path.join(item_dir, "cutout.png")),
+            "origin": "outfit_photo", "review_state": "pending",
+        }
+        item_ids.append(store.insert_item(row)["id"])
+    if not item_ids:
+        raise JobRejected("Couldn't make an image of the selected garments — try again or photograph them laid flat")
+    return {"item_ids": item_ids, "failed": failed}
+
+
+HANDLERS = {"garment": _garment, "back": _back, "turn": _turn, "outfit_scan": _outfit_scan,
+            "outfit_generate": _outfit_generate}
 
 
 def _fail(store, gate, job, uploads, message):

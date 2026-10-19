@@ -15,6 +15,7 @@ def create_app(settings: Settings | None = None, start_worker: bool = True) -> F
         app = FastAPI()
         for router in (images_router, items_router, runs_router, turn_router):
             app.include_router(router)
+        app.get("/healthz")(lambda: {"status": "ok", "mode": "local"})
         return app
 
     # Multi-user mode: only the token-checked v1 API; the local runs/ routes are not mounted at all.

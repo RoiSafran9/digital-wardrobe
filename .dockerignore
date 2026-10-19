@@ -1,0 +1,14 @@
+.git
+.venv
+.env
+.env.*
+runs
+mobile
+tests
+docs
+supabase
+ui
+**/__pycache__
+**/*.pyc
+.superpowers
+.claude

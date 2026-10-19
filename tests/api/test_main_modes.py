@@ -57,3 +57,11 @@ def test_billing_on_with_a_missing_price_fails_at_startup(monkeypatch):
     monkeypatch.setenv("WARDROBE_CREDIT_PRICES", '{"garment": 1}')
     with pytest.raises(RuntimeError, match="missing: back, turn"):
         create_app(ON, start_worker=False)
+
+
+def test_local_mode_answers_the_health_check(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    from api.auth import Settings
+    from api.main import create_app
+    monkeypatch.setenv("WARDROBE_RUNS_DIR", str(tmp_path))
+    assert TestClient(create_app(Settings(auth_on=False))).get("/healthz").json() == {"status": "ok", "mode": "local"}

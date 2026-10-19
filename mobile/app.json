@@ -8,7 +8,10 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -27,7 +30,22 @@
       "expo-status-bar",
       "expo-asset",
       "expo-font",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "KIPS uses the camera to photograph your clothes and turn them into catalog images.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "KIPS reads the photos you choose so it can turn the clothes in them into catalog images.",
+          "cameraPermission": "KIPS uses the camera to photograph your clothes and turn them into catalog images."
+        }
+      ],
+      "expo-notifications"
     ],
     "extra": {
       "router": {},

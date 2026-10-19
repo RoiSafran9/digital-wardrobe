@@ -62,7 +62,8 @@ export type Credits = {
 };
 
 // outfit: the server has the Outfit Photo flow switched on (WARDROBE_OUTFIT=on).
-export type Prices = { billing: boolean; prices: Partial<Record<CreditAction, number>>; outfit?: boolean };
+// generation: false while the operator has paused new AI work (the closet still works).
+export type Prices = { billing: boolean; prices: Partial<Record<CreditAction, number>>; outfit?: boolean; generation?: boolean };
 
 export type BackView = {
   generated_url: string;

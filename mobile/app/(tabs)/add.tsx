@@ -37,7 +37,7 @@ const ROW: IconName[] = ["garment", "jacket", "shoe"];
 
 export default function AddScreen() {
   const router = useRouter();
-  const { outfit: outfitOn, billing, prices, credits } = useCredits();
+  const { outfit: outfitOn, billing, prices, credits, generation } = useCredits();
   const { mode, firstPiece, at } = useLocalSearchParams<{ mode?: string; firstPiece?: string; at?: string }>();
   const [pending, setPending] = useState(0);
 
@@ -62,6 +62,13 @@ export default function AddScreen() {
           <Text accessibilityRole="header" style={{ ...type.largeTitle, color: colors.label }}>Add Clothes</Text>
           <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Choose how to start. Finding garments is always free.</Text>
         </View>
+
+        {generation === false ? (
+          <View accessibilityLiveRegion="polite" style={{ backgroundColor: colors.grouped, borderRadius: radius.list, padding: 16, gap: 4 }}>
+            <Text style={{ ...type.headline, color: colors.label }}>New images are paused</Text>
+            <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Making new AI images is paused for now. Your closet still works — try again later.</Text>
+          </View>
+        ) : null}
 
         {firstPiece ? (
           <View style={{ backgroundColor: colors.tintSoft, borderRadius: radius.list, padding: 16, gap: 10 }}>

@@ -64,3 +64,8 @@ test("Home's outfit link (mode=outfit) goes straight to the outfit camera", asyn
   renderAdd({ outfit: true });
   await waitFor(() => expect(mockPush).toHaveBeenCalledWith({ pathname: "/capture/camera", params: { mode: "outfit" } }));
 });
+
+test("a paused server says new images are paused", () => {
+  renderAdd({ generation: false });
+  expect(screen.getByText("New images are paused")).toBeTruthy();
+});

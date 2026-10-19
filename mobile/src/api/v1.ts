@@ -226,6 +226,11 @@ export async function deleteAccount(account: Account): Promise<void> {
   });
 }
 
+// After each sign-in: the server grants the one-time welcome credits if this account is invited (no-op otherwise).
+export async function bootstrap(account: Account): Promise<{ welcome_granted: number }> {
+  return call<{ welcome_granted: number }>(account, "/v1/bootstrap", { method: "POST" });
+}
+
 export async function getCredits(account: Account, before?: number): Promise<Credits> {
   return call<Credits>(account, `/v1/credits${before ? `?before=${before}` : ""}`);
 }

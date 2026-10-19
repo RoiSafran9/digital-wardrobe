@@ -63,10 +63,10 @@ See README → "Owner setup still open": hosted Supabase SMTP and email template
 - [x] Set beta direction: real iOS TestFlight build, external friends, per-account private wardrobe, free welcome Credits, **no purchases/subscriptions/payments**.
 - [ ] Freeze beta scope and migrate to a supported image-generation model with full regression evaluation; decide whether Outfit import is ready or feature-flagged for a follow-up.
 - [ ] Complete hosted Supabase auth SMTP, verified 6-digit email codes, database migrations, private storage and off-LAN account tests.
-- [ ] Implement secure **exactly-once welcome-credit grant** after verified eligible signup (40 proposed, configurable; reuse existing wallet/ledger).
+- [x] Implement secure **exactly-once welcome-credit grant** after verified eligible signup (built 2026-10-19 behind `WARDROBE_WELCOME_CREDITS` / `WARDROBE_BETA_INVITES`; amount not set yet).
 - [ ] Host FastAPI + durable worker behind HTTPS, with bounded concurrency, timeouts, restarts and cost controls; demonstrate mobile data usage with Mac off.
 - [ ] Ship user-initiated account deletion covering private photos, privacy/support links and safe data retention policy. *(Deletion built in redesign M8: `DELETE /v1/account` + Account → Delete Account; privacy/support links and the retention policy still open.)*
-- [ ] Add operational health, AI cost monitoring, free Outfit-detection rate limits, provider-failure kill switch, privacy-respecting basic analytics.
+- [ ] Add operational health, AI cost monitoring, free Outfit-detection rate limits, provider-failure kill switch, privacy-respecting basic analytics. *(Built 2026-10-19: `/healthz`, free-scan limits, `WARDROBE_GENERATION=off` pause switch, Gemini timeouts. Still open: cost monitoring/alerts, analytics.)*
 - [ ] Configure Apple Developer / Expo EAS / `mobile/app.json` app identity / `mobile/eas.json`; build and upload store-signed TestFlight IPA.
 - [ ] Run end-to-end phone checks and Apple external Beta App Review; invite 3–5 testers, then 10–20 if stable.
 - [ ] Confirm 5 friends can complete sign-in → free credits → create → reopen closet with no help, on networks other than home Wi-Fi.

@@ -33,7 +33,11 @@ A 360 action creates four internal views but is one user-facing charge. Adding a
 
 These are **F&F implementation-planning values only**, not paid pack prices, public-launch pricing or authorization to turn live billing on. The actual F&F grant amount, charging semantics, regenerated previews and bulk-photo quote remain open. The client price list and the server-side charge must always agree; never hardcode rates in mobile UI.
 
-## Automatic beta welcome pack — planned, NOT IMPLEMENTED
+## Automatic beta welcome pack — BUILT, off until the owner sets the amount
+
+Built 2026-10-19: `POST /v1/bootstrap` (called by the app after each sign-in) grants `WARDROBE_WELCOME_CREDITS` once per account whose email matches `WARDROBE_BETA_INVITES` (`*`, emails or `@domains`), with the fixed operation key `welcome:beta-v1` — repeats, second devices and reinstalls are no-ops; disabled accounts get nothing. Unset = off. The amount (40 proposed) and the invite list are still the owner's decision.
+
+Original plan:
 
 The existing new-user trigger creates a zero-balance wallet; `credit_grant` and `scripts/grant_credits.py` handle manual grants, but **no automatic initial grant exists yet**.
 

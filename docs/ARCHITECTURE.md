@@ -71,6 +71,8 @@ Every model call is appended to a `run_log.jsonl` (stage, model, prompt version,
 | PATCH | `/v1/items/{id}` | edit facts (validated server-side) |
 | DELETE | `/v1/items/{id}` | soft delete (`deleted_at`) |
 | POST | `/v1/items/{id}/back`, `/v1/items/{id}/turn` | start a back or 360 job |
+| POST | `/v1/bootstrap` | called by the app after each sign-in: grants `WARDROBE_WELCOME_CREDITS` once per invited account (`WARDROBE_BETA_INVITES`), operation key `welcome:beta-v1`; `{welcome_granted}`; off unless configured |
+| GET | `/healthz` | no sign-in: `status`, `generation` (pause switch), `queued`, `oldest_queued_seconds`, `worker_seconds_since_beat` |
 | GET / PATCH | `/v1/profile` | the user's email and `display_name` (1–40 trimmed characters, set at sign-up; backend-only writes) |
 | POST / DELETE | `/v1/push-token` | `{token}`: this phone's Expo push token for "Notify when ready" (`push_tokens`, backend-only). The worker pushes through Expo's push service (`api/push.py`, on a side thread) when a garment, back, 360 or outfit job finishes or fails for good. The app's Expo project id is in `mobile/app.json` (`extra.eas.projectId`). |
 | DELETE | `/v1/account` | body `{"confirm": "DELETE"}`: deletes the signed-in user through the Supabase admin API (profile, items, jobs, wallet and ledger cascade), then removes their files; leftovers are caught by `scripts/sweep_storage.py` |
@@ -125,6 +127,9 @@ The closet is a directory scan (newest first). The full original photo is not ke
 
 ## Quality gates
 `pytest` (providers faked), `npx jest`, `npx tsc --noEmit`, `npx supabase test db`; `pytest tests/integration` with the local Supabase stack running. Manual runs on real photos for prompt or generation changes; manual phone checks for UI.
+
+## Beta controls
+Server environment only (`api/controls.py`): `WARDROBE_GENERATION=off` pauses every route that starts AI work (503; `/v1/prices` says `generation: false`, Add shows a notice); `WARDROBE_FREE_SCANS_PER_HOUR` caps free scans per account (429, default 30); `WARDROBE_WELCOME_CREDITS` + `WARDROBE_BETA_INVITES` control the one-time welcome grant. Gemini calls time out (detection 60 s, images 120 s).
 
 ## Known limits
 - The server and worker run on the owner's Mac; off-LAN access (tunnel) is documented, not set up. No cloud host.

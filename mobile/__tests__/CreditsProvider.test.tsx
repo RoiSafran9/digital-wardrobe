@@ -1,11 +1,11 @@
 import React from "react";
 import { Text } from "react-native";
 import { act, render, screen } from "@testing-library/react-native";
-import { getCredits, getPrices } from "../src/api/client";
+import { bootstrap, getCredits, getPrices } from "../src/api/client";
 import { AuthContext, type AuthContextValue } from "../src/auth/AuthProvider";
 import { CreditsProvider, useCredits } from "../src/credits/CreditsProvider";
 
-jest.mock("../src/api/client", () => ({ getCredits: jest.fn(), getPrices: jest.fn() }));
+jest.mock("../src/api/client", () => ({ getCredits: jest.fn(), getPrices: jest.fn(), bootstrap: jest.fn(async () => 0) }));
 const mockedCredits = getCredits as jest.Mock;
 const mockedPrices = getPrices as jest.Mock;
 
@@ -55,4 +55,17 @@ test("another account never sees the previous account's balance", async () => {
   expect(screen.getByText("none")).toBeTruthy();  // cleared at once, before u2's answer
   await settle();
   expect(screen.getByText("2 billing")).toBeTruthy();
+});
+
+test("signing in asks the server for the welcome credits before loading the balance", async () => {
+  render(tree(auth("signedIn", "u1")));
+  await act(async () => { jest.runAllTimers(); });
+  expect(bootstrap).toHaveBeenCalledTimes(1);
+  expect(await screen.findByText("7 billing")).toBeTruthy();
+});
+
+test("local mode never asks for welcome credits", async () => {
+  render(tree(auth("local", null)));
+  await act(async () => { jest.runAllTimers(); });
+  expect(bootstrap).not.toHaveBeenCalled();
 });

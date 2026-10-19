@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { getCredits, getPrices } from "../api/client";
+import { bootstrap, getCredits, getPrices } from "../api/client";
 import type { CreditAction, Credits } from "../api/types";
 import { useAuth } from "../auth/AuthProvider";
 
@@ -8,10 +8,11 @@ export type CreditsValue = {
   prices: Partial<Record<CreditAction, number>>;
   credits: Credits | null;  // null until loaded, and in local mode
   outfit?: boolean;  // the server offers the Outfit Photo flow
+  generation?: boolean;  // false while the operator has paused new AI work
   refresh: () => Promise<void>;
 };
 
-const empty: CreditsValue = { billing: false, prices: {}, credits: null, outfit: false, refresh: async () => {} };
+const empty: CreditsValue = { billing: false, prices: {}, credits: null, outfit: false, generation: true, refresh: async () => {} };
 export const CreditsContext = createContext<CreditsValue>(empty);
 export const useCredits = () => useContext(CreditsContext);
 
@@ -29,7 +30,8 @@ export function CreditsProvider({ children }: { children: React.ReactNode }) {
     try {
       const [credits, prices] = await Promise.all([getCredits(), getPrices()]);
       if (owner.current !== forUser) return;  // signed out or switched while loading
-      setState({ credits, billing: !!prices?.billing, prices: prices?.prices ?? {}, outfit: !!prices?.outfit });
+      setState({ credits, billing: !!prices?.billing, prices: prices?.prices ?? {}, outfit: !!prices?.outfit,
+                 generation: prices?.generation !== false });
     } catch {
       // Keep what we had; the next refresh tries again.
     }
@@ -38,7 +40,11 @@ export function CreditsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setState(empty);
     // After this render's effects: AuthProvider (our parent) points the API at the account in its own effect.
-    const timer = setTimeout(() => void refresh(), 0);
+    // Each sign-in first asks for the one-time welcome credits (a no-op unless this account is invited).
+    const signedIn = status === "signedIn";
+    const timer = setTimeout(() => {
+      (signedIn ? bootstrap().catch(() => 0) : Promise.resolve(0)).finally(() => void refresh());
+    }, 0);
     return () => clearTimeout(timer);
   }, [status, userId, refresh]);
 

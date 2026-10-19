@@ -125,6 +125,11 @@ export async function getTurn(item: ClosetItem): Promise<Turn> {
   return parseJsonOrThrow<Turn>(response);
 }
 
+export async function bootstrap(): Promise<number> {
+  if (!account) return 0;
+  return (await v1.bootstrap(account)).welcome_granted;
+}
+
 // AI Credits exist only in account mode; local mode has none (null).
 export async function getCredits(before?: number): Promise<Credits | null> {
   return account ? v1.getCredits(account, before) : null;

@@ -170,6 +170,22 @@ Run on 2026-10-19 with the owner's approval (cap US$1.50). **Tiny, synthetic sam
 - No routing measurement on ordinary garment photos (v4 behaviour on worn photos is an assumption).
 - No app, API, DB, billing or pgTAP changes; Jest/tsc/pgTAP not needed.
 
+### 4.7 Newer Gemini image models (migration off the deprecated model) [measured, 2026-10-19]
+`gemini-2.5-flash-image` is listed as deprecated. I compared the two current image models on (a) the **existing garment flow**, with the unchanged `stage4_generate_v5` front prompt on 4 of the owner's real crops (`scripts/model_compare.py`), and (b) **try-off** with `outfit_generate_v2` on the 4 hardest synthetic pieces. Cost of this round ≈ $0.81 (list prices; one failed call counted). Visual judgement is mine; the images are in `runs/model_compare/` and in the report.
+
+| | gemini-2.5-flash-image (today) | **gemini-3.1-flash-image** (Nano Banana 2) | gemini-nano-banana-2.1 |
+|---|---|---|---|
+| Price per image (1K) | $0.039 | $0.067 (1.7×) | $0.0336 |
+| Latency (fronts) | ~9 s | 11–15 s | 17–26 s |
+| Calls OK | 8/8 | 8/8 | 7/8: one returned a text part first, and `GeminiProvider.generate` reads only `parts[0]` (crash) |
+| Pure white background | mostly (one old catalog had a gray one) | 8/8 | **off-white/gray on several** (breaks the closet's white tile and helps nothing) |
+| Color vs real photo | closest in this sample | slightly lighter/warmer (striped tee bluer, white tee cream) | white tee came out **gray**; striped tee lighter |
+| Invented details | — | **small brand-like mark at the white tee's collar** (front flow) | piping added on the fleece (front flow) |
+| Try-off (4 pieces) | good (v2 prompt) | good; fleece collar/zip reshaped | smaller garment, gray tints |
+| Color check (stage5) | all pass | all pass | all pass — the check misses these tints |
+
+**Recommendation:** migrate to **gemini-3.1-flash-image**, not nano-banana-2.1, and do it as its own task: (1) make every image read use the first part *with* image data (the `generate_back` and `generate_view` pattern) before switching; (2) re-check fidelity on ~20 real items for front, back and 360; (3) add a prompt line against lightening the color, since both new models drift lighter; (4) the price rises 1.7× per image, which matters for the credit price decision (CREDITS.md). Keep 2.5 while Google still serves it.
+
 ---
 
 ## 5. Proposed architecture (for approval — not built)
@@ -260,7 +276,7 @@ Thresholds are set **with the owner after the baseline**, not invented here. Sug
 | D5 | Review-before-save state for outfit items (spec says yes) | Yes: `review_state` pending → kept |
 | D6 | Person-photo retention | Delete after generation, max 24 h |
 | D7 | Provide 30–50 consented photos + same-garment flat-lays, and a paid-call budget for the real eval | Measured unit costs: ~$0.0012/detect, ~$0.039/front → 50 photos + ~80 fronts ≈ **$3.20** at list price, plus re-runs |
-| D8 | Migrate off `gemini-2.5-flash-image` (deprecated) — whole product | Separate task, before M2 |
+| D8 | Migrate off `gemini-2.5-flash-image` (deprecated) — whole product | To `gemini-3.1-flash-image` (§4.7), as its own task, before M2; fix the `parts[0]` read first |
 | D10 | Adopt generation prompt v2 (§4.5: fixed drawstrings and fake letters, one new neck label) as the M2 baseline, then iterate on real photos | Yes |
 | D9 | JSONB scan result (M1) vs dedicated tables | JSONB now; tables when corrections/manual selection land |
 
@@ -274,4 +290,4 @@ Thresholds are set **with the owner after the baseline**, not invented here. Sug
 
 **חשוב:** הדגימה קטנה וסינתטית, ולכן זו ראיה לכיוון ולא אחוז הצלחה. השאלה המרכזית, נאמנות בתמונות טלפון אמיתיות, עדיין פתוחה.
 
-**החלטות שצריך ממך לפני M1/M2:** D1 בחירת מצב מפורשת במסך ההוספה · D2 בלי נעליים בגרסה הראשונה · D3 מה עושים עם בגד שרובו מוסתר · D4 חיוב כשמשתמש פוסל תוצאה שהצליחה · D5 שלב אישור לפני שמירה · D6 מחיקת תמונת האדם (מוצע: עד 24 שעות) · D7 ‏30–50 תמונות שלך/של חברים עם אישור, ותקציב של ~‎$3–5 · D8 מעבר מ-gemini-2.5-flash-image שהוכרז כ-deprecated · D9 שמירת הסריקה ב-JSONB · D10 לאמץ את פרומפט היצירה v2 כבסיס ל-M2 ולהמשיך לשפר אותו על תמונות אמיתיות.
+**החלטות שצריך ממך לפני M1/M2:** D1 בחירת מצב מפורשת במסך ההוספה · D2 בלי נעליים בגרסה הראשונה · D3 מה עושים עם בגד שרובו מוסתר · D4 חיוב כשמשתמש פוסל תוצאה שהצליחה · D5 שלב אישור לפני שמירה · D6 מחיקת תמונת האדם (מוצע: עד 24 שעות) · D7 ‏30–50 תמונות שלך/של חברים עם אישור, ותקציב של ~‎$3–5 · D8 מעבר מ-gemini-2.5-flash-image (deprecated) ל-gemini-3.1-flash-image — יקר פי 1.7, רקע לבן תמיד, צבעים מעט בהירים; nano-banana-2.1 נפסל (רקע אפרפר, חולצה לבנה יצאה אפורה) · D9 שמירת הסריקה ב-JSONB · D10 לאמץ את פרומפט היצירה v2 כבסיס ל-M2 ולהמשיך לשפר אותו על תמונות אמיתיות.

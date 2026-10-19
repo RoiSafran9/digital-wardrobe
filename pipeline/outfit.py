@@ -30,6 +30,7 @@ VISION_USD_PER_M_IN, VISION_USD_PER_M_OUT = 0.25, 1.50
 IMAGE_USD_PER_IMAGE, IMAGE_USD_PER_M_IN = 0.039, 0.30
 # Other image models compared in the PoC (USD per 1K output image, per 1M input tokens).
 IMAGE_PRICES = {MODEL_IMAGE: (IMAGE_USD_PER_IMAGE, IMAGE_USD_PER_M_IN),
+                "gemini-3.1-flash-lite-image": (0.0336, 0.25),
                 "gemini-3.1-flash-image": (0.067, 0.50),
                 "gemini-nano-banana-2.1": (0.0336, 1.50)}
 

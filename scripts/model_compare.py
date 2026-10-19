@@ -18,7 +18,7 @@ from pipeline import outfit
 from pipeline.providers import gemini
 from pipeline.types import ItemFacts
 
-MODELS = ["gemini-3.1-flash-image", "gemini-nano-banana-2.1"]
+MODELS = ["gemini-3.1-flash-image", "gemini-nano-banana-2.1", "gemini-3.1-flash-lite-image"]
 OUT = "runs/model_compare"
 
 

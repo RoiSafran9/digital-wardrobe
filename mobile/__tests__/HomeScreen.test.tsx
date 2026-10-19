@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
 import HomeScreen from "../app/(tabs)/index";
 import { CaptureJobsProvider } from "../src/store/captureJobs";
-import { getItems, postRun, updateItem } from "../src/api/client";
+import { getItems, postRun } from "../src/api/client";
 import { pickPhoto } from "../src/photoPicker";
 import { CreditsContext, type CreditsValue } from "../src/credits/CreditsProvider";
 
@@ -34,40 +34,62 @@ function renderHome(credits: Partial<CreditsValue> = {}) {
 
 beforeEach(() => jest.clearAllMocks());
 
-test("shows the closet at a glance: greeting, stats and category groups", async () => {
+test("shows the greeting, a search field, the two labelled add tiles and the closet by category", async () => {
   (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "t-shirt", ["gray"]), item("item_1", "shorts", ["navy"]), item("item_2", "T-shirt", ["navy"])] });
-  renderHome();
+  renderHome({ outfit: true });
   expect(screen.getByText("FRIDAY, OCTOBER 16")).toBeTruthy();
   expect(screen.getByRole("header", { name: "Good evening" })).toBeTruthy();  // midnight
-  expect(await screen.findByLabelText("Pieces, 3")).toBeTruthy();
-  expect(screen.getByLabelText("Categories, 2")).toBeTruthy();  // Tops, Bottoms
-  expect(screen.getByLabelText("New this week, 3")).toBeTruthy();
+  expect(await screen.findByText("Search 3 pieces")).toBeTruthy();
+  expect(screen.getByText("FLAT LAY")).toBeTruthy();
+  expect(screen.getByText("WORN")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Add garments, flat lay photo, Camera" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Add from outfit photo, Choose photo" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Tops, 2" })).toBeTruthy();
-  expect(screen.getByText("Recently Added")).toBeTruthy();
-  expect(screen.getAllByText("Gray t-shirt").length).toBeGreaterThan(0);
+  expect(screen.getByRole("button", { name: "Bottoms, 1" })).toBeTruthy();
+  // The old dashboard pieces are gone.
+  expect(screen.queryByText("Recently Added")).toBeNull();
+  expect(screen.queryByLabelText(/^Pieces,/)).toBeNull();
 });
 
-test("a category group opens the closet filtered to it", async () => {
+test("a category row opens the closet filtered to it; search opens the closet ready to type", async () => {
   (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "shorts", ["navy"])] });
   renderHome();
   fireEvent.press(await screen.findByRole("button", { name: "Bottoms, 1" }));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/closet", params: expect.objectContaining({ group: "Bottoms", at: expect.any(String) }) });
+  fireEvent.press(screen.getByRole("search", { name: "Search 1 pieces" }));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/closet", params: expect.objectContaining({ search: "1" }) });
 });
 
-test("See All opens the closet", async () => {
-  (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "shorts", ["navy"])] });
+test("garment buttons feed the garment flow; the outfit button feeds the outfit flow", async () => {
+  (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "shirt", [])] });
+  (pickPhoto as jest.Mock).mockResolvedValue("file:///p.jpg");
+  renderHome({ outfit: true });
+  fireEvent.press(await screen.findByRole("button", { name: "Add garments, flat lay photo, Camera" }));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/capture/camera", params: { mode: "garments" } });
+  fireEvent.press(screen.getByRole("button", { name: "Add garments, flat lay photo, Library" }));
+  await waitFor(() => expect(mockPush).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///p.jpg", flow: "garment" } }));
+  fireEvent.press(screen.getByRole("button", { name: "Add from outfit photo, Choose photo" }));
+  await waitFor(() => expect(mockPush).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///p.jpg", flow: "outfit" } }));
+});
+
+test("without outfit import only the garment tile shows", async () => {
+  (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "shirt", [])] });
   renderHome();
-  fireEvent.press(await screen.findByRole("button", { name: "See All" }));
-  expect(mockPush).toHaveBeenCalledWith("/closet");
+  await screen.findByText("FLAT LAY");
+  expect(screen.queryByText("WORN")).toBeNull();
 });
 
-test("an empty closet shows the frames, the add buttons and the tips", async () => {
+test("an empty closet shows the frames, two labelled rows and the tips", async () => {
   (getItems as jest.Mock).mockResolvedValue({ items: [] });
-  renderHome();
+  renderHome({ outfit: true });
   expect(await screen.findByText("Your closet starts here")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Take Photo" })).toBeTruthy();
+  expect(screen.getByText("Laid flat or on a hanger")).toBeTruthy();
+  expect(screen.getByText("You wearing it")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Garment photo, Camera" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Garment photo, Library" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Outfit photo, Choose photo" })).toBeTruthy();
   expect(screen.getByText("Lay pieces flat on a bed or floor in daylight.")).toBeTruthy();
-  expect(screen.queryByLabelText(/^Pieces/)).toBeNull();
+  expect(screen.queryByRole("button", { name: "Take Photo" })).toBeNull();
 });
 
 test("the credit pill shows only while billing is on", async () => {
@@ -81,42 +103,13 @@ test("the credit pill shows only while billing is on", async () => {
   expect(mockPush).toHaveBeenCalledWith("/account");
 });
 
-test("when the server can't be reached it says so, offers a retry, and still lets you add", async () => {
+test("when the server can't be reached it says so and offers a retry", async () => {
   (getItems as jest.Mock).mockRejectedValueOnce(new Error("Can't reach your wardrobe server."))
     .mockResolvedValueOnce({ items: [item("item_0", "shorts", ["navy"])] });
   renderHome();
   expect(await screen.findByText(/Can't reach your wardrobe server/)).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Take Photo" })).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "Try again" }));
-  expect(await screen.findByLabelText("Pieces, 1")).toBeTruthy();
-});
-
-test("From Library picks a photo and opens its preview; Take Photo opens the camera", async () => {
-  (getItems as jest.Mock).mockResolvedValue({ items: [] });
-  (pickPhoto as jest.Mock).mockResolvedValue("file:///p.jpg");
-  renderHome();
-  fireEvent.press(await screen.findByRole("button", { name: "From Library" }));
-  await waitFor(() => expect(mockPush).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///p.jpg" } }));
-  fireEvent.press(screen.getByRole("button", { name: "Take Photo" }));
-  expect(mockPush).toHaveBeenCalledWith({ pathname: "/capture/camera", params: { mode: "garments" } });
-});
-
-test("editing a garment opened from Home shows the new value in the open sheet", async () => {
-  (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "shirt", ["gray"])] });
-  (updateItem as jest.Mock).mockImplementation(async (it) => ({ ...it, facts: { ...it.facts, category: f("blouse") } }));
-  renderHome();
-  fireEvent.press((await screen.findAllByLabelText("Open Gray shirt"))[0]);
-  fireEvent.press(screen.getByLabelText("Edit"));
-  fireEvent.changeText(screen.getByLabelText("Type"), "blouse");
-  fireEvent.press(screen.getByRole("button", { name: "Save" }));
-  expect(await screen.findByRole("header", { name: "Gray blouse" })).toBeTruthy();
-});
-
-test("the sheet from Home pages through the whole closet", async () => {
-  (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "shirt", []), item("item_1", "pants", []), item("item_2", "shorts", []), item("item_3", "dress", [])] });
-  renderHome();
-  fireEvent.press((await screen.findAllByLabelText("Open Pants"))[0]);
-  expect(screen.getByText("2 / 4")).toBeTruthy();
+  expect(await screen.findByText("Search 1 piece")).toBeTruthy();
 });
 
 test("a capture in progress shows on Home and opens the processing screen", async () => {
@@ -133,4 +126,10 @@ test("a capture in progress shows on Home and opens the processing screen", asyn
   fireEvent.press(await screen.findByText("start"));
   fireEvent.press(await screen.findByRole("button", { name: "Creating your pieces…" }));
   expect(mockPush).toHaveBeenCalledWith("/capture/processing");
+});
+
+test("categoryRows keeps group order and uses each group's first piece", () => {
+  const { categoryRows } = require("../app/(tabs)/index");
+  const rows = categoryRows([item("a", "jeans", []), item("b", "shirt", []), item("c", "skirt", [])]);
+  expect(rows.map((r: { name: string; count: number; first: { item_id: string } }) => [r.name, r.count, r.first.item_id])).toEqual([["Tops", 1, "b"], ["Bottoms", 2, "a"]]);
 });

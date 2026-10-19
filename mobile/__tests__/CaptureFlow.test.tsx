@@ -53,7 +53,7 @@ describe("camera", () => {
   test("the shutter takes the photo and opens its preview", async () => {
     renderWith(<CameraScreen />);
     expect(screen.getByText("Lay pieces flat · daylight works best")).toBeTruthy();
-    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take photo" })));
+    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take garment photo" })));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///camera.jpg" } });
   });
 
@@ -63,7 +63,7 @@ describe("camera", () => {
     screen.unmount();
     renderWith(<CameraScreen />, { outfit: true });
     fireEvent.press(screen.getByRole("tab", { name: "Outfit" }));
-    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take photo" })));
+    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take outfit photo" })));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///camera.jpg" } });
   });
 
@@ -72,7 +72,7 @@ describe("camera", () => {
     (pickPhoto as jest.Mock).mockResolvedValue("file:///lib.jpg");
     renderWith(<CameraScreen />);
     expect(screen.getByText("Camera access is off")).toBeTruthy();
-    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose from Library" })));
+    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose Garment Photo" })));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///lib.jpg" } });
   });
 });
@@ -155,7 +155,7 @@ describe("results and saved", () => {
   test("a photo with nothing in it says so and offers another photo", async () => {
     renderWith(<Started result={{ ...RUN, items: [] }}><ResultsScreen /></Started>);
     expect(await screen.findByText("No pieces found")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Take Another Photo" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Take Another Garment Photo" })).toBeTruthy();
   });
 
   test("billing off: Saved shows no credits", async () => {

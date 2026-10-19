@@ -71,6 +71,7 @@ export const type = {
   footnote: { fontSize: 13 },
   caption: { fontSize: 12 },
   toast: { fontSize: 14, fontWeight: "600" },
+  tag: { fontSize: 10, fontWeight: "600", letterSpacing: 0.6, fontFamily: "Menlo" },
   tabLabel: { fontSize: 10.5, fontWeight: "500" },
   eyebrow: { fontSize: 13, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.65 },
   hero: { fontSize: 64, fontWeight: "700", fontVariant: TABULAR },

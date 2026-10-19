@@ -126,7 +126,7 @@ export default function ResultsScreen() {
       </ScrollView>
       <View style={{ paddingHorizontal: 20, paddingVertical: 8, gap: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator }}>
         {nothing ? (
-          <Button title="Take Another Photo" onPress={() => { clear(); router.replace("/capture/camera"); }} />
+          <Button title="Take Another Garment Photo" onPress={() => { clear(); router.replace("/capture/camera"); }} />
         ) : (
           <Button title={`Add ${keep.length} to Closet`} onPress={add} disabled={keep.length === 0} loading={saving} />
         )}

@@ -80,7 +80,7 @@ export default function CameraScreen() {
             Allow the camera to photograph your clothes, or pick a photo you already took.
           </Text>
           {permission.canAskAgain ? <Button title="Allow Camera" onPress={() => void requestPermission()} /> : null}
-          <Button title="Choose from Library" variant="secondary" onPress={library} />
+          <Button title={mode === "outfit" ? "Choose Outfit Photo" : "Choose Garment Photo"} variant="secondary" onPress={library} />
           {error ? <Text style={{ ...type.footnote, color: "#FF8A8A" }}>{error}</Text> : null}
         </View>
       </SafeAreaView>
@@ -130,11 +130,11 @@ export default function CameraScreen() {
             </View>
           ) : null}
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 36 }}>
-            <Pressable onPress={library} accessibilityRole="button" accessibilityLabel="Choose from library" hitSlop={hitSlopFor(48, 48)}
+            <Pressable onPress={library} accessibilityRole="button" accessibilityLabel={mode === "outfit" ? "Choose an outfit photo from your library" : "Choose a garment photo from your library"} hitSlop={hitSlopFor(48, 48)}
               style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" }}>
               <Icon name="closet" size={22} color={INK} />
             </Pressable>
-            <Pressable onPress={shoot} disabled={busy || !permission?.granted} accessibilityRole="button" accessibilityLabel="Take photo"
+            <Pressable onPress={shoot} disabled={busy || !permission?.granted} accessibilityRole="button" accessibilityLabel={mode === "outfit" ? "Take outfit photo" : "Take garment photo"}
               style={{ width: 76, height: 76, borderRadius: 38, borderWidth: 4, borderColor: INK, alignItems: "center", justifyContent: "center", opacity: busy ? 0.6 : 1 }}>
               <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: INK }} />
             </Pressable>

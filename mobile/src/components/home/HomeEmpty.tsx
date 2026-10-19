@@ -9,7 +9,7 @@ const TIPS = [
   "Full-body mirror photos work for outfits.",
 ];
 
-// Three dashed frames waiting to be filled, then the tips. The add buttons come from the caller.
+// Three dashed frames waiting to be filled, then the labelled add rows (from the caller) and the tips.
 export function HomeEmpty({ children, outfit }: { children: React.ReactNode; outfit: boolean }) {
   const tips = outfit ? TIPS : TIPS.slice(0, 2);
   return (

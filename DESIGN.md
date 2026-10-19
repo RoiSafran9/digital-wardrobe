@@ -112,7 +112,7 @@ Source: the owner's design handoff, `docs/design/design_handoff_digital_wardrobe
 
 **Creative North Star: "Your own clothes, beautifully catalogued."**
 
-The app still reads as a well-made first-party iOS app — SF Pro, SF Symbols, native page sheets, segmented controls, one blue accent — but warmer and more editorial than stock Settings grey. Screens are white; grouped content sits on warm-grey cards; garments sit on a soft stone tile with a gentle shadow. Four editorial headlines use Instrument Serif. What makes it feel alive is still the user's own garments: a marquee of recent pieces, tiles that pop into place, cards that give under a finger.
+The app still reads as a well-made first-party iOS app — SF Pro, SF Symbols, native page sheets, segmented controls, one blue accent — but warmer and more editorial than stock Settings grey. Screens are white; grouped content sits on warm-grey cards; garments sit on a soft stone tile with a gentle shadow. Four editorial headlines use Instrument Serif. What makes it feel alive is still the user's own garments: tiles that pop into place, cards that give under a finger, the 360 turntable.
 
 Light and dark are one system: every color is a `DynamicColorIOS` pair. Every text pair holds 4.5:1 in both appearances, and `mobile/__tests__/theme.test.ts` enforces it.
 
@@ -150,7 +150,7 @@ The closed vocabulary of 15 colors in `SWATCHES` (`theme.ts`) describes garments
 ## Typography
 
 **Display:** Instrument Serif (`@expo-google-fonts/instrument-serif`, loaded in `app/_layout.tsx`), regular, line height 1.0. Only four places: Welcome (46), Home greeting (42), "A welcome gift" and "Added to your closet" (40). Use `type.display(size)`.
-**Everything else:** SF Pro through `type.*`; no `fontFamily` anywhere else.
+**Everything else:** SF Pro through `type.*`; no `fontFamily` anywhere else, except `type.tag` (Menlo, 10/600, +0.06em) for the small photo-type tags on Home's add tiles ("FLAT LAY", "WORN").
 
 - **Large Title** 34/700, −0.02em: tab screen titles ("Closet", "Account").
 - **Screen Title** 32/700: flow screens ("Sign in with email", "Add Clothes").
@@ -165,7 +165,7 @@ The closed vocabulary of 15 colors in `SWATCHES` (`theme.ts`) describes garments
 
 ## Layout
 
-Screen padding 20pt (grouped lists 16pt). Gaps 8/10/12/14/18/22/28. Home's marquee bleeds edge to edge. Closet is a two-column grid (12pt columns, 18pt rows) of 4:5 tiles. Flow screens (camera, preview, processing, results, outfit steps) are full-screen stack routes without the tab bar, with a sticky bottom CTA above the home indicator. iPhone frame reference: 393×852pt.
+Screen padding 20pt (grouped lists 16pt). Gaps 8/10/12/14/18/22/28. Closet is a two-column grid (12pt columns, 18pt rows) of 4:5 tiles. Flow screens (camera, preview, processing, results, outfit steps) are full-screen stack routes without the tab bar, with a sticky bottom CTA above the home indicator. iPhone frame reference: 393×852pt.
 
 ## Elevation & Depth
 
@@ -195,19 +195,19 @@ Segment 8 · input/search 12 · 48pt button 14 · 54pt primary 16 · grouped lis
 - **Shimmer / PopIn** (`mobile/src/motion/PopIn.tsx`): AI-work sweep; pop-in from 90% and 8pt low over 600ms, staggered 0.12s by the caller.
 - **Tab bar:** Home · Closet · Add · Account, 84pt, translucent blur with a hairline top, active accent.
 
-Existing pieces keep their roles: `PressScale` (cards and garments scale to 0.97), `Rise`, `Marquee`, `CountUp`, `GarmentImage` (cutout → white generated → crop), `TierBadge`, `TurnView` (360 turntable swing, labelled AI).
+Existing pieces keep their roles: `PressScale` (cards and garments scale to 0.97), `Rise`, `GarmentImage` (cutout → white generated → crop), `TierBadge`, `TurnView` (360 turntable swing, labelled AI).
 
 ## Motion
 
 - Easing: the handoff's `cubic-bezier(.2,.8,.2,1)` (`SHEET_EASE`) for sheets and pop-ins; `EASE_OUT` for presses and rises.
 - Pop-in: scale .9 + 8pt → rest, 0.5–0.7s, staggered 0.12s. Sheets 0.35–0.4s. Toast fades in/out.
-- Home marquee: linear loop, about 4s per tile; touching pauses it.
 - Haptics: selection on toggles, chips and segments; success on confirms and saves.
-- **Reduce Motion:** no translate, scale, drift, scan band, shimmer or count-up; short fades stay.
+- **Reduce Motion:** no translate, scale, scan band or shimmer; short fades stay.
 
 ## Do's and Don'ts
 
 ### Do
+- Label every photo entry point with the kind of photo it wants: garment photo (laid flat or on a hanger) or outfit photo (someone wearing it). Never a bare "Take Photo / From Library" pair.
 - Take every color from `colors.*` and every text style from `type.*`.
 - Show a price only from the server, and confirm every paid action with a CostSheet.
 - Make every tappable reach 44pt (`hitSlopFor`) and give state controls `accessibilityRole` and `accessibilityState`.

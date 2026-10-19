@@ -1,5 +1,5 @@
 # Screen Map — Digital Wardrobe
-Status: **As built** · Updated: 2026-10-19 (redesign M8)
+Status: **As built** · Updated: 2026-10-19 (redesign M9, Home update)
 
 Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: system font, grouped backgrounds, one blue tint, light/dark, Reduce Motion). Feature specs: `docs/superpowers/specs/`.
 
@@ -15,13 +15,12 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 - **A welcome gift** (`app/welcome-credits.tsx`): once per account, right after a sign-in, only when billing is on and the server has granted credits. Shows the server's available balance ("about N garments" at the front price) and server price chips; **Digitize Your First Piece** → Add, **Explore first** → Home. Never a fixed amount.
 
 ## 1. Home (`mobile/app/(tabs)/index.tsx`)
-- Date eyebrow ("SUNDAY, OCTOBER 19"), "Good morning / afternoon / evening" in Instrument Serif (no name is stored), and the balance pill (billing on only) → Account.
-- One marquee row of recent garments on stone tiles (118×148, alternating offset, about 4 s per tile); touch pauses, tap opens the item. Still under Reduce Motion.
-- Stats row divided by hairlines: Pieces / Categories (groups present) / New this week, counting up.
-- **Digitize clothes** card: Take Photo → camera, From Library → Preview, and the outfit link when the server offers outfits. A capture in progress shows as a banner above it.
-- **Recently Added**: horizontal 150×188 cards with the garment's name and "Added Oct 18"; See All → Closet.
-- **Browse by category**: outlined pills per group with counts → Closet filtered to the group.
-- Empty closet: three dashed frames, "Your closet starts here", the add buttons and numbered tips.
+Rule (handoff [CHANGE_home_photo_type.md](design/design_handoff_digital_wardrobe/CHANGE_home_photo_type.md)): every photo entry point says which photo it wants — garment photo (laid flat or on a hanger → garment flow) or outfit photo (someone wearing it → outfit flow).
+- Date eyebrow, "Good morning / afternoon / evening" in Instrument Serif (no name is stored), balance pill (billing on) → Account; a banner while a garment photo is being processed.
+- Search field "Search N pieces" → Closet with the search field focused.
+- **ADD TO CLOSET:** two tiles. **Garments** (`FLAT LAY`, "Each piece becomes an item"): Camera → camera in garment mode; Library → photo picker → Preview. **Outfit photo** (`WORN`, "We find each piece you wear"; only when the server offers outfits): Choose Photo → photo picker → Detecting. The flow travels in the route params (`flow: garment | outfit`).
+- **YOUR CLOSET:** one row per category group with pieces (thumbnail of its first piece, name, count, chevron) → Closet filtered to the group.
+- Empty closet: dashed frames, "Your closet starts here", two labelled rows — **Garment photo** "Laid flat or on a hanger" [Camera] [Library], **Outfit photo** "You wearing it" [Choose Photo] — then three numbered tips.
 
 ## 2. Closet (`mobile/app/(tabs)/closet.tsx`)
 - Large title "Closet" + "N pieces"; search field (name, category, group, colors, pattern, details, printed text — `src/closetFilter.ts`).

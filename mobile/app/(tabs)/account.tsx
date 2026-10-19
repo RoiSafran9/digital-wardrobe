@@ -6,7 +6,7 @@ import { useAuth } from "../../src/auth/AuthProvider";
 import { CreditsCard } from "../../src/components/CreditsCard";
 import { PillButton } from "../../src/components/PillButton";
 import { useCredits } from "../../src/credits/CreditsProvider";
-import { colors, radius, type } from "../../src/theme";
+import { colors, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
 
 export default function AccountScreen() {
   const { status, email, signOut } = useAuth();
@@ -42,7 +42,7 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 20 },
+  screen: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 20, paddingBottom: TAB_BAR_HEIGHT },
   title: { ...type.largeTitle, color: colors.label, marginTop: 20, marginBottom: 20 },
   card: { backgroundColor: colors.grouped, borderRadius: radius.card, padding: 14, marginBottom: 20 },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },

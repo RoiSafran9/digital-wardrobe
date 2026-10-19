@@ -6,15 +6,15 @@ import { Icon, type IconName } from "../../src/components/Icon";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { useStarterCredits } from "../../src/onboarding";
-import { colors, type } from "../../src/theme";
+import { colors, TAB_BAR_HEIGHT, type } from "../../src/theme";
 
 function tabIcon(name: IconName) {
   return ({ color, size }: { color: ColorValue; size: number }) => <Icon name={name} size={size} color={color} />;
 }
 
-// The handoff's tab bar: 84pt, translucent blur, hairline top. Inactive tabs use the secondary label
-// color (the handoff's lighter grey fails 4.5:1 for the labels). It stays in the layout flow until the
-// screens reserve room for it (M3), then it floats over content.
+// The handoff's tab bar: 84pt, translucent blur, hairline top, floating over content (every tab screen
+// ends its scroll TAB_BAR_HEIGHT above the bottom). Inactive tabs use the secondary label color (the
+// handoff's lighter grey fails 4.5:1 for the labels).
 function TabBarBackground() {
   return (
     <View style={StyleSheet.absoluteFill}>
@@ -36,7 +36,7 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.tint,
         tabBarInactiveTintColor: colors.secondaryLabel,
-        tabBarStyle: { height: 84, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator, backgroundColor: "transparent" },
+        tabBarStyle: { position: "absolute", height: TAB_BAR_HEIGHT, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator, backgroundColor: "transparent" },
         tabBarBackground: TabBarBackground,
         tabBarLabelStyle: type.tabLabel,
       }}

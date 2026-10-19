@@ -90,6 +90,9 @@ export const shadow = {
   cutout: { shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.13, shadowRadius: 5 },
 } as const;
 
+// The tab bar floats over content; scroll views end this far above the bottom edge.
+export const TAB_BAR_HEIGHT = 84;
+
 // Apple's minimum touch target. Small controls keep their look and get invisible slop.
 export const MIN_TOUCH = 44;
 

@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Icon, type IconName } from "../../src/components/Icon";
 import { PillButton } from "../../src/components/PillButton";
 import { CAPTURE_STEPS, KEEP_OPEN, ProcessingStatus, SCAN_STEPS } from "../../src/components/ProcessingStatus";
-import { colors, hitSlopFor, radius, type } from "../../src/theme";
+import { colors, hitSlopFor, radius, type, TAB_BAR_HEIGHT } from "../../src/theme";
 import { getPendingItems } from "../../src/api/client";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { useOutfitScan } from "../../src/outfit/useOutfitScan";
@@ -146,7 +146,7 @@ export default function AddScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 24, paddingBottom: 24 },
+  screen: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 24, paddingBottom: TAB_BAR_HEIGHT + 16 },
   title: { ...type.largeTitle, color: colors.label, marginTop: 20 },
   body: { ...type.body, color: colors.secondaryLabel, marginTop: 8 },
   tipLabel: { ...type.headline, color: colors.label },

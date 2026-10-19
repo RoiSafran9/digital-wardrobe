@@ -83,7 +83,7 @@ test("category pills filter the grid", async () => {
   expect(await screen.findByTestId("thumb-r1-item_1")).toBeTruthy();
   expect(screen.getByText("2 pieces")).toBeTruthy();
 
-  fireEvent.press(screen.getByRole("button", { name: "Shorts" }));
+  fireEvent.press(screen.getByRole("button", { name: "Bottoms" }));
   await waitFor(() => expect(screen.queryByTestId("thumb-r1-item_0")).toBeNull());
   expect(screen.getByTestId("thumb-r1-item_1")).toBeTruthy();
 
@@ -126,7 +126,7 @@ test("opens filtered when Home sends a category", async () => {
   render(<ClosetScreen />);
   expect(await screen.findByTestId("thumb-r1-item_1")).toBeTruthy();
   expect(screen.queryByTestId("thumb-r1-item_0")).toBeNull();
-  expect(screen.getByRole("button", { name: "Shorts" }).props.accessibilityState).toEqual({ selected: true });
+  expect(screen.getByRole("button", { name: "Bottoms" }).props.accessibilityState).toEqual(expect.objectContaining({ selected: true }));
 });
 
 test("uses the iOS large title", async () => {
@@ -151,7 +151,7 @@ test("a category that no longer exists falls back to everything instead of a bla
   mockedGetItems.mockResolvedValue({ items: [fakeItem, fakeShorts] });
   render(<ClosetScreen />);
   expect(await screen.findByTestId("thumb-r1-item_0")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "All" }).props.accessibilityState).toEqual({ selected: true });
+  expect(screen.getByRole("button", { name: "All" }).props.accessibilityState).toEqual(expect.objectContaining({ selected: true }));
 });
 
 test("when the server can't be reached the closet says so and can retry, without crashing", async () => {
@@ -168,4 +168,34 @@ test("tiles with a finished 360 carry a 360 badge", async () => {
   render(<ClosetScreen />);
   expect(await screen.findByTestId("badge-360-r1-item_1")).toBeTruthy();
   expect(screen.queryByTestId("badge-360-r1-item_0")).toBeNull();
+});
+
+test("search narrows the grid and Clear Filters brings everything back", async () => {
+  mockedGetItems.mockResolvedValue({ items: [fakeItem, fakeShorts] });
+  render(<ClosetScreen />);
+  await screen.findByTestId("thumb-r1-item_1");
+  fireEvent.changeText(screen.getByLabelText("Search your closet"), "shorts");
+  await waitFor(() => expect(screen.queryByTestId("thumb-r1-item_0")).toBeNull());
+  fireEvent.changeText(screen.getByLabelText("Search your closet"), "nothing like this");
+  fireEvent.press(await screen.findByRole("button", { name: "Clear Filters" }));
+  expect(await screen.findByTestId("thumb-r1-item_0")).toBeTruthy();
+  expect(screen.getByTestId("thumb-r1-item_1")).toBeTruthy();
+});
+
+test("a color swatch filters, and tapping it again clears it", async () => {
+  const red = { ...fakeShorts, facts: { ...fakeShorts.facts, colors: { value: ["red"], confidence: 1, basis: "observed" } } };
+  mockedGetItems.mockResolvedValue({ items: [fakeItem, red] });
+  render(<ClosetScreen />);
+  await screen.findByTestId("thumb-r1-item_1");
+  fireEvent.press(screen.getByRole("checkbox", { name: "Red" }));
+  await waitFor(() => expect(screen.queryByTestId("thumb-r1-item_0")).toBeNull());
+  expect(screen.getByRole("checkbox", { name: "Red" }).props.accessibilityState).toEqual(expect.objectContaining({ checked: true }));
+  fireEvent.press(screen.getByRole("checkbox", { name: "Red" }));
+  expect(await screen.findByTestId("thumb-r1-item_0")).toBeTruthy();
+});
+
+test("tiles show the garment's name and its group and color", async () => {
+  render(<ClosetScreen />);
+  expect(await screen.findByText("Blue shirt")).toBeTruthy();
+  expect(screen.getByText("Tops · Blue")).toBeTruthy();
 });

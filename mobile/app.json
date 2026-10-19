@@ -11,7 +11,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "bundleIdentifier": "com.roisafran.kips"
     },
     "android": {
       "adaptiveIcon": {

@@ -49,8 +49,8 @@ npx supabase db push --linked
 `mobile/eas.json` has a `production` profile (store distribution, build number auto-increment) and `preview`.
 The Expo project is `@roisafran/mobile` (`extra.eas.projectId` in `app.json`). Before the first build:
 
-1. **Bundle ID** — set `expo.ios.bundleIdentifier` in `mobile/app.json` (owner's choice; it can't change once the
-   app exists in App Store Connect).
+1. **Bundle ID** — `com.roisafran.kips` (set in `mobile/app.json`, owner decision 2026-10-19; it can't change
+   once the app exists in App Store Connect).
 2. **Public settings for the build** (EAS environment `production`):
    ```bash
    cd mobile

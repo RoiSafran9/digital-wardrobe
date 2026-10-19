@@ -21,8 +21,9 @@ from pipeline.providers.gemini import MODEL_IMAGE, MODEL_VISION, _read_prompt, t
 from pipeline.stages import cutout, stage5_verify
 from pipeline.types import BBox, FactField, ItemFacts
 
-DETECT_PROMPT = "outfit_detect_v2.txt"
-GENERATE_PROMPT = "outfit_generate_v2.txt"
+DETECT_PROMPT = "outfit_detect_v3.txt"
+GENERATE_PROMPT = "outfit_generate_v3.txt"
+REVIEW_PROMPT = "outfit_review_v1.txt"
 
 # Paid-tier list prices (ai.google.dev/gemini-api/docs/pricing, read 2026-10-19), for the PoC report only.
 VISION_USD_PER_M_IN, VISION_USD_PER_M_OUT = 0.25, 1.50
@@ -136,6 +137,35 @@ def outlined(image_path: str, candidates: list[OutfitCandidate], out_path: str, 
                         thickness / 3, OUTLINE_BGR, max(1, thickness // 2), cv2.LINE_AA)
     cv2.imwrite(out_path, image)
     return out_path
+
+
+# An edge column/row this dark and this uniform is a letterbox bar, not garment.
+BAR_MAX_LEVEL, BAR_MAX_SPREAD = 25, 6
+
+
+def whiten_bars(path: str) -> bool:
+    """Local and free: the image model sometimes returns the garment between black bars. Paint uniform
+    dark edge bars white so the closet tile and cutout see a white background. True if it changed anything."""
+    image = cv2.imread(path)
+    if image is None:
+        return False
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    changed = False
+    for axis in (0, 1):  # columns from the left/right, rows from the top/bottom
+        lines = gray if axis == 1 else gray.T
+        for order in (range(lines.shape[1]), range(lines.shape[1] - 1, -1, -1)):
+            for i in order:
+                line = lines[:, i]
+                if line.max() > BAR_MAX_LEVEL or line.max() - line.min() > BAR_MAX_SPREAD:
+                    break
+                if axis == 1:
+                    image[:, i] = 255
+                else:
+                    image[i, :] = 255
+                changed = True
+    if changed:
+        cv2.imwrite(path, image)
+    return changed
 
 
 def facts_for(candidate: OutfitCandidate) -> ItemFacts:
@@ -258,7 +288,38 @@ async def generate_selected(client, image_path: str, scan: OutfitScan, selected:
         if generated:
             final = os.path.join(item_dir, "generated.png")
             os.replace(generated, final)
+            whiten_bars(final)
             cutout.run(final, os.path.join(item_dir, "cutout.png"))
             results[cid] = {"status": "generated", "attempts": attempt,
                             "verification": verification.model_dump() if verification else None}
     return results
+
+
+class Review(BaseModel):
+    """A cheap vision check of one generated image against the worn photo (flash-lite, ~$0.0005)."""
+    color_match: bool
+    color_note: str
+    invented: list[str]
+    missing: list[str]
+    other_garment: bool
+    verdict: Literal["ok", "minor", "wrong"]
+
+
+async def review_flatlay(client, crop_path: str, generated_path: str, candidate: OutfitCandidate, usage: Usage) -> Review:
+    """EXPERIMENTAL: flags color drift and invented details that the local color/OCR checks cannot see."""
+    start = time.monotonic()
+    ok, usd = False, 0.0
+    try:
+        from google.genai import types
+        prompt = _read_prompt(REVIEW_PROMPT).format(category=candidate.category, description=candidate.description)
+        response = await asyncio.wait_for(client.aio.models.generate_content(
+            model=MODEL_VISION, contents=["Image 1:", _image_part(crop_path), "Image 2:", _image_part(generated_path), prompt],
+            config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=Review)),
+            CALL_TIMEOUT_S)
+        tin, tout = _tokens(response)
+        usd = tin / 1e6 * VISION_USD_PER_M_IN + tout / 1e6 * VISION_USD_PER_M_OUT
+        review = Review.model_validate_json(response.text)
+        ok = True
+        return review
+    finally:
+        usage.add("review", MODEL_VISION, time.monotonic() - start, usd, ok)

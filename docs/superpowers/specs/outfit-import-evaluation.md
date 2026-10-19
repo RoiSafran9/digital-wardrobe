@@ -216,6 +216,13 @@ The owner supplied 8 public photos of 2 well-dressed people (red carpet, street,
 3. Cheap local fixes, no extra paid call: (a) a stricter color check against the garment's own pixels (sample inside the box, away from the edges) instead of the whole crop with skin and background; (b) a background check (corner brightness) that pads or retries on black bars; (c) generation prompt v3: never draw belts, bags, ties or jewelry, even when they overlap the garment.
 4. Real photos still lack ground truth: the owner photographing 5–10 of their own outfits *and* the same pieces laid flat remains the decisive test before M2 ships.
 
+### 4.9 Fixes from the real-photo round [measured, 2026-10-19, $0.25]
+- **Local color check on worn photos: rejected.** I sampled the garment's color from the center of its box and compared it with the generated garment (Lab). It flagged correct results badly (ΔE 80 on a white shirt whose box center is the tie; 73 on trousers whose center is the floor) and only partly tracked real drift. Light, shadow and overlap make worn photos unsuitable for a pixel-color gate without segmentation.
+- **Cheap AI review (`outfit_review_v1`, flash-lite, ~$0.0007/garment), 60 checks:** it found 4/6 known invented details (two drawstrings, a neck label, a red tag) plus boots drawn onto jeans (`other_garment`), but missed the Supreme-style tab, caught only 1/4 color drifts, and its `verdict` is too lenient. → Usable as a non-blocking "take a look" hint in review, not as a gate.
+- **`whiten_bars` (local, free):** paints uniform black letterbox bars white; fixed the black-bar output; unit-tested.
+- **`outfit_detect_v3`:** adds `blazer` and `leggings`, clearer `layer` rules, "box down to the real hem". Re-scan of the 8 photos: blazer/leggings labelled right, both wrong layer labels fixed; the blazer's box is **still** cut at the hips (generation drew full length anyway).
+- **`outfit_generate_v3`:** "match the evenly lit color, don't darken/dull", "never draw belts/ties/bags/jewelry", "no bars". Re-run of 5 problem garments: belt gone ✓, leggings green closer ✓, no bars ✓; royal-blue sweatshirt and light skinny jeans still too dull/dark; **one new invention: boots drawn at the jeans' hems**. Net: better on accessories, unchanged on blue color. v3 is now the default; color fidelity on saturated blues stays an open issue for the review step and the model migration.
+
 ---
 
 ## 5. Proposed architecture (for approval — not built)

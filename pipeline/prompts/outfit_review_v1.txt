@@ -1,0 +1,17 @@
+Image 1 is a crop of a photo in which a person wears a garment. Image 2 is a catalog image that is
+supposed to show THE SAME physical garment, laid flat on white. Compare only that garment ({category}:
+{description}). Ignore the person, the pose, the background, other garments, lighting and folds.
+
+Judge only what Image 1 actually shows. Parts that are hidden in Image 1 may be completed in Image 2
+with a plain continuation; that is not an error.
+
+Return JSON:
+- color_match: true if Image 2 has the same color and shade as the garment in Image 1 (allow for the
+  photo's lighting); false if it is clearly lighter, darker, duller, more saturated or a different hue
+- color_note: a few words on any difference, or ""
+- invented: details in Image 2 that are NOT on the garment in Image 1 (e.g. a logo, text, label, tab,
+  drawstring, belt, pocket, print, trim). [] if none
+- missing: clearly visible details of the garment in Image 1 that are absent from Image 2. [] if none
+- other_garment: true if Image 2 shows a different garment or adds another item (belt, bag, second piece)
+- verdict: "ok", "minor" (small differences a user would accept) or "wrong" (a user would not
+  recognise it as their item, or a detail was invented)

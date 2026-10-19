@@ -166,3 +166,17 @@ def test_poc_budget_stops_before_overspending():
     Budget(0.1, usage).check(0.05)
     with pytest.raises(SystemExit):
         Budget(0.08, usage).check(0.05)
+
+
+def test_whiten_bars_paints_letterbox_bars_white_and_keeps_the_garment(tmp_path):
+    img = np.full((100, 120, 3), 255, np.uint8)
+    img[:, :15] = 0
+    img[:, -15:] = 0
+    img[30:70, 40:80] = (20, 20, 20)  # a black garment in the middle must stay
+    path = str(tmp_path / "g.png")
+    cv2.imwrite(path, img)
+    assert outfit.whiten_bars(path)
+    out = cv2.imread(path)
+    assert out[:, :15].min() == 255 and out[:, -15:].min() == 255
+    assert out[50, 60].max() == 20
+    assert not outfit.whiten_bars(path)  # nothing left to fix

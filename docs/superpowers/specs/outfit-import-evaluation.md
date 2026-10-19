@@ -178,13 +178,43 @@ Run on 2026-10-19 with the owner's approval (cap US$1.50). **Tiny, synthetic sam
 | Price per image (1K) | $0.039 | $0.067 (1.7×) | $0.0336 |
 | Latency (fronts) | ~9 s | 11–15 s | 17–26 s |
 | Calls OK | 8/8 | 8/8 | 7/8: one returned a text part first, and `GeminiProvider.generate` reads only `parts[0]` (crash) |
-| Pure white background | mostly (one old catalog had a gray one) | 8/8 | **off-white/gray on several** (breaks the closet's white tile and helps nothing) |
+| Pure white background | mostly (one old catalog had a gray one) | 8/8 on these crops (but 4/7 light gray on real photos, §4.8) | **off-white/gray on several** |
 | Color vs real photo | closest in this sample | slightly lighter/warmer (striped tee bluer, white tee cream) | white tee came out **gray**; striped tee lighter |
 | Invented details | — | **small brand-like mark at the white tee's collar** (front flow) | piping added on the fleece (front flow) |
 | Try-off (4 pieces) | good (v2 prompt) | good; fleece collar/zip reshaped | smaller garment, gray tints |
 | Color check (stage5) | all pass | all pass | all pass — the check misses these tints |
 
 **Recommendation:** migrate to **gemini-3.1-flash-image**, not nano-banana-2.1, and do it as its own task: (1) make every image read use the first part *with* image data (the `generate_back` and `generate_view` pattern) before switching; (2) re-check fidelity on ~20 real items for front, back and 360; (3) add a prompt line against lightening the color, since both new models drift lighter; (4) the price rises 1.7× per image, which matters for the credit price decision (CREDITS.md). Keep 2.5 while Google still serves it.
+
+### 4.8 Real photos of people [measured, 2026-10-19]
+The owner supplied 8 public photos of 2 well-dressed people (red carpet, street, a studio shoot, a seated TV interview). They stay in gitignored `runs/outfit_poc/photos/` and are not named or shown here. Most are low resolution (452–678 px tall; one is 2000 px). **There is no laid-flat reference of these garments**, so fidelity is judged against the worn photo itself (color, silhouette, construction, invented details), not against the real piece. Prompts: `outfit_detect_v2` + `outfit_generate_v2`. Cost: **$1.27** of the $3 cap.
+
+**Stage 1 (8 photos, 27 candidates):**
+- 8/8 classified `worn`; 1.7–3.3 s (median 2.6 s); **$0.0013 per photo**.
+- Every target garment found; 0 merges, 0 splits. Tie, bags, cap, sunglasses and belt were excluded as accessories, as asked.
+- Inner layers found as their own candidates in 4 photos (shirt under blazer, tee under sweatshirt, tee under open shirt, crop top under coat), all marked `low`/`partial` — the uncertainty labels did their job.
+- Errors: 1 box too short (the blazer's box stops at the hips; the jacket reaches mid-thigh — generation still drew full length); leggings labelled `trousers` (no `leggings` in the vocabulary); 2 wrong `layer` labels (a shirt under a draped knit marked `outer`; trousers under an open coat marked `inner`); a knit draped over the shoulders became a "sweater" candidate (a reasonable reading).
+- `visible_text` came back empty everywhere (v2 no longer guesses; the cap's "P" was correctly ignored as an accessory).
+
+**Stage 2 (20 garments, no shoes) with gemini-2.5-flash-image:**
+| Measure | Result |
+|---|---|
+| Generated, passed color check on attempt 1 | 20/20 (7.1–11.4 s, median 9.6 s, $0.039 each) |
+| Recognisable vs the photo (type, color family, silhouette, construction) | 20/20 |
+| Invented logos / text / trims | **0/20** (v2 prompt) |
+| Visible color drift the color check missed | **3/20**: bright royal-blue sweatshirt came out duller; light-wash skinny jeans darker; charcoal trousers lighter |
+| Accessory drawn onto a garment | 1/20 (the belt on the baggy jeans) |
+| Background problem | 1/20 **black bars left and right**; 3/20 off-white (the closet shows the cutout, so this mostly matters for the fallback image) |
+| Mostly guessed (inner layer, < ~20 % visible) | 5/20, all rendered as plain, plausible garments; unverifiable by design |
+| Fit nuance lost | barrel/baggy jeans became straight; floor-length gown gained a small train |
+
+**Same 7 hardest with gemini-3.1-flash-image:** fixed the black bars; closer color on the charcoal trousers and royal-blue sweatshirt (but added a stone-wash texture); still too dark on the skinny jeans; drew the belt again; **4/7 light-gray backgrounds**. That corrects §4.7: on real photos 3.1 is not "always white" either.
+
+**What this adds to the picture:**
+1. Stage 1 is cheap, fast and good enough on real photos for the M1 scan; fix the vocabulary (`leggings`, maybe `blazer`) and the `layer` wording in a detect v3.
+2. Stage 2 never invented a logo or text with v2. The remaining faults are **color drift** and **accessories leaking in**, plus background hygiene.
+3. Cheap local fixes, no extra paid call: (a) a stricter color check against the garment's own pixels (sample inside the box, away from the edges) instead of the whole crop with skin and background; (b) a background check (corner brightness) that pads or retries on black bars; (c) generation prompt v3: never draw belts, bags, ties or jewelry, even when they overlap the garment.
+4. Real photos still lack ground truth: the owner photographing 5–10 of their own outfits *and* the same pieces laid flat remains the decisive test before M2 ships.
 
 ---
 
@@ -289,5 +319,7 @@ Thresholds are set **with the owner after the baseline**, not invented here. Sug
 **מה נמדד:** עלות כוללת ‎$0.95‎ (מתוך תקרה ‎$1.50‎). זיהוי: ~2.5 שניות ו-~0.1 סנט לתמונה; זוהו נכון כל 11 הבגדים, כולל חולצה שמתחת לפליז. יצירה: ~9 שניות ו-~4 סנט לבגד; כל 9 הבגדים מזוהים כאותו פריט, אבל ב-3 מתוך 9 הומצאו פרטים (תווית אדומה בסגנון Supreme, שרוכים לבנים במכנסיים קצרים). תיקון בפרומפט הזיהוי (v2) העלים את התווית. פרומפט יצירה v2 תיקן את השרוכים (עכשיו בצבע ובעובי כמו בתמונה) ואת האותיות המומצאות (סימן לא ברור במקום מילים), אבל הוסיף תווית צוואר קטנה לחולצה אחת וקיצר מעט את הפליז.
 
 **חשוב:** הדגימה קטנה וסינתטית, ולכן זו ראיה לכיוון ולא אחוז הצלחה. השאלה המרכזית, נאמנות בתמונות טלפון אמיתיות, עדיין פתוחה.
+
+**תמונות אמיתיות (§4.8):** 8 תמונות, 27 מועמדים: כל הבגדים זוהו, אביזרים (עניבה, תיק, כובע, חגורה) הוצאו. 20 בגדים נוצרו: כולם מזוהים כאותו בגד ואף אחד לא קיבל לוגו או טקסט מומצא. אבל ב-3 הצבע סטה (כחול עז יצא עמום, ג׳ינס כהה מדי), בבגד אחד חגורה צוירה על הג׳ינס, ובאחד יצאו פסים שחורים בצדדים. המודל החדש 3.1 תיקן חלק מהצבעים ואת הפסים, אבל גם אצלו יצא רקע אפרפר. עלות: ‎$1.27‎.
 
 **החלטות שצריך ממך לפני M1/M2:** D1 בחירת מצב מפורשת במסך ההוספה · D2 בלי נעליים בגרסה הראשונה · D3 מה עושים עם בגד שרובו מוסתר · D4 חיוב כשמשתמש פוסל תוצאה שהצליחה · D5 שלב אישור לפני שמירה · D6 מחיקת תמונת האדם (מוצע: עד 24 שעות) · D7 ‏30–50 תמונות שלך/של חברים עם אישור, ותקציב של ~‎$3–5 · D8 מעבר מ-gemini-2.5-flash-image (deprecated) ל-gemini-3.1-flash-image — יקר פי 1.7, רקע לבן תמיד, צבעים מעט בהירים; nano-banana-2.1 נפסל (רקע אפרפר, חולצה לבנה יצאה אפורה) · D9 שמירת הסריקה ב-JSONB · D10 לאמץ את פרומפט היצירה v2 כבסיס ל-M2 ולהמשיך לשפר אותו על תמונות אמיתיות.

@@ -97,3 +97,26 @@ def test_unsafe_or_odd_paths_are_404(client, tmp_path, path):
     _write_item(tmp_path)
     assert client.delete(path).status_code == 404
     assert client.patch(path, json={"category": "x"}).status_code == 404
+
+
+def test_patch_name_local(client, tmp_path):
+    item_dir = _write_item(tmp_path)
+    r = client.patch("/items/run1/photo1/item_0", json={"name": "  Oxford shirt "})
+    assert r.status_code == 200
+    assert r.json()["facts"]["name"]["value"] == "Oxford shirt"
+    saved = json.loads((item_dir / "facts.json").read_text())
+    assert saved["name"] == {"value": "Oxford shirt", "confidence": 1.0, "basis": "observed"}
+    assert saved["category"]["value"] == "jacket"
+
+
+@pytest.mark.parametrize("name", ["   ", "x" * 61])
+def test_patch_name_must_be_1_to_60_characters(client, tmp_path, name):
+    _write_item(tmp_path)
+    r = client.patch("/items/run1/photo1/item_0", json={"name": name})
+    assert r.status_code == 400
+
+
+def test_items_without_a_name_still_load(client, tmp_path):
+    _write_item(tmp_path)
+    facts = client.get("/items").json()["items"][0]["facts"]
+    assert facts.get("name") is None

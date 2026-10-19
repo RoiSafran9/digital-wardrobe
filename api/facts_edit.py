@@ -3,7 +3,12 @@ from api.schemas import COLORS, PATTERNS, ItemPatch
 from pipeline.types import FactField, ItemFacts
 
 
+NAME_MAX = 60
+
+
 def patch_error(patch: ItemPatch) -> str | None:
+    if patch.name is not None and not 1 <= len(patch.name.strip()) <= NAME_MAX:
+        return f"name must be 1 to {NAME_MAX} characters"
     if patch.category is not None and not patch.category.strip():
         return "category can't be empty"
     if patch.colors is not None and (not patch.colors or not set(patch.colors) <= COLORS):
@@ -16,6 +21,7 @@ def patch_error(patch: ItemPatch) -> str | None:
 def apply_patch(facts: ItemFacts, patch: ItemPatch) -> ItemFacts:
     """Edited fields become certain observations; omitted ones stay as they are."""
     edited = {
+        "name": patch.name.strip() if patch.name is not None else None,
         "category": patch.category.strip() if patch.category is not None else None,
         "colors": patch.colors, "pattern": patch.pattern,
         "trims": patch.trims.strip() if patch.trims is not None else None,

@@ -74,6 +74,7 @@ class ErrorResponse(BaseModel):
 
 class ItemPatch(BaseModel):
     """User edits to an item's facts; omitted fields stay as they are."""
+    name: str | None = None
     category: str | None = None
     colors: list[str] | None = None
     pattern: str | None = None

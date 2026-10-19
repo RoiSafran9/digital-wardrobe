@@ -76,7 +76,22 @@ def test_patch_edits_facts_and_keeps_the_original(client, store):
     assert store.items[item["id"]]["facts_original"]["category"]["value"] == "jacket"
 
 
+def test_patch_name_v1(client, store):
+    item = add_item(store, A)
+    r = client.patch(f"/v1/items/{item['id']}", json={"name": "Cream sweater"}, headers=as_user(A))
+    assert r.status_code == 200 and r.json()["facts"]["name"]["value"] == "Cream sweater"
+    assert "name" not in (store.items[item["id"]]["facts_original"] or {}) or store.items[item["id"]]["facts_original"].get("name") is None
+
+
+def test_patch_name_v1_other_user_404(client, store):
+    item = add_item(store, A)
+    r = client.patch(f"/v1/items/{item['id']}", json={"name": "Mine now"}, headers=as_user(B))
+    assert r.status_code == 404
+    assert store.items[item["id"]]["facts"].get("name") is None
+
+
 @pytest.mark.parametrize("patch,message", [
+    ({"name": "x" * 61}, "name must be 1 to 60 characters"),
     ({"category": "  "}, "category can't be empty"),
     ({"colors": ["chartreuse"]}, "colors must be one or more of:"),
     ({"pattern": "zigzag"}, "pattern must be one of:"),

@@ -84,7 +84,10 @@ Permission texts (camera, photos, notifications) and the export-compliance flag 
 3. In App Store Connect → TestFlight: beta description, feedback email, a public privacy-policy URL, an external
    tester group; the first external build goes through Beta App Review.
 
-**SMTP** (so sign-in codes reach testers, not only the project's own team):
+**SMTP** — done 2026-10-19: Resend (free tier, 100 emails/day), domain `kipscloset.com` verified (DNS in
+Cloudflare), sender `KIPS <noreply@kipscloset.com>`, Auth email rate limit 100/hour, test code delivered.
+`support@kipscloset.com` forwards to the owner's Gmail through Cloudflare Email Routing. Steps, for reference
+(so sign-in codes reach testers, not only the project's own team):
 1. An email provider with SMTP (e.g. Resend) and a domain you own, verified with the provider's DNS records.
 2. Supabase dashboard → Authentication → Emails → SMTP settings: the provider's host, port, user and password,
    sender `KIPS <noreply@your-domain>`.

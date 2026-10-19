@@ -247,7 +247,7 @@ otp_expiry = 3600
 # Sign-in emails carry a 6-digit code (the app has no magic-link handling).
 # Mirror this template in the hosted project: Auth > Email Templates > Magic Link.
 [auth.email.template.magic_link]
-subject = "Your Digital Wardrobe sign-in code"
+subject = "Your KIPS sign-in code"
 content_path = "./supabase/templates/magic_link.html"
 
 # Uncomment to customize email template

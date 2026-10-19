@@ -7,10 +7,11 @@ export type CreditsValue = {
   billing: boolean;  // the server charges credits for AI actions
   prices: Partial<Record<CreditAction, number>>;
   credits: Credits | null;  // null until loaded, and in local mode
+  outfit?: boolean;  // the server offers the Outfit Photo flow
   refresh: () => Promise<void>;
 };
 
-const empty: CreditsValue = { billing: false, prices: {}, credits: null, refresh: async () => {} };
+const empty: CreditsValue = { billing: false, prices: {}, credits: null, outfit: false, refresh: async () => {} };
 export const CreditsContext = createContext<CreditsValue>(empty);
 export const useCredits = () => useContext(CreditsContext);
 
@@ -28,7 +29,7 @@ export function CreditsProvider({ children }: { children: React.ReactNode }) {
     try {
       const [credits, prices] = await Promise.all([getCredits(), getPrices()]);
       if (owner.current !== forUser) return;  // signed out or switched while loading
-      setState({ credits, billing: !!prices?.billing, prices: prices?.prices ?? {} });
+      setState({ credits, billing: !!prices?.billing, prices: prices?.prices ?? {}, outfit: !!prices?.outfit });
     } catch {
       // Keep what we had; the next refresh tries again.
     }

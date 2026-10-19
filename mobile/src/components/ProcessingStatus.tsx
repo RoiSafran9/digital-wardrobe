@@ -89,3 +89,15 @@ export const TURN_STEPS: ProcessingStep[] = [
 ];
 
 export const TURN_NOTE = "You can close this — it keeps going.";
+
+// Outfit Photo: Stage 1 is one quick look; Stage 2 makes an image per picked garment, in turn.
+export const SCAN_STEPS: ProcessingStep[] = [
+  { label: "Finding the clothes", at: 0 },
+  { label: "Cropping each piece", at: 4 },
+];
+
+export const OUTFIT_STEPS: ProcessingStep[] = [
+  { label: "Taking them off the photo", at: 0 },
+  { label: "Laying them flat", at: 8 },
+  { label: "Cutting them out", at: 20 },
+];

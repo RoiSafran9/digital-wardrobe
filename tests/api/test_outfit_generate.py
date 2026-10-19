@@ -194,3 +194,21 @@ async def test_routes_are_off_without_the_flag(monkeypatch):
     scan_id = await scanned(store, client)
     monkeypatch.delenv("WARDROBE_OUTFIT")
     assert generate(client, scan_id, ["c1"]).status_code == 404
+
+
+async def test_pending_results_can_be_listed_after_a_restart_and_prices_say_outfit_is_on():
+    store = MemoryStore()
+    client = client_for(store)
+    scan_id = await scanned(store, client)
+    job_id = generate(client, scan_id, ["c1"]).json()["id"]
+    await run_once(store, providers(FakeImageGen()))
+    pending = client.get("/v1/items?review=pending", headers=as_user(A)).json()["items"]
+    assert [i["id"] for i in pending] == store.jobs[job_id]["result"]["item_ids"]
+    assert client.get("/v1/items?review=pending", headers=as_user(B)).json()["items"] == []
+    assert client.get("/v1/items?review=maybe", headers=as_user(A)).status_code == 400
+    assert client.get("/v1/prices", headers=as_user(A)).json()["outfit"] is True
+
+
+async def test_prices_say_outfit_is_off_by_default(monkeypatch):
+    monkeypatch.delenv("WARDROBE_OUTFIT")
+    assert v1_client(MemoryStore()).get("/v1/prices", headers=as_user(A)).json()["outfit"] is False

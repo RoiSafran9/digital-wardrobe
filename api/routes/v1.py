@@ -89,8 +89,9 @@ def create_garment_job(user: User = Depends(current_user), photo: UploadFile | N
 
 @router.get("/prices", response_model=PricesOut)
 def prices_list(user: User = Depends(current_user), prices=Depends(get_prices)):
-    """The AI Price List the app can show; empty while billing is off."""
-    return PricesOut(billing=bool(prices), prices=prices)
+    """The AI Price List the app can show; empty while billing is off. `outfit` says whether the
+    Outfit Photo flow is switched on (WARDROBE_OUTFIT=on), so the app shows that mode only then."""
+    return PricesOut(billing=bool(prices), prices=prices, outfit=_outfit_enabled())
 
 
 CREDIT_PAGE, CREDIT_PAGE_MAX = 20, 100
@@ -186,8 +187,11 @@ def _own_item(store, user: User, item_id: str) -> dict:
 
 
 @router.get("/items", response_model=V1ItemsResponse)
-def list_items(user: User = Depends(current_user), store=Depends(get_store)):
-    items = store.list_items(user.id)
+def list_items(user: User = Depends(current_user), store=Depends(get_store), review: str | None = None):
+    """The closet. ?review=pending lists Outfit Photo results still waiting for keep/discard instead."""
+    if review not in (None, "pending"):
+        raise HTTPException(400, "review must be 'pending'")
+    items = store.pending_items(user.id) if review else store.list_items(user.id)
     urls = store.sign([p for item in items for p in _paths(item)])
     return V1ItemsResponse(items=[item_out(item, urls) for item in items if item["display_path"] in urls])
 
@@ -241,8 +245,12 @@ def start_turn(item_id: str, user: User = Depends(current_user), key: str = Depe
 # --- Outfit Photo (M1): free candidate scan of a photo of a person wearing clothes -------------------
 # Off unless the server starts with WARDROBE_OUTFIT=on: then the routes answer 404 like any unknown path.
 
+def _outfit_enabled() -> bool:
+    return os.environ.get("WARDROBE_OUTFIT", "").strip().lower() == "on"
+
+
 def outfit_on():
-    if os.environ.get("WARDROBE_OUTFIT", "").strip().lower() != "on":
+    if not _outfit_enabled():
         raise NOT_FOUND
 
 

@@ -98,6 +98,7 @@ class JobOut(BaseModel):
 class PricesOut(BaseModel):
     billing: bool
     prices: dict[str, int]
+    outfit: bool = False  # the Outfit Photo flow is on (WARDROBE_OUTFIT=on)
 
 
 class CreditEntryOut(BaseModel):

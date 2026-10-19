@@ -3,7 +3,7 @@
 import { randomUUID } from "expo-crypto";
 import { File } from "expo-file-system";
 import { API_BASE_URL, UNREACHABLE, sentence } from "./http";
-import type { BackView, ClosetItem, Credits, ItemFacts, ItemPatch, ItemsResponse, Prices, RunItem, RunResponse, Tier, Turn } from "./types";
+import type { BackView, ClosetItem, Credits, ItemFacts, ItemPatch, ItemsResponse, OutfitResult, OutfitScan, Prices, RunItem, RunResponse, Tier, Turn } from "./types";
 
 export type Account = {
   getToken: () => Promise<string | null>;
@@ -28,6 +28,8 @@ type V1Item = {
   cutout_url?: string | null;
   back?: BackView | null;
   turn?: Turn | null;
+  origin?: "garment_photo" | "outfit_photo";
+  review_state?: "pending" | "kept" | null;
 };
 
 type Job = {
@@ -186,4 +188,58 @@ export async function getTurn(account: Account, item: ClosetItem): Promise<Turn>
   const { turn } = await getItem(account, item);
   if (!turn) throw new Error("No 360 view yet");
   return turn;
+}
+
+// --- Outfit Photo -------------------------------------------------------------------------------
+export const SCAN_EXPIRED = "This scan has expired — scan the photo again.";
+
+const scanPath = (id: string) => `/v1/outfit-scans/${encodeURIComponent(id)}`;
+
+export async function getOutfitScan(account: Account, scanId: string): Promise<OutfitScan> {
+  const response = await send(account, scanPath(scanId));
+  if (response.status === 410) throw new Error(SCAN_EXPIRED);
+  return read<OutfitScan>(response);
+}
+
+// Stage 1 (free): upload the photo and wait until the garments on the person are found.
+export async function scanOutfit(account: Account, current: () => Account | null, photoUri: string): Promise<OutfitScan> {
+  let scan = (await startJob(account, "/v1/outfit-scans", photoUri)) as unknown as OutfitScan;
+  for (let waited = 0; ; waited += POLL_MS) {
+    if (scan.status === "succeeded") return scan;
+    if (scan.status === "failed" || scan.status === "canceled") throw new Error(sentence(scan.error ?? "Something went wrong — try again"));
+    if (waited >= POLL_LIMIT_MS) throw new Error(STILL_WORKING);
+    await sleep(POLL_MS);
+    if (current() !== account) throw new Error(SIGNED_OUT);
+    scan = await getOutfitScan(account, scan.id);
+  }
+}
+
+// Stage 2: make images for the picked garments only. unitPrice is the per-image price the user saw
+// (null while billing is off); the server refuses with 409 if it changed. Results wait for review.
+export async function generateOutfit(account: Account, current: () => Account | null, scanId: string,
+                                     candidateIds: string[], unitPrice: number | null): Promise<OutfitResult> {
+  const key = randomUUID();
+  const attempt = () => call<Job>(account, `${scanPath(scanId)}/generate`, {
+    method: "POST", headers: { "Idempotency-Key": key, "Content-Type": "application/json" },
+    body: JSON.stringify({ candidate_ids: candidateIds, expected_unit_price: unitPrice }),
+  });
+  let started: Job;
+  try {
+    started = await attempt();
+  } catch (e) {
+    if (!(e instanceof Error && e.message === UNREACHABLE)) throw e;
+    started = await attempt();
+  }
+  const job = await waitFor(account, current, started);
+  const items = await Promise.all(job.item_ids.map((id) => call<V1Item>(account, `/v1/items/${encodeURIComponent(id)}`)));
+  return { items: items.map(toClosetItem), failed: job.failed };
+}
+
+export async function getPendingItems(account: Account): Promise<ClosetItem[]> {
+  const { items } = await call<{ items: V1Item[] }>(account, "/v1/items?review=pending");
+  return items.map(toClosetItem);
+}
+
+export async function keepItem(account: Account, item: ClosetItem): Promise<ClosetItem> {
+  return toClosetItem(await call<V1Item>(account, `${itemPath(item)}/keep`, { method: "POST" }));
 }

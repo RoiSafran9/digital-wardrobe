@@ -8,7 +8,7 @@ import { CreditsContext, type CreditsValue } from "../src/credits/CreditsProvide
 
 jest.mock("expo-image-picker");
 jest.mock("../src/api/client");
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }), useLocalSearchParams: () => ({}) }));
 
 const mockedPicker = ImagePicker as jest.Mocked<typeof ImagePicker>;
 const mockedPostRun = postRun as jest.Mock;

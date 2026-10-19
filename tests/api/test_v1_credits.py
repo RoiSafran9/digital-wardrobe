@@ -74,6 +74,6 @@ def test_running_out_of_credits_refuses_the_job_and_leaves_nothing(store):
 
 def test_the_price_list_is_served_to_signed_in_users(store):
     client = client_with(store, RecordingGate(), {"garment": 1, "turn": 3})
-    assert client.get("/v1/prices", headers=as_user(A)).json() == {"billing": True, "prices": {"garment": 1, "turn": 3}}
-    assert client_with(store, RecordingGate(), {}).get("/v1/prices", headers=as_user(A)).json() == {"billing": False, "prices": {}}
+    assert client.get("/v1/prices", headers=as_user(A)).json() == {"billing": True, "prices": {"garment": 1, "turn": 3}, "outfit": False}
+    assert client_with(store, RecordingGate(), {}).get("/v1/prices", headers=as_user(A)).json() == {"billing": False, "prices": {}, "outfit": False}
     assert client.get("/v1/prices").status_code == 401

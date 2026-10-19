@@ -58,17 +58,15 @@ All figures come from the server (`GET /v1/credits`, `GET /v1/prices`); nothing 
 - **View in 360** (billing on): the note adds the cost; pressing asks "Make a 360 view?" first.
 - Out of credits anywhere: "Not enough AI credits. Ask the app owner for more."
 
-## Outfit Photo import — planned experience (NOT BUILT)
+## Outfit Photo import (built behind `WARDROBE_OUTFIT=on`, off by default; account mode only)
 
-The owner approved a second Add path for photographs of **a person wearing clothes**. These are future screens, not current functionality:
-- **Photo-mode route:** automatically detect garment-only vs person-outfit where reliable; always allow an explicit override and an ambiguity prompt.
-- **Detected items:** show original outfit photo with detected candidate crops/overlays and category labels; select/deselect, correct, retry, choose none. No high-quality AI image generation yet.
-- **Confirm selection:** list selected items, show exact server-owned AI Credits quote and available balance before the user opts in; no credits charged for the detection step.
-- **Generate selected:** generate only the selected items; handle per-item partial success, progress and resumable jobs.
-- **Final review:** generated flat-lay image alongside real-photo crop, with an honest warning about reconstructed hidden details; save or decline each result (manual regenerate/refund rules pending).
-- **Out of scope for initial experiment:** accessories, multi-person photo handling, automatically generating back/360 and full public launch.
-
-Design: [two-stage import spec](superpowers/specs/2026-10-19-outfit-photo-two-step-design.md).
+Shown only when `GET /v1/prices` says `outfit: true`. Design and measurements: [spec](superpowers/specs/2026-10-19-outfit-photo-two-step-design.md), [evaluation](superpowers/specs/outfit-import-evaluation.md).
+- **Add → mode switch** (`app/(tabs)/add.tsx`): segmented control "Garment photo" / "Outfit photo" (explicit choice, D1; no auto-routing). Outfit mode swaps the tips, hides the fronts stepper, and Take photo / Choose from library run the **free** scan (`src/outfit/useOutfitScan.ts`, "Finding the clothes"). "N pieces waiting for review" opens Review (also after an app restart).
+- **Home and rejections:** Home's capture card has a "Wearing it? Add from an outfit photo" link that opens Add in outfit mode. When the garment flow refuses a photo as worn ("No garment to add: worn on body"), Add and Home offer "Try it as an outfit photo" (no extra model call). Found in the first phone test, where the owner kept using Home's buttons.
+- **Pick pieces** (`app/outfit/pick.tsx`): one card per garment with a **crop of the real photo** (not an AI image), category, description, plain-language notes ("Partly hidden — hidden parts will be completed", "Mostly hidden — the image would be mostly guessed") and a checkbox. Shoes are not offered (D2); mostly hidden pieces start unselected (D3). Notes for laid-out clothes, no clothing, or several people. Footer: exact quote from the server's front price ("2 images · 2 credits · 5 available", or "free while billing is off"), "Create N images" (off when nothing is picked or it isn't affordable) and "None of these".
+- **Creating** shows the processing card ("Taking them off the photo"…). The price shown is sent with the request; if it changed the server refuses and nothing is charged.
+- **Review** (`app/outfit/review.tsx`): each result (cutout first) with its tier and "AI image made from your photo. Parts hidden in the photo were completed."; **Keep** (joins the closet) or **Discard** per piece, "Keep all", "Later". Failed picks are listed as not charged. Results stay out of the closet until kept.
+- **Not in v1:** auto-routing, manual region selection, correcting a category before generating, shoes, accessories, multi-person choice, regenerate.
 
 ## Not built (see ROADMAP "Later")
 A pre-save Review screen with an Original/Generated toggle and Save button, saved-item Regenerate, in-app restore of removed items, buying credits.

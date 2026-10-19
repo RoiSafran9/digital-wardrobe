@@ -1,5 +1,5 @@
-import { API_BASE_URL, addBack, configureApi, deleteItem, getCredits, getItems, getPrices, getTurn, imageUrl, postRun, startTurn, updateItem } from "../src/api/client";
-import { NO_CREDITS } from "../src/api/v1";
+import { API_BASE_URL, OUTFIT_NEEDS_ACCOUNT, addBack, configureApi, deleteItem, generateOutfit, getCredits, getItems, getOutfitScan, getPendingItems, getPrices, getTurn, imageUrl, keepItem, postRun, scanOutfit, startTurn, updateItem } from "../src/api/client";
+import { NO_CREDITS, SCAN_EXPIRED } from "../src/api/v1";
 import { addedLabel } from "../src/theme";
 
 jest.mock("expo-file-system", () => ({ File: jest.fn().mockImplementation((uri: string) => ({ uri })) }));
@@ -212,4 +212,55 @@ test("credits and prices come from /v1 when signed in, and don't exist in local 
   on("GET", "/v1/prices", reply({ billing: true, prices: { garment: 1 } }));
   expect((await getCredits(7))!.available).toBe(1);
   expect((await getPrices())!.prices.garment).toBe(1);
+});
+
+
+// --- Outfit Photo ---
+const scanBody = (status: string, extra: object = {}) => ({ id: "scan-1", status, error: null, scene_kind: "worn", person_count: 1,
+                                                            candidates: [], expires_at: null, ...extra });
+
+test("an outfit scan uploads the photo and polls until the candidates are ready", async () => {
+  jest.useFakeTimers();
+  signIn();
+  on("POST", "/v1/outfit-scans", reply(scanBody("queued"), 202));
+  on("GET", "/v1/outfit-scans/scan-1", reply(scanBody("succeeded", { candidates: [{ id: "c1", category: "blazer" }] })));
+  const pending = scanOutfit("file:///p.jpg");
+  await jest.advanceTimersByTimeAsync(2000);
+  const scan = await pending;
+  expect(scan.candidates[0].id).toBe("c1");
+  expect((calls[0].init.headers as Record<string, string>)["Idempotency-Key"]).toBe("key-1");
+  expect(calls[0].init.body).toBeInstanceOf(FormData);
+});
+
+test("an expired scan says so", async () => {
+  signIn();
+  on("GET", "/v1/outfit-scans/scan-1", reply({ error: "this scan has expired" }, 410));
+  await expect(getOutfitScan("scan-1")).rejects.toThrow(SCAN_EXPIRED);
+});
+
+test("generating sends the picks and the price the user saw, once per key, and returns the pending items", async () => {
+  jest.useFakeTimers();
+  signIn();
+  on("POST", "/v1/outfit-scans/scan-1/generate", () => Promise.reject(new TypeError("Network request failed")),
+     reply(job("queued", { kind: "outfit_generate" }), 202));
+  on("GET", "/v1/jobs/job-1", reply(job("succeeded", { item_ids: ["i1"], failed: ["c3"] })));
+  on("GET", "/v1/items/i1", reply(v1Item("i1", { origin: "outfit_photo", review_state: "pending" })));
+  const pending = generateOutfit("scan-1", ["c1", "c3"], 1);
+  await jest.advanceTimersByTimeAsync(2000);
+  const result = await pending;
+  const posts = calls.filter((c) => c.init.method === "POST");
+  expect(posts.map((c) => (c.init.headers as Record<string, string>)["Idempotency-Key"])).toEqual(["key-1", "key-1"]);
+  expect(JSON.parse(posts[0].init.body as string)).toEqual({ candidate_ids: ["c1", "c3"], expected_unit_price: 1 });
+  expect(result.items[0]).toMatchObject({ item_id: "i1", review_state: "pending" });
+  expect(result.failed).toEqual(["c3"]);
+});
+
+test("pending results and keep go to /v1; outfit needs an account", async () => {
+  await expect(scanOutfit("file:///p.jpg")).rejects.toThrow(OUTFIT_NEEDS_ACCOUNT);
+  expect(await getPendingItems()).toEqual([]);
+  signIn();
+  on("GET", "/v1/items?review=pending", reply({ items: [v1Item("i1", { review_state: "pending" })] }));
+  on("POST", "/v1/items/i1/keep", reply(v1Item("i1", { review_state: "kept" })));
+  const [item] = await getPendingItems();
+  expect((await keepItem(item)).review_state).toBe("kept");
 });

@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 import cv2
 from google import genai
@@ -8,8 +9,37 @@ from pipeline.types import BBox, DetectedItemWithFacts, DetectionFields, ItemFac
 from pipeline.run_log import RunLogger
 
 MODEL_VISION = "gemini-3.1-flash-lite"
-# gemini-2.5-flash-image is deprecated; 3.1 flash was the owner's pick on real items (2026-10-19).
-MODEL_IMAGE = "gemini-3.1-flash-image"
+MODEL_IMAGE = "gemini-2.5-flash-image"
+# MODEL_IMAGE is deprecated with no firm shutdown date. It stays first (cheapest and most faithful
+# on the owner's items); once Google answers "model not found", every image call switches to this
+# one (≈1.7× the price) for the rest of the process.
+MODEL_IMAGE_FALLBACK = "gemini-3.1-flash-image"
+_image_model_gone = False
+
+log = logging.getLogger("wardrobe.gemini")
+
+
+def image_model() -> str:
+    return MODEL_IMAGE_FALLBACK if _image_model_gone else MODEL_IMAGE
+
+
+def _model_gone(error: Exception) -> bool:
+    return getattr(error, "code", None) in (404, 410)
+
+
+async def image_content(client, contents):
+    """One image-generation call: MODEL_IMAGE first, the fallback once Google has retired it."""
+    global _image_model_gone
+    model = image_model()
+    try:
+        return await client.aio.models.generate_content(model=model, contents=contents)
+    except Exception as e:
+        if model != MODEL_IMAGE or not _model_gone(e):
+            raise
+        _image_model_gone = True
+        log.warning("%s is gone (%s); using %s from now on", MODEL_IMAGE, e, MODEL_IMAGE_FALLBACK)
+        return await client.aio.models.generate_content(model=MODEL_IMAGE_FALLBACK, contents=contents)
+
 
 PROMPTS_DIR = __file__.rsplit("/providers/", 1)[0] + "/prompts"
 
@@ -160,7 +190,7 @@ class GeminiProvider:
         start = time.monotonic()
         results = await outfit.generate_selected(self.client, image_path, scan, candidate_ids, out_dir, outfit.Usage())
         failed = [cid for cid, r in results.items() if r["status"] != "generated"]
-        self._log("outfit_generate", MODEL_IMAGE, outfit.GENERATE_PROMPT, start, "error" if failed else "ok",
+        self._log("outfit_generate", image_model(), outfit.GENERATE_PROMPT, start, "error" if failed else "ok",
                   f"failed: {failed}" if failed else None)
         return results
 
@@ -176,20 +206,18 @@ class GeminiProvider:
             prompt = template.format(facts_block=facts.model_dump_json(indent=2),
                                       violations_block=violations_block,
                                       edges_block=EDGES_BLOCK if complete_edges else "")
-            response = self.client.models.generate_content(
-                model=MODEL_IMAGE,
-                contents=[{"inline_data": {"mime_type": "image/png", "data": crop_bytes}}, prompt],
-            )
+            response = await image_content(
+                self.client, [{"inline_data": {"mime_type": "image/png", "data": crop_bytes}}, prompt])
             out_path = crop_path.rsplit(".", 1)[0] + "_generated.png"
             # Newer image models can put a short text part before the image.
             image_bytes = next(p.inline_data.data for p in response.candidates[0].content.parts
                                if p.inline_data is not None)
             with open(out_path, "wb") as f:
                 f.write(image_bytes)
-            self._log("stage4_generate", MODEL_IMAGE, "v5", start, "ok")
+            self._log("stage4_generate", image_model(), "v5", start, "ok")
             return out_path
         except Exception as e:
-            self._log("stage4_generate", MODEL_IMAGE, "v5", start, "error", str(e))
+            self._log("stage4_generate", image_model(), "v5", start, "error", str(e))
             raise
 
     async def generate_back(self, crop_path: str, front_image_path: str, facts: ItemFacts,
@@ -206,9 +234,9 @@ class GeminiProvider:
             prompt = template.format(facts_block=facts.model_dump_json(indent=2),
                                       violations_block=violations_block,
                                       edges_block=EDGES_BLOCK if complete_edges else "")
-            response = self.client.models.generate_content(
-                model=MODEL_IMAGE,
-                contents=[
+            response = await image_content(
+                self.client,
+                [
                     "Image 1 — photo of the back:",
                     {"inline_data": {"mime_type": "image/png", "data": crop_bytes}},
                     "Image 2 — catalog image of the front:",
@@ -221,10 +249,10 @@ class GeminiProvider:
                                if p.inline_data is not None)
             with open(out_path, "wb") as f:
                 f.write(image_bytes)
-            self._log("stage4_generate_back", MODEL_IMAGE, "v2", start, "ok")
+            self._log("stage4_generate_back", image_model(), "v2", start, "ok")
             return out_path
         except Exception as e:
-            self._log("stage4_generate_back", MODEL_IMAGE, "v2", start, "error", str(e))
+            self._log("stage4_generate_back", image_model(), "v2", start, "error", str(e))
             raise
 
     async def generate_view(self, refs, view: str, anchors: dict[str, str],
@@ -250,11 +278,11 @@ class GeminiProvider:
                 view_block=_view_block(view, refs),
                 retry_block="\n" + retry_note if retry_note else ""))
             # Async client: the 360 job runs in the background while the app polls the same server.
-            response = await self.client.aio.models.generate_content(model=MODEL_IMAGE, contents=contents)
+            response = await image_content(self.client, contents)
             data = next(p.inline_data.data for p in response.candidates[0].content.parts
                         if p.inline_data is not None)
-            self._log("turn_view", MODEL_IMAGE, "v2", start, "ok")
+            self._log("turn_view", image_model(), "v2", start, "ok")
             return data
         except Exception as e:
-            self._log("turn_view", MODEL_IMAGE, "v2", start, "error", str(e))
+            self._log("turn_view", image_model(), "v2", start, "error", str(e))
             raise

@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 import cv2
 from pydantic import BaseModel
-from pipeline.providers.gemini import MODEL_IMAGE, MODEL_VISION, _read_prompt, touches_frame
+from pipeline.providers.gemini import MODEL_IMAGE, MODEL_VISION, _read_prompt, image_content, image_model, touches_frame
 from pipeline.stages import cutout, stage5_verify
 from pipeline.types import BBox, FactField, ItemFacts
 
@@ -27,11 +27,11 @@ REVIEW_PROMPT = "outfit_review_v1.txt"
 
 # Paid-tier list prices (ai.google.dev/gemini-api/docs/pricing, read 2026-10-19), for the PoC report only.
 VISION_USD_PER_M_IN, VISION_USD_PER_M_OUT = 0.25, 1.50
-IMAGE_USD_PER_IMAGE, IMAGE_USD_PER_M_IN = 0.067, 0.50
+IMAGE_USD_PER_IMAGE, IMAGE_USD_PER_M_IN = 0.039, 0.30
 # Other image models compared in the PoC (USD per 1K output image, per 1M input tokens).
 IMAGE_PRICES = {MODEL_IMAGE: (IMAGE_USD_PER_IMAGE, IMAGE_USD_PER_M_IN),
                 "gemini-3.1-flash-lite-image": (0.0336, 0.25),
-                "gemini-2.5-flash-image": (0.039, 0.30),
+                "gemini-3.1-flash-image": (0.067, 0.50),
                 "gemini-nano-banana-2.1": (0.0336, 1.50)}
 
 # Preview crops get more context than the catalog crop: the user has to recognise the piece on the body.
@@ -231,7 +231,7 @@ async def detect_candidates(client, image_path: str, usage: Usage) -> OutfitScan
 
 async def generate_flatlay(client, crop_path: str, context_path: str | None, candidate: OutfitCandidate,
                            violations: list[str] | None, out_path: str, usage: Usage,
-                           prompt_name: str = GENERATE_PROMPT, model: str = MODEL_IMAGE) -> str:
+                           prompt_name: str = GENERATE_PROMPT, model: str | None = None) -> str:
     """Stage 2 for one selected candidate. context_path (the photo with this candidate outlined) is optional."""
     start = time.monotonic()
     ok, usd = False, 0.0
@@ -244,10 +244,11 @@ async def generate_flatlay(client, crop_path: str, context_path: str | None, can
             contents += ["Image 2:", _image_part(context_path)]
         # A hung request once never came back (PoC run, 2026-10-19): give up and count it as failed.
         response = await asyncio.wait_for(
-            client.aio.models.generate_content(model=model, contents=contents + [prompt]), CALL_TIMEOUT_S)
+            (image_content(client, contents + [prompt]) if model is None else
+             client.aio.models.generate_content(model=model, contents=contents + [prompt])), CALL_TIMEOUT_S)
         tin, _ = _tokens(response)
         data = _first_image(response)
-        per_image, per_m_in = IMAGE_PRICES[model]
+        per_image, per_m_in = IMAGE_PRICES[model or image_model()]  # the model that actually answered
         usd = per_image + tin / 1e6 * per_m_in
         with open(out_path, "wb") as f:
             f.write(data)
@@ -259,7 +260,7 @@ async def generate_flatlay(client, crop_path: str, context_path: str | None, can
 
 async def generate_selected(client, image_path: str, scan: OutfitScan, selected: list[str], out_dir: str,
                             usage: Usage, with_context: bool = True, max_attempts: int = 2,
-                            prompt_name: str = GENERATE_PROMPT, model: str = MODEL_IMAGE) -> dict[str, dict]:
+                            prompt_name: str = GENERATE_PROMPT, model: str | None = None) -> dict[str, dict]:
     """Stage 2: generate ONLY the selected candidate IDs; one failure never stops the others.
     Unknown IDs are refused before any paid call."""
     by_id = {c.id: c for c in scan.candidates}

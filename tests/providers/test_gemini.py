@@ -127,7 +127,7 @@ async def _call(tmp_path, refs, view, anchors, retry_note=None):
         call = AsyncMock(return_value=_image_response(b"view"))
         MockClient.return_value.aio.models.generate_content = call
         data = await GeminiProvider().generate_view(refs, view, anchors, retry_note)
-    assert call.call_args.kwargs["model"] == "gemini-3.1-flash-image"
+    assert call.call_args.kwargs["model"] == "gemini-2.5-flash-image"
     contents = call.call_args.kwargs["contents"]
     return data, [c for c in contents[:-1] if isinstance(c, str)], contents[-1], contents
 
@@ -235,7 +235,74 @@ async def test_front_generation_reads_the_image_even_when_text_comes_first(monke
     crop = _png(tmp_path / "crop.png")
 
     with patch("pipeline.providers.gemini.genai.Client") as MockClient:
-        MockClient.return_value.models.generate_content.return_value = response
+        MockClient.return_value.aio.models.generate_content = AsyncMock(return_value=response)
         out = await GeminiProvider().generate(crop, facts, None)
 
     assert open(out, "rb").read() == b"front-png"
+
+
+
+# --- image model fallback: 2.5 first, 3.1 once Google retires 2.5 ---
+
+@pytest.fixture(autouse=True)
+def _fresh_image_model():
+    from pipeline.providers import gemini
+    gemini._image_model_gone = False
+    yield
+    gemini._image_model_gone = False
+
+
+def _gone():
+    from google.genai import errors
+    return errors.ClientError(404, {"error": {"code": 404, "status": "NOT_FOUND",
+                                              "message": "models/gemini-2.5-flash-image is not found for API version v1beta"}})
+
+
+@pytest.mark.asyncio
+async def test_images_fall_back_to_3_1_when_google_retires_2_5(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
+        call = AsyncMock(side_effect=[_gone(), _image_response(b"from-3.1")])
+        MockClient.return_value.aio.models.generate_content = call
+        from pipeline.providers.gemini import GeminiProvider
+        data = await GeminiProvider().generate_view(_refs(tmp_path), "front", {})
+    assert data == b"from-3.1"
+    assert [c.kwargs["model"] for c in call.call_args_list] == ["gemini-2.5-flash-image", "gemini-3.1-flash-image"]
+
+
+@pytest.mark.asyncio
+async def test_after_falling_back_later_images_go_straight_to_3_1(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
+        call = AsyncMock(side_effect=[_gone(), _image_response(), _image_response()])
+        MockClient.return_value.aio.models.generate_content = call
+        from pipeline.providers.gemini import GeminiProvider
+        provider = GeminiProvider()
+        await provider.generate_view(_refs(tmp_path), "front", {})
+        await provider.generate_view(_refs(tmp_path), "back", {})
+    assert [c.kwargs["model"] for c in call.call_args_list][-1] == "gemini-3.1-flash-image"
+    assert call.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_other_errors_do_not_switch_models(monkeypatch, tmp_path):
+    from google.genai import errors
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    quota = errors.ClientError(429, {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED", "message": "quota"}})
+    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
+        call = AsyncMock(side_effect=quota)
+        MockClient.return_value.aio.models.generate_content = call
+        from pipeline.providers.gemini import GeminiProvider
+        with pytest.raises(errors.ClientError):
+            await GeminiProvider().generate_view(_refs(tmp_path), "front", {})
+    assert call.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_outfit_images_use_the_same_fallback(monkeypatch, tmp_path):
+    from pipeline import outfit
+    client = MagicMock()
+    client.aio.models.generate_content = AsyncMock(side_effect=[_gone(), _image_response(b"outfit")])
+    response = await outfit.image_content(client, ["prompt"])
+    assert response.candidates[0].content.parts[0].inline_data.data == b"outfit"
+    assert client.aio.models.generate_content.call_args.kwargs["model"] == "gemini-3.1-flash-image"

@@ -1,167 +1,123 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Icon, type IconName } from "../../src/components/Icon";
-import { PillButton } from "../../src/components/PillButton";
-import { CAPTURE_STEPS, KEEP_OPEN, ProcessingStatus, SCAN_STEPS } from "../../src/components/ProcessingStatus";
-import { colors, hitSlopFor, radius, type, TAB_BAR_HEIGHT } from "../../src/theme";
 import { getPendingItems } from "../../src/api/client";
+import { Icon, type IconName } from "../../src/components/Icon";
+import { GlyphTile } from "../../src/components/onboarding/GlyphTile";
 import { useCredits } from "../../src/credits/CreditsProvider";
-import { useOutfitScan } from "../../src/outfit/useOutfitScan";
-import { TRY_AS_OUTFIT, isWornRejection } from "../../src/outfit/outfit";
-import { useCapture } from "../../src/useCapture";
-import { FrontsPicker } from "../../src/components/FrontsPicker";
-import { useFrontsChoice } from "../../src/credits/useFrontsChoice";
+import { creditsLabel } from "../../src/credits/credits";
+import { PressScale } from "../../src/motion/PressScale";
+import { colors, hitSlopFor, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
 
-const TIPS: { icon: IconName; label: string; detail: string }[] = [
-  { icon: "flat", label: "Lay it flat", detail: "On a bed or the floor, front side up" },
-  { icon: "above", label: "Shoot from above", detail: "Keep the whole piece in the frame" },
-  { icon: "several", label: "A few at once works", detail: "Side by side; each becomes its own piece" },
+const FIRST_PIECE = [
+  "Lay one garment flat on a bed or the floor.",
+  "Take the photo from above, in daylight.",
+  "Check the preview, then create its catalog image.",
 ];
 
-const OUTFIT_TIPS: { icon: IconName; label: string; detail: string }[] = [
-  { icon: "account", label: "Someone wearing the outfit", detail: "One person, the clothes clearly in view" },
-  { icon: "above", label: "Head to toe if you can", detail: "Pieces cut off by the frame get completed" },
-  { icon: "check", label: "Pick what to add", detail: "You choose the pieces before any image is made" },
-];
-
-type Mode = "garment" | "outfit";
-
-// "Garment photo" (laid flat, as before) or "Outfit photo" (someone wearing it). Only shown when the
-// server offers the outfit flow.
-function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
-  const segment = (value: Mode, label: string) => {
-    const selected = mode === value;
-    return (
-      <Pressable
-        key={value} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected }}
-        onPress={() => onChange(value)} hitSlop={hitSlopFor(32, 120)}
-        style={{ flex: 1, paddingVertical: 7, borderRadius: 8, alignItems: "center", backgroundColor: selected ? colors.grouped : "transparent" }}
-      >
-        <Text style={{ ...type.subhead, fontWeight: selected ? "600" : "400", color: colors.label }}>{label}</Text>
-      </Pressable>
-    );
-  };
+function MethodCard({ title, body, price, art, onPress }: { title: string; body: string; price: string | null; art: React.ReactNode; onPress: () => void }) {
   return (
-    <View style={{ flexDirection: "row", marginTop: 16, padding: 2, borderRadius: 10, backgroundColor: colors.tile }}>
-      {segment("garment", "Garment photo")}
-      {segment("outfit", "Outfit photo")}
-    </View>
+    <PressScale onPress={onPress} accessibilityRole="button" accessibilityLabel={title} scaleTo={0.98}
+      style={{ borderRadius: radius.feature, backgroundColor: colors.grouped, overflow: "hidden" }}>
+      <View style={{ height: 176, alignItems: "center", justifyContent: "center", backgroundColor: colors.tile }}>{art}</View>
+      <View style={{ padding: 18, gap: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Text style={{ ...type.cardTitle, color: colors.label }}>{title}</Text>
+          <Icon name="chevron" size={15} color={colors.secondaryLabel} />
+        </View>
+        <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>{body}</Text>
+        {price ? <Text style={{ ...type.footnote, fontWeight: "600", color: colors.tint, marginTop: 2 }}>{price}</Text> : null}
+      </View>
+    </PressScale>
   );
 }
 
+const ROW: IconName[] = ["garment", "jacket", "shoe"];
+
 export default function AddScreen() {
-  const { capture, loading: capturing, error: captureError } = useCapture();
-  const outfitScan = useOutfitScan();
-  const fronts = useFrontsChoice();
-  const { outfit: outfitOn } = useCredits();
-  const [chosen, setMode] = useState<Mode>("garment");
-  // Home's "Wearing it?" link and a worn-photo rejection open this tab in outfit mode.
-  const { mode: asked, at } = useLocalSearchParams<{ mode?: string; at?: string }>();
-  useEffect(() => {
-    if (asked === "outfit") setMode("outfit");
-  }, [asked, at]);
-  const mode: Mode = outfitOn ? chosen : "garment";
   const router = useRouter();
+  const { outfit: outfitOn, billing, prices, credits } = useCredits();
+  const { mode, firstPiece, at } = useLocalSearchParams<{ mode?: string; firstPiece?: string; at?: string }>();
   const [pending, setPending] = useState(0);
 
-  // Outfit results the user hasn't kept or discarded yet (also after an app restart).
+  // Home's outfit link and a worn-photo rejection used to land here in outfit mode; go straight to it.
   useEffect(() => {
-    if (mode !== "outfit") return;
+    if (mode === "outfit" && outfitOn) router.push({ pathname: "/capture/camera", params: { mode: "outfit" } });
+  }, [mode, at, outfitOn]);
+
+  // Outfit results the user hasn't kept or discarded yet (also after an app restart).
+  useFocusEffect(React.useCallback(() => {
+    if (!outfitOn) return;
     let live = true;
     getPendingItems().then((items) => live && setPending(items.length)).catch(() => {});
     return () => { live = false; };
-  }, [mode]);
+  }, [outfitOn]));
 
-  const outfit = mode === "outfit";
-  const loading = outfit ? outfitScan.loading : capturing;
-  const error = outfit ? outfitScan.error : captureError;
-  const tips = outfit ? OUTFIT_TIPS : TIPS;
-
+  const front = billing ? prices.garment : undefined;
   return (
-    <SafeAreaView edges={["top"]} style={styles.screen}>
-      <Text accessibilityRole="header" style={styles.title}>Add a piece</Text>
-      <Text style={styles.body}>
-        {outfit ? "Add pieces from a photo of someone wearing them." : "Each piece becomes a clean catalog shot in your closet."}
-      </Text>
-      {outfitOn ? <ModeSwitch mode={mode} onChange={setMode} /> : null}
-      {outfit && pending > 0 && !loading ? (
-        <Pressable accessibilityRole="button" onPress={() => router.push("/outfit/review")} style={styles.pending}>
-          <Text style={{ ...type.body, color: colors.label, flex: 1 }}>
-            {pending === 1 ? "1 piece waiting for review" : `${pending} pieces waiting for review`}
-          </Text>
-          <Icon name="chevron" size={16} color={colors.secondaryLabel} />
-        </Pressable>
-      ) : null}
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: TAB_BAR_HEIGHT + 24, gap: 16 }}>
+        <View style={{ gap: 4 }}>
+          <Text accessibilityRole="header" style={{ ...type.largeTitle, color: colors.label }}>Add Clothes</Text>
+          <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Choose how to start. Finding garments is always free.</Text>
+        </View>
 
-      <View style={styles.stage}>
-        {loading ? (
-          <ProcessingStatus steps={outfit ? SCAN_STEPS : CAPTURE_STEPS} note={KEEP_OPEN} estimateSeconds={outfit ? 10 : 45} />
-        ) : (
-          <View style={{ gap: 18 }}>
-            {tips.map((tip) => (
-              <View key={tip.label} style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                <Icon name={tip.icon} size={22} color={colors.secondaryLabel} />
-                <View>
-                  <Text style={styles.tipLabel}>{tip.label}</Text>
-                  <Text style={styles.tipDetail}>{tip.detail}</Text>
+        {firstPiece ? (
+          <View style={{ backgroundColor: colors.tintSoft, borderRadius: radius.list, padding: 16, gap: 10 }}>
+            <Text style={{ ...type.headline, color: colors.label }}>Your first piece</Text>
+            {FIRST_PIECE.map((tip, i) => (
+              <View key={tip} style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+                <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: colors.tint, alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ ...type.caption, fontWeight: "700", color: colors.onTint }}>{i + 1}</Text>
                 </View>
+                <Text style={{ ...type.subhead, color: colors.label, flex: 1 }}>{tip}</Text>
               </View>
             ))}
           </View>
-        )}
-      </View>
+        ) : null}
 
-      {error ? (
-        <View style={styles.errorBox}>
-          <Icon name="alert" size={18} color={colors.destructive} />
-          <View style={{ flex: 1, gap: 6 }}>
-            <Text style={styles.errorText}>{error}</Text>
-            {outfitOn && !outfit && isWornRejection(error) ? (
-              <Pressable accessibilityRole="button" onPress={() => setMode("outfit")} hitSlop={hitSlopFor(20)}>
-                <Text style={{ ...type.subhead, color: colors.tint }}>{TRY_AS_OUTFIT}</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        </View>
-      ) : null}
+        {pending > 0 ? (
+          <Pressable accessibilityRole="button" onPress={() => router.push("/outfit/review")}
+            style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: colors.grouped, borderRadius: radius.list, padding: 16 }}>
+            <Text style={{ ...type.body, color: colors.label, flex: 1 }}>
+              {pending === 1 ? "1 piece waiting for review" : `${pending} pieces waiting for review`}
+            </Text>
+            <Icon name="chevron" size={15} color={colors.secondaryLabel} />
+          </Pressable>
+        ) : null}
 
-      <View style={{ gap: 10 }}>
-        {!loading && !outfit ? <FrontsPicker choice={fronts} /> : null}
-        {outfit ? (
-          <>
-            <PillButton label="Take photo" variant="primary" icon="camera" onPress={() => outfitScan.scan(true)} disabled={loading} />
-            <PillButton label="Choose from library" onPress={() => outfitScan.scan(false)} disabled={loading} />
-          </>
-        ) : (
-          <>
-            <PillButton label="Take photo" variant="primary" icon="camera" onPress={() => capture(true, fronts.maxFronts)} disabled={loading || fronts.blocked} />
-            <PillButton label="Choose from library" onPress={() => capture(false, fronts.maxFronts)} disabled={loading || fronts.blocked} />
-          </>
-        )}
-      </View>
+        <MethodCard
+          title="Photograph Garments"
+          body="Lay one or more pieces on a flat surface. Each becomes its own item."
+          price={front !== undefined ? `${creditsLabel(front)} per garment` : null}
+          onPress={() => router.push({ pathname: "/capture/camera", params: { mode: "garments" } })}
+          art={<View style={{ flexDirection: "row", gap: 10 }}>{ROW.map((icon, i) => <GlyphTile key={i} icon={icon} size={{ width: 74, height: 92 }} style={{ transform: [{ rotate: `${(i - 1) * 5}deg` }] }} />)}</View>}
+        />
+        {outfitOn ? (
+          <MethodCard
+            title="Import from Outfit Photo"
+            body="Use a photo of you wearing an outfit, then pick the pieces to keep."
+            price={front !== undefined ? `Free detection · ${creditsLabel(front)} per piece` : "Free detection"}
+            onPress={() => router.push({ pathname: "/capture/camera", params: { mode: "outfit" } })}
+            art={
+              <View style={{ width: 110, height: 150, borderRadius: radius.tile, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
+                <Icon name="person2" size={120} color={colors.separatorStrong} />
+                <View style={{ position: "absolute", top: 32, left: 28, width: 54, height: 46, borderRadius: 8, borderWidth: 2, borderColor: colors.tint, backgroundColor: colors.tintSoft }} />
+                <View style={{ position: "absolute", top: 82, left: 32, width: 46, height: 56, borderRadius: 8, borderWidth: 2, borderColor: colors.tint, backgroundColor: colors.tintSoft }} />
+              </View>
+            }
+          />
+        ) : null}
+
+        {billing && credits ? (
+          <Pressable accessibilityRole="button" hitSlop={hitSlopFor(24)} onPress={() => router.push("/account")} style={{ alignSelf: "center" }}>
+            <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>
+              {`Balance: ${creditsLabel(credits.available)} · `}<Text style={{ color: colors.tint }}>Price list</Text>
+            </Text>
+          </Pressable>
+        ) : null}
+      </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 24, paddingBottom: TAB_BAR_HEIGHT + 16 },
-  title: { ...type.largeTitle, color: colors.label, marginTop: 20 },
-  body: { ...type.body, color: colors.secondaryLabel, marginTop: 8 },
-  tipLabel: { ...type.headline, color: colors.label },
-  tipDetail: { ...type.footnote, color: colors.secondaryLabel, marginTop: 2 },
-  stage: {
-    flex: 1, marginVertical: 24, borderRadius: radius.card, backgroundColor: colors.grouped,
-    alignItems: "center", justifyContent: "center", padding: 20,
-  },
-  errorBox: {
-    flexDirection: "row", gap: 8, alignItems: "flex-start", backgroundColor: colors.destructiveBg,
-    borderRadius: 14, padding: 12, marginBottom: 14,
-  },
-  errorText: { color: colors.destructive, fontSize: 14, flex: 1 },
-  pending: {
-    flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, backgroundColor: colors.grouped,
-    borderRadius: radius.card, paddingHorizontal: 16, paddingVertical: 12, minHeight: 44,
-  },
-});

@@ -1,13 +1,13 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react-native";
 import ClosetScreenBase from "../app/(tabs)/closet";
-import { LastRunProvider } from "../src/store/lastRun";
+import { CaptureJobsProvider } from "../src/store/captureJobs";
 
 function ClosetScreen() {
   return (
-    <LastRunProvider>
+    <CaptureJobsProvider>
       <ClosetScreenBase />
-    </LastRunProvider>
+    </CaptureJobsProvider>
   );
 }
 import { getItems, deleteItem } from "../src/api/client";

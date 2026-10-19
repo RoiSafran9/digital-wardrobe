@@ -64,6 +64,7 @@ export const type = {
   section: { fontSize: 22, fontWeight: "700" },
   title2: { fontSize: 22, fontWeight: "700" },
   headline: { fontSize: 17, fontWeight: "600" },
+  cardTitle: { fontSize: 19, fontWeight: "600" },
   body: { fontSize: 17 },
   callout: { fontSize: 16 },
   subhead: { fontSize: 15 },

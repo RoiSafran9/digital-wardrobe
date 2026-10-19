@@ -4,7 +4,7 @@ import { act, fireEvent, screen } from "@testing-library/react-native";
 import { renderRouter } from "expo-router/testing-library";
 import { AppShell } from "../src/RootNavigator";
 import { AuthContext, type AuthContextValue, type AuthStatus } from "../src/auth/AuthProvider";
-import { useLastRun } from "../src/store/lastRun";
+import { useCaptureJobs } from "../src/store/captureJobs";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import WelcomeScreen from "../app/welcome";
 import { SEEN_KEY } from "../src/onboarding";
@@ -15,12 +15,12 @@ const auth = (status: AuthStatus, userId: string | null = null): AuthContextValu
 });
 
 function TabsStub() {
-  const { lastRun, setLastRun } = useLastRun();
+  const { saved, setSaved } = useCaptureJobs();
   return (
     <>
       <Text>tabs home</Text>
-      <Text>{lastRun ? `last run ${lastRun.run_id}` : "no last run"}</Text>
-      <Pressable onPress={() => setLastRun({ run_id: "r1", quality: { status: "ok", reason: "" }, items: [], failed: [] } as never)}>
+      <Text>{saved ? `last run ${saved.items.length}` : "no last run"}</Text>
+      <Pressable onPress={() => setSaved({ items: [], creditsUsed: null })}>
         <Text>capture</Text>
       </Pressable>
     </>
@@ -104,7 +104,7 @@ test("unconfigured → the setup message instead of the app", async () => {
 test("signing out then in as someone else forgets the previous user's last capture", async () => {
   renderRouter(routes(auth("signedIn", "a")), { initialUrl: "/" });
   fireEvent.press(await screen.findByText("capture"));
-  expect(screen.getByText("last run r1")).toBeTruthy();
+  expect(screen.getByText("last run 0")).toBeTruthy();
   act(() => setAuth(auth("signedOut")));
   expect(await screen.findByText("sign-in screen")).toBeTruthy();
   act(() => setAuth(auth("signedIn", "b")));

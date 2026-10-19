@@ -67,3 +67,27 @@ The Expo project is `@roisafran/mobile` (`extra.eas.projectId` in `app.json`). B
    ```
 
 Permission texts (camera, photos, notifications) and the export-compliance flag are already in `app.json`.
+
+## 4. Owner checklist (accounts only the owner can open)
+
+**Hosting** (one always-on container with ~2 GB RAM; e.g. Render or Railway):
+1. Create an account and connect the GitHub repo `RoiSafran9/digital-wardrobe`.
+2. New service → build from the repo's `Dockerfile` → an instance with at least 2 GB RAM, one instance, always on.
+3. Add the environment from §1 (secrets copied from the Mac's `.env`); health check path `/healthz`.
+4. Deploy, then share the `https://…` address so the app's `EXPO_PUBLIC_API_URL` can be set and the cellular test run.
+   Stop the Mac's server once the hosted one works.
+
+**Apple** (TestFlight):
+1. Enroll in the Apple Developer Program (developer.apple.com/programs, yearly fee; approval can take up to two days).
+2. Run the first `eas build` interactively: it signs in to the Apple account (password + two-factor code typed by the
+   owner), creates the certificates and the App Store Connect app for `com.roisafran.kips`.
+3. In App Store Connect → TestFlight: beta description, feedback email, a public privacy-policy URL, an external
+   tester group; the first external build goes through Beta App Review.
+
+**SMTP** (so sign-in codes reach testers, not only the project's own team):
+1. An email provider with SMTP (e.g. Resend) and a domain you own, verified with the provider's DNS records.
+2. Supabase dashboard → Authentication → Emails → SMTP settings: the provider's host, port, user and password,
+   sender `KIPS <noreply@your-domain>`.
+3. Authentication → Emails → Templates → Magic Link: must contain `{{ .Token }}` (copy `supabase/templates/magic_link.html`).
+4. Authentication → Rate limits: raise emails per hour for the beta (e.g. 100).
+5. Test: sign in with an email that isn't a team member's.

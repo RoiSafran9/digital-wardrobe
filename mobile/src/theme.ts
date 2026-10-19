@@ -2,29 +2,42 @@ import { DynamicColorIOS, Platform, type ColorValue } from "react-native";
 import type { Tier } from "./api/types";
 
 type Palette = {
-  background: string; card: string; tile: string;
-  label: string; secondaryLabel: string;
-  separator: string; separatorStrong: string;
-  tint: string; onTint: string;
+  background: string; grouped: string; card: string; tile: string;
+  label: string; secondaryLabel: string; tertiaryLabel: string;
+  separator: string; separatorStrong: string; fill: string;
+  tint: string; tintSoft: string; onTint: string;
+  success: string; successText: string;
   destructive: string; destructiveBg: string;
+  warning: string; warningText: string;
+  tabBar: string;
 };
 
-// The category standard, native iOS: grouped backgrounds, white cards, one blue tint.
-// Every text pair is held to 4.5:1 in both appearances (see __tests__/theme.test.ts).
+// The design handoff's system (docs/design/design_handoff_digital_wardrobe): white screens, warm-grey
+// grouped cards, one blue accent. Every text pair is held to 4.5:1 in both appearances (see
+// __tests__/theme.test.ts). Where a handoff value failed that as text on the grey cards, the shipped
+// value is the nearest darker one that passes: accent #1F6BFF → #0B5EFF, danger #E5484D → #D61E24,
+// success text #23A55A → #1B7F45, warning text #C27C12 → #98610E. tertiaryLabel (#A1A1A6) fails, so it
+// is only for glyphs, placeholders and disabled states — never text.
 export const palettes: { light: Palette; dark: Palette } = {
   light: {
-    background: "#F2F2F7", card: "#FFFFFF", tile: "#F5F5F7",
-    label: "#000000", secondaryLabel: "#6C6C70",
-    separator: "#E5E5EA", separatorStrong: "#C7C7CC",
-    tint: "#2563EB", onTint: "#FFFFFF",
-    destructive: "#D70015", destructiveBg: "#FFECEC",
+    background: "#FFFFFF", grouped: "#F4F4F2", card: "#FFFFFF", tile: "#F3F2EF",
+    label: "#131315", secondaryLabel: "#6E6E73", tertiaryLabel: "#A1A1A6",
+    separator: "rgba(20,20,25,0.08)", separatorStrong: "#C7C7CC", fill: "rgba(120,120,128,0.12)",
+    tint: "#0B5EFF", tintSoft: "rgba(31,107,255,0.10)", onTint: "#FFFFFF",
+    success: "#23A55A", successText: "#1B7F45",
+    destructive: "#D61E24", destructiveBg: "#FFECEC",
+    warning: "#E8A33D", warningText: "#98610E",
+    tabBar: "rgba(250,250,250,0.94)",
   },
   dark: {
-    background: "#000000", card: "#1C1C1E", tile: "#2C2C2E",
-    label: "#FFFFFF", secondaryLabel: "#AEAEB2",
-    separator: "#38383A", separatorStrong: "#48484A",
-    tint: "#64A0FF", onTint: "#000000",
-    destructive: "#FF6961", destructiveBg: "#3A1D1F",
+    background: "#000000", grouped: "#1C1C1E", card: "#1C1C1E", tile: "#1B1B1D",
+    label: "#F5F5F7", secondaryLabel: "#98989F", tertiaryLabel: "#636366",
+    separator: "rgba(255,255,255,0.10)", separatorStrong: "#48484A", fill: "rgba(120,120,128,0.26)",
+    tint: "#3D86FF", tintSoft: "rgba(61,134,255,0.18)", onTint: "#000000",
+    success: "#30C26A", successText: "#30C26A",
+    destructive: "#FF5A5F", destructiveBg: "#3A1D1F",
+    warning: "#E8A33D", warningText: "#E8A33D",
+    tabBar: "rgba(28,28,30,0.94)",
   },
 };
 
@@ -37,18 +50,38 @@ export const colors = Object.fromEntries(
   (Object.keys(palettes.light) as (keyof Palette)[]).map((k) => [k, adaptive(palettes.light[k], palettes.dark[k])]),
 ) as Record<keyof Palette, ColorValue>;
 
-// iOS text styles on the system font (SF Pro).
+// Instrument Serif, only for the four editorial headlines (welcome, Home greeting, starter credits,
+// saved). Loaded in app/_layout.tsx; everything else is the system font (SF Pro).
+export const DISPLAY_FONT = "InstrumentSerif_400Regular";
+
+// Text styles on the system font, sized per the handoff.
 export const type = {
-  largeTitle: { fontSize: 34, fontWeight: "700", letterSpacing: 0.37 },
+  largeTitle: { fontSize: 34, fontWeight: "700", letterSpacing: -0.68 },
+  screenTitle: { fontSize: 32, fontWeight: "700", letterSpacing: -0.64 },
+  section: { fontSize: 22, fontWeight: "700" },
   title2: { fontSize: 22, fontWeight: "700" },
   headline: { fontSize: 17, fontWeight: "600" },
   body: { fontSize: 17 },
+  callout: { fontSize: 16 },
   subhead: { fontSize: 15 },
   footnote: { fontSize: 13 },
   caption: { fontSize: 12 },
+  eyebrow: { fontSize: 13, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.65 },
+  stat: { fontSize: 26, fontWeight: "600", fontVariant: ["tabular-nums"] },
+  display: (size: 46 | 42 | 40) => ({ fontFamily: DISPLAY_FONT, fontSize: size, lineHeight: size }),
 } as const;
 
-export const radius = { card: 16, tile: 14, pill: 999 };
+export const radius = {
+  segment: 8, input: 12, button: 14, primary: 16, list: 18, tile: 22, feature: 26, stage: 28, sheet: 34, pill: 999,
+  card: 16,  // legacy name, same as primary
+};
+
+// iOS shadows from the handoff's CSS (blur radius ≈ half the CSS blur).
+export const shadow = {
+  tile: { shadowColor: "#000", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.08, shadowRadius: 15 },
+  sheet: { shadowColor: "#000", shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.12, shadowRadius: 20 },
+  cutout: { shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.13, shadowRadius: 5 },
+} as const;
 
 // Apple's minimum touch target. Small controls keep their look and get invisible slop.
 export const MIN_TOUCH = 44;

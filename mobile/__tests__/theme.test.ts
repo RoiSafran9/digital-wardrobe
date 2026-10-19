@@ -34,10 +34,12 @@ function contrast(a: string, b: string): number {
 }
 
 const PAIRS = [
-  ["label", "background"], ["label", "card"], ["label", "tile"],
-  ["secondaryLabel", "background"], ["secondaryLabel", "card"], ["secondaryLabel", "tile"],
-  ["tint", "background"], ["tint", "card"],
-  ["destructive", "card"], ["destructive", "destructiveBg"],
+  ["label", "background"], ["label", "card"], ["label", "tile"], ["label", "grouped"],
+  ["secondaryLabel", "background"], ["secondaryLabel", "card"], ["secondaryLabel", "tile"], ["secondaryLabel", "grouped"],
+  ["tint", "background"], ["tint", "card"], ["tint", "grouped"], ["tint", "tile"],
+  ["destructive", "card"], ["destructive", "grouped"], ["destructive", "destructiveBg"],
+  ["successText", "card"], ["successText", "grouped"],
+  ["warningText", "card"], ["warningText", "grouped"],
   ["onTint", "tint"],
 ] as const;
 
@@ -62,9 +64,44 @@ test("hitSlopFor grows small controls to Apple's 44pt minimum without resizing t
   expect(hitSlopFor(50)).toEqual({ top: 0, bottom: 0, left: 0, right: 0 });
 });
 
-test("type scale follows iOS text styles", () => {
+test("type scale follows the handoff on the system font", () => {
   const { type } = require("../src/theme");
-  expect(type.largeTitle).toEqual({ fontSize: 34, fontWeight: "700", letterSpacing: 0.37 });
+  expect(type.largeTitle).toEqual({ fontSize: 34, fontWeight: "700", letterSpacing: -0.68 });
+  expect(type.screenTitle).toEqual({ fontSize: 32, fontWeight: "700", letterSpacing: -0.64 });
+  expect(type.section).toEqual({ fontSize: 22, fontWeight: "700" });
+  expect(type.eyebrow).toEqual({ fontSize: 13, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.65 });
+  expect(type.stat).toEqual({ fontSize: 26, fontWeight: "600", fontVariant: ["tabular-nums"] });
   expect(type.body).toEqual({ fontSize: 17 });
   expect(type.footnote).toEqual({ fontSize: 13 });
+});
+
+test("editorial display type uses Instrument Serif at the handoff sizes", () => {
+  const { type, DISPLAY_FONT } = require("../src/theme");
+  expect(DISPLAY_FONT).toBe("InstrumentSerif_400Regular");
+  expect(type.display(46)).toEqual({ fontFamily: "InstrumentSerif_400Regular", fontSize: 46, lineHeight: 46 });
+  expect(type.display(40).fontSize).toBe(40);
+});
+
+test("radii and shadows follow the handoff", () => {
+  const { radius, shadow } = require("../src/theme");
+  expect(radius).toMatchObject({ segment: 8, input: 12, button: 14, primary: 16, list: 18, tile: 22, feature: 26, stage: 28, sheet: 34, pill: 999 });
+  expect(shadow.tile).toMatchObject({ shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.08, shadowRadius: 15 });
+  expect(shadow.sheet).toMatchObject({ shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.12, shadowRadius: 20 });
+  expect(shadow.cutout).toMatchObject({ shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.13, shadowRadius: 5 });
+});
+
+test("tertiaryLabel is never used as a text color (it fails 4.5:1)", () => {
+  const fs = require("fs");
+  const path = require("path");
+  const hits: string[] = [];
+  const walk = (dir: string) => {
+    for (const name of fs.readdirSync(dir)) {
+      const file = path.join(dir, name);
+      if (fs.statSync(file).isDirectory()) walk(file);
+      else if (/\.tsx$/.test(name) && /<Text[^>]*color: colors\.tertiaryLabel/s.test(fs.readFileSync(file, "utf8").replace(/<\/Text>/g, "\n"))) hits.push(file);
+    }
+  };
+  walk(path.join(__dirname, "../app"));
+  walk(path.join(__dirname, "../src"));
+  expect(hits).toEqual([]);
 });

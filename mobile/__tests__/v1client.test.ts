@@ -1,4 +1,4 @@
-import { API_BASE_URL, DELETE_NEEDS_ACCOUNT, OUTFIT_NEEDS_ACCOUNT, addBack, configureApi, deleteAccount, deleteItem, generateOutfit, getCredits, getItems, getOutfitScan, getPendingItems, getPrices, getTurn, imageUrl, keepItem, postRun, scanOutfit, startTurn, updateItem } from "../src/api/client";
+import { API_BASE_URL, DELETE_NEEDS_ACCOUNT, getProfile, setDisplayName, OUTFIT_NEEDS_ACCOUNT, addBack, configureApi, deleteAccount, deleteItem, generateOutfit, getCredits, getItems, getOutfitScan, getPendingItems, getPrices, getTurn, imageUrl, keepItem, postRun, scanOutfit, startTurn, updateItem } from "../src/api/client";
 import { NO_CREDITS, SCAN_EXPIRED } from "../src/api/v1";
 import { addedLabel } from "../src/theme";
 
@@ -286,4 +286,14 @@ test("deleting the account sends the confirmation to /v1/account; local mode has
   await deleteAccount();
   expect(JSON.parse(calls[0].init.body as string)).toEqual({ confirm: "DELETE" });
   expect(auth(0)).toBe("Bearer tok-a");
+});
+
+test("the profile and its name come from /v1/profile; local mode has none", async () => {
+  expect(await getProfile()).toBeNull();
+  signIn();
+  on("GET", "/v1/profile", reply({ email: "a@x.com", display_name: null }));
+  on("PATCH", "/v1/profile", reply({ email: "a@x.com", display_name: "Maya" }));
+  expect((await getProfile())?.display_name).toBeNull();
+  expect((await setDisplayName("Maya")).display_name).toBe("Maya");
+  expect(JSON.parse(calls[1].init.body as string)).toEqual({ display_name: "Maya" });
 });

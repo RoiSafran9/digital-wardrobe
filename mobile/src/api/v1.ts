@@ -155,6 +155,18 @@ export async function postRun(account: Account, current: () => Account | null, p
   };
 }
 
+export type Profile = { email: string | null; display_name: string | null };
+
+export async function getProfile(account: Account): Promise<Profile> {
+  return call<Profile>(account, "/v1/profile");
+}
+
+export async function setDisplayName(account: Account, name: string): Promise<Profile> {
+  return call<Profile>(account, "/v1/profile", {
+    method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ display_name: name }),
+  });
+}
+
 // Deletes the signed-in account and everything in it (the server takes the user from the token).
 export async function deleteAccount(account: Account): Promise<void> {
   await call<void>(account, "/v1/account", {

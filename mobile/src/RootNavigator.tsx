@@ -25,6 +25,7 @@ export function RootNavigator() {
         <Stack.Screen name="outfit/detect" />
         <Stack.Screen name="outfit/pick" />
         <Stack.Screen name="outfit/review" />
+        <Stack.Screen name="your-name" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
         <Stack.Screen name="welcome-credits" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
       </Stack.Protected>
       {/* Signed out: Welcome comes first; it forwards to Sign In once onboarding was seen. */}

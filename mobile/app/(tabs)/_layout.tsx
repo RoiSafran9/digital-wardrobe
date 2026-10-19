@@ -5,7 +5,8 @@ import { StyleSheet, View, type ColorValue } from "react-native";
 import { Icon, type IconName } from "../../src/components/Icon";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { useCredits } from "../../src/credits/CreditsProvider";
-import { useStarterCredits } from "../../src/onboarding";
+import { useNameStep, useStarterCredits } from "../../src/onboarding";
+import { useProfile } from "../../src/profile";
 import { colors, TAB_BAR_HEIGHT, type } from "../../src/theme";
 
 function tabIcon(name: IconName) {
@@ -26,10 +27,13 @@ function TabBarBackground() {
 
 export default function TabsLayout() {
   const router = useRouter();
-  const { userId } = useAuth();
+  const { userId, status } = useAuth();
   const { billing, credits } = useCredits();
+  const { profile, loaded } = useProfile();
+  const askName = useCallback(() => router.push("/your-name"), [router]);
+  const named = useNameStep(status === "signedIn", loaded, profile?.display_name, askName);
   const showStarter = useCallback(() => router.push("/welcome-credits"), [router]);
-  useStarterCredits(userId, billing, credits, showStarter);
+  useStarterCredits(userId, billing, credits, showStarter, named);
   return (
     <Tabs
       screenOptions={{

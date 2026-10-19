@@ -7,6 +7,7 @@ import { AppShell } from "../src/RootNavigator";
 import { colors } from "../src/theme";
 import { ToastProvider } from "../src/ui";
 import { AppearanceProvider } from "../src/appearance";
+import { ProfileProvider } from "../src/profile";
 
 export default function RootLayout() {
   // Instrument Serif, for the editorial headlines only. If it fails to load, iOS falls back to the
@@ -17,10 +18,12 @@ export default function RootLayout() {
     <AppearanceProvider>
       <AuthProvider>
         <CreditsProvider>
-          <ToastProvider>
-            <StatusBar style="auto" />
-            <AppShell />
-          </ToastProvider>
+          <ProfileProvider>
+            <ToastProvider>
+              <StatusBar style="auto" />
+              <AppShell />
+            </ToastProvider>
+          </ProfileProvider>
         </CreditsProvider>
       </AuthProvider>
     </AppearanceProvider>

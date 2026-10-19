@@ -123,6 +123,16 @@ export async function getPrices(): Promise<Prices | null> {
   return account ? v1.getPrices(account) : null;
 }
 
+// The profile (and its name) exists only in account mode.
+export async function getProfile(): Promise<v1.Profile | null> {
+  return account ? v1.getProfile(account) : null;
+}
+
+export async function setDisplayName(name: string): Promise<v1.Profile> {
+  if (!account) throw new Error("Names need a signed-in account.");
+  return v1.setDisplayName(account, name);
+}
+
 export const DELETE_NEEDS_ACCOUNT = "There's no account to delete in local mode.";
 
 export async function deleteAccount(): Promise<void> {

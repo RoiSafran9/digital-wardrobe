@@ -12,11 +12,12 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 - **Intro** (`app/intro.tsx`): three paged cards — "Snap any garment", "Or import an outfit", "Browse what you own" — with dots, Next/Continue and Skip. Leaving it remembers onboarding (`onboarding.seen`).
 - **Sign in with email** (`app/sign-in.tsx`): "We'll send you a six-digit code. No password needed."; Continue disabled until the address is valid; terms note; clear messages for rate limits and connection errors.
 - **Check your inbox** (`app/sign-in-code.tsx`): six boxes over one one-time-code field (Mail autofill, paste); verifies 600 ms after the sixth digit; a wrong or expired code shows the message and clears the boxes; "Resend code in Ns" (60 s); "Use a different email".
+- **What should we call you?** (`app/your-name.tsx`): part of signing up. Shown once after the code when the account has no name yet (also for existing accounts, once); 1–40 characters; saved to the profile. The greeting and Account use it.
 - **A welcome gift** (`app/welcome-credits.tsx`): once per account, right after a sign-in, only when billing is on and the server has granted credits. Shows the server's available balance ("about N garments" at the front price) and server price chips; **Digitize Your First Piece** → Add, **Explore first** → Home. Never a fixed amount.
 
 ## 1. Home (`mobile/app/(tabs)/index.tsx`)
 Rule (handoff [CHANGE_home_photo_type.md](design/design_handoff_digital_wardrobe/CHANGE_home_photo_type.md)): every photo entry point says which photo it wants — garment photo (laid flat or on a hanger → garment flow) or outfit photo (someone wearing it → outfit flow).
-- Date eyebrow, "Good morning / afternoon / evening" in Instrument Serif (no name is stored), balance pill (billing on) → Account; a banner while a garment photo is being processed.
+- Date eyebrow, "Good morning,\n{Name}" (afternoon / evening) in Instrument Serif with the name chosen at sign-up, balance pill (billing on) → Account; a banner while a garment photo is being processed.
 - Search field "Search N pieces" → Closet with the search field focused.
 - **ADD TO CLOSET:** two tiles. **Garments** (`FLAT LAY`, "Each piece becomes an item"): Camera → camera in garment mode; Library → photo picker → Preview. **Outfit photo** (`WORN`, "We find each piece you wear"; only when the server offers outfits): Choose Photo → photo picker → Detecting. The flow travels in the route params (`flow: garment | outfit`).
 - **YOUR CLOSET:** one row per category group with pieces (thumbnail of its first piece, name, count, chevron) → Closet filtered to the group.
@@ -40,7 +41,7 @@ Rule (handoff [CHANGE_home_photo_type.md](design/design_handoff_digital_wardrobe
 
 ## 4. Account (`mobile/app/(tabs)/account.tsx`)
 - Grouped list on the warm-grey background.
-- Profile card: initials from the email in an accent-wash circle, and the email (no name is stored).
+- Profile card: initials (from the name, else the email) in an accent-wash circle, the name and email, and **Edit** to change the name.
 - **AI Credits** card (account mode): the available balance (54pt), "of N granted" from the server, an 8pt bar of available/granted that turns amber at ≤ 3 credits, "N used so far · enough for about N more garments" (or "Running low. Ask the app owner for more credits."), "N held for work in progress". Billing off: "Billing is off — AI actions don't use credits yet." **How it works** opens a sheet with three points (detection free · pay per image created · cost always shown first).
 - **Price list** (billing on): Garment detection Free (when outfits are offered), Front image, Back image, 360° view — all from the server.
 - **Recent activity:** grants (+N, green) and charges (−N) with dates, newest first, "Show more".

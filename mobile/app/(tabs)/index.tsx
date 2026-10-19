@@ -12,6 +12,7 @@ import { CategoryRows, type CategoryRow } from "../../src/components/home/Catego
 import { Greeting } from "../../src/components/home/Greeting";
 import { HomeEmpty } from "../../src/components/home/HomeEmpty";
 import { useCredits } from "../../src/credits/CreditsProvider";
+import { useProfile } from "../../src/profile";
 import { pickPhoto } from "../../src/photoPicker";
 import { colors, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
 import { Button } from "../../src/ui";
@@ -29,6 +30,7 @@ export function categoryRows(items: ClosetItem[]): CategoryRow[] {
 export default function HomeScreen() {
   const router = useRouter();
   const { outfit: outfitOn } = useCredits();
+  const { profile } = useProfile();
   const [items, setItems] = useState<ClosetItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -71,7 +73,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 28 }}>
-        <Greeting now={new Date()} onCredits={() => router.push("/account")} />
+        <Greeting now={new Date()} name={profile?.display_name} onCredits={() => router.push("/account")} />
         <CaptureBanner />
 
         {loadError ? (

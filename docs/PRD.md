@@ -12,7 +12,7 @@ Today: the owner, on their own iPhone over home Wi-Fi. Intended: other people wi
 ## Requirements as built
 
 ### Accounts and privacy
-1. Sign in with email and a 6-digit code (Supabase Auth); unknown emails create an account. Resend after 60 s, change email, clear errors for wrong or expired codes.
+1. Sign in with email and a 6-digit code (Supabase Auth); unknown emails create an account. Signing up asks for a name (1–40 characters) that the app greets the user with; it can be changed in Account. Resend after 60 s, change email, clear errors for wrong or expired codes.
 2. The session survives app restarts (encrypted on the device) until Sign Out (Account tab, confirmed). **Delete Account** (Account, confirmed) removes the user, every row and every file for good.
 3. Every wardrobe is private to its account: items, photos and jobs are isolated by row level security and the backend; another account's IDs answer "not found". Images are read through short-lived signed links, never public URLs.
 4. Items follow the account across devices, and AI work keeps running on the server if the phone disconnects (jobs are polled; retries never create duplicates or a second paid call).

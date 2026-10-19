@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { useFocusEffect } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { deleteAccount, getCredits } from "../../src/api/client";
@@ -9,6 +9,7 @@ import { useAppearance, type AppearanceMode } from "../../src/appearance";
 import { APP_NAME } from "../../src/appName";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { useCredits } from "../../src/credits/CreditsProvider";
+import { NAME_MAX, useProfile, validName } from "../../src/profile";
 import { BILLING_OFF, creditsLabel, entryLabel, entrySign, visibleEntries } from "../../src/credits/credits";
 import { colors, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
 import { Button, GroupedList, ProgressBar, Row, Segmented, Sheet } from "../../src/ui";
@@ -23,8 +24,9 @@ const HOW_IT_WORKS = [
 
 const dateLabel = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
-export function initials(email: string | null): string {
-  const name = (email ?? "").split("@")[0].replace(/[^a-zA-Z]+/g, " ").trim();
+// From the chosen name when there is one, else from the email's name part.
+export function initials(email: string | null, displayName?: string | null): string {
+  const name = (displayName || (email ?? "").split("@")[0]).replace(/[^\p{L}]+/gu, " ").trim();
   const parts = name.split(" ").filter(Boolean);
   return ((parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
@@ -36,6 +38,19 @@ export default function AccountScreen() {
   const [how, setHow] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const { profile, saveName } = useProfile();
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  async function saveNameDraft() {
+    setNameError(null);
+    try {
+      await saveName(nameDraft);
+      setEditingName(false);
+    } catch (e) {
+      setNameError(e instanceof Error ? e.message : "Couldn't save your name. Try again.");
+    }
+  }
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -110,9 +125,14 @@ export default function AccountScreen() {
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: colors.card, borderRadius: radius.list, padding: 16 }}>
           <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.tintSoft, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ ...type.headline, color: colors.tint }}>{initials(email)}</Text>
+            <Text style={{ ...type.headline, color: colors.tint }}>{initials(email, profile?.display_name)}</Text>
           </View>
-          <Text numberOfLines={1} style={{ ...type.body, color: colors.label, flex: 1 }}>{email}</Text>
+          <View style={{ flex: 1 }}>
+            {profile?.display_name ? <Text numberOfLines={1} style={{ ...type.headline, color: colors.label }}>{profile.display_name}</Text> : null}
+            <Text numberOfLines={1} style={{ ...(profile?.display_name ? type.subhead : type.body), color: profile?.display_name ? colors.secondaryLabel : colors.label }}>{email}</Text>
+          </View>
+          <Text onPress={() => { setNameDraft(profile?.display_name ?? ""); setNameError(null); setEditingName(true); }}
+            accessibilityRole="button" accessibilityLabel="Edit name" style={{ ...type.body, color: colors.tint }}>Edit</Text>
         </View>
 
         {credits ? (
@@ -192,6 +212,18 @@ export default function AccountScreen() {
           ))}
         </View>
         <Button title="Got It" onPress={() => setHow(false)} />
+      </Sheet>
+      <Sheet visible={editingName} onClose={() => setEditingName(false)} title="Your name" floating>
+        <TextInput
+          accessibilityLabel="Your name" value={nameDraft} onChangeText={setNameDraft} autoFocus autoCapitalize="words"
+          maxLength={NAME_MAX} placeholder="Your name" placeholderTextColor={colors.tertiaryLabel}
+          style={{ ...type.body, color: colors.label, backgroundColor: colors.grouped, height: 52, borderRadius: radius.button, paddingHorizontal: 16, marginBottom: 16 }}
+        />
+        {nameError ? <Text style={{ ...type.footnote, color: colors.destructive, marginBottom: 12 }}>{nameError}</Text> : null}
+        <View style={{ gap: 6 }}>
+          <Button title="Save" onPress={saveNameDraft} disabled={!validName(nameDraft)} />
+          <Button title="Cancel" variant="text" onPress={() => setEditingName(false)} />
+        </View>
       </Sheet>
       <Sheet visible={confirmDelete} onClose={() => !deleting && setConfirmDelete(false)} title="Delete your account?" floating>
         <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginBottom: 20 }}>

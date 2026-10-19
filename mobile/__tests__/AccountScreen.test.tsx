@@ -152,3 +152,9 @@ test("local mode offers no Delete Account", () => {
   renderAccount({ status: "local", email: null, userId: null });
   expect(screen.queryByRole("button", { name: "Delete Account" })).toBeNull();
 });
+
+test("initials prefer the chosen name", () => {
+  const { initials } = require("../app/(tabs)/account");
+  expect(initials("x@y.com", "Maya Chen")).toBe("MC");
+  expect(initials("x@y.com", "רועי")).toBe("ר");
+});

@@ -53,12 +53,12 @@ export function starterEligible(billing: boolean, credits: Credits | null): bool
 
 // Once credits have loaded after a fresh sign-in, decide once whether to show the starter screen.
 export function useStarterCredits(
-  userId: string | null, billing: boolean, credits: Credits | null, show: () => void,
+  userId: string | null, billing: boolean, credits: Credits | null, show: () => void, ready = true,
 ) {
   const { justSignedIn, clearSignedIn } = useOnboarding();
   const deciding = useRef(false);
   useEffect(() => {
-    if (!justSignedIn || !userId || !credits || deciding.current) return;
+    if (!ready || !justSignedIn || !userId || !credits || deciding.current) return;
     deciding.current = true;
     clearSignedIn();
     (async () => {
@@ -68,11 +68,23 @@ export function useStarterCredits(
       await AsyncStorage.setItem(starterKey(userId), "1").catch(() => {});
       show();
     })().finally(() => { deciding.current = false; });
-  }, [justSignedIn, userId, billing, credits, clearSignedIn, show]);
+  }, [ready, justSignedIn, userId, billing, credits, clearSignedIn, show]);
 }
 
 // The price chips on the starter screen: only actions the server prices, in a fixed order.
 export function priceChips(prices: Partial<Record<CreditAction, number>>): string[] {
   const names: [CreditAction, string][] = [["garment", "Front"], ["back", "Back"], ["turn", "360°"]];
   return names.filter(([a]) => prices[a] !== undefined).map(([a, label]) => `${label} · ${prices[a]}`);
+}
+
+// Signing up includes a name: when a signed-in account has none yet, ask once (before Home's starter
+// screen). Local mode has no profile and never asks.
+export function useNameStep(signedIn: boolean, loaded: boolean, name: string | null | undefined, ask: () => void) {
+  const asked = useRef(false);
+  useEffect(() => {
+    if (!signedIn || !loaded || name || asked.current) return;
+    asked.current = true;
+    ask();
+  }, [signedIn, loaded, name, ask]);
+  return !signedIn || (loaded && !!name);
 }

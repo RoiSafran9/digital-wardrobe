@@ -11,7 +11,7 @@ Scope: AI-generation costs only. Server hosting, storage volume, subscriptions a
 4. The Account/profile screen shows **credits remaining** with a readable progress/usage meter. Users can continue browsing already saved items even at zero credits.
 5. Pricing uses product-defined **credits**, not the underlying provider's token count or dollars. Internal model calls, quality checks and automatic retries are NOT separate user-facing charges. One requested 360 creation produces four model-generated views but is priced as **one 360 action**.
 6. **Several garments in one photo (owner decision, 2026-10-18 — option b):** before the photo, the user approves how many front images they are willing to pay for (default 1). The server holds price × that number, creates at most that many fronts (largest pieces first; extra pieces are reported, not made) and charges only for the fronts actually created; the rest of the hold goes back. A photo that produces nothing costs nothing.
-7. F&F participants can be granted promotional credits; real-launch users may be offered paid credit packs. Packages and specific quantities have not been finalized.
+7. **Friends & Family beta policy (confirmed):** each eligible **new** beta account receives a **one-time starter grant of a few dozen free Credits automatically** after verified login. No money, purchase flow, subscriptions or paid packs in this beta. The exact number is open (**40 proposed**) and server-controlled. Owners can later award audited manual top-ups, using the existing CLI. Public-launch commerce is a separate, deferred product decision.
 
 ## Action types to price
 - Create Front Image: produce an AI-generated front catalog image from an input photo, with vision classification. **Current code uses the internal operation key `garment`; the user-facing action should be named for the generated front image rather than the wardrobe entity.**
@@ -33,6 +33,19 @@ A 360 action creates four internal views but is one user-facing charge. Adding a
 
 These are **F&F implementation-planning values only**, not paid pack prices, public-launch pricing or authorization to turn live billing on. The actual F&F grant amount, charging semantics, regenerated previews and bulk-photo quote remain open. The client price list and the server-side charge must always agree; never hardcode rates in mobile UI.
 
+## Automatic beta welcome pack — planned, NOT IMPLEMENTED
+
+The existing new-user trigger creates a zero-balance wallet; `credit_grant` and `scripts/grant_credits.py` handle manual grants, but **no automatic initial grant exists yet**.
+
+- Planned pilot baseline: **40 free credits**, configurable and owner-approved before activation; not yet an approved fixed amount.
+- After successful **verified** email login, an authorized server-side bootstrap grants the fixed pack **once** per *eligible* new beta account using a deterministic one-time operation key and the existing atomic ledger.
+- Never grant again on reinstall, second device, token refresh or sign-in; existing users require a deliberate grant/backfill policy.
+- Start with an invited/allowlisted F&F beta cohort to prevent unbounded free signup/AI spend; clearly mark any future open registration as a separate decision.
+- No balance expiration, recurring free top-up or in-app purchase in the F&F beta. No card or App Store payment.
+- Stage 1 Outfit candidate detection, if enabled, consumes **zero user credits** but requires rate limiting due to real AI cost.
+- All newly granted users remain subject to server-side AI job/credit restrictions and owner-defined global cost caps.
+- Implementation / launch gates: [F&F TestFlight master plan](tasks/testflight-beta-launch-master-plan.md).
+
 ## UX
 - Account: balance, explanatory usage meter, links to AI Price List and eventual credit activity/purchase options.
 - Price List: clear English action names and credit values from a server-controlled price table.
@@ -53,7 +66,7 @@ These are **F&F implementation-planning values only**, not paid pack prices, pub
 1. **Provisional F&F ratio is 1 front / 1 back / 3 for 360**, but final deployment/public prices still require verification. ~~Multi-front rule~~ decided (Confirmed §6). Never frame the price as ownership of a wardrobe item.
 2. Charge when successful generation completes versus at Save; handling created-but-unsaved previews.
 3. Number of free user-triggered regenerations, failure/refund thresholds.
-4. Initial F&F grant size, who can approve top-ups, limits and duration.
+4. **Automatic one-time F&F starter grant is decided**; choose exact size (40 proposed), invite eligibility, limits, operator top-up rules and duration before enabling.
 5. Real-launch free trial/packs/prices, expiration policies if any, and iOS in-app purchase flow.
 6. Account balance meter definition and low-balance experience.
 

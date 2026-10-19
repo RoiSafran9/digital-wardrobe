@@ -14,6 +14,7 @@ An iPhone closet. Photograph clothes laid on a bed or floor; the app turns each 
 ## Project source of truth
 - [Product](PRODUCT.md) — users, purpose, principles · [Design system](DESIGN.md) — native iOS look and motion
 - [Requirements](docs/PRD.md) · [Architecture](docs/ARCHITECTURE.md) · [Screens](docs/SCREENS.md) · [Roadmap](docs/ROADMAP.md)
+- [TestFlight F&F Beta launch master plan](docs/tasks/testflight-beta-launch-master-plan.md) · [Claude Code staged execution kickoff](docs/tasks/testflight-beta-launch-execution.md)
 - Feature specs and plans: `docs/superpowers/specs/`, `docs/superpowers/plans/`
 - Agent rules: [AGENTS.md](AGENTS.md), [CLAUDE.md](CLAUDE.md)
 
@@ -87,4 +88,4 @@ It is a dry run until you add `--apply`; the same `--key` never grants twice. Th
 
 ## Next
 
-AI Credits: prices, wallet and purchases on top of the hooks described in the [credits integration notes](docs/superpowers/specs/2026-10-18-credits-readiness.md); then a cloud host for the backend and TestFlight.
+**Primary next goal:** [Friends & Family TestFlight Beta](docs/tasks/testflight-beta-launch-master-plan.md). Finish the Outfit quality decision, hosted Auth/SMTP and cloud worker, automatic **one-time free AI Credits grant per eligible new user**, production iOS build, privacy/deletion and external TestFlight testing. **No payments or in-app purchases in beta.**

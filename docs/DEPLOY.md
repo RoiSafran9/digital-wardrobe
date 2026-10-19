@@ -82,7 +82,7 @@ Permission texts (camera, photos, notifications) and the export-compliance flag 
 2. Run the first `eas build` interactively: it signs in to the Apple account (password + two-factor code typed by the
    owner), creates the certificates and the App Store Connect app for `com.roisafran.kips`.
 3. In App Store Connect → TestFlight: beta description, feedback email, a public privacy-policy URL, an external
-   tester group; the first external build goes through Beta App Review.
+   tester group; the first external build goes through Beta App Review. Texts to paste: [APP_STORE_CONNECT.md](APP_STORE_CONNECT.md).
 4. **Demo account for Beta App Review** (the reviewer can't read a sign-in email). From the repo root on the Mac:
    ```bash
    python -m scripts.demo_account create --apply

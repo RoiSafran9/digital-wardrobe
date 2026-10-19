@@ -6,6 +6,7 @@ import Constants from "expo-constants";
 import { deleteAccount, getCredits } from "../../src/api/client";
 import type { CreditAction, CreditEntry } from "../../src/api/types";
 import { useAppearance, type AppearanceMode } from "../../src/appearance";
+import { APP_NAME } from "../../src/appName";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { BILLING_OFF, creditsLabel, entryLabel, entrySign, visibleEntries } from "../../src/credits/credits";
@@ -94,7 +95,7 @@ export default function AccountScreen() {
             <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Not signed in. Your items live on your computer's wardrobe server.</Text>
           </View>
           {appearance}
-          {version ? <Text style={styles.footer}>{`Digital Wardrobe ${version}`}</Text> : null}
+          {version ? <Text style={styles.footer}>{`${APP_NAME} ${version}`}</Text> : null}
         </ScrollView>
       </SafeAreaView>
     );
@@ -173,7 +174,7 @@ export default function AccountScreen() {
           <Row label="Sign Out" tint onPress={() => setConfirmSignOut(true)} />
           <Row label="Delete Account" destructive onPress={() => { setDeleteError(null); setConfirmDelete(true); }} />
         </GroupedList>
-        {version ? <Text style={styles.footer}>{`Digital Wardrobe ${version}`}</Text> : null}
+        {version ? <Text style={styles.footer}>{`${APP_NAME} ${version}`}</Text> : null}
       </ScrollView>
 
       <Sheet visible={how} onClose={() => setHow(false)} title="How AI Credits work" floating>

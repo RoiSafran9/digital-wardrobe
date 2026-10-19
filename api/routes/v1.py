@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from api.auth import User, current_user
 from api.credits import MAX_FRONTS, InsufficientCredits, action_for, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
-from api.schemas import (AccountDeleteIn, ProfileIn, ProfileOut, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
+from api.schemas import (AccountDeleteIn, ProfileIn, ProfileOut, PushTokenIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
                          TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse)
 from api.store import INTERRUPTED, get_store
 from pipeline.types import ItemFacts
@@ -367,3 +367,24 @@ def edit_profile(body: ProfileIn, user: User = Depends(current_user), store=Depe
         raise HTTPException(400, f"display_name must be 1 to {NAME_MAX} characters")
     store.set_display_name(user.id, name)
     return ProfileOut(email=user.email, display_name=name)
+
+
+def _push_token(body: PushTokenIn | None) -> str:
+    from api.push import valid_token
+    token = (body.token if body else None) or ""
+    if not valid_token(token):
+        raise HTTPException(400, "token must be an Expo push token")
+    return token
+
+
+@router.post("/push-token", status_code=204)
+def add_push_token(body: PushTokenIn | None = None, user: User = Depends(current_user), store=Depends(get_store)):
+    """'Notify when ready' on: this phone gets a push when the user's AI work finishes."""
+    store.add_push_token(user.id, _push_token(body))
+    return Response(status_code=204)
+
+
+@router.delete("/push-token", status_code=204)
+def remove_push_token(body: PushTokenIn | None = None, user: User = Depends(current_user), store=Depends(get_store)):
+    store.remove_push_token(user.id, _push_token(body))
+    return Response(status_code=204)

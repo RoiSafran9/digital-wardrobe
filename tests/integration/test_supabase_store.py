@@ -104,3 +104,14 @@ def test_display_name_round_trip(settings, users):
     store.set_display_name(users[0]["id"], "Maya")
     assert store.display_name(users[0]["id"]) == "Maya"
     assert store.display_name(users[1]["id"]) is None
+
+
+def test_push_tokens_round_trip(settings, users):
+    from api.store import SupabaseStore
+    store = SupabaseStore(settings)
+    store.add_push_token(users[0]["id"], "ExponentPushToken[it]")
+    store.add_push_token(users[0]["id"], "ExponentPushToken[it]")  # twice is fine
+    assert store.push_tokens(users[0]["id"]) == ["ExponentPushToken[it]"]
+    assert store.push_tokens(users[1]["id"]) == []
+    store.remove_push_token(users[0]["id"], "ExponentPushToken[it]")
+    assert store.push_tokens(users[0]["id"]) == []

@@ -96,6 +96,10 @@ class ProfileIn(BaseModel):
     display_name: str | None = None
 
 
+class PushTokenIn(BaseModel):
+    token: str | None = None
+
+
 class AccountDeleteIn(BaseModel):
     confirm: str | None = None
 

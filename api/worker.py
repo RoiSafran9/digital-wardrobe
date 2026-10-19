@@ -17,6 +17,7 @@ from api.item_loader import load_item
 from pipeline.back import BackPhotoRejected, run_back
 from pipeline import outfit
 from pipeline.orchestrator import Providers, run_photo
+from api import push
 from pipeline.run_log import RunLogger
 from pipeline.turn import TURN_ORDER, TurnFailed, refs_for_item, run_turn
 from pipeline.types import ItemFacts
@@ -302,6 +303,7 @@ HANDLERS = {"garment": _garment, "back": _back, "turn": _turn, "outfit_scan": _o
 def _fail(store, gate, job, uploads, message):
     store.remove(uploads.paths + ([job["input_path"]] if job.get("input_path") else []))
     store.finish_job(job["id"], "failed", error=message)
+    push.notify_job(store, job, "failed", error=message)
     try:
         if job["kind"] not in FREE_KINDS:  # a free job (outfit scan) holds nothing to give back
             gate.refund(job["id"])  # AI Credits: a job that failed for good costs nothing
@@ -322,6 +324,7 @@ async def run_once(store, provider_factory, lease_seconds: int = 600, gate: Cred
         with tempfile.TemporaryDirectory() as tmp:
             result = await HANDLERS[job["kind"]](store, job, provider_factory, tmp, uploads)
         store.finish_job(job["id"], "succeeded", result)
+        push.notify_job(store, job, "succeeded", result)
     except JobRejected as e:
         _fail(store, gate, job, uploads, str(e))
     except Exception:

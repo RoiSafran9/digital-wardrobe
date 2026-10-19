@@ -35,6 +35,7 @@ class MemoryStore:
         self.wallets: dict[str, dict] = {}
         self.ledger: list[dict] = []
         self.names: dict[str, str] = {}  # user id -> display name
+        self.tokens: dict[str, list[str]] = {}  # user id -> Expo push tokens
 
     # Profiles
     def profile_status(self, user_id: str) -> str:
@@ -45,6 +46,17 @@ class MemoryStore:
 
     def display_name(self, user_id):
         return self.names.get(user_id)
+
+    def add_push_token(self, user_id, token):
+        mine = self.tokens.setdefault(user_id, [])
+        if token not in mine:
+            mine.append(token)
+
+    def remove_push_token(self, user_id, token):
+        self.tokens[user_id] = [t for t in self.tokens.get(user_id, []) if t != token]
+
+    def push_tokens(self, user_id):
+        return list(self.tokens.get(user_id, []))
 
     def set_display_name(self, user_id, name):
         self.names[user_id] = name
@@ -236,6 +248,7 @@ class MemoryStore:
         self.ledger = [e for e in self.ledger if e["user_id"] != user_id]
         self.emails = {e: u for e, u in self.emails.items() if u != user_id}
         self.names.pop(user_id, None)
+        self.tokens.pop(user_id, None)
         self.remove(self.list_paths(user_id))
 
     # Items
@@ -362,6 +375,17 @@ class SupabaseStore:
 
     def set_display_name(self, user_id, name):
         self._patch("profiles", {"id": f"eq.{user_id}"}, {"display_name": name})
+
+    def add_push_token(self, user_id, token):
+        r = self.http.post("/rest/v1/push_tokens", json={"user_id": user_id, "token": token},
+                           headers={"Prefer": "resolution=ignore-duplicates,return=minimal"})
+        self._ok(r)
+
+    def remove_push_token(self, user_id, token):
+        self._ok(self.http.delete("/rest/v1/push_tokens", params={"user_id": f"eq.{user_id}", "token": f"eq.{token}"}))
+
+    def push_tokens(self, user_id):
+        return [r["token"] for r in self._rows("push_tokens", {"user_id": f"eq.{user_id}"})]
 
     # AI Credits: reads filter by the user; every change goes through a credit_* database function
     def credits(self, user_id):

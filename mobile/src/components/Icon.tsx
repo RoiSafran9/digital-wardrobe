@@ -30,6 +30,12 @@ const ICONS = {
   chevronLeft: { sf: "chevron.left", ion: "chevron-back" },
   person: { sf: "person.fill", ion: "person" },
   gear: { sf: "gearshape", ion: "settings-outline" },
+  jacket: { sf: "jacket", ion: "shirt-outline" },
+  hanger: { sf: "hanger", ion: "shirt-outline" },
+  handbag: { sf: "handbag", ion: "bag-handle-outline" },
+  shoe: { sf: "shoe", ion: "footsteps-outline" },
+  person2: { sf: "figure.stand", ion: "body-outline" },
+  arrowRight: { sf: "arrow.right", ion: "arrow-forward" },
 } as const satisfies Record<string, { sf: SFSymbol; ion: keyof typeof Ionicons.glyphMap }>;
 
 export type IconName = keyof typeof ICONS;

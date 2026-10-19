@@ -5,6 +5,9 @@ import { renderRouter } from "expo-router/testing-library";
 import { AppShell } from "../src/RootNavigator";
 import { AuthContext, type AuthContextValue, type AuthStatus } from "../src/auth/AuthProvider";
 import { useLastRun } from "../src/store/lastRun";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import WelcomeScreen from "../app/welcome";
+import { SEEN_KEY } from "../src/onboarding";
 
 const auth = (status: AuthStatus, userId: string | null = null): AuthContextValue => ({
   status, email: userId ? `${userId}@x.com` : null, userId,
@@ -36,10 +39,42 @@ function routes(initial: AuthContextValue) {
     "(tabs)/_layout": () => { const { Slot } = require("expo-router"); return <Slot />; },
     "(tabs)/index": TabsStub,
     "sign-in": () => <Text>sign-in screen</Text>,
+    welcome: WelcomeScreen,
+    intro: () => <Text>intro screen</Text>,
+    "sign-in-code": () => <Text>code screen</Text>,
+    "welcome-credits": () => <Text>starter screen</Text>,
   };
 }
 
-test("signed out → only Sign In", async () => {
+beforeEach(async () => {
+  await AsyncStorage.clear();
+  await AsyncStorage.setItem(SEEN_KEY, "1");  // most tests are past onboarding
+});
+
+test("signed out on first launch → Welcome, then Get Started opens the intro", async () => {
+  await AsyncStorage.clear();
+  renderRouter(routes(auth("signedOut")), { initialUrl: "/" });
+  expect(await screen.findByText(/beautifully digital\./)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "Get Started" }));
+  expect(await screen.findByText("intro screen")).toBeTruthy();
+});
+
+test("Welcome's I already have an account goes to Sign In and remembers onboarding", async () => {
+  await AsyncStorage.clear();
+  renderRouter(routes(auth("signedOut")), { initialUrl: "/" });
+  fireEvent.press(await screen.findByRole("button", { name: "I already have an account" }));
+  expect(await screen.findByText("sign-in screen")).toBeTruthy();
+  expect(await AsyncStorage.getItem(SEEN_KEY)).toBe("1");
+});
+
+test("local mode never shows onboarding", async () => {
+  await AsyncStorage.clear();
+  renderRouter(routes(auth("local")), { initialUrl: "/" });
+  expect(await screen.findByText("tabs home")).toBeTruthy();
+  expect(screen.queryByText(/beautifully digital/)).toBeNull();
+});
+
+test("signed out after onboarding → only Sign In", async () => {
   renderRouter(routes(auth("signedOut")), { initialUrl: "/" });
   expect(await screen.findByText("sign-in screen")).toBeTruthy();
   expect(screen.queryByText("tabs home")).toBeNull();

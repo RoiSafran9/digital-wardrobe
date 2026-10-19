@@ -1,0 +1,11 @@
+// The public kipscloset.com site (landing, privacy, support): static files served by Cloudflare.
+// Deploy from this folder:  npx wrangler@4 deploy
+{
+  "name": "kipscloset",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./public" },
+  "routes": [
+    { "pattern": "kipscloset.com", "custom_domain": true },
+    { "pattern": "www.kipscloset.com", "custom_domain": true }
+  ]
+}

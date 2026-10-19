@@ -14,6 +14,7 @@ export type ItemFacts = {
   trims: FactField;
   visible_parts: FactField;
   occluded_parts: FactField;
+  name?: FactField | null;  // the user's name for the piece; the model never sets it
 };
 
 export type RunItem = {
@@ -138,6 +139,7 @@ export type ApiError = {
 
 // Fields the user can edit; omitted fields stay as they are.
 export type ItemPatch = {
+  name?: string;
   category?: string;
   colors?: string[];
   pattern?: string;

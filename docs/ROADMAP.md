@@ -75,7 +75,8 @@ See README → "Owner setup still open": hosted Supabase SMTP and email template
 - [x] M0 design system · M1 onboarding and sign-in · M2 names and groups · M3 Home and Closet · M4 Garment Details · M5 Add and garment flow · M6 outfit flow · M7 Account · M8 job progress and Delete Account · M9 Home update (PRs #18–#27, merged 2026-10-19)
 - [x] `20261019140000_job_progress.sql` applied to hosted (2026-10-19)
 - [x] Owner phone check of the whole redesign (2026-10-19: works)
-- [ ] Later: free garment pre-scan (D6 b), outfit corrections / missed garment / regenerate (D13, D14), profile name (D8), push "notify when ready" (D10), help and privacy links (D17)
+- [x] Follow-ups ([plan](superpowers/plans/2026-10-19-redesign-followups.md), 2026-10-19): name at sign-up, Help & Privacy, Notify when ready (push), outfit corrections / missed garment / regenerate, free garment pre-scan
+- [ ] Owner: set `EXPO_PUBLIC_SUPPORT_EMAIL` if a Contact Support button is wanted; phone check of the follow-ups
 
 ## Next (candidates — owner to pick)
 - Main priority: follow the [Friends & Family Beta Master Plan](tasks/testflight-beta-launch-master-plan.md) — no payment integration in beta

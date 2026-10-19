@@ -5,13 +5,14 @@ import PreviewScreen from "../app/capture/preview";
 import ProcessingScreen from "../app/capture/processing";
 import ResultsScreen from "../app/capture/results";
 import SavedScreen from "../app/capture/saved";
-import { deleteItem, postRun } from "../src/api/client";
+import { deleteItem, generateFromGarmentScan, postRun, scanGarments } from "../src/api/client";
 import type { RunResponse } from "../src/api/types";
 import { CreditsContext, type CreditsValue } from "../src/credits/CreditsProvider";
 import { CaptureJobsProvider, useCaptureJobs } from "../src/store/captureJobs";
 import { pickPhoto } from "../src/photoPicker";
 
-jest.mock("../src/api/client", () => ({ ...jest.requireActual("../src/api/client"), postRun: jest.fn(), deleteItem: jest.fn() }));
+jest.mock("../src/api/client", () => ({ ...jest.requireActual("../src/api/client"), postRun: jest.fn(), deleteItem: jest.fn(),
+  scanGarments: jest.fn(async () => null), generateFromGarmentScan: jest.fn() }));
 jest.mock("../src/photoPicker", () => ({ pickPhoto: jest.fn() }));
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
@@ -87,20 +88,22 @@ describe("camera", () => {
 });
 
 describe("preview", () => {
-  test("billing off: no quote, and creating starts the job", () => {
+  test("billing off: no quote, and creating starts the job", async () => {
     mockParams = { uri: "file:///photo.jpg" };
     (postRun as jest.Mock).mockReturnValue(new Promise(() => {}));
     renderWith(<PreviewScreen />);
+    await screen.findByText("Ready to create");
     expect(screen.queryByText(/credit/)).toBeNull();
     fireEvent.press(screen.getByRole("button", { name: "Create Catalog Images" }));
     expect(postRun).toHaveBeenCalledWith("file:///photo.jpg", undefined, expect.any(Function));
     expect(mockReplace).toHaveBeenCalledWith("/capture/processing");
   });
 
-  test("billing on: the quote follows the pieces stepper, within what the user can afford", () => {
+  test("billing on: the quote follows the pieces stepper, within what the user can afford", async () => {
     mockParams = { uri: "file:///photo.jpg" };
     (postRun as jest.Mock).mockReturnValue(new Promise(() => {}));
     renderWith(<PreviewScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(2) });
+    await screen.findByText("Ready to create");
     fireEvent.press(screen.getByRole("button", { name: "More pieces" }));
     expect(screen.getByText("Front catalog image × 2")).toBeTruthy();
     expect(screen.getByRole("button", { name: "More pieces" })).toBeDisabled();
@@ -108,9 +111,10 @@ describe("preview", () => {
     expect(postRun).toHaveBeenCalledWith("file:///photo.jpg", 2, expect.any(Function));
   });
 
-  test("without credits for even one piece it explains instead of starting", () => {
+  test("without credits for even one piece it explains instead of starting", async () => {
     mockParams = { uri: "file:///photo.jpg" };
     renderWith(<PreviewScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(0) });
+    await screen.findByText("Ready to create");
     fireEvent.press(screen.getByRole("button", { name: /Generate up to 1 Item/ }));
     expect(postRun).not.toHaveBeenCalled();
     expect(screen.getByText("Not enough credits")).toBeTruthy();
@@ -179,4 +183,55 @@ test("the processing card shows the server's piece count when it has one", () =>
   const { ProcessingCard, GARMENT_STAGES } = require("../src/components/capture/ProcessingCard");
   render(<ProcessingCard photoUri="file:///p.jpg" stages={GARMENT_STAGES} startedAt={Date.now()} title="t" note="n" count={{ done: 1, total: 3 }} />);
   expect(screen.getByText("2 of 3")).toBeTruthy();
+});
+
+describe("preview with the free pre-scan", () => {
+  const SCAN = {
+    id: "gs-1", status: "succeeded", error: null, quality: { status: "ok", reason: null }, reason: null, expires_at: null,
+    image: { width: 1000, height: 1000 },
+    pieces: [
+      { index: 0, category: "shirt", colors: ["white"], box: { x: 10, y: 10, width: 300, height: 400 } },
+      { index: 1, category: "jeans", colors: ["blue"], box: { x: 500, y: 10, width: 300, height: 600 } },
+    ],
+  };
+
+  test("shows what was found and creates only the picked pieces at the server price", async () => {
+    mockParams = { uri: "file:///photo.jpg" };
+    (scanGarments as jest.Mock).mockResolvedValueOnce(SCAN);
+    (generateFromGarmentScan as jest.Mock).mockReturnValue(new Promise(() => {}));
+    renderWith(<PreviewScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(5) });
+    expect(await screen.findByText("2 garments found")).toBeTruthy();
+    expect(screen.getByText("Front catalog image × 2")).toBeTruthy();
+    fireEvent.press(screen.getByRole("checkbox", { name: "1, White shirt" }));
+    expect(screen.getByText("Front catalog image × 1")).toBeTruthy();
+    fireEvent.press(screen.getByRole("button", { name: "Generate 1 Item · 1 credit" }));
+    expect(generateFromGarmentScan).toHaveBeenCalledWith("gs-1", [1], 1, expect.any(Function));
+    expect(mockReplace).toHaveBeenCalledWith("/capture/processing");
+  });
+
+  test("short of credits it says how many to leave out", async () => {
+    mockParams = { uri: "file:///photo.jpg" };
+    (scanGarments as jest.Mock).mockResolvedValueOnce(SCAN);
+    renderWith(<PreviewScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(1) });
+    fireEvent.press(await screen.findByRole("button", { name: "Generate 2 Items · 2 credits" }));
+    expect(screen.getByText(/Leave out 1 piece/)).toBeTruthy();
+    expect(generateFromGarmentScan).not.toHaveBeenCalled();
+  });
+
+  test("a worn photo found nothing to add and offers the outfit flow", async () => {
+    mockParams = { uri: "file:///photo.jpg" };
+    (scanGarments as jest.Mock).mockResolvedValueOnce({ ...SCAN, pieces: [], reason: "No garment to add: worn on body." });
+    renderWith(<PreviewScreen />, { outfit: true });
+    expect(await screen.findByText("No pieces found")).toBeTruthy();
+    fireEvent.press(screen.getByRole("button", { name: "Try it as an outfit photo" }));
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///photo.jpg", flow: "outfit" } });
+  });
+
+  test("if the pre-scan fails it falls back to choosing how many to create", async () => {
+    mockParams = { uri: "file:///photo.jpg" };
+    (scanGarments as jest.Mock).mockRejectedValueOnce(new Error("not found"));
+    renderWith(<PreviewScreen />);
+    expect(await screen.findByText(/choose how many to create instead/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create Catalog Images" })).toBeTruthy();
+  });
 });

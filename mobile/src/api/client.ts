@@ -1,6 +1,6 @@
 import { File } from "expo-file-system";
 import { API_BASE_URL, UNREACHABLE, parseJsonOrThrow } from "./http";
-import type { RunResponse, ItemsResponse, ClosetItem, Credits, ItemPatch, OutfitResult, OutfitScan, Prices, Turn } from "./types";
+import type { GarmentScan, RunResponse, ItemsResponse, ClosetItem, Credits, ItemPatch, OutfitResult, OutfitScan, Prices, Turn } from "./types";
 import * as v1 from "./v1";
 
 export { API_BASE_URL };
@@ -28,6 +28,17 @@ export async function postRun(photoUri: string, maxFronts?: number, onProgress?:
     throw new Error(UNREACHABLE);
   }
   return parseJsonOrThrow<RunResponse>(response);
+}
+
+// The free garment pre-scan needs the account API; local mode keeps the max-fronts capture.
+export async function scanGarments(photoUri: string): Promise<GarmentScan | null> {
+  return account ? v1.scanGarments(account, current, photoUri) : null;
+}
+
+export async function generateFromGarmentScan(scanId: string, indexes: number[], unitPrice: number | null,
+                                              onProgress?: (p: v1.JobProgress) => void): Promise<RunResponse> {
+  if (!account) throw new Error("Picking pieces needs a signed-in account.");
+  return v1.generateFromGarmentScan(account, current, scanId, indexes, unitPrice, onProgress);
 }
 
 export async function getItems(): Promise<ItemsResponse> {

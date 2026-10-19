@@ -3,7 +3,7 @@
 import { randomUUID } from "expo-crypto";
 import { File } from "expo-file-system";
 import { API_BASE_URL, UNREACHABLE, sentence } from "./http";
-import type { BackView, ClosetItem, Credits, ItemFacts, ItemPatch, ItemsResponse, OutfitResult, OutfitScan, Prices, RunItem, RunResponse, Tier, Turn } from "./types";
+import type { BackView, ClosetItem, Credits, GarmentScan, ItemFacts, ItemPatch, ItemsResponse, OutfitResult, OutfitScan, Prices, RunItem, RunResponse, Tier, Turn } from "./types";
 
 export type Account = {
   getToken: () => Promise<string | null>;
@@ -139,6 +139,11 @@ export async function postRun(account: Account, current: () => Account | null, p
                               onProgress?: (p: JobProgress) => void): Promise<RunResponse> {
   const fields: Record<string, string> = maxFronts ? { max_fronts: String(maxFronts) } : {};
   const job = await waitFor(account, current, await startJob(account, "/v1/jobs", photoUri, fields), onProgress);
+  return runFromJob(account, job);
+}
+
+// A finished garment job as the run the Results screen shows: its new pieces, what failed, what was left out.
+async function runFromJob(account: Account, job: Job): Promise<RunResponse> {
   const { items } = await getItems(account);
   const byId = new Map(items.map((i) => [i.item_id, i]));
   const pieces: RunItem[] = job.item_ids.flatMap((id) => {
@@ -153,6 +158,40 @@ export async function postRun(account: Account, current: () => Account | null, p
     failed: [...job.failed, ...(job.retakes ?? []).map((_, i) => `retake_${i}`)],
     over_limit: job.over_limit ?? 0,
   };
+}
+
+const garmentScanPath = (id: string) => `/v1/garment-scans/${encodeURIComponent(id)}`;
+
+// Free pre-scan of a garment photo: finds the pieces (with boxes) before anything is made or charged.
+export async function scanGarments(account: Account, current: () => Account | null, photoUri: string): Promise<GarmentScan> {
+  let scan = (await startJob(account, "/v1/garment-scans", photoUri)) as unknown as GarmentScan;
+  for (let waited = 0; ; waited += POLL_MS) {
+    if (scan.status === "succeeded") return scan;
+    if (scan.status === "failed" || scan.status === "canceled") throw new Error(sentence(scan.error ?? "Something went wrong — try again"));
+    if (waited >= POLL_LIMIT_MS) throw new Error(STILL_WORKING);
+    await sleep(POLL_MS);
+    if (current() !== account) throw new Error(SIGNED_OUT);
+    scan = await call<GarmentScan>(account, garmentScanPath(scan.id));
+  }
+}
+
+// Front images for the picked pieces of a pre-scan, at the per-front price the user saw.
+export async function generateFromGarmentScan(account: Account, current: () => Account | null, scanId: string,
+                                              indexes: number[], unitPrice: number | null,
+                                              onProgress?: (p: JobProgress) => void): Promise<RunResponse> {
+  const key = randomUUID();
+  const attempt = () => call<Job>(account, `${garmentScanPath(scanId)}/generate`, {
+    method: "POST", headers: { "Idempotency-Key": key, "Content-Type": "application/json" },
+    body: JSON.stringify({ piece_indexes: indexes, expected_unit_price: unitPrice }),
+  });
+  let started: Job;
+  try {
+    started = await attempt();
+  } catch (e) {
+    if (!(e instanceof Error && e.message === UNREACHABLE)) throw e;
+    started = await attempt();
+  }
+  return runFromJob(account, await waitFor(account, current, started, onProgress));
 }
 
 export type Profile = { email: string | null; display_name: string | null };

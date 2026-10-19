@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image, Pressable, Text, View, type LayoutChangeEvent } from "react-native";
-import type { OutfitCandidate } from "../../api/types";
+type Boxed = { id: string; box: { x: number; y: number; width: number; height: number } };
 import { colors, radius, type } from "../../theme";
 import { useReducedMotion } from "../../useReducedMotion";
 
 type Props = {
   uri: string;
-  candidates: OutfitCandidate[];
+  candidates: Boxed[];
+  photoSize?: { width: number; height: number } | null;  // the size the boxes were measured on, when known
   selected?: string[];  // undefined: just show the boxes (detecting)
   onToggle?: (id: string) => void;
   overlay?: React.ReactNode;
@@ -15,8 +16,9 @@ type Props = {
 
 // The user's photo with a box around each garment found. Boxes pop in one by one; selected boxes are
 // solid accent with a light wash, unselected ones dashed white. Box coordinates are photo pixels.
-export function PhotoWithBoxes({ uri, candidates, selected, onToggle, overlay, maxHeight = 420 }: Props) {
-  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+export function PhotoWithBoxes({ uri, candidates, selected, onToggle, overlay, maxHeight = 420, photoSize }: Props) {
+  const [measured, setSize] = useState<{ w: number; h: number } | null>(null);
+  const size = photoSize ? { w: photoSize.width, h: photoSize.height } : measured;
   const [frame, setFrame] = useState(0);
   useEffect(() => {
     let live = true;
@@ -45,7 +47,7 @@ export function PhotoWithBoxes({ uri, candidates, selected, onToggle, overlay, m
   );
 }
 
-function Box({ candidate, index, scale, selected, onPress }: { candidate: OutfitCandidate; index: number; scale: number; selected: boolean; onPress?: () => void }) {
+function Box({ candidate, index, scale, selected, onPress }: { candidate: Boxed; index: number; scale: number; selected: boolean; onPress?: () => void }) {
   const reduced = useReducedMotion();
   const t = useRef(new Animated.Value(reduced ? 1 : 0)).current;
   useEffect(() => {

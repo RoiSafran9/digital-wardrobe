@@ -62,6 +62,8 @@ Every model call is appended to a `run_log.jsonl` (stage, model, prompt version,
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/v1/jobs` | start a garment job (multipart photo) |
+| POST / GET | `/v1/garment-scans`, `/v1/garment-scans/{id}` | free pre-scan of a garment photo (job kind `garment_scan`: quality check + the usual detection, never priced): pieces with boxes, the photo size, or why nothing can be added; kept 24 h |
+| POST | `/v1/garment-scans/{id}/generate` | `{piece_indexes, expected_unit_price}` + Idempotency-Key → a `garment` job for the picked pieces only, from the stored detection (no second detection call); holds price × picks, charges per front made; `409` if the price changed |
 | GET | `/v1/jobs/{id}` | job state, result, error, `cost_credits`, and for garment jobs `progress` `{done, total}` (pieces finished, written by the worker as each finishes) |
 | GET | `/v1/prices` | credit price list (`{"billing": false}` unless `WARDROBE_BILLING=on`) |
 | GET | `/v1/credits` | the user's AI Credits wallet (`balance`, `held`, `available`, `granted`, `used`) and activity, newest first (`?limit=` 1–100, `?before=<entry id>`) |

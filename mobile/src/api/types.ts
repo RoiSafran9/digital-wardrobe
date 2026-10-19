@@ -147,3 +147,17 @@ export type ItemPatch = {
   trims?: string;
   visible_text?: string;
 };
+
+// Garment pre-scan (free): the pieces found in a garment photo, before anything is made.
+export type GarmentPiece = { index: number; category: string; colors: string[]; box: { x: number; y: number; width: number; height: number } };
+
+export type GarmentScan = {
+  id: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "canceled";
+  error: string | null;
+  quality: { status: "ok" | "retake"; reason: string | null } | null;
+  pieces: GarmentPiece[];
+  reason: string | null;  // why nothing can be added
+  image: { width: number; height: number } | null;
+  expires_at: string | null;
+};

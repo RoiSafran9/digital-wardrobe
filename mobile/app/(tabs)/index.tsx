@@ -8,19 +8,16 @@ import { closetStats } from "../../src/closetStats";
 import { addedLabel, colors, hitSlopFor, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
 import { GarmentTile } from "../../src/components/GarmentTile";
 import { ItemSheet } from "../../src/components/ItemSheet";
-import { JustAdded } from "../../src/components/JustAdded";
-import { CAPTURE_STEPS, KEEP_OPEN, ProcessingStatus } from "../../src/components/ProcessingStatus";
+import { CaptureBanner } from "../../src/components/home/CaptureBanner";
 import { Greeting } from "../../src/components/home/Greeting";
 import { HomeEmpty } from "../../src/components/home/HomeEmpty";
 import { StatsRow } from "../../src/components/home/StatsRow";
 import { garmentName } from "../../src/garmentName";
 import { Marquee } from "../../src/motion/Marquee";
 import { Rise } from "../../src/motion/Rise";
-import { useCapture } from "../../src/useCapture";
-import { FrontsPicker } from "../../src/components/FrontsPicker";
-import { useFrontsChoice } from "../../src/credits/useFrontsChoice";
+import { pickPhoto } from "../../src/photoPicker";
 import { useCredits } from "../../src/credits/CreditsProvider";
-import { OUTFIT_LINK, TRY_AS_OUTFIT, isWornRejection } from "../../src/outfit/outfit";
+import { OUTFIT_LINK } from "../../src/outfit/outfit";
 import { Button, Chip } from "../../src/ui";
 
 const MARQUEE = { width: 118, height: 148 };
@@ -48,9 +45,17 @@ export default function HomeScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
-  // A capture from Home lands back on Home (already focused), so refresh it ourselves.
-  const { capture, loading, error: captureError } = useCapture(load);
-  const fronts = useFrontsChoice();
+  const [pickError, setPickError] = useState<string | null>(null);
+  // Take Photo opens the camera flow; From Library goes straight to the preview and quote.
+  const fromLibrary = async () => {
+    setPickError(null);
+    try {
+      const uri = await pickPhoto(false);
+      if (uri) router.push({ pathname: "/capture/preview", params: { uri } });
+    } catch (e) {
+      setPickError(e instanceof Error ? e.message : "Couldn't open your photos.");
+    }
+  };
   const keyOf = (i: ClosetItem) => `${i.run_id}/${i.photo_name}/${i.item_id}`;
   const openIndex = openKey ? items.findIndex((i) => keyOf(i) === openKey) : -1;
 
@@ -62,28 +67,21 @@ export default function HomeScreen() {
 
   const digitize = (
     <View style={{ gap: 10 }}>
-      {loading ? (
-        <ProcessingStatus steps={CAPTURE_STEPS} note={KEEP_OPEN} />
-      ) : (
-        <>
-          <FrontsPicker choice={fronts} />
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <View style={{ flex: 1 }}>
-              <Button title="Take Photo" size="medium" icon="camera" onPress={() => capture(true, fronts.maxFronts)} disabled={fronts.blocked} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Button title="From Library" size="medium" variant="secondary" onPress={() => capture(false, fronts.maxFronts)} disabled={fronts.blocked} />
-            </View>
-          </View>
-        </>
-      )}
-      {captureError ? <Text style={{ ...type.footnote, color: colors.destructive }}>{captureError}</Text> : null}
-      {outfitOn && !loading ? (
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <View style={{ flex: 1 }}>
+          <Button title="Take Photo" size="medium" icon="camera" onPress={() => router.push({ pathname: "/capture/camera", params: { mode: "garments" } })} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button title="From Library" size="medium" variant="secondary" onPress={fromLibrary} />
+        </View>
+      </View>
+      {pickError ? <Text style={{ ...type.footnote, color: colors.destructive }}>{pickError}</Text> : null}
+      {outfitOn ? (
         <Pressable
           accessibilityRole="button" hitSlop={hitSlopFor(20)} style={{ alignSelf: "center", paddingTop: 2 }}
-          onPress={() => router.push({ pathname: "/add", params: { mode: "outfit", at: String(Date.now()) } })}
+          onPress={() => router.push({ pathname: "/capture/camera", params: { mode: "outfit" } })}
         >
-          <Text style={{ ...type.subhead, color: colors.tint }}>{isWornRejection(captureError) ? TRY_AS_OUTFIT : OUTFIT_LINK}</Text>
+          <Text style={{ ...type.subhead, color: colors.tint }}>{OUTFIT_LINK}</Text>
         </Pressable>
       ) : null}
     </View>
@@ -93,6 +91,7 @@ export default function HomeScreen() {
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 28 }}>
         <Greeting now={now} onCredits={() => router.push("/account")} />
+        <CaptureBanner />
 
         {loadError ? (
           <View style={{ margin: 20, padding: 16, borderRadius: radius.list, backgroundColor: colors.destructiveBg, gap: 10 }}>
@@ -104,7 +103,6 @@ export default function HomeScreen() {
         {empty || (loadError && items.length === 0) ? (
           <View style={{ marginTop: 20 }}>
             <HomeEmpty outfit={!!outfitOn}>{digitize}</HomeEmpty>
-            <View style={{ paddingHorizontal: 20, marginTop: 20 }}><JustAdded onClosetChanged={load} /></View>
           </View>
         ) : null}
 
@@ -143,11 +141,7 @@ export default function HomeScreen() {
               {digitize}
             </View>
 
-            <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
-              <JustAdded onClosetChanged={load} />
-            </View>
-
-            <View style={{ marginTop: 8 }}>
+            <View style={{ marginTop: 24 }}>
               <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 12 }}>
                 <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>Recently Added</Text>
                 <Pressable accessibilityRole="button" hitSlop={hitSlopFor(22)} onPress={() => router.push("/closet")}>

@@ -1,13 +1,12 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import * as ImagePicker from "expo-image-picker";
-import AddScreen from "../app/(tabs)/add";
 import PickScreen from "../app/outfit/pick";
 import ReviewScreen from "../app/outfit/review";
 import { deleteItem, generateOutfit, getOutfitScan, getPendingItems, keepItem, postRun, scanOutfit } from "../src/api/client";
 import type { ClosetItem, OutfitCandidate, OutfitScan } from "../src/api/types";
 import { CreditsContext, type CreditsValue } from "../src/credits/CreditsProvider";
-import { LastRunProvider } from "../src/store/lastRun";
+import { CaptureJobsProvider } from "../src/store/captureJobs";
 
 jest.mock("expo-image-picker");
 jest.mock("../src/api/client");
@@ -37,7 +36,7 @@ const item = (id: string, category: string): ClosetItem => ({
 
 function withCredits(ui: React.ReactElement, credits: Partial<CreditsValue> = {}) {
   const value: CreditsValue = { billing: false, prices: {}, credits: null, outfit: true, refresh: jest.fn(async () => {}), ...credits };
-  return render(<CreditsContext.Provider value={value}><LastRunProvider>{ui}</LastRunProvider></CreditsContext.Provider>);
+  return render(<CreditsContext.Provider value={value}><CaptureJobsProvider>{ui}</CaptureJobsProvider></CreditsContext.Provider>);
 }
 const wallet = (available: number) => ({ balance: available, held: 0, available, granted: 10, used: 0, entries: [], next_before: null });
 
@@ -45,32 +44,6 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockParams = {};
   (getPendingItems as jest.Mock).mockResolvedValue([]);
-});
-
-test("the outfit mode appears only when the server offers it", () => {
-  withCredits(<AddScreen />, { outfit: false });
-  expect(screen.queryByLabelText("Outfit photo")).toBeNull();
-});
-
-test("outfit mode scans the photo (no generation) and opens the pick screen", async () => {
-  (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
-  (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({ canceled: false, assets: [{ uri: "file:///o.jpg" }] });
-  (scanOutfit as jest.Mock).mockResolvedValue(SCAN);
-  withCredits(<AddScreen />);
-  fireEvent.press(screen.getByLabelText("Outfit photo"));
-  expect(screen.queryByText("Pieces in this photo")).toBeNull();
-  fireEvent.press(screen.getByText("Choose from library"));
-  await waitFor(() => expect(mockPush).toHaveBeenCalledWith({ pathname: "/outfit/pick", params: { scanId: "scan-1" } }));
-  expect(scanOutfit).toHaveBeenCalledWith("file:///o.jpg");
-  expect(postRun).not.toHaveBeenCalled();
-});
-
-test("pending results are offered on the Add tab", async () => {
-  (getPendingItems as jest.Mock).mockResolvedValue([item("i1", "blazer"), item("i2", "trousers")]);
-  withCredits(<AddScreen />);
-  fireEvent.press(screen.getByLabelText("Outfit photo"));
-  fireEvent.press(await screen.findByText("2 pieces waiting for review"));
-  expect(mockPush).toHaveBeenCalledWith("/outfit/review");
 });
 
 test("the pick screen hides shoes, leaves mostly hidden pieces unselected and shows the server's price", async () => {
@@ -133,20 +106,4 @@ test("review keeps or discards each result and reports failed picks", async () =
   expect(deleteItem).toHaveBeenCalledWith(expect.objectContaining({ item_id: "i2" }));
   fireEvent.press(screen.getByText("Go to closet"));
   expect(mockReplace).toHaveBeenCalledWith("/closet");
-});
-
-test("a photo refused as worn offers the outfit flow on Add", async () => {
-  (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
-  (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({ canceled: false, assets: [{ uri: "file:///o.jpg" }] });
-  (postRun as jest.Mock).mockRejectedValue(new Error("No garment to add: worn on body"));
-  withCredits(<AddScreen />);
-  fireEvent.press(screen.getByText("Choose from library"));
-  fireEvent.press(await screen.findByText("Try it as an outfit photo"));
-  expect(screen.getByText(/Someone wearing the outfit/)).toBeTruthy();
-});
-
-test("Add opens in outfit mode when Home's link asks for it", () => {
-  mockParams = { mode: "outfit", at: "1" };
-  withCredits(<AddScreen />);
-  expect(screen.getByLabelText("Outfit photo").props.accessibilityState.selected).toBe(true);
 });

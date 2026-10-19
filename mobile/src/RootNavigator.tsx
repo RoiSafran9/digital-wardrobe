@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { Stack } from "expo-router";
 import { useAuth } from "./auth/AuthProvider";
 import { NotConfigured } from "./components/NotConfigured";
-import { LastRunProvider } from "./store/lastRun";
+import { CaptureJobsProvider } from "./store/captureJobs";
 import { OnboardingProvider } from "./onboarding";
 import { colors } from "./theme";
 
@@ -17,6 +17,12 @@ export function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={inApp}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="capture/camera" options={{ presentation: "fullScreenModal", animation: "fade" }} />
+        <Stack.Screen name="capture/preview" />
+        <Stack.Screen name="capture/processing" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="capture/results" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="capture/saved" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="outfit/detect" />
         <Stack.Screen name="outfit/pick" />
         <Stack.Screen name="outfit/review" />
         <Stack.Screen name="welcome-credits" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
@@ -32,14 +38,14 @@ export function RootNavigator() {
   );
 }
 
-// Per-user app state starts fresh whenever the signed-in person changes.
+// Per-user app state (the capture in progress) starts fresh whenever the signed-in person changes.
 export function AppShell() {
   const { userId } = useAuth();
   return (
     <OnboardingProvider>
-      <LastRunProvider key={userId ?? "local"}>
+      <CaptureJobsProvider key={userId ?? "local"}>
         <RootNavigator />
-      </LastRunProvider>
+      </CaptureJobsProvider>
     </OnboardingProvider>
   );
 }

@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
 import HomeScreen from "../app/(tabs)/index";
-import { LastRunProvider } from "../src/store/lastRun";
+import { CaptureJobsProvider } from "../src/store/captureJobs";
 import { getItems, postRun, updateItem } from "../src/api/client";
 import { pickPhoto } from "../src/photoPicker";
 import { CreditsContext, type CreditsValue } from "../src/credits/CreditsProvider";
@@ -29,7 +29,7 @@ const item = (id: string, cat: string, colors: string[]) => ({
 
 function renderHome(credits: Partial<CreditsValue> = {}) {
   const value: CreditsValue = { billing: false, prices: {}, credits: null, outfit: false, refresh: jest.fn(async () => {}), ...credits };
-  return render(<CreditsContext.Provider value={value}><LastRunProvider><HomeScreen /></LastRunProvider></CreditsContext.Provider>);
+  return render(<CreditsContext.Provider value={value}><CaptureJobsProvider><HomeScreen /></CaptureJobsProvider></CreditsContext.Provider>);
 }
 
 beforeEach(() => jest.clearAllMocks());
@@ -91,12 +91,14 @@ test("when the server can't be reached it says so, offers a retry, and still let
   expect(await screen.findByLabelText("Pieces, 1")).toBeTruthy();
 });
 
-test("quick add starts the capture right from Home", async () => {
+test("From Library picks a photo and opens its preview; Take Photo opens the camera", async () => {
   (getItems as jest.Mock).mockResolvedValue({ items: [] });
-  (pickPhoto as jest.Mock).mockResolvedValue(null);
+  (pickPhoto as jest.Mock).mockResolvedValue("file:///p.jpg");
   renderHome();
   fireEvent.press(await screen.findByRole("button", { name: "From Library" }));
-  await waitFor(() => expect(pickPhoto).toHaveBeenCalledWith(false));
+  await waitFor(() => expect(mockPush).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///p.jpg" } }));
+  fireEvent.press(screen.getByRole("button", { name: "Take Photo" }));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/capture/camera", params: { mode: "garments" } });
 });
 
 test("editing a garment opened from Home shows the new value in the open sheet", async () => {
@@ -117,13 +119,18 @@ test("the sheet from Home pages through the whole closet", async () => {
   expect(screen.getByText("2 / 4")).toBeTruthy();
 });
 
-test("a capture started on Home refreshes Home's counts", async () => {
-  (getItems as jest.Mock).mockResolvedValueOnce({ items: [item("item_0", "shirt", [])] })
-    .mockResolvedValue({ items: [item("item_0", "shirt", []), item("item_1", "pants", [])] });
-  (pickPhoto as jest.Mock).mockResolvedValue("file:///p.jpg");
-  (postRun as jest.Mock).mockResolvedValue({ run_id: "r2", quality: { status: "ok", reason: null }, items: [], failed: [] });
-  renderHome();
-  expect(await screen.findByLabelText("Pieces, 1")).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "Take Photo" }));
-  expect(await screen.findByLabelText("Pieces, 2")).toBeTruthy();
+test("a capture in progress shows on Home and opens the processing screen", async () => {
+  (getItems as jest.Mock).mockResolvedValue({ items: [] });
+  (postRun as jest.Mock).mockReturnValue(new Promise(() => {}));
+  const { useCaptureJobs } = require("../src/store/captureJobs");
+  const { Pressable, Text } = require("react-native");
+  function Starter() {
+    const { start } = useCaptureJobs();
+    return <Pressable onPress={() => start("file:///p.jpg", 1)}><Text>start</Text></Pressable>;
+  }
+  const value: CreditsValue = { billing: false, prices: {}, credits: null, outfit: false, refresh: jest.fn(async () => {}) };
+  render(<CreditsContext.Provider value={value}><CaptureJobsProvider><Starter /><HomeScreen /></CaptureJobsProvider></CreditsContext.Provider>);
+  fireEvent.press(await screen.findByText("start"));
+  fireEvent.press(await screen.findByRole("button", { name: "Creating your pieces…" }));
+  expect(mockPush).toHaveBeenCalledWith("/capture/processing");
 });

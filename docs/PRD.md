@@ -19,11 +19,11 @@ Today: the owner, on their own iPhone over home Wi-Fi. Intended: other people wi
 5. **Local mode:** a development build without Supabase settings runs as the original single-owner app over `runs/`; Account shows "Local mode" ("Not signed in. Your items live on your computer's wardrobe server."). A release build without settings won't start.
 
 ### Capture
-6. Take a photo or choose one from the library, from the Add tab or Home's quick-add buttons. When processing ends the app shows the new pieces on Home under Just added.
+6. Take a photo with the in-app camera or choose one from the library (Add tab or Home). A preview confirms the photo and, with billing on, the most front images to pay for; processing runs on the server (the user can leave the screen), then a Results screen shows the pieces made.
 7. One photo may hold one piece or several side by side; each included piece becomes its own item. Clothes being worn, accessories (sunglasses, jewelry) and non-clothing objects are skipped.
 8. The user waits in the app (roughly 15–60 s) with a staged status ("Finding your pieces" → "Smoothing them out" → "Cutting them out") that never claims to be done early.
 9. A photo that is blurry, too dark or too small is rejected before any model call; the app asks to try again laid flat in good light (for a back photo it names the exact problem).
-10. Processed items go straight into the closet — there is no separate review/Save step. The owner corrects or removes afterwards.
+10. Processed items are saved when made; the Results screen lets the user deselect pieces before "Add N to Closet" (deselected pieces are soft-deleted; credits for made pieces are not returned). The owner corrects or removes later too.
 
 ### Catalog image
 11. For each piece the model generates a catalog image of the **same** garment, unfolded and smoothed on a white background, then a local cutout removes the background.

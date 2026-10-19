@@ -1,5 +1,5 @@
 # Screen Map — Digital Wardrobe
-Status: **As built** · Updated: 2026-10-19 (redesign M5)
+Status: **As built** · Updated: 2026-10-19 (redesign M6)
 
 Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: system font, grouped backgrounds, one blue tint, light/dark, Reduce Motion). Feature specs: `docs/superpowers/specs/`.
 
@@ -75,12 +75,13 @@ All figures come from the server (`GET /v1/credits`, `GET /v1/prices`); nothing 
 ## Outfit Photo import (built behind `WARDROBE_OUTFIT=on`, off by default; account mode only)
 
 Shown only when `GET /v1/prices` says `outfit: true`. Design and measurements: [spec](superpowers/specs/2026-10-19-outfit-photo-two-step-design.md), [evaluation](superpowers/specs/outfit-import-evaluation.md).
-- **Add → mode switch** (`app/(tabs)/add.tsx`): segmented control "Garment photo" / "Outfit photo" (explicit choice, D1; no auto-routing). Outfit mode swaps the tips, hides the fronts stepper, and Take photo / Choose from library run the **free** scan (`src/outfit/useOutfitScan.ts`, "Finding the clothes"). "N pieces waiting for review" opens Review (also after an app restart).
-- **Home and rejections:** Home's capture card has a "Wearing it? Add from an outfit photo" link that opens Add in outfit mode. When the garment flow refuses a photo as worn ("No garment to add: worn on body"), Add and Home offer "Try it as an outfit photo" (no extra model call). Found in the first phone test, where the owner kept using Home's buttons.
-- **Pick pieces** (`app/outfit/pick.tsx`): one card per garment with a **crop of the real photo** (not an AI image), category, description, plain-language notes ("Partly hidden — hidden parts will be completed", "Mostly hidden — the image would be mostly guessed") and a checkbox. Shoes are not offered (D2); mostly hidden pieces start unselected (D3). Notes for laid-out clothes, no clothing, or several people. Footer: exact quote from the server's front price ("2 images · 2 credits · 5 available", or "free while billing is off"), "Create N images" (off when nothing is picked or it isn't affordable) and "None of these".
-- **Creating** shows the processing card ("Taking them off the photo"…). The price shown is sent with the request; if it changed the server refuses and nothing is charged.
-- **Review** (`app/outfit/review.tsx`): each result (cutout first) with its tier and "AI image made from your photo. Parts hidden in the photo were completed."; **Keep** (joins the closet) or **Discard** per piece, "Keep all", "Later". Failed picks are listed as not charged. Results stay out of the closet until kept.
-- **Not in v1:** auto-routing, manual region selection, correcting a category before generating, shoes, accessories, multi-person choice, regenerate.
+- **Entry:** Add → Import from Outfit Photo, the camera's OUTFIT mode, Home's "Wearing it?" link, or "Try it as an outfit photo" after a garment photo was refused as worn (same photo, no auto-routing).
+- **Detecting** (`app/outfit/detect.tsx`): the photo with a scanning band, "Finding garments…" and a "Detection is free" pill; when the free scan returns, the boxes pop in one by one ("N garments found"), then the pick screen opens. A failed scan explains and offers another photo.
+- **Select Garments** (`app/outfit/pick.tsx`): the photo with tappable numbered boxes (selected = solid accent, unselected = dashed white); rows with a 62pt crop of the real photo, the category, "Group · Clear match" or amber "Not sure — please check", plain-language visibility notes and a check circle; "Not a garment" removes a detection from the list. Shoes are not offered (D2); mostly hidden pieces start unselected (D3). Sticky footer: "N selected", "N credits · X available" (billing on), Generate.
+- **Confirm cost** (billing on): sheet with "Front image × N", Total, "Balance X → Y", "Detection was free", "Generate · N credits". Short of credits → Not enough credits with "Deselect K garments to continue with what you have." and Adjust Selection. A changed price (server 409) refreshes prices and re-opens the sheet; nothing is charged.
+- **Creating:** the processing card ("Taking them off the photo" → "Laying them flat" → "Adding final details").
+- **Review** (`app/outfit/review.tsx`): "Review i of N", "N kept", Later; the crop of your photo next to the generated image, name, tier, AI note, a **Keep** switch, a thumbnail strip, Back / Next, and on the last piece **Save N to Closet** (kept → closet, others discarded) → Saved. Failed picks are listed as not charged. Results stay out of the closet until saved; pending results reopen from Add (also after a restart).
+- **Not in v1:** auto-routing, correcting a garment before generating, marking a missed garment, shoes, accessories, multi-person choice, regenerate (D13, D14).
 
 ## Not built (see ROADMAP "Later")
 A pre-save Review screen with an Original/Generated toggle and Save button, saved-item Regenerate, in-app restore of removed items, buying credits.

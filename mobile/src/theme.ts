@@ -1,4 +1,4 @@
-import { DynamicColorIOS, Platform, type ColorValue } from "react-native";
+import { DynamicColorIOS, Platform, type ColorValue, type TextStyle } from "react-native";
 import type { Tier } from "./api/types";
 
 type Palette = {
@@ -54,6 +54,8 @@ export const colors = Object.fromEntries(
 // saved). Loaded in app/_layout.tsx; everything else is the system font (SF Pro).
 export const DISPLAY_FONT = "InstrumentSerif_400Regular";
 
+const TABULAR: TextStyle["fontVariant"] = ["tabular-nums"];
+
 // Text styles on the system font, sized per the handoff.
 export const type = {
   largeTitle: { fontSize: 34, fontWeight: "700", letterSpacing: -0.68 },
@@ -69,7 +71,8 @@ export const type = {
   toast: { fontSize: 14, fontWeight: "600" },
   tabLabel: { fontSize: 10.5, fontWeight: "500" },
   eyebrow: { fontSize: 13, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.65 },
-  stat: { fontSize: 26, fontWeight: "600", fontVariant: ["tabular-nums"] },
+  balance: { fontSize: 54, fontWeight: "700", fontVariant: TABULAR },
+  stat: { fontSize: 26, fontWeight: "600", fontVariant: TABULAR },
   display: (size: 46 | 42 | 40) => ({ fontFamily: DISPLAY_FONT, fontSize: size, lineHeight: size }),
 } as const;
 

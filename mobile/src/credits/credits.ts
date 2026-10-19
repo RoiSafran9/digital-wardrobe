@@ -37,3 +37,15 @@ export function entryLabel(entry: CreditEntry): string {
 }
 
 export const entrySign = (entry: CreditEntry) => (entry.kind === "grant" ? `+${entry.amount}` : `−${entry.amount}`);
+
+export type QuoteLine = { label: string; action: CreditAction; count: number };
+export type Quote = { lines: { label: string; credits: number }[]; total: number; after: number | null; affordable: boolean };
+
+// What a set of AI actions will cost at the server's prices, and the balance left afterwards
+// (null while the balance isn't known). An action without a price costs nothing.
+export function quote(lines: QuoteLine[], prices: Partial<Record<CreditAction, number>>, available: number | null): Quote {
+  const priced = lines.map((l) => ({ label: `${l.label} × ${l.count}`, credits: (prices[l.action] ?? 0) * l.count }));
+  const total = priced.reduce((sum, l) => sum + l.credits, 0);
+  const after = available === null ? null : available - total;
+  return { lines: priced, total, after, affordable: total === 0 || (after !== null && after >= 0) };
+}

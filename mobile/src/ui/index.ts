@@ -7,3 +7,6 @@ export { Swatch } from "./Swatch";
 export { GroupedList, Row } from "./GroupedList";
 export { ProgressBar } from "./ProgressBar";
 export { Shimmer } from "./Shimmer";
+export { CreditPill } from "./CreditPill";
+export { CostSheet } from "./CostSheet";
+export { InsufficientCreditsSheet } from "./InsufficientCreditsSheet";

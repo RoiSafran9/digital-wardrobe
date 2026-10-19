@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   title: { ...type.largeTitle, color: colors.label, marginTop: 20 },
   body: { ...type.body, color: colors.secondaryLabel, marginTop: 8, marginBottom: 24 },
   field: {
-    ...type.body, color: colors.label, backgroundColor: colors.card, borderRadius: radius.card,
+    ...type.body, color: colors.label, backgroundColor: colors.grouped, borderRadius: radius.card,
     minHeight: MIN_TOUCH + 6, paddingHorizontal: 16, marginBottom: 14,
   },
   codeField: { fontSize: 28, letterSpacing: 8, fontVariant: ["tabular-nums"] },

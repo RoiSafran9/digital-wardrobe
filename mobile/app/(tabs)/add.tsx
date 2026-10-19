@@ -37,7 +37,7 @@ function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
       <Pressable
         key={value} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected }}
         onPress={() => onChange(value)} hitSlop={hitSlopFor(32, 120)}
-        style={{ flex: 1, paddingVertical: 7, borderRadius: 8, alignItems: "center", backgroundColor: selected ? colors.card : "transparent" }}
+        style={{ flex: 1, paddingVertical: 7, borderRadius: 8, alignItems: "center", backgroundColor: selected ? colors.grouped : "transparent" }}
       >
         <Text style={{ ...type.subhead, fontWeight: selected ? "600" : "400", color: colors.label }}>{label}</Text>
       </Pressable>
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   tipLabel: { ...type.headline, color: colors.label },
   tipDetail: { ...type.footnote, color: colors.secondaryLabel, marginTop: 2 },
   stage: {
-    flex: 1, marginVertical: 24, borderRadius: radius.card, backgroundColor: colors.card,
+    flex: 1, marginVertical: 24, borderRadius: radius.card, backgroundColor: colors.grouped,
     alignItems: "center", justifyContent: "center", padding: 20,
   },
   errorBox: {
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   },
   errorText: { color: colors.destructive, fontSize: 14, flex: 1 },
   pending: {
-    flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, backgroundColor: colors.card,
+    flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, backgroundColor: colors.grouped,
     borderRadius: radius.card, paddingHorizontal: 16, paddingVertical: 12, minHeight: 44,
   },
 });

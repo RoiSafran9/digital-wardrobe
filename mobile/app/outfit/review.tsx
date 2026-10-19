@@ -64,7 +64,7 @@ export default function ReviewScreen() {
 
         <View style={{ gap: 14, marginTop: 20 }}>
           {(items ?? []).map((item) => (
-            <View key={item.item_id} style={{ backgroundColor: colors.card, borderRadius: radius.card, padding: 16, gap: 12 }}>
+            <View key={item.item_id} style={{ backgroundColor: colors.grouped, borderRadius: radius.card, padding: 16, gap: 12 }}>
               <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url}
                             tile={colors.tile} style={{ width: "100%", aspectRatio: 1 }} />
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>

@@ -25,7 +25,7 @@ const TILE = 96;
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <View accessible accessibilityLabel={`${label}, ${value}`} style={{ flex: 1, backgroundColor: colors.card, borderRadius: radius.card, padding: 14 }}>
+    <View accessible accessibilityLabel={`${label}, ${value}`} style={{ flex: 1, backgroundColor: colors.grouped, borderRadius: radius.card, padding: 14 }}>
       <CountUp value={value} style={{ ...type.title2, color: colors.label }} />
       <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 2 }}>{label}</Text>
     </View>
@@ -66,7 +66,7 @@ export default function HomeScreen() {
 
   const garment = (item: ClosetItem) => (
     <PressScale accessibilityRole="button" accessibilityLabel={`Open ${item.facts.category.value}`} onPress={() => setOpenKey(keyOf(item))}>
-      <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: TILE, height: TILE + 12 }} tile={colors.card} />
+      <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: TILE, height: TILE + 12 }} tile={colors.grouped} />
     </PressScale>
   );
 
@@ -116,7 +116,7 @@ export default function HomeScreen() {
 
           <View style={{ marginTop: 20, gap: 10 }}>
             {loading ? (
-              <View style={{ backgroundColor: colors.card, borderRadius: radius.card, paddingVertical: 24 }}>
+              <View style={{ backgroundColor: colors.grouped, borderRadius: radius.card, paddingVertical: 24 }}>
                 <ProcessingStatus steps={CAPTURE_STEPS} note={KEEP_OPEN} />
               </View>
             ) : (
@@ -154,7 +154,7 @@ export default function HomeScreen() {
                     accessibilityLabel={`${name}, ${count}`}
                     hitSlop={hitSlopFor(34)}
                     onPress={() => router.push({ pathname: "/closet", params: { category: name, at: String(Date.now()) } })}
-                    style={{ flexDirection: "row", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.card }}
+                    style={{ flexDirection: "row", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.grouped }}
                   >
                     <Text style={{ ...type.subhead, color: colors.label }}>{name}</Text>
                     <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>{count}</Text>

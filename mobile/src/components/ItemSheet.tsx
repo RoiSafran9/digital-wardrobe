@@ -220,7 +220,7 @@ function SideStrip({ back, side, onChange, onAddBack, has360 }: {
     <Pressable
       accessibilityRole="button" accessibilityLabel={a11y} accessibilityState={{ selected }} onPress={onPress}
       hitSlop={hitSlopFor(32, 120)}
-      style={{ flex: 1, paddingVertical: 7, borderRadius: 8, alignItems: "center", backgroundColor: selected ? colors.card : "transparent" }}
+      style={{ flex: 1, paddingVertical: 7, borderRadius: 8, alignItems: "center", backgroundColor: selected ? colors.grouped : "transparent" }}
     >
       <Text style={{ ...type.subhead, fontWeight: selected ? "600" : "400", color: colors.label }}>{label}</Text>
     </Pressable>
@@ -328,7 +328,7 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
         </View>
         {added ? <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 4 }}>{added}</Text> : null}
 
-        <View testID="facts-card" style={{ marginTop: 20, backgroundColor: colors.card, borderRadius: radius.card, paddingHorizontal: 16 }}>
+        <View testID="facts-card" style={{ marginTop: 20, backgroundColor: colors.grouped, borderRadius: radius.card, paddingHorizontal: 16 }}>
           <FactRow label="Colors" first>
             <ColorSwatches value={facts.colors.value} />
           </FactRow>
@@ -357,7 +357,7 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
         ) : null}
 
         {onRemove ? (
-          <View style={{ marginTop: 24, backgroundColor: colors.card, borderRadius: radius.card }}>
+          <View style={{ marginTop: 24, backgroundColor: colors.grouped, borderRadius: radius.card }}>
             <Pressable accessibilityRole="button" onPress={onRemove} style={{ padding: 16, alignItems: "center" }}>
               <Text style={{ ...type.body, color: colors.destructive }}>Remove from closet</Text>
             </Pressable>

@@ -1,6 +1,6 @@
 # iOS Redesign (design handoff) — Design
 
-Status: **Draft for owner approval** · 2026-10-19
+Status: **Approved by the owner 2026-10-19** — all recommended answers in §6, and D2 = yes (Instrument Serif)
 Source: `docs/design/design_handoff_digital_wardrobe/` (README.md + `Digital Wardrobe.dc.html`, 25 journey steps / 31 states, walked in a browser on 2026-10-19).
 Plan: [`docs/superpowers/plans/2026-10-19-ios-redesign.md`](../plans/2026-10-19-ios-redesign.md).
 
@@ -104,12 +104,12 @@ Legend: **R** = restyle of existing code, **N** = new screen/component, **B** = 
 | 24 | Account (profile, credits card, how-it-works, price list, activity, settings, sign out, delete) | `(tabs)/account.tsx` + `CreditsCard` + `CreditsSheet` | R + N | `/v1/credits`, `/v1/prices` | denominator = server `granted` ("of N granted", never a fixed number); settings per D15–D17 |
 | 25 | Insufficient credits sheet | inline "Not enough AI credits" | N `InsufficientCreditsSheet` | credits/prices | **no purchase UI**; body adds "Ask the app owner for more credits." (existing copy) |
 
-## 6. Owner decisions (open — most important first)
+## 6. Owner decisions
 
-Each has my recommendation; the plan builds the recommendation unless told otherwise, and each decision is isolated to one milestone.
+**Decided 2026-10-19:** the owner approved every recommendation below; D2 = **yes**, Instrument Serif for the four editorial headlines. Each decision is isolated to one milestone.
 
 - **D1 · Adopt the handoff's visual system over DESIGN.md?** The handoff changes the tint (#2563EB → #1F6BFF), makes screens white with warm-grey grouped cards (DESIGN: grey background, white cards), adds soft shadows (DESIGN: "no shadows"), larger radii and a single-row marquee (DESIGN: two rows). *Recommend: yes, adopt and rewrite DESIGN.md in M0* — the owner commissioned the handoff and it says visual design follows it.
-- **D2 · Instrument Serif for the four editorial headlines** (Welcome 46, Home greeting 42, "A welcome gift" / "Added to your closet" 40)? PRODUCT.md "Brand Commitments" says system font, native category standard. *No recommendation either way — owner's brand call.* Built behind one `type.display` token so either answer is a one-line change.
+- **D2 · Instrument Serif for the four editorial headlines** (Welcome 46, Home greeting 42, "A welcome gift" / "Added to your closet" 40)? PRODUCT.md "Brand Commitments" says system font, native category standard. **Decided: yes.** Built behind one `type.display` token so either answer is a one-line change.
 - **D3 · Garment names** ("Oxford Shirt"). Items have only a category word today; the prototype shows names everywhere and edits a Name. Options: (a) app derives a name from color + category ("Cream sweater"), no backend; (b) (a) now, plus an editable `name` stored in `facts` (PATCH accepts `name`, no migration, no prompt change); (c) (b) plus the detect prompt also proposes a short name (new prompt versions, same single call, needs a real-photo run). *Recommend (b).*
 - **D4 · Category groups.** Prototype chips are broad groups (Tops, Outerwear, Bottoms, Dresses, Shoes, Bags); the model writes free words ("t-shirt"). ROADMAP "Later" lists a fixed category list as undecided. *Recommend:* a client-side map from the model's word to a group for chips, Home "Browse by category" and stats; the specific word stays on the item ("Tops · T-shirt"); unknown words fall into "Other". Edit sheet keeps free-text category plus group chips as shortcuts.
 - **D5 · Material row.** The prototype shows Material ("Merino wool"); nothing extracts it, and guessing fabric from a photo risks stating an invention as fact. *Recommend: no Material row;* show Color, Pattern, Details, Printed text (existing facts).

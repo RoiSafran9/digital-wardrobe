@@ -29,3 +29,13 @@ test("labels", () => {
   expect(entrySign(entry("charge"))).toBe("−2");
   expect(visibleEntries([entry("hold"), entry("charge"), entry("release"), entry("grant")]).map((e) => e.kind)).toEqual(["charge", "grant"]);
 });
+
+test("quote totals the lines at server prices and says what is left", () => {
+  const { quote } = require("../src/credits/credits");
+  const q = quote([{ label: "Front image", action: "garment", count: 4 }], { garment: 1 }, 18);
+  expect(q).toEqual({ lines: [{ label: "Front image × 4", credits: 4 }], total: 4, after: 14, affordable: true });
+  expect(quote([{ label: "Front image", action: "garment", count: 4 }], { garment: 1 }, 2)).toMatchObject({ total: 4, after: -2, affordable: false });
+  expect(quote([{ label: "360° view", action: "turn", count: 1 }], { turn: 3 }, null)).toMatchObject({ total: 3, after: null, affordable: false });
+  // An action without a server price costs nothing.
+  expect(quote([{ label: "Back image", action: "back", count: 1 }], {}, 0)).toMatchObject({ total: 0, affordable: true });
+});

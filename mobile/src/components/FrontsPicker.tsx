@@ -37,7 +37,7 @@ export function FrontsPicker({ choice }: { choice: FrontsChoice }) {
   );
 
   return (
-    <View style={{ backgroundColor: colors.card, borderRadius: radius.card, paddingHorizontal: 16, paddingVertical: 12 }}>
+    <View style={{ backgroundColor: colors.grouped, borderRadius: radius.card, paddingHorizontal: 16, paddingVertical: 12 }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <Text style={{ ...type.body, color: colors.label }}>Pieces in this photo</Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>

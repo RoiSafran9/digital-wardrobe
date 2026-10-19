@@ -44,7 +44,7 @@ export default function AccountScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 20 },
   title: { ...type.largeTitle, color: colors.label, marginTop: 20, marginBottom: 20 },
-  card: { backgroundColor: colors.card, borderRadius: radius.card, padding: 14, marginBottom: 20 },
+  card: { backgroundColor: colors.grouped, borderRadius: radius.card, padding: 14, marginBottom: 20 },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   rowLabel: { ...type.body, color: colors.label },
   rowValue: { ...type.body, color: colors.secondaryLabel, flexShrink: 1 },

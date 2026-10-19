@@ -27,7 +27,7 @@ function Field({ label, value, onChange, placeholder }: {
         placeholderTextColor={colors.secondaryLabel}
         style={{
           borderRadius: 12,
-          paddingHorizontal: 14, paddingVertical: 12, ...type.body, color: colors.label, backgroundColor: colors.card,
+          paddingHorizontal: 14, paddingVertical: 12, ...type.body, color: colors.label, backgroundColor: colors.grouped,
         }}
       />
     </View>
@@ -106,7 +106,7 @@ export function ItemEditForm({ item, onSaved, onCancel }: Props) {
               hitSlop={hitSlopFor(30)}
               style={{
                 paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill,
-                backgroundColor: on ? colors.tint : colors.card,
+                backgroundColor: on ? colors.tint : colors.grouped,
               }}
             >
               <Text style={{ ...type.subhead, color: on ? colors.onTint : colors.label }}>{capitalize(name)}</Text>

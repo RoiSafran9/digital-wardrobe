@@ -33,7 +33,7 @@ export function PillButton({ label, onPress, variant = "secondary", icon, disabl
         style={{
           transform: [{ scale }],
           opacity: disabled ? 0.5 : 1,
-          backgroundColor: primary ? colors.tint : colors.card,
+          backgroundColor: primary ? colors.tint : colors.grouped,
           borderRadius: radius.card,
           paddingVertical: 15,
           paddingHorizontal: 20,

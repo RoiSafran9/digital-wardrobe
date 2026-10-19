@@ -8,7 +8,8 @@ from pipeline.types import BBox, DetectedItemWithFacts, DetectionFields, ItemFac
 from pipeline.run_log import RunLogger
 
 MODEL_VISION = "gemini-3.1-flash-lite"
-MODEL_IMAGE = "gemini-2.5-flash-image"
+# gemini-2.5-flash-image is deprecated; 3.1 flash was the owner's pick on real items (2026-10-19).
+MODEL_IMAGE = "gemini-3.1-flash-image"
 
 PROMPTS_DIR = __file__.rsplit("/providers/", 1)[0] + "/prompts"
 
@@ -180,7 +181,9 @@ class GeminiProvider:
                 contents=[{"inline_data": {"mime_type": "image/png", "data": crop_bytes}}, prompt],
             )
             out_path = crop_path.rsplit(".", 1)[0] + "_generated.png"
-            image_bytes = response.candidates[0].content.parts[0].inline_data.data
+            # Newer image models can put a short text part before the image.
+            image_bytes = next(p.inline_data.data for p in response.candidates[0].content.parts
+                               if p.inline_data is not None)
             with open(out_path, "wb") as f:
                 f.write(image_bytes)
             self._log("stage4_generate", MODEL_IMAGE, "v5", start, "ok")

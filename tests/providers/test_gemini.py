@@ -127,7 +127,7 @@ async def _call(tmp_path, refs, view, anchors, retry_note=None):
         call = AsyncMock(return_value=_image_response(b"view"))
         MockClient.return_value.aio.models.generate_content = call
         data = await GeminiProvider().generate_view(refs, view, anchors, retry_note)
-    assert call.call_args.kwargs["model"] == "gemini-2.5-flash-image"
+    assert call.call_args.kwargs["model"] == "gemini-3.1-flash-image"
     contents = call.call_args.kwargs["contents"]
     return data, [c for c in contents[:-1] if isinstance(c, str)], contents[-1], contents
 
@@ -215,3 +215,27 @@ async def test_detect_outfit_uses_the_versioned_worn_prompt(monkeypatch, tmp_pat
     assert [c.category for c in scan.candidates] == ["jacket"]
     assert seen["prompt"] == open(f"pipeline/prompts/{outfit.DETECT_PROMPT}").read()
     assert "stage1_detect_facts" not in outfit.DETECT_PROMPT
+
+
+@pytest.mark.asyncio
+async def test_front_generation_reads_the_image_even_when_text_comes_first(monkeypatch, tmp_path):
+    # Newer image models may answer with a short text part before the image.
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    from pipeline.providers.gemini import GeminiProvider
+    from pipeline.types import FactField, ItemFacts
+    f = FactField(value="gray", confidence=0.9, basis="observed")
+    facts = ItemFacts(category=f, colors=f, pattern=f, visible_text=f, trims=f, visible_parts=f, occluded_parts=f)
+    text_part = MagicMock()
+    text_part.inline_data = None
+    image_part = MagicMock()
+    image_part.inline_data.data = b"front-png"
+    response = MagicMock()
+    response.candidates = [MagicMock()]
+    response.candidates[0].content.parts = [text_part, image_part]
+    crop = _png(tmp_path / "crop.png")
+
+    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
+        MockClient.return_value.models.generate_content.return_value = response
+        out = await GeminiProvider().generate(crop, facts, None)
+
+    assert open(out, "rb").read() == b"front-png"

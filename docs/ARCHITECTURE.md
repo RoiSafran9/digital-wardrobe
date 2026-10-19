@@ -41,7 +41,7 @@ cli.py, ui/app.py      batch CLI and Streamlit harness for running the pipeline 
 2. **Detect + facts** (`stage1_detect_facts`, one Gemini vision call per photo, `gemini-3.1-flash-lite`, structured output): boxes, included/excluded, category, colors, pattern, trims, visible text, visible/hidden parts, cut-off-by-frame flag.
 3. Per included item, concurrently:
    - **Crop** to the box (local).
-   - **Generate** (`stage4_generate`, `gemini-2.5-flash-image`): same garment, unfolded, on white; edge-cut pieces are completed.
+   - **Generate** (`stage4_generate`, `gemini-3.1-flash-image`; back and 360 views use the same model): same garment, unfolded, on white; edge-cut pieces are completed.
    - **Verify** (`stage5_verify`, local): Lab color distance and OCR text match against the facts; on failure regenerate with the violations (up to 2 retries).
    - **Cutout** (`cutout`, local rembg `isnet-general-use`, interior filled so white parts stay opaque; skipped if coverage looks wrong).
    - **Score** (`stage6_score`): tier high/medium/low with reason and retake tip.

@@ -78,6 +78,7 @@ export default function ProcessingScreen() {
           startedAt={current.startedAt}
           title={fronts ? `Creating up to ${fronts} catalog ${fronts === 1 ? "image" : "images"}` : "Creating catalog images"}
           note={LEAVE_NOTE}
+          count={current.progress}
         />
       </ScrollView>
       <InsufficientCreditsSheet

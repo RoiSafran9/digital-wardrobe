@@ -41,7 +41,10 @@ type Job = {
   failed: string[];
   retakes?: unknown[];
   over_limit?: number;
+  progress?: JobProgress | null;
 };
+
+export type JobProgress = { done: number; total: number };
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -114,8 +117,9 @@ async function startJob(account: Account, path: string, photoUri?: string, field
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function waitFor(account: Account, current: () => Account | null, job: Job): Promise<Job> {
+async function waitFor(account: Account, current: () => Account | null, job: Job, onProgress?: (p: JobProgress) => void): Promise<Job> {
   for (let waited = 0; ; waited += POLL_MS) {
+    if (job.progress && onProgress) onProgress(job.progress);
     if (job.status === "succeeded") return job;
     if (job.status === "failed" || job.status === "canceled") throw new Error(sentence(job.error ?? "Something went wrong — try again"));
     if (waited >= POLL_LIMIT_MS) throw new Error(STILL_WORKING);
@@ -131,9 +135,10 @@ export async function getItems(account: Account): Promise<ItemsResponse> {
 }
 
 // maxFronts: the front images the user approved paying for (sent only while billing is on).
-export async function postRun(account: Account, current: () => Account | null, photoUri: string, maxFronts?: number): Promise<RunResponse> {
+export async function postRun(account: Account, current: () => Account | null, photoUri: string, maxFronts?: number,
+                              onProgress?: (p: JobProgress) => void): Promise<RunResponse> {
   const fields: Record<string, string> = maxFronts ? { max_fronts: String(maxFronts) } : {};
-  const job = await waitFor(account, current, await startJob(account, "/v1/jobs", photoUri, fields));
+  const job = await waitFor(account, current, await startJob(account, "/v1/jobs", photoUri, fields), onProgress);
   const { items } = await getItems(account);
   const byId = new Map(items.map((i) => [i.item_id, i]));
   const pieces: RunItem[] = job.item_ids.flatMap((id) => {
@@ -148,6 +153,13 @@ export async function postRun(account: Account, current: () => Account | null, p
     failed: [...job.failed, ...(job.retakes ?? []).map((_, i) => `retake_${i}`)],
     over_limit: job.over_limit ?? 0,
   };
+}
+
+// Deletes the signed-in account and everything in it (the server takes the user from the token).
+export async function deleteAccount(account: Account): Promise<void> {
+  await call<void>(account, "/v1/account", {
+    method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: "DELETE" }),
+  });
 }
 
 export async function getCredits(account: Account, before?: number): Promise<Credits> {

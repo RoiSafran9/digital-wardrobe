@@ -11,6 +11,7 @@ export type CaptureJob = {
   status: "running" | "done" | "failed";
   startedAt: number;
   result?: RunResponse;
+  progress?: { done: number; total: number };  // account mode: pieces finished, once they're known
   error?: string;
   insufficient?: boolean;
 };
@@ -47,7 +48,7 @@ export function CaptureJobsProvider({ children }: { children: React.ReactNode })
   const run = useCallback((photoUri: string, maxFronts?: number) => {
     const id = ++latest.current;
     setCurrent({ id, photoUri, maxFronts, status: "running", startedAt: Date.now() });
-    postRun(photoUri, maxFronts)
+    postRun(photoUri, maxFronts, (progress) => setCurrent((c) => (c?.id === id ? { ...c, progress } : c)))
       .then((result) => { if (latest.current === id) setCurrent((c) => (c?.id === id ? { ...c, status: "done", result } : c)); })
       .catch((e) => {
         if (latest.current !== id) return;

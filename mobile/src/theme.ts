@@ -60,6 +60,7 @@ const TABULAR: TextStyle["fontVariant"] = ["tabular-nums"];
 export const type = {
   largeTitle: { fontSize: 34, fontWeight: "700", letterSpacing: -0.68 },
   screenTitle: { fontSize: 32, fontWeight: "700", letterSpacing: -0.64 },
+  pageTitle: { fontSize: 28, fontWeight: "700" },
   section: { fontSize: 22, fontWeight: "700" },
   title2: { fontSize: 22, fontWeight: "700" },
   headline: { fontSize: 17, fontWeight: "600" },
@@ -77,7 +78,7 @@ export const type = {
 } as const;
 
 export const radius = {
-  segment: 8, input: 12, button: 14, primary: 16, list: 18, tile: 22, feature: 26, stage: 28, sheet: 34, pill: 999,
+  segment: 8, input: 12, button: 14, primary: 16, list: 18, tile: 22, feature: 26, stage: 28, hero: 30, sheet: 34, pill: 999,
   card: 16,  // legacy name, same as primary
 };
 

@@ -72,8 +72,9 @@ See README → "Owner setup still open": hosted Supabase SMTP and email template
 - [ ] Confirm 5 friends can complete sign-in → free credits → create → reopen closet with no help, on networks other than home Wi-Fi.
 
 ## iOS redesign (design handoff) — [spec](superpowers/specs/2026-10-19-ios-redesign-design.md), [plan](superpowers/plans/2026-10-19-ios-redesign.md)
-- [x] M0 design system · M1 onboarding and sign-in · M2 names and groups · M3 Home and Closet · M4 Garment Details · M5 Add and garment flow · M6 outfit flow · M7 Account · M8 job progress and Delete Account (PRs #18–#26, stacked)
-- [ ] Owner phone check of each milestone; apply `20261019140000_job_progress.sql` to hosted (`npx supabase db push`)
+- [x] M0 design system · M1 onboarding and sign-in · M2 names and groups · M3 Home and Closet · M4 Garment Details · M5 Add and garment flow · M6 outfit flow · M7 Account · M8 job progress and Delete Account · M9 Home update (PRs #18–#27, merged 2026-10-19)
+- [x] `20261019140000_job_progress.sql` applied to hosted (2026-10-19)
+- [ ] Owner phone check of the whole redesign
 - [ ] Later: free garment pre-scan (D6 b), outfit corrections / missed garment / regenerate (D13, D14), profile name (D8), push "notify when ready" (D10), help and privacy links (D17)
 
 ## Next (candidates — owner to pick)

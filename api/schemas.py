@@ -82,6 +82,15 @@ class ItemPatch(BaseModel):
     visible_text: str | None = None
 
 
+class JobProgress(BaseModel):
+    done: int
+    total: int
+
+
+class AccountDeleteIn(BaseModel):
+    confirm: str | None = None
+
+
 class JobOut(BaseModel):
     id: str
     kind: Literal["garment", "back", "turn", "outfit_scan", "outfit_generate"]
@@ -94,6 +103,7 @@ class JobOut(BaseModel):
     cost_credits: int | None = None  # AI Credits one action of this job costs; None while billing is off
     max_fronts: int | None = None  # garment jobs with billing on: the fronts the user approved paying for
     over_limit: int = 0  # pieces found in the photo but not made because of max_fronts
+    progress: JobProgress | None = None  # garment jobs: pieces finished so far, once detection is done
 
 
 class PricesOut(BaseModel):

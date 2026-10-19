@@ -16,6 +16,8 @@ export function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={inApp}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="outfit/pick" />
+        <Stack.Screen name="outfit/review" />
       </Stack.Protected>
       <Stack.Protected guard={!inApp}>
         <Stack.Screen name="sign-in" />

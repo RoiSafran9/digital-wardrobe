@@ -230,6 +230,11 @@ class MemoryStore:
     def get_item(self, user_id, item_id):
         return copy.deepcopy(self._visible(user_id, item_id))
 
+    def pending_items(self, user_id):
+        own = [i for i in self.items.values() if i["user_id"] == user_id and i["deleted_at"] is None
+               and i.get("review_state") == "pending"]
+        return copy.deepcopy(sorted(own, key=lambda i: i["created_at"], reverse=True))
+
     def insert_item(self, row):
         for item in self.items.values():
             same_piece = row.get("job_id") and (item["job_id"], item["piece_index"]) == (row["job_id"], row.get("piece_index"))
@@ -428,6 +433,10 @@ class SupabaseStore:
 
     def get_item(self, user_id, item_id):
         return self._one("wardrobe_items", {"id": f"eq.{item_id}", "user_id": f"eq.{user_id}", "deleted_at": "is.null"})
+
+    def pending_items(self, user_id):
+        return self._rows("wardrobe_items", {"user_id": f"eq.{user_id}", "deleted_at": "is.null",
+                                             "review_state": "eq.pending", "order": "created_at.desc"})
 
     def insert_item(self, row):
         created = self._insert("wardrobe_items", row)

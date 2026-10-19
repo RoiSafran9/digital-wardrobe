@@ -1,6 +1,6 @@
 import { File } from "expo-file-system";
 import { API_BASE_URL, UNREACHABLE, parseJsonOrThrow } from "./http";
-import type { RunResponse, ItemsResponse, ClosetItem, Credits, ItemPatch, Prices, Turn } from "./types";
+import type { RunResponse, ItemsResponse, ClosetItem, Credits, ItemPatch, OutfitResult, OutfitScan, Prices, Turn } from "./types";
 import * as v1 from "./v1";
 
 export { API_BASE_URL };
@@ -121,4 +121,32 @@ export async function getCredits(before?: number): Promise<Credits | null> {
 
 export async function getPrices(): Promise<Prices | null> {
   return account ? v1.getPrices(account) : null;
+}
+
+// Outfit Photo exists only in account mode (the scan, picks and review live on the server).
+export const OUTFIT_NEEDS_ACCOUNT = "Outfit photos need a signed-in account.";
+
+function signedIn(): v1.Account {
+  if (!account) throw new Error(OUTFIT_NEEDS_ACCOUNT);
+  return account;
+}
+
+export async function scanOutfit(photoUri: string): Promise<OutfitScan> {
+  return v1.scanOutfit(signedIn(), current, photoUri);
+}
+
+export async function getOutfitScan(scanId: string): Promise<OutfitScan> {
+  return v1.getOutfitScan(signedIn(), scanId);
+}
+
+export async function generateOutfit(scanId: string, candidateIds: string[], unitPrice: number | null): Promise<OutfitResult> {
+  return v1.generateOutfit(signedIn(), current, scanId, candidateIds, unitPrice);
+}
+
+export async function getPendingItems(): Promise<ClosetItem[]> {
+  return account ? v1.getPendingItems(account) : [];
+}
+
+export async function keepItem(item: ClosetItem): Promise<ClosetItem> {
+  return v1.keepItem(signedIn(), item);
 }

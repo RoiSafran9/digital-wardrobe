@@ -35,7 +35,7 @@ Fidelity to the owner's actual garment, not an idealized product shot. Each piec
 - Backend runs on the owner's Mac (FastAPI); the phone reaches it over the LAN. Signed in, items, photos and AI jobs are stored per account in Supabase and follow the account across devices; work keeps running on the server if the phone disconnects. Without Supabase settings the app runs in local mode over `runs/`. No cloud host yet.
 - Removed items are soft-deleted and recoverable.
 - Optional 360 "on body" view per item: four AI ghost-mannequin angles (~16¢, ~1 min), made on request in the background and labelled as AI.
-- AI Credits are a confirmed direction (one balance per account). Jobs record their cost and the backend has the hooks to hold, charge and refund credits, but billing is off: no prices, balances or purchases yet.
+- AI Credits wallet, ledger, per-action pricing hooks, automated reconciliation and in-app balance/price views are already implemented. Actual deduction remains OFF by default unless `WARDROBE_BILLING=on` is configured and verified. There is no payment integration. Automatic starter Credits for new beta users are planned, not yet built.
 - **Planned (not implemented):** a second capture path for photos of a person wearing multiple garments: detect candidates first, let the user choose, then generate high-quality catalog fronts only for chosen candidates. Detection is free to the user; paid AI-generation actions use the same account wallet. Preserve the existing laid-flat capture route. See `docs/superpowers/specs/2026-10-19-outfit-photo-two-step-design.md`.
 - Undecided: outfit recommendations/styling, the cloud host, and opening the product to other users.
 
@@ -43,9 +43,9 @@ Fidelity to the owner's actual garment, not an idealized product shot. Each piec
 
 - Each signed-in user has **one unified AI Credits balance**, not separate quotas for front images, back images and 360. **Credits are consumed by explicitly requested AI generation actions, never by the number of garment records a user owns.** Creating a front image, adding a back image and creating a bundled four-view 360 are distinct billable action types. Enhancements can be created later for an existing item.
 - The **Account** screen shows current credits, a usage/progress meter and an in-app **AI Price List**. Each action shows its price before proceeding.
-- Numerical action costs, launch packs, promotional grants and the precise charging moment still need approval; examples are not launch prices.
-- **Current status:** accounts exist; credits are hooks only (job cost recording, a server price list that is off, a credit gate). No wallet, balance, meter, price-list screen or purchases yet.
-- See `docs/CREDITS.md` for the decision record and safety/implementation proposal.
+- Provisional F&F action prices are **1 front / 1 back / 3 for one 360**; public-launch pricing remains unapproved. **For the Friends & Family TestFlight beta, eligible new users will receive an automatic free one-time starter grant** (40 Credits proposed; exact grant not yet selected), with no purchases, subscriptions or payments.
+- **Current status:** accounts, a wallet, grant/charge ledger, server-controlled billing behind a default-OFF flag, account balance display and price-list screen exist. The exact-once automatic new-user welcome grant, hosted rollout and any real purchase are not yet implemented.
+- See `docs/CREDITS.md` for the decision record; TestFlight rollout plan: `docs/tasks/testflight-beta-launch-master-plan.md`.
 
 ## Brand Commitments
 

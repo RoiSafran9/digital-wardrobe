@@ -1,15 +1,18 @@
 # Screen Map — Digital Wardrobe
-Status: **As built** · Updated: 2026-10-18
+Status: **As built** · Updated: 2026-10-19 (redesign M1)
 
 Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: system font, grouped backgrounds, one blue tint, light/dark, Reduce Motion). Feature specs: `docs/superpowers/specs/`.
 
 ## Navigation
-- Signed out (account mode): only **Sign In**. Local mode skips it. A release build without Supabase settings shows a blocking "not configured" screen.
+- Signed out (account mode): **Welcome** (first launch) → **Intro** → **Sign in** → **Code**. Local mode skips them. A release build without Supabase settings shows a blocking "not configured" screen.
 - Signed in: bottom tabs **Home** (default) · **Closet** · **Add** · **Account** (`mobile/app/(tabs)/`). The item sheet opens over Home or Closet; it is not a tab.
 
-## 0. Sign In (`mobile/app/sign-in.tsx`)
-- Email step: "Enter your email and we'll send you a 6-digit code." → Send code.
-- Code step: 6-digit field (one-time-code autofill) → Sign in; "Resend code in Ns" (60 s); change email; clear messages for wrong/expired codes and rate limits.
+## 0. Onboarding and sign-in (account mode only; local mode skips all of it)
+- **Welcome** (`app/welcome.tsx`, first launch on this device): collage of garment tiles popping in, "Your closet, beautifully digital." (Instrument Serif), **Get Started** → Intro, **I already have an account** → Sign in. After onboarding is seen it forwards straight to Sign in.
+- **Intro** (`app/intro.tsx`): three paged cards — "Snap any garment", "Or import an outfit", "Browse what you own" — with dots, Next/Continue and Skip. Leaving it remembers onboarding (`onboarding.seen`).
+- **Sign in with email** (`app/sign-in.tsx`): "We'll send you a six-digit code. No password needed."; Continue disabled until the address is valid; terms note; clear messages for rate limits and connection errors.
+- **Check your inbox** (`app/sign-in-code.tsx`): six boxes over one one-time-code field (Mail autofill, paste); verifies 600 ms after the sixth digit; a wrong or expired code shows the message and clears the boxes; "Resend code in Ns" (60 s); "Use a different email".
+- **A welcome gift** (`app/welcome-credits.tsx`): once per account, right after a sign-in, only when billing is on and the server has granted credits. Shows the server's available balance ("about N garments" at the front price) and server price chips; **Digitize Your First Piece** → Add, **Explore first** → Home. Never a fixed amount.
 
 ## 1. Home (`mobile/app/(tabs)/index.tsx`)
 - Large title "Wardrobe" with "N pieces · M added this week".
@@ -42,7 +45,7 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 - "Remove from closet" as the last row, confirmed; recoverable on the server.
 
 ## Screen-level acceptance
-- Signed out you see only Sign In; after the code you land on Home; restart keeps you signed in; Sign Out returns to Sign In.
+- Signed out you see Welcome on first launch, then Sign In; after the code you land on Home (or once, A welcome gift); restart keeps you signed in; Sign Out returns to Sign In.
 - Every tab reachable from the bar; capture from Home and Add both land new pieces in Just added and the closet.
 - Category chips on Home open Closet pre-filtered.
 - Item sheet states (no back / back, 360 none / running / done / failed, edit, remove) all reachable on the phone.

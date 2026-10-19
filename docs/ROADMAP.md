@@ -65,11 +65,16 @@ See README → "Owner setup still open": hosted Supabase SMTP and email template
 - [ ] Complete hosted Supabase auth SMTP, verified 6-digit email codes, database migrations, private storage and off-LAN account tests.
 - [ ] Implement secure **exactly-once welcome-credit grant** after verified eligible signup (40 proposed, configurable; reuse existing wallet/ledger).
 - [ ] Host FastAPI + durable worker behind HTTPS, with bounded concurrency, timeouts, restarts and cost controls; demonstrate mobile data usage with Mac off.
-- [ ] Ship user-initiated account deletion covering private photos, privacy/support links and safe data retention policy.
+- [ ] Ship user-initiated account deletion covering private photos, privacy/support links and safe data retention policy. *(Deletion built in redesign M8: `DELETE /v1/account` + Account → Delete Account; privacy/support links and the retention policy still open.)*
 - [ ] Add operational health, AI cost monitoring, free Outfit-detection rate limits, provider-failure kill switch, privacy-respecting basic analytics.
 - [ ] Configure Apple Developer / Expo EAS / `mobile/app.json` app identity / `mobile/eas.json`; build and upload store-signed TestFlight IPA.
 - [ ] Run end-to-end phone checks and Apple external Beta App Review; invite 3–5 testers, then 10–20 if stable.
 - [ ] Confirm 5 friends can complete sign-in → free credits → create → reopen closet with no help, on networks other than home Wi-Fi.
+
+## iOS redesign (design handoff) — [spec](superpowers/specs/2026-10-19-ios-redesign-design.md), [plan](superpowers/plans/2026-10-19-ios-redesign.md)
+- [x] M0 design system · M1 onboarding and sign-in · M2 names and groups · M3 Home and Closet · M4 Garment Details · M5 Add and garment flow · M6 outfit flow · M7 Account · M8 job progress and Delete Account (PRs #18–#26, stacked)
+- [ ] Owner phone check of each milestone; apply `20261019140000_job_progress.sql` to hosted (`npx supabase db push`)
+- [ ] Later: free garment pre-scan (D6 b), outfit corrections / missed garment / regenerate (D13, D14), profile name (D8), push "notify when ready" (D10), help and privacy links (D17)
 
 ## Next (candidates — owner to pick)
 - Main priority: follow the [Friends & Family Beta Master Plan](tasks/testflight-beta-launch-master-plan.md) — no payment integration in beta

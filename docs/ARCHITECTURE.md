@@ -23,9 +23,11 @@ iPhone (Expo Go app)
 
 ## Repository layout
 ```text
-mobile/app/            Expo Router: _layout, sign-in, (tabs)/{index (Home), closet, add, account}
+mobile/app/            Expo Router: _layout, welcome, intro, sign-in, sign-in-code, welcome-credits, (tabs)/{index (Home), closet, add, account},
+                       capture/{camera, preview, processing, results, saved}, outfit/{detect, pick, review}
 mobile/src/            api (local client, v1 client, types), auth (Supabase client, secure store, provider),
-                       components (ItemSheet, TurnView, GarmentImage…), motion, theme, hooks, store
+                       ui (Button, Sheet, Toast, CostSheet, InsufficientCreditsSheet…), components (ItemSheet, TurnView,
+                       GarmentTile, GarmentImage…), motion, theme (handoff tokens), store (capture jobs), onboarding, appearance
 mobile/__tests__/      Jest + Testing Library
 api/                   main.py (mode switch), auth, store (Supabase/in-memory), worker, credits, facts_edit,
                        routes/ (local: runs, items, images, turn; account: v1)
@@ -60,13 +62,14 @@ Every model call is appended to a `run_log.jsonl` (stage, model, prompt version,
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/v1/jobs` | start a garment job (multipart photo) |
-| GET | `/v1/jobs/{id}` | job state, result, error, `cost_credits` |
+| GET | `/v1/jobs/{id}` | job state, result, error, `cost_credits`, and for garment jobs `progress` `{done, total}` (pieces finished, written by the worker as each finishes) |
 | GET | `/v1/prices` | credit price list (`{"billing": false}` unless `WARDROBE_BILLING=on`) |
 | GET | `/v1/credits` | the user's AI Credits wallet (`balance`, `held`, `available`, `granted`, `used`) and activity, newest first (`?limit=` 1–100, `?before=<entry id>`) |
 | GET | `/v1/items`, `/v1/items/{id}` | the user's items with signed image URLs |
 | PATCH | `/v1/items/{id}` | edit facts (validated server-side) |
 | DELETE | `/v1/items/{id}` | soft delete (`deleted_at`) |
 | POST | `/v1/items/{id}/back`, `/v1/items/{id}/turn` | start a back or 360 job |
+| DELETE | `/v1/account` | body `{"confirm": "DELETE"}`: deletes the signed-in user through the Supabase admin API (profile, items, jobs, wallet and ledger cascade), then removes their files; leftovers are caught by `scripts/sweep_storage.py` |
 | POST | `/v1/outfit-scans` | **Outfit Photo M1, off unless `WARDROBE_OUTFIT=on`:** free scan of a photo of a person wearing clothes (job kind `outfit_scan`, never priced or held) |
 | GET | `/v1/outfit-scans/{id}` | the scan's candidates (category, layer, visibility, plain-language uncertainty, box) with signed preview crops; `410` after it expires (24 h) |
 | POST | `/v1/outfit-scans/{id}/generate` | **M2:** `{candidate_ids, expected_unit_price}` + Idempotency-Key → job kind `outfit_generate` for the picked garments only; `409` if the front price changed; with billing on holds `garment` price × picks and charges per image made |
@@ -111,7 +114,7 @@ The closet is a directory scan (newest first). The full original photo is not ke
 - Tabs: Home · Closet · Add · Account (`mobile/app/(tabs)/_layout.tsx`); `RootNavigator` sends signed-out users to Sign In.
 - Session: Supabase's `LargeSecureStore` pattern (AES key in the Keychain, encrypted session in AsyncStorage), auto-refresh paused in the background.
 - Plain `fetch` clients (`src/api/client.ts` local, `src/api/v1.ts` account) adapting both to the same item shapes; local component state.
-- Native iOS look and motion per `DESIGN.md`; Reanimated motion that honors Reduce Motion; `expo-haptics`. Everything runs in Expo Go.
+- The design handoff's look per `DESIGN.md` (SF Pro, Instrument Serif for four headlines, warm-grey grouped cards, one blue accent); `Animated` motion that honors Reduce Motion; `expo-haptics`, `expo-camera`, `expo-blur`, `expo-linear-gradient`. Everything runs in Expo Go.
 - `GarmentImage` falls back cutout → generated → crop → placeholder.
 
 ## Quality gates

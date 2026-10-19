@@ -15,8 +15,8 @@ export function configureApi(config: v1.Account | null): void {
 
 const current = () => account;
 
-export async function postRun(photoUri: string, maxFronts?: number): Promise<RunResponse> {
-  if (account) return v1.postRun(account, current, photoUri, maxFronts);
+export async function postRun(photoUri: string, maxFronts?: number, onProgress?: (p: v1.JobProgress) => void): Promise<RunResponse> {
+  if (account) return v1.postRun(account, current, photoUri, maxFronts, onProgress);
   // Expo's global fetch rejects RN-style {uri, name, type} parts; File is a Blob it can read.
   const formData = new FormData();
   formData.append("photo", new File(photoUri));
@@ -121,6 +121,13 @@ export async function getCredits(before?: number): Promise<Credits | null> {
 
 export async function getPrices(): Promise<Prices | null> {
   return account ? v1.getPrices(account) : null;
+}
+
+export const DELETE_NEEDS_ACCOUNT = "There's no account to delete in local mode.";
+
+export async function deleteAccount(): Promise<void> {
+  if (!account) throw new Error(DELETE_NEEDS_ACCOUNT);
+  return v1.deleteAccount(account);
 }
 
 // Outfit Photo exists only in account mode (the scan, picks and review live on the server).

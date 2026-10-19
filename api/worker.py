@@ -109,7 +109,8 @@ async def _garment(store, job, providers, tmp, uploads):
     try:
         # With billing on, make at most the fronts the user approved paying for (largest pieces first).
         outcome = await run_photo(photo, output_dir, Providers(vision=vision, imagegen=given.imagegen), logger,
-                                  max_items=job.get("max_items"))
+                                  max_items=job.get("max_items"),
+                                  on_progress=lambda done, total: store.set_job_progress(job["id"], done, total))
     except ValueError as e:
         raise JobRejected(_sentence(str(e))) from e
 

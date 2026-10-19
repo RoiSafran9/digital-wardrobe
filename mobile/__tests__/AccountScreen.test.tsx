@@ -1,11 +1,13 @@
 import React from "react";
 import { Alert } from "react-native";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import AccountScreen from "../app/(tabs)/account";
+import { deleteAccount } from "../src/api/client";
 import { AuthContext, type AuthContextValue } from "../src/auth/AuthProvider";
 import { CreditsContext, type CreditsValue } from "../src/credits/CreditsProvider";
 import type { Credits } from "../src/api/types";
 
+jest.mock("../src/api/client", () => ({ ...jest.requireActual("../src/api/client"), deleteAccount: jest.fn() }));
 jest.mock("expo-router", () => ({ useFocusEffect: (effect: () => void) => require("react").useEffect(effect, [effect]) }));
 
 const CREDITS: Credits = {
@@ -122,4 +124,31 @@ test("initials come from the email's name part", () => {
   expect(initials("maya.chen@icloud.com")).toBe("MC");
   expect(initials("roi@x.com")).toBe("R");
   expect(initials("1234@x.com")).toBe("?");
+});
+
+test("Delete Account asks first, deletes, then signs out", async () => {
+  (deleteAccount as jest.Mock).mockResolvedValue(undefined);
+  const auth = renderAccount({}, { credits: CREDITS });
+  fireEvent.press(screen.getByRole("button", { name: "Delete Account" }));
+  expect(screen.getByText(/removed for good/)).toBeTruthy();
+  expect(deleteAccount).not.toHaveBeenCalled();
+  const buttons = screen.getAllByRole("button", { name: "Delete Account" });
+  await act(async () => fireEvent.press(buttons[buttons.length - 1]));
+  expect(deleteAccount).toHaveBeenCalled();
+  expect(auth.signOut).toHaveBeenCalled();
+});
+
+test("a failed delete says so and keeps you signed in", async () => {
+  (deleteAccount as jest.Mock).mockRejectedValue(new Error("Can't reach your wardrobe server."));
+  const auth = renderAccount({}, { credits: CREDITS });
+  fireEvent.press(screen.getByRole("button", { name: "Delete Account" }));
+  const buttons = screen.getAllByRole("button", { name: "Delete Account" });
+  await act(async () => fireEvent.press(buttons[buttons.length - 1]));
+  expect(screen.getByText("Can't reach your wardrobe server.")).toBeTruthy();
+  expect(auth.signOut).not.toHaveBeenCalled();
+});
+
+test("local mode offers no Delete Account", () => {
+  renderAccount({ status: "local", email: null, userId: null });
+  expect(screen.queryByRole("button", { name: "Delete Account" })).toBeNull();
 });

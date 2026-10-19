@@ -265,3 +265,14 @@ async def test_a_rejected_job_refunds():
     job_id = queue(store, "back", item["id"], "b1", photo_bytes())
     await run_once(store, factory(FakeVision([])), gate=gate)
     assert gate.calls == [("refund", job_id)]
+
+
+async def test_a_garment_job_reports_progress_per_piece():
+    store = MemoryStore()
+    seen = []
+    original = store.set_job_progress
+    store.set_job_progress = lambda job_id, done, total: (seen.append((done, total)), original(job_id, done, total))
+    job_id = garment_job(store)
+    await run_once(store, factory())
+    assert seen[0] == (0, 2) and seen[-1] == (2, 2)
+    assert store.jobs[job_id]["progress"] == {"done": 2, "total": 2}

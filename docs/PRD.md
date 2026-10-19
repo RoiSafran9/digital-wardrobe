@@ -13,7 +13,7 @@ Today: the owner, on their own iPhone over home Wi-Fi. Intended: other people wi
 
 ### Accounts and privacy
 1. Sign in with email and a 6-digit code (Supabase Auth); unknown emails create an account. Resend after 60 s, change email, clear errors for wrong or expired codes.
-2. The session survives app restarts (encrypted on the device) until Sign Out (Account tab, confirmed).
+2. The session survives app restarts (encrypted on the device) until Sign Out (Account tab, confirmed). **Delete Account** (Account, confirmed) removes the user, every row and every file for good.
 3. Every wardrobe is private to its account: items, photos and jobs are isolated by row level security and the backend; another account's IDs answer "not found". Images are read through short-lived signed links, never public URLs.
 4. Items follow the account across devices, and AI work keeps running on the server if the phone disconnects (jobs are polled; retries never create duplicates or a second paid call).
 5. **Local mode:** a development build without Supabase settings runs as the original single-owner app over `runs/`; Account shows "Local mode" ("Not signed in. Your items live on your computer's wardrobe server."). A release build without settings won't start.
@@ -46,7 +46,7 @@ Today: the owner, on their own iPhone over home Wi-Fi. Intended: other people wi
 
 ### Home and Account
 24. Home: large title with piece count and pieces added this week; two rows of recent garments drifting slowly (touch pauses, tap opens); stats (pieces, categories, colors); quick add; Just added; category chips with counts. Empty closet shows a single empty state with the add buttons.
-25. Account: signed-in email and Sign Out, or the local-mode note.
+25. Account: profile (initials, email), AI Credits balance of what was granted with a low-credit meter, price list and activity, Appearance (System/Light/Dark), Sign Out and Delete Account; or the local-mode note.
 
 ## AI Credits — confirmed direction (not built beyond hooks)
 - **One AI Credits wallet per account**, not separate caps for garments, back images and 360, and not provider tokens or currency as the unit.

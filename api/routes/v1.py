@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from api.auth import User, current_user
 from api.credits import MAX_FRONTS, InsufficientCredits, action_for, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
-from api.schemas import (BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
+from api.schemas import (AccountDeleteIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
                          TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse)
 from api.store import INTERRUPTED, get_store
 from pipeline.types import ItemFacts
@@ -33,7 +33,8 @@ def job_out(job: dict) -> JobOut:
     return JobOut(id=job["id"], kind=job["kind"], status=job["status"], error=job.get("error"),
                   item_id=job.get("item_id"), item_ids=result.get("item_ids", []),
                   quality=result.get("quality"), failed=result.get("failed", []), cost_credits=job.get("cost_credits"),
-                  max_fronts=job.get("max_items"), over_limit=result.get("over_limit", 0))
+                  max_fronts=job.get("max_items"), over_limit=result.get("over_limit", 0),
+                  progress=job.get("progress"))
 
 
 def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, gate, prices, item_id: str | None = None,
@@ -338,3 +339,13 @@ def keep_item(item_id: str, user: User = Depends(current_user), store=Depends(ge
     if item.get("review_state") == "pending":
         item = store.update_item(user.id, item_id, {"review_state": "kept"})
     return item_out(item, store.sign(_paths(item)))
+
+
+@router.delete("/account", status_code=204)
+def delete_account(body: AccountDeleteIn | None = None, user: User = Depends(current_user), store=Depends(get_store)):
+    """Deletes the signed-in account and everything in it. The user comes only from the verified token;
+    the body must say DELETE so a stray request can't do it."""
+    if body is None or body.confirm != "DELETE":
+        raise HTTPException(400, 'send {"confirm": "DELETE"} to delete your account')
+    store.delete_account(user.id)
+    return Response(status_code=204)

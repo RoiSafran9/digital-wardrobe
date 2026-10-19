@@ -3,7 +3,7 @@ import { useFocusEffect } from "expo-router";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
-import { getCredits } from "../../src/api/client";
+import { deleteAccount, getCredits } from "../../src/api/client";
 import type { CreditAction, CreditEntry } from "../../src/api/types";
 import { useAppearance, type AppearanceMode } from "../../src/appearance";
 import { useAuth } from "../../src/auth/AuthProvider";
@@ -34,6 +34,23 @@ export default function AccountScreen() {
   const { mode, setMode } = useAppearance();
   const [how, setHow] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function removeAccount() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteAccount();
+      setConfirmDelete(false);
+      await signOut();
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Couldn't delete your account. Try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
   const [extra, setExtra] = useState<CreditEntry[]>([]);
   const [next, setNext] = useState<number | null | undefined>(undefined);
   const [moreError, setMoreError] = useState<string | null>(null);
@@ -154,6 +171,7 @@ export default function AccountScreen() {
 
         <GroupedList>
           <Row label="Sign Out" tint onPress={() => setConfirmSignOut(true)} />
+          <Row label="Delete Account" destructive onPress={() => { setDeleteError(null); setConfirmDelete(true); }} />
         </GroupedList>
         {version ? <Text style={styles.footer}>{`Digital Wardrobe ${version}`}</Text> : null}
       </ScrollView>
@@ -173,6 +191,16 @@ export default function AccountScreen() {
           ))}
         </View>
         <Button title="Got It" onPress={() => setHow(false)} />
+      </Sheet>
+      <Sheet visible={confirmDelete} onClose={() => !deleting && setConfirmDelete(false)} title="Delete your account?" floating>
+        <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginBottom: 20 }}>
+          Your closet, photos and AI credits are removed for good. This can't be undone.
+        </Text>
+        {deleteError ? <Text style={{ ...type.footnote, color: colors.destructive, marginBottom: 12 }}>{deleteError}</Text> : null}
+        <View style={{ gap: 6 }}>
+          <Button title="Delete Account" variant="destructive" onPress={removeAccount} loading={deleting} />
+          <Button title="Cancel" variant="text" onPress={() => setConfirmDelete(false)} disabled={deleting} />
+        </View>
       </Sheet>
       <Sheet visible={confirmSignOut} onClose={() => setConfirmSignOut(false)} title="Sign out?" floating>
         <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginBottom: 20 }}>You'll need a new email code to sign back in.</Text>

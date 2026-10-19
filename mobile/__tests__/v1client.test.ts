@@ -1,4 +1,4 @@
-import { API_BASE_URL, OUTFIT_NEEDS_ACCOUNT, addBack, configureApi, deleteItem, generateOutfit, getCredits, getItems, getOutfitScan, getPendingItems, getPrices, getTurn, imageUrl, keepItem, postRun, scanOutfit, startTurn, updateItem } from "../src/api/client";
+import { API_BASE_URL, DELETE_NEEDS_ACCOUNT, OUTFIT_NEEDS_ACCOUNT, addBack, configureApi, deleteAccount, deleteItem, generateOutfit, getCredits, getItems, getOutfitScan, getPendingItems, getPrices, getTurn, imageUrl, keepItem, postRun, scanOutfit, startTurn, updateItem } from "../src/api/client";
 import { NO_CREDITS, SCAN_EXPIRED } from "../src/api/v1";
 import { addedLabel } from "../src/theme";
 
@@ -263,4 +263,27 @@ test("pending results and keep go to /v1; outfit needs an account", async () => 
   on("POST", "/v1/items/i1/keep", reply(v1Item("i1", { review_state: "kept" })));
   const [item] = await getPendingItems();
   expect((await keepItem(item)).review_state).toBe("kept");
+});
+
+test("a capture reports the server's per-piece progress while it polls", async () => {
+  jest.useFakeTimers();
+  signIn();
+  on("POST", "/v1/jobs", reply(job("queued"), 202));
+  on("GET", "/v1/jobs/job-1", reply(job("running", { progress: { done: 1, total: 3 } })),
+     reply(job("succeeded", { item_ids: [], quality: { status: "ok", reason: null }, failed: [], progress: { done: 3, total: 3 } })));
+  on("GET", "/v1/items", reply({ items: [] }));
+  const seen: unknown[] = [];
+  const pending = postRun("file:///p.jpg", undefined, (p) => seen.push(p));
+  await jest.advanceTimersByTimeAsync(4000);
+  await pending;
+  expect(seen[0]).toEqual({ done: 1, total: 3 });
+});
+
+test("deleting the account sends the confirmation to /v1/account; local mode has none", async () => {
+  await expect(deleteAccount()).rejects.toThrow(DELETE_NEEDS_ACCOUNT);
+  signIn();
+  on("DELETE", "/v1/account", reply(null, 204));
+  await deleteAccount();
+  expect(JSON.parse(calls[0].init.body as string)).toEqual({ confirm: "DELETE" });
+  expect(auth(0)).toBe("Bearer tok-a");
 });

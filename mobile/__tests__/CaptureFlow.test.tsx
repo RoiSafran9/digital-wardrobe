@@ -84,7 +84,7 @@ describe("preview", () => {
     renderWith(<PreviewScreen />);
     expect(screen.queryByText(/credit/)).toBeNull();
     fireEvent.press(screen.getByRole("button", { name: "Create Catalog Images" }));
-    expect(postRun).toHaveBeenCalledWith("file:///photo.jpg", undefined);
+    expect(postRun).toHaveBeenCalledWith("file:///photo.jpg", undefined, expect.any(Function));
     expect(mockReplace).toHaveBeenCalledWith("/capture/processing");
   });
 
@@ -96,7 +96,7 @@ describe("preview", () => {
     expect(screen.getByText("Front catalog image × 2")).toBeTruthy();
     expect(screen.getByRole("button", { name: "More pieces" })).toBeDisabled();
     fireEvent.press(screen.getByRole("button", { name: "Generate up to 2 Items · 2 credits" }));
-    expect(postRun).toHaveBeenCalledWith("file:///photo.jpg", 2);
+    expect(postRun).toHaveBeenCalledWith("file:///photo.jpg", 2, expect.any(Function));
   });
 
   test("without credits for even one piece it explains instead of starting", () => {
@@ -120,7 +120,7 @@ describe("processing", () => {
     expect(screen.getByText(/Credits for unfinished items were returned/)).toBeTruthy();
     (postRun as jest.Mock).mockReturnValue(new Promise(() => {}));
     fireEvent.press(screen.getByRole("button", { name: "Try Again" }));
-    expect(postRun).toHaveBeenLastCalledWith("file:///photo.jpg", 2);
+    expect(postRun).toHaveBeenLastCalledWith("file:///photo.jpg", 2, expect.any(Function));
   });
 
   test("a photo refused as worn offers the outfit flow with the same photo", async () => {
@@ -164,4 +164,10 @@ describe("results and saved", () => {
     await act(async () => fireEvent.press(add));
     expect(screen.getByText("2 new pieces")).toBeTruthy();
   });
+});
+
+test("the processing card shows the server's piece count when it has one", () => {
+  const { ProcessingCard, GARMENT_STAGES } = require("../src/components/capture/ProcessingCard");
+  render(<ProcessingCard photoUri="file:///p.jpg" stages={GARMENT_STAGES} startedAt={Date.now()} title="t" note="n" count={{ done: 1, total: 3 }} />);
+  expect(screen.getByText("2 of 3")).toBeTruthy();
 });

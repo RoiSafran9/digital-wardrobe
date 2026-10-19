@@ -1,5 +1,5 @@
 # Screen Map — Digital Wardrobe
-Status: **As built** · Updated: 2026-10-19 (redesign M7)
+Status: **As built** · Updated: 2026-10-19 (redesign M8)
 
 Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: system font, grouped backgrounds, one blue tint, light/dark, Reduce Motion). Feature specs: `docs/superpowers/specs/`.
 
@@ -34,7 +34,7 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 - **Add Clothes:** "Choose how to start. Finding garments is always free." Two cards: **Photograph Garments** ("N credit per garment" while billing is on) and **Import from Outfit Photo** (only when the server offers outfits; "Free detection · N credit per piece"). "Balance: N credits · Price list" → Account (billing on). A numbered "Your first piece" hint when opened from the starter screen; "N pieces waiting for review" for outfit results.
 - **Camera** (`capture/camera.tsx`, `expo-camera`): dark full screen, corner brackets, hint pill, GARMENTS / OUTFIT switch (outfit only when offered), 76pt shutter, library button. Camera refused → explanation + Choose from Library. Garments → Preview; outfit → the free scan.
 - **Preview** (`capture/preview.tsx`): the photo, then — billing on — "Pieces in this photo" (1 up to what you can afford, max 20) with "Front catalog image × N — N credits" and "Balance after"; CTA "Generate up to N Items · N credits" (billing off: "Create Catalog Images"). Can't afford one → Not enough credits sheet. The user approves a maximum and pays only for pieces made (CREDITS §6); no pre-detection.
-- **Processing** (`capture/processing.tsx`): photo card coming into focus with a shimmer, stage title, progress bar easing to 90%, checklist (Finding each garment → Separating the pieces → Laying them flat → Adding final details), "You can leave this screen — your pieces will appear in your closet." Leaving keeps the job; Home shows "Creating your pieces…" until it's done.
+- **Processing** (`capture/processing.tsx`): photo card coming into focus with a shimmer and, in account mode, the server's "2 of 3" piece count, stage title, progress bar easing to 90%, checklist (Finding each garment → Separating the pieces → Laying them flat → Adding final details), "You can leave this screen — your pieces will appear in your closet." Leaving keeps the job; Home shows "Creating your pieces…" until it's done.
 - **Error:** greyed photo with a red "!", "Generation paused", the reason (+ "Credits for unfinished items were returned to your balance." while billing is on), Try Again / Back to Preview; a worn-photo rejection offers "Try it as an outfit photo" with the same photo.
 - **Results** (`capture/results.tsx`): "✓ READY", "N pieces created", tiles with check toggles (deselected 40%), tier badge and retake/edge tips, pieces over the limit and pieces that failed; "No pieces found" / unusable-photo messages with Take Another Photo. **Add N to Closet** removes deselected pieces (soft delete; "Credits for removed pieces are not returned." while billing is on).
 - **Saved** (`capture/saved.tsx`, shared with outfits): fan of up to three tiles with a green check, "Added to your closet" (Instrument Serif), "N new pieces · N credits used" (credits only while billing is on), View Closet / Add More Clothes.
@@ -46,7 +46,7 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 - **Price list** (billing on): Garment detection Free (when outfits are offered), Front image, Back image, 360° view — all from the server.
 - **Recent activity:** grants (+N, green) and charges (−N) with dates, newest first, "Show more".
 - **Settings:** Appearance System / Light / Dark (remembered on the device; default System). No notification switch, help or privacy rows yet (spec D10, D17).
-- **Sign Out** (confirmed in a sheet). Version footer. Delete Account arrives with its backend (M8).
+- **Sign Out** (confirmed in a sheet) and **Delete Account** (danger; sheet: "Your closet, photos and AI credits are removed for good. This can't be undone."; deletes on the server, then signs out). Version footer.
 - Local mode: a "Local mode" card ("Not signed in. Your items live on your computer's wardrobe server.") and Appearance.
 
 ## 5. Garment Details (`mobile/src/components/ItemSheet.tsx`)

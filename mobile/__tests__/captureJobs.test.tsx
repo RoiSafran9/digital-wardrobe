@@ -29,7 +29,7 @@ test("start → running → done with the result, sent with the approved fronts"
   render(<CaptureJobsProvider><Probe /></CaptureJobsProvider>);
   fireEvent.press(screen.getByText("start"));
   expect(screen.getByText("running")).toBeTruthy();
-  expect(mockedPost).toHaveBeenCalledWith("file:///a.jpg", 2);
+  expect(mockedPost).toHaveBeenCalledWith("file:///a.jpg", 2, expect.any(Function));
   await act(async () => finish(ok));
   expect(screen.getByText("done r1")).toBeTruthy();
 });
@@ -47,7 +47,7 @@ test("retry posts the same photo again", async () => {
   await act(async () => fireEvent.press(screen.getByText("start")));
   expect(screen.getByText("failed Can't reach your wardrobe server.")).toBeTruthy();
   await act(async () => fireEvent.press(screen.getByText("retry")));
-  expect(mockedPost).toHaveBeenLastCalledWith("file:///a.jpg", 2);
+  expect(mockedPost).toHaveBeenLastCalledWith("file:///a.jpg", 2, expect.any(Function));
   expect(screen.getByText("done r1")).toBeTruthy();
 });
 

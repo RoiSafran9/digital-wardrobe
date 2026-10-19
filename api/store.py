@@ -216,6 +216,20 @@ class MemoryStore:
     def retry_job(self, job_id, error):
         self.jobs[job_id].update(status="queued", error=error, locked_until=None)
 
+    def set_job_progress(self, job_id, done, total):
+        self.jobs[job_id]["progress"] = {"done": done, "total": total}
+
+    # Accounts
+    def delete_account(self, user_id):
+        """Like deleting the auth user: every row cascades away, then the user's files go."""
+        self.deleted_users.add(user_id)
+        self.items = {k: v for k, v in self.items.items() if v["user_id"] != user_id}
+        self.jobs = {k: v for k, v in self.jobs.items() if v["user_id"] != user_id}
+        self.wallets.pop(user_id, None)
+        self.ledger = [e for e in self.ledger if e["user_id"] != user_id]
+        self.emails = {e: u for e, u in self.emails.items() if u != user_id}
+        self.remove(self.list_paths(user_id))
+
     # Items
     def _visible(self, user_id, item_id):
         item = self.items.get(item_id)
@@ -452,6 +466,19 @@ class SupabaseStore:
 
     def find_legacy(self, user_id, legacy_key):
         return self._one("wardrobe_items", {"user_id": f"eq.{user_id}", "legacy_key": f"eq.{legacy_key}"})
+
+    def set_job_progress(self, job_id, done, total):
+        self._patch("generation_jobs", {"id": f"eq.{job_id}"}, {"progress": {"done": done, "total": total}})
+
+    # Accounts
+    def delete_account(self, user_id):
+        """Deletes the auth user (profile, items, jobs, wallet and ledger cascade with it), then removes
+        the user's files. Files left behind by a failure here are caught by scripts/sweep_storage.py,
+        which removes files of deleted accounts."""
+        self._ok(self.http.delete(f"/auth/v1/admin/users/{quote(user_id, safe='')}"))
+        paths = self.list_paths(user_id)
+        for start in range(0, len(paths), 100):
+            self.remove(paths[start:start + 100])
 
     # Files
     def _object(self, path):

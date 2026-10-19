@@ -1,5 +1,6 @@
 import asyncio
 import os
+from typing import Callable
 import shutil
 from dataclasses import dataclass
 from pipeline.providers.base import VisionProvider, ImageGenProvider
@@ -71,9 +72,12 @@ def _largest(items, max_items: int | None):
 
 
 async def run_photo(image_path: str, output_dir: str, providers: Providers,
-                     logger: RunLogger, max_attempts: int = 2, max_items: int | None = None) -> dict:
+                     logger: RunLogger, max_attempts: int = 2, max_items: int | None = None,
+                     on_progress: Callable[[int, int], None] | None = None) -> dict:
     """max_items caps how many front images are made (the fronts the user approved paying for);
-    pieces past the cap are counted in over_limit and not generated. None = no cap."""
+    pieces past the cap are counted in over_limit and not generated. None = no cap.
+    on_progress(done, total) is told the piece count after detection and again as each piece finishes
+    (no extra model calls; it only reports)."""
     quality = stage0_quality.run(image_path)
     if quality.status == "retake":
         return {"quality": quality, "items": [], "failed": [], "over_limit": 0}
@@ -84,8 +88,19 @@ async def run_photo(image_path: str, output_dir: str, providers: Providers,
     included_items = _largest(detected_items, max_items)
 
     os.makedirs(output_dir, exist_ok=True)
+    total, done = len(included_items), 0
+
+    def report():
+        if on_progress:
+            try:
+                on_progress(done, total)
+            except Exception:
+                pass  # progress is a nicety; never let it fail the photo
+
+    report()
 
     async def _safe_run_item(i, item):
+        nonlocal done
         item_dir = os.path.join(output_dir, f"item_{i}")
         try:
             return await _run_item(image_path, item, item_dir, providers, logger, max_attempts)
@@ -93,6 +108,9 @@ async def run_photo(image_path: str, output_dir: str, providers: Providers,
             logger.log(stage="orchestrator", model="n/a", prompt_version="v1",
                         latency_ms=0.0, status="error", error=str(e))
             return None
+        finally:
+            done += 1
+            report()
 
     outcomes = await asyncio.gather(*[
         _safe_run_item(i, item) for i, item in enumerate(included_items)

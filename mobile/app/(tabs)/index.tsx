@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { getItems } from "../../src/api/client";
@@ -18,6 +18,8 @@ import { colors, hitSlopFor, radius, type } from "../../src/theme";
 import { useCapture } from "../../src/useCapture";
 import { FrontsPicker } from "../../src/components/FrontsPicker";
 import { useFrontsChoice } from "../../src/credits/useFrontsChoice";
+import { useCredits } from "../../src/credits/CreditsProvider";
+import { OUTFIT_LINK, TRY_AS_OUTFIT, isWornRejection } from "../../src/outfit/outfit";
 
 const TILE = 96;
 
@@ -32,6 +34,7 @@ function Stat({ label, value }: { label: string; value: number }) {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { outfit: outfitOn } = useCredits();
   const [items, setItems] = useState<ClosetItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -124,6 +127,16 @@ export default function HomeScreen() {
               </>
             )}
             {captureError ? <Text style={{ ...type.footnote, color: colors.destructive }}>{captureError}</Text> : null}
+            {outfitOn && !loading ? (
+              <Pressable
+                accessibilityRole="button" hitSlop={hitSlopFor(20)} style={{ alignSelf: "center" }}
+                onPress={() => router.push({ pathname: "/add", params: { mode: "outfit", at: String(Date.now()) } })}
+              >
+                <Text style={{ ...type.subhead, color: colors.tint }}>
+                  {isWornRejection(captureError) ? TRY_AS_OUTFIT : OUTFIT_LINK}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
 
           <View style={{ marginTop: 28 }}>

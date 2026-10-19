@@ -134,3 +134,19 @@ test("review keeps or discards each result and reports failed picks", async () =
   fireEvent.press(screen.getByText("Go to closet"));
   expect(mockReplace).toHaveBeenCalledWith("/closet");
 });
+
+test("a photo refused as worn offers the outfit flow on Add", async () => {
+  (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+  (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({ canceled: false, assets: [{ uri: "file:///o.jpg" }] });
+  (postRun as jest.Mock).mockRejectedValue(new Error("No garment to add: worn on body"));
+  withCredits(<AddScreen />);
+  fireEvent.press(screen.getByText("Choose from library"));
+  fireEvent.press(await screen.findByText("Try it as an outfit photo"));
+  expect(screen.getByText(/Someone wearing the outfit/)).toBeTruthy();
+});
+
+test("Add opens in outfit mode when Home's link asks for it", () => {
+  mockParams = { mode: "outfit", at: "1" };
+  withCredits(<AddScreen />);
+  expect(screen.getByLabelText("Outfit photo").props.accessibilityState.selected).toBe(true);
+});

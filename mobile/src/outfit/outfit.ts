@@ -42,4 +42,13 @@ export function quote(count: number, unitPrice: number | undefined, available: n
            label: `${images} · ${creditsLabel(total)} · ${available} available` };
 }
 
+// The garment-photo flow refuses a photo of someone wearing clothes ("No garment to add: worn on body").
+// Then the app offers the outfit flow instead, at no extra cost.
+export function isWornRejection(message: string | null | undefined): boolean {
+  return !!message && /worn|wearing/i.test(message);
+}
+
+export const OUTFIT_LINK = "Wearing it? Add from an outfit photo";
+export const TRY_AS_OUTFIT = "Try it as an outfit photo";
+
 export const AI_NOTE = "AI image made from your photo. Parts hidden in the photo were completed.";

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Icon, type IconName } from "../../src/components/Icon";
 import { PillButton } from "../../src/components/PillButton";
@@ -9,6 +9,7 @@ import { colors, hitSlopFor, radius, type } from "../../src/theme";
 import { getPendingItems } from "../../src/api/client";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { useOutfitScan } from "../../src/outfit/useOutfitScan";
+import { TRY_AS_OUTFIT, isWornRejection } from "../../src/outfit/outfit";
 import { useCapture } from "../../src/useCapture";
 import { FrontsPicker } from "../../src/components/FrontsPicker";
 import { useFrontsChoice } from "../../src/credits/useFrontsChoice";
@@ -56,6 +57,11 @@ export default function AddScreen() {
   const fronts = useFrontsChoice();
   const { outfit: outfitOn } = useCredits();
   const [chosen, setMode] = useState<Mode>("garment");
+  // Home's "Wearing it?" link and a worn-photo rejection open this tab in outfit mode.
+  const { mode: asked, at } = useLocalSearchParams<{ mode?: string; at?: string }>();
+  useEffect(() => {
+    if (asked === "outfit") setMode("outfit");
+  }, [asked, at]);
   const mode: Mode = outfitOn ? chosen : "garment";
   const router = useRouter();
   const [pending, setPending] = useState(0);
@@ -110,7 +116,14 @@ export default function AddScreen() {
       {error ? (
         <View style={styles.errorBox}>
           <Icon name="alert" size={18} color={colors.destructive} />
-          <Text style={styles.errorText}>{error}</Text>
+          <View style={{ flex: 1, gap: 6 }}>
+            <Text style={styles.errorText}>{error}</Text>
+            {outfitOn && !outfit && isWornRejection(error) ? (
+              <Pressable accessibilityRole="button" onPress={() => setMode("outfit")} hitSlop={hitSlopFor(20)}>
+                <Text style={{ ...type.subhead, color: colors.tint }}>{TRY_AS_OUTFIT}</Text>
+              </Pressable>
+            ) : null}
+          </View>
         </View>
       ) : null}
 

@@ -1,7 +1,11 @@
-import { Tabs } from "expo-router";
+import { useCallback } from "react";
+import { Tabs, useRouter } from "expo-router";
 import { BlurView } from "expo-blur";
 import { StyleSheet, View, type ColorValue } from "react-native";
 import { Icon, type IconName } from "../../src/components/Icon";
+import { useAuth } from "../../src/auth/AuthProvider";
+import { useCredits } from "../../src/credits/CreditsProvider";
+import { useStarterCredits } from "../../src/onboarding";
 import { colors, type } from "../../src/theme";
 
 function tabIcon(name: IconName) {
@@ -21,6 +25,11 @@ function TabBarBackground() {
 }
 
 export default function TabsLayout() {
+  const router = useRouter();
+  const { userId } = useAuth();
+  const { billing, credits } = useCredits();
+  const showStarter = useCallback(() => router.push("/welcome-credits"), [router]);
+  useStarterCredits(userId, billing, credits, showStarter);
   return (
     <Tabs
       screenOptions={{

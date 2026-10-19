@@ -49,9 +49,10 @@ Fidelity to the owner's actual garment, not an idealized product shot. Each piec
 
 ## Brand Commitments
 
-Standing preference: the category standard, native iOS (system font, grouped backgrounds, one blue tint),
-executed at full craft; immersion comes from motion of the garments, not decoration. Chosen in an impeccable
-direction round on 2026-10-16. Dark mode follows the system.
+Native iOS at full craft (SF Pro, SF Symbols, native sheets, one blue accent), warmed by the owner's design
+handoff (2026-10-19): white screens with warm-grey grouped cards, stone garment tiles with soft shadows, and
+Instrument Serif for four editorial headlines only. Immersion comes from motion of the garments, not decoration.
+Dark mode follows the system unless the user picks one in Account. See `DESIGN.md`.
 
 ## Evidence on Hand
 

@@ -24,6 +24,12 @@ const ICONS = {
   closet: { sf: "square.grid.2x2", ion: "grid-outline" },
   turn: { sf: "rotate.3d", ion: "sync-outline" },
   account: { sf: "person.crop.circle", ion: "person-circle-outline" },
+  plusCircle: { sf: "plus.circle.fill", ion: "add-circle" },
+  sparkles: { sf: "sparkles", ion: "sparkles-outline" },
+  search: { sf: "magnifyingglass", ion: "search" },
+  chevronLeft: { sf: "chevron.left", ion: "chevron-back" },
+  person: { sf: "person.fill", ion: "person" },
+  gear: { sf: "gearshape", ion: "settings-outline" },
 } as const satisfies Record<string, { sf: SFSymbol; ion: keyof typeof Ionicons.glyphMap }>;
 
 export type IconName = keyof typeof ICONS;

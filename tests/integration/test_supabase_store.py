@@ -96,3 +96,11 @@ async def test_a_job_runs_end_to_end_through_the_worker(settings, store, users):
 def test_jobs_store_their_credit_cost(store, users):
     job, _ = store.create_job(users[0]["id"], "garment", f"cost-{uuid.uuid4()}", None, cost_credits=2)
     assert store.get_job(users[0]["id"], job["id"])["cost_credits"] == 2
+
+
+def test_display_name_round_trip(settings, users):
+    from api.store import SupabaseStore
+    store = SupabaseStore(settings)
+    store.set_display_name(users[0]["id"], "Maya")
+    assert store.display_name(users[0]["id"]) == "Maya"
+    assert store.display_name(users[1]["id"]) is None

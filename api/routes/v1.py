@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from api.auth import User, current_user
 from api.credits import MAX_FRONTS, InsufficientCredits, action_for, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
-from api.schemas import (AccountDeleteIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
+from api.schemas import (AccountDeleteIn, ProfileIn, ProfileOut, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
                          TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse)
 from api.store import INTERRUPTED, get_store
 from pipeline.types import ItemFacts
@@ -349,3 +349,21 @@ def delete_account(body: AccountDeleteIn | None = None, user: User = Depends(cur
         raise HTTPException(400, 'send {"confirm": "DELETE"} to delete your account')
     store.delete_account(user.id)
     return Response(status_code=204)
+
+
+NAME_MAX = 40
+
+
+@router.get("/profile", response_model=ProfileOut)
+def get_profile(user: User = Depends(current_user), store=Depends(get_store)):
+    return ProfileOut(email=user.email, display_name=store.display_name(user.id))
+
+
+@router.patch("/profile", response_model=ProfileOut)
+def edit_profile(body: ProfileIn, user: User = Depends(current_user), store=Depends(get_store)):
+    """The name the app greets the user with, set at sign-up and changeable in Account."""
+    name = (body.display_name or "").strip()
+    if not 1 <= len(name) <= NAME_MAX:
+        raise HTTPException(400, f"display_name must be 1 to {NAME_MAX} characters")
+    store.set_display_name(user.id, name)
+    return ProfileOut(email=user.email, display_name=name)

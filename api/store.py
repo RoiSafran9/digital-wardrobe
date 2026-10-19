@@ -34,6 +34,7 @@ class MemoryStore:
         self.emails: dict[str, str] = {}  # email -> user id, for the admin grant tool
         self.wallets: dict[str, dict] = {}
         self.ledger: list[dict] = []
+        self.names: dict[str, str] = {}  # user id -> display name
 
     # Profiles
     def profile_status(self, user_id: str) -> str:
@@ -41,6 +42,12 @@ class MemoryStore:
 
     def user_exists(self, user_id: str) -> bool:
         return user_id not in self.deleted_users
+
+    def display_name(self, user_id):
+        return self.names.get(user_id)
+
+    def set_display_name(self, user_id, name):
+        self.names[user_id] = name
 
     def find_user_by_email(self, email):
         user_id = self.emails.get(email.strip().lower())
@@ -228,6 +235,7 @@ class MemoryStore:
         self.wallets.pop(user_id, None)
         self.ledger = [e for e in self.ledger if e["user_id"] != user_id]
         self.emails = {e: u for e, u in self.emails.items() if u != user_id}
+        self.names.pop(user_id, None)
         self.remove(self.list_paths(user_id))
 
     # Items
@@ -347,6 +355,13 @@ class SupabaseStore:
 
     def find_user_by_email(self, email):
         return self._one("profiles", {"email": f"eq.{email.strip().lower()}"})
+
+    def display_name(self, user_id):
+        row = self._one("profiles", {"id": f"eq.{user_id}"})
+        return row.get("display_name") if row else None
+
+    def set_display_name(self, user_id, name):
+        self._patch("profiles", {"id": f"eq.{user_id}"}, {"display_name": name})
 
     # AI Credits: reads filter by the user; every change goes through a credit_* database function
     def credits(self, user_id):

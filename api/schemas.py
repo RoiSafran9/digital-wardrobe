@@ -87,6 +87,15 @@ class JobProgress(BaseModel):
     total: int
 
 
+class ProfileOut(BaseModel):
+    email: str | None = None
+    display_name: str | None = None
+
+
+class ProfileIn(BaseModel):
+    display_name: str | None = None
+
+
 class AccountDeleteIn(BaseModel):
     confirm: str | None = None
 

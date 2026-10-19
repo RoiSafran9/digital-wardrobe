@@ -13,3 +13,5 @@ jest.mock("expo-camera", () => {
     useCameraPermissions: () => global.__cameraPermission ?? [{ granted: true, canAskAgain: true }, async () => ({ granted: true })],
   };
 });
+// jest-expo's native image-size mock expects a callback RN no longer passes; answer like the real one.
+require("react-native").Image.getSize = jest.fn((uri, success) => { if (success) success(300, 400); return Promise.resolve({ width: 300, height: 400 }); });

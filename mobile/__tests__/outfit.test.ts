@@ -3,7 +3,7 @@ import type { OutfitCandidate, OutfitScan } from "../src/api/types";
 
 const cand = (id: string, category: string, visibility: OutfitCandidate["visibility"] = "full"): OutfitCandidate => ({
   id, category, visibility, layer: "single", colors: ["blue"], pattern: "solid", visible_text: "", description: category,
-  hidden_parts: [], uncertainty: "", preview_url: null,
+  hidden_parts: [], uncertainty: "", box: { x: 10, y: 10, width: 100, height: 120 }, preview_url: null,
 });
 const scan = (candidates: OutfitCandidate[], extra: Partial<OutfitScan> = {}): OutfitScan => ({
   id: "s1", status: "succeeded", error: null, scene_kind: "worn", person_count: 1, candidates, expires_at: null, ...extra,

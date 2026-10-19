@@ -1,28 +1,45 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { generateOutfit, getOutfitScan } from "../../src/api/client";
+import { NO_CREDITS } from "../../src/api/v1";
 import type { OutfitCandidate, OutfitScan } from "../../src/api/types";
+import { groupFor } from "../../src/categoryGroups";
+import { ProcessingCard, type Stage } from "../../src/components/capture/ProcessingCard";
 import { Icon } from "../../src/components/Icon";
-import { PillButton } from "../../src/components/PillButton";
-import { KEEP_OPEN, OUTFIT_STEPS, ProcessingStatus } from "../../src/components/ProcessingStatus";
-import { ASK_FOR_MORE } from "../../src/credits/credits";
+import { PhotoWithBoxes } from "../../src/components/outfit/PhotoWithBoxes";
+import { creditsLabel } from "../../src/credits/credits";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { haptics } from "../../src/haptics";
-import { candidateTitle, defaultPicks, pickable, quote, sceneNote, visibilityNote } from "../../src/outfit/outfit";
+import { candidateTitle, defaultPicks, pickable, sceneNote, visibilityNote } from "../../src/outfit/outfit";
 import { cachedScan } from "../../src/outfit/scanCache";
-import { colors, radius, type } from "../../src/theme";
+import { colors, hitSlopFor, radius, type } from "../../src/theme";
+import { BackButton, Button, CostSheet, InsufficientCreditsSheet } from "../../src/ui";
 
-// Outfit Photo, between the stages: the garments found on the person, as crops of the real photo.
-// The user picks which to add, sees the exact price, and only then are images made.
+export const OUTFIT_STAGES: Stage[] = [
+  { label: "Taking them off the photo", at: 0 },
+  { label: "Laying them flat", at: 8 },
+  { label: "Adding final details", at: 20 },
+];
+
+// "Not sure — please check" when the garment is partly hidden or the model said it was unsure.
+export function unsure(c: OutfitCandidate): boolean {
+  return c.visibility !== "full" || !!c.uncertainty;
+}
+
+// Outfit Photo, between the stages: the garments found on the person. The user picks which to add,
+// confirms the exact price, and only then are images made.
 export default function PickScreen() {
-  const { scanId } = useLocalSearchParams<{ scanId: string }>();
+  const { scanId, uri } = useLocalSearchParams<{ scanId: string; uri?: string }>();
   const router = useRouter();
   const { billing, prices, credits, refresh } = useCredits();
   const [scan, setScan] = useState<OutfitScan | null>(() => (scanId ? cachedScan(scanId) ?? null : null));
   const [picks, setPicks] = useState<string[] | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [removed, setRemoved] = useState<string[]>([]);
+  const [busy, setBusy] = useState<number | null>(null);  // start time while images are being made
+  const [confirming, setConfirming] = useState(false);
+  const [short, setShort] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,117 +47,172 @@ export default function PickScreen() {
     getOutfitScan(scanId).then(setScan).catch((e) => setError(e instanceof Error ? e.message : "Couldn't load the scan."));
   }, [scan, scanId]);
 
-  const candidates = useMemo(() => (scan ? pickable(scan) : []), [scan]);
-  const selected = picks ?? defaultPicks(candidates);
+  const candidates = useMemo(() => (scan ? pickable(scan).filter((c) => !removed.includes(c.id)) : []), [scan, removed]);
+  const selected = (picks ?? defaultPicks(candidates)).filter((id) => candidates.some((c) => c.id === id));
   const unitPrice = billing ? prices.garment : undefined;
-  const cost = quote(selected.length, unitPrice, credits?.available ?? 0);
+  const total = unitPrice !== undefined ? selected.length * unitPrice : 0;
+  const available = credits?.available ?? 0;
+  const affordable = unitPrice === undefined || total <= available;
   const note = scan ? sceneNote(scan) : null;
 
-  const toggle = (id: string) =>
+  const toggle = (id: string) => {
+    haptics.selection();
     setPicks(selected.includes(id) ? selected.filter((p) => p !== id) : [...selected, id]);
+  };
+
+  const request = () => {
+    if (!scan || selected.length === 0) return;
+    if (unitPrice === undefined) return void create();
+    if (!affordable) return setShort(true);
+    setConfirming(true);
+  };
 
   async function create() {
     if (!scan) return;
-    setBusy(true);
+    setConfirming(false);
+    setBusy(Date.now());
     setError(null);
     try {
       const ordered = candidates.map((c) => c.id).filter((id) => selected.includes(id));
       const result = await generateOutfit(scan.id, ordered, unitPrice ?? null);
       haptics.success();
-      const failed = result.failed.map((id) => candidates.find((c) => c.id === id)).filter(Boolean)
+      const failed = result.failed.map((id) => scan.candidates.find((c) => c.id === id)).filter(Boolean)
         .map((c) => candidateTitle(c as OutfitCandidate).toLowerCase());
       router.replace({ pathname: "/outfit/review", params: failed.length ? { failed: failed.join(", ") } : {} });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      const message = e instanceof Error ? e.message : "Something went wrong. Try again.";
+      if (message === NO_CREDITS) setShort(true);
+      else if (/price changed/i.test(message)) {
+        await refresh();
+        setError("The price changed. Check it and confirm again.");
+        setConfirming(true);
+      } else setError(message);
+      setBusy(null);
     } finally {
-      setBusy(false);
       void refresh();
     }
   }
 
-  if (busy) {
+  if (busy !== null) {
+    const photo = uri ?? candidates[0]?.preview_url ?? "";
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, padding: 24, justifyContent: "center" }}>
-        <View style={{ backgroundColor: colors.grouped, borderRadius: radius.card, paddingVertical: 24 }}>
-          <ProcessingStatus steps={OUTFIT_STEPS} note={KEEP_OPEN} estimateSeconds={12 + selected.length * 10} />
-        </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center" }}>
+        <ProcessingCard photoUri={photo} stages={OUTFIT_STAGES} startedAt={busy} estimateSeconds={12 + selected.length * 10}
+          title={selected.length === 1 ? "Creating 1 catalog image" : `Creating ${selected.length} catalog images`}
+          note="Keep the app open — this takes about half a minute per piece." />
       </SafeAreaView>
     );
   }
 
+  const deselectCount = unitPrice ? Math.max(0, selected.length - Math.floor(available / unitPrice)) : 0;
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}>
-        <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={12} style={{ marginTop: 12, alignSelf: "flex-start" }}>
-          <Text style={{ ...type.body, color: colors.tint }}>Cancel</Text>
-        </Pressable>
-        <Text accessibilityRole="header" style={{ ...type.largeTitle, color: colors.label, marginTop: 8 }}>Pick pieces</Text>
-        <Text style={{ ...type.body, color: colors.secondaryLabel, marginTop: 8 }}>
-          Crops from your photo. Choose the pieces to add; an image is made only for those.
-        </Text>
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={{ height: 44, justifyContent: "center", paddingHorizontal: 20 }}>
+        <BackButton label="Photos" onPress={() => router.back()} />
+      </View>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24, gap: 16 }}>
+        <Text accessibilityRole="header" style={{ ...type.screenTitle, color: colors.label }}>Select Garments</Text>
+        {uri && candidates.length ? <PhotoWithBoxes uri={uri} candidates={candidates} selected={selected} onToggle={toggle} maxHeight={360} /> : null}
+        {scan ? (
+          <View style={{ gap: 4 }}>
+            <Text style={{ ...type.section, color: colors.label }}>
+              {candidates.length === 1 ? "We found 1 garment" : `We found ${candidates.length} garments`}
+            </Text>
+            <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Choose which to digitize. Crops are from your photo; an image is made only for the ones you pick.</Text>
+          </View>
+        ) : null}
         {note ? <Note text={note} /> : null}
-        {!scan && !error ? <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 20 }}>Loading…</Text> : null}
+        {!scan && !error ? <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Loading…</Text> : null}
         {scan && candidates.length === 0 ? <Note text="No pieces to add were found. Try a photo where the clothes are clearly in view." /> : null}
-
-        <View style={{ gap: 10, marginTop: 20 }}>
-          {candidates.map((c) => (
-            <CandidateRow key={c.id} candidate={c} selected={selected.includes(c.id)} onPress={() => toggle(c.id)} />
+        <View style={{ gap: 10 }}>
+          {candidates.map((c, i) => (
+            <CandidateRow key={c.id} index={i} candidate={c} selected={selected.includes(c.id)}
+              onPress={() => toggle(c.id)} onRemove={() => setRemoved((r) => [...r, c.id])} />
           ))}
         </View>
+        {error ? <Note text={error} destructive /> : null}
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 28, gap: 10, backgroundColor: colors.background }}>
-        {error ? <Note text={error} destructive /> : null}
-        {selected.length > 0 ? (
-          <Text accessibilityLiveRegion="polite" style={{ ...type.footnote, color: cost.affordable ? colors.secondaryLabel : colors.destructive, textAlign: "center" }}>
-            {cost.label}{cost.affordable ? "" : ` — not enough credits. ${ASK_FOR_MORE}`}
-          </Text>
-        ) : null}
-        <PillButton
-          label={selected.length === 1 ? "Create 1 image" : `Create ${selected.length} images`}
-          variant="primary" onPress={create} disabled={!scan || selected.length === 0 || !cost.affordable}
-        />
-        <PillButton label="None of these" onPress={() => router.back()} />
+      <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 8, gap: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ ...type.headline, color: colors.label }}>{`${selected.length} selected`}</Text>
+            {unitPrice !== undefined ? (
+              <Text accessibilityLiveRegion="polite" style={{ ...type.footnote, color: affordable ? colors.secondaryLabel : colors.destructive }}>
+                {`${creditsLabel(total)} · ${available} available`}
+              </Text>
+            ) : null}
+          </View>
+          <View style={{ width: 140 }}>
+            <Button title="Generate" size="medium" onPress={request} disabled={!scan || selected.length === 0} />
+          </View>
+        </View>
       </View>
+
+      <CostSheet
+        visible={confirming}
+        title={selected.length === 1 ? "Generate 1 garment" : `Generate ${selected.length} garments`}
+        subtitle="High-quality front catalog images for the pieces you selected."
+        lines={[{ label: "Front image", action: "garment", count: selected.length }]}
+        note="Detection was free"
+        confirmLabel={`Generate · ${creditsLabel(total)}`}
+        onConfirm={create}
+        onClose={() => setConfirming(false)}
+      />
+      <InsufficientCreditsSheet
+        visible={short}
+        needed={total}
+        onClose={() => setShort(false)}
+        onAdjust={deselectCount > 0 ? () => setShort(false) : undefined}
+        body={deselectCount > 0 ? `Deselect ${deselectCount} ${deselectCount === 1 ? "garment" : "garments"} to continue with what you have.` : undefined}
+      />
     </SafeAreaView>
   );
 }
 
-function CandidateRow({ candidate, selected, onPress }: { candidate: OutfitCandidate; selected: boolean; onPress: () => void }) {
+function CandidateRow({ candidate, index, selected, onPress, onRemove }: {
+  candidate: OutfitCandidate; index: number; selected: boolean; onPress: () => void; onRemove: () => void;
+}) {
   const note = visibilityNote(candidate);
   const title = candidateTitle(candidate);
+  const doubt = unsure(candidate);
   return (
-    <Pressable
-      accessibilityRole="checkbox" accessibilityState={{ checked: selected }}
-      accessibilityLabel={`${title}. ${candidate.description}${note ? `. ${note}` : ""}`}
-      onPress={onPress}
-      style={{ flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: colors.grouped, borderRadius: radius.card, padding: 12 }}
-    >
-      {/* A crop of the real photo keeps its background, so it sits on a tile. */}
-      <View style={{ width: 72, height: 88, borderRadius: radius.tile, overflow: "hidden", backgroundColor: colors.tile }}>
-        {candidate.preview_url ? (
-          <Image source={{ uri: candidate.preview_url }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
-        ) : null}
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ ...type.headline, color: colors.label }}>{title}</Text>
-        <Text numberOfLines={2} style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 2 }}>{candidate.description}</Text>
-        {note ? <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 4 }}>{note}</Text> : null}
-        {candidate.uncertainty ? <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 2 }}>{candidate.uncertainty}</Text> : null}
-      </View>
-      <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center",
-                     backgroundColor: selected ? colors.tint : "transparent", borderWidth: selected ? 0 : 1.5, borderColor: colors.separatorStrong }}>
-        {selected ? <Icon name="checkmark" size={15} color={colors.onTint} /> : null}
-      </View>
-    </Pressable>
+    <View style={{ backgroundColor: colors.grouped, borderRadius: radius.list, padding: 12, gap: 8 }}>
+      <Pressable
+        accessibilityRole="checkbox" accessibilityState={{ checked: selected }}
+        accessibilityLabel={`${title}. ${candidate.description}${note ? `. ${note}` : ""}`}
+        onPress={onPress}
+        style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+      >
+        {/* A crop of the real photo keeps its background, so it sits on a tile. */}
+        <View style={{ width: 62, height: 62, borderRadius: radius.button, overflow: "hidden", backgroundColor: colors.tile }}>
+          {candidate.preview_url ? <Image source={{ uri: candidate.preview_url }} style={{ width: "100%", height: "100%" }} resizeMode="cover" /> : null}
+          <View style={{ position: "absolute", top: 4, left: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: colors.tint, alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ ...type.caption, fontWeight: "700", color: colors.onTint }}>{index + 1}</Text>
+          </View>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ ...type.headline, color: colors.label }}>{title}</Text>
+          <Text style={{ ...type.footnote, color: doubt ? colors.warningText : colors.secondaryLabel, marginTop: 2 }}>
+            {`${groupFor(candidate.category)} · ${doubt ? "Not sure — please check" : "Clear match"}`}
+          </Text>
+          {note ? <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 2 }}>{note}</Text> : null}
+        </View>
+        <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center",
+          backgroundColor: selected ? colors.tint : "transparent", borderWidth: selected ? 0 : 1.5, borderColor: colors.separatorStrong }}>
+          {selected ? <Icon name="checkmark" size={15} color={colors.onTint} /> : null}
+        </View>
+      </Pressable>
+      <Pressable onPress={onRemove} accessibilityRole="button" accessibilityLabel={`${title} is not a garment`} hitSlop={hitSlopFor(22)} style={{ alignSelf: "flex-end" }}>
+        <Text style={{ ...type.footnote, color: colors.destructive }}>Not a garment</Text>
+      </Pressable>
+    </View>
   );
 }
 
 function Note({ text, destructive }: { text: string; destructive?: boolean }) {
   return (
-    <View style={{ flexDirection: "row", gap: 8, marginTop: destructive ? 0 : 16, borderRadius: 14, padding: 12,
-                   backgroundColor: destructive ? colors.destructiveBg : colors.tile }}>
+    <View style={{ flexDirection: "row", gap: 8, borderRadius: radius.button, padding: 12, backgroundColor: destructive ? colors.destructiveBg : colors.grouped }}>
       <Icon name="alert" size={18} color={destructive ? colors.destructive : colors.secondaryLabel} />
       <Text style={{ ...type.subhead, flex: 1, color: destructive ? colors.destructive : colors.secondaryLabel }}>{text}</Text>
     </View>

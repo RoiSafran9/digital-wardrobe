@@ -114,6 +114,7 @@ export type OutfitCandidate = {
   description: string;
   hidden_parts: string[];
   uncertainty: string;
+  box: { x: number; y: number; width: number; height: number };  // pixels on the uploaded photo
   preview_url: string | null;
 };
 

@@ -17,6 +17,8 @@ from functools import lru_cache
 from typing import Mapping, Protocol
 
 ACTIONS = ("garment", "back", "turn")
+# Job kinds that are never charged (Outfit Photo scans: detection and previews are free to the user).
+FREE_KINDS = ("outfit_scan",)
 MAX_FRONTS = 20  # matches the generation_jobs.max_items check
 RECONCILE_GRACE_SECONDS = 900  # a hold whose job never appeared is released after this
 
@@ -50,7 +52,7 @@ def load_prices(env: Mapping[str, str] = os.environ) -> dict[str, int]:
 
 def job_cost(prices: dict[str, int], kind: str) -> int | None:
     """Credits one action of this kind costs; None while billing is off. Unpriced is an error, not free."""
-    if not prices:
+    if not prices or kind in FREE_KINDS:
         return None
     if kind not in prices:
         raise RuntimeError(f"no AI Credits price for {kind!r}")

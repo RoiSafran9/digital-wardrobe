@@ -186,3 +186,32 @@ async def test_a_retry_note_is_added_to_the_prompt(monkeypatch, tmp_path):
     monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
     _, _, prompt, _ = await _call(tmp_path, _refs(tmp_path), "back", {}, retry_note="The back print is missing.")
     assert prompt.rstrip().endswith("The back print is missing.")
+
+
+@pytest.mark.asyncio
+async def test_detect_outfit_uses_the_versioned_worn_prompt(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    img_path = tmp_path / "photo.jpg"
+    cv2.imwrite(str(img_path), np.zeros((1000, 800, 3), dtype=np.uint8))
+    from pipeline.providers.gemini import GeminiProvider
+    from pipeline import outfit
+
+    fake_response = MagicMock()
+    fake_response.text = json.dumps({"scene_kind": "worn", "person_count": 1, "candidates": [{
+        "box_2d": [100, 100, 500, 900], "category": "jacket", "layer": "outer", "colors": ["navy"],
+        "pattern": "solid", "visible_text": "", "description": "navy jacket", "visible_parts": ["front"],
+        "hidden_parts": [], "visibility": "full", "uncertainty": ""}]})
+    fake_response.usage_metadata = None
+    seen = {}
+
+    async def generate_content(model, contents, config=None):
+        seen["model"], seen["prompt"] = model, contents[-1]
+        return fake_response
+
+    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
+        MockClient.return_value.aio.models.generate_content = generate_content
+        scan = await GeminiProvider().detect_outfit(str(img_path))
+
+    assert [c.category for c in scan.candidates] == ["jacket"]
+    assert seen["prompt"] == open(f"pipeline/prompts/{outfit.DETECT_PROMPT}").read()
+    assert "stage1_detect_facts" not in outfit.DETECT_PROMPT

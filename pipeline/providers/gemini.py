@@ -141,6 +141,18 @@ class GeminiProvider:
             self._log("stage1_detect_facts", MODEL_VISION, "v4", start, "error", str(e))
             raise
 
+    async def detect_outfit(self, image_path: str):
+        """Outfit Photo Stage 1: garments worn by the person, as candidates (pipeline/outfit.py)."""
+        from pipeline import outfit
+        start = time.monotonic()
+        try:
+            scan = await outfit.detect_candidates(self.client, image_path, outfit.Usage())
+            self._log("outfit_detect", MODEL_VISION, outfit.DETECT_PROMPT, start, "ok")
+            return scan
+        except Exception as e:
+            self._log("outfit_detect", MODEL_VISION, outfit.DETECT_PROMPT, start, "error", str(e))
+            raise
+
     async def generate(self, crop_path: str, facts: ItemFacts, violations: list[str] | None,
                        complete_edges: bool = False) -> str:
         start = time.monotonic()

@@ -10,10 +10,12 @@ import logging
 import os
 import tempfile
 import uuid
+from datetime import datetime, timedelta, timezone
 import cv2
-from api.credits import CreditGate, NoCharge, charge_for
+from api.credits import FREE_KINDS, CreditGate, NoCharge, charge_for
 from api.item_loader import load_item
 from pipeline.back import BackPhotoRejected, run_back
+from pipeline import outfit
 from pipeline.orchestrator import Providers, run_photo
 from pipeline.run_log import RunLogger
 from pipeline.turn import TURN_ORDER, TurnFailed, refs_for_item, run_turn
@@ -209,14 +211,40 @@ async def _turn(store, job, providers, tmp, uploads):
     return {"item_ids": [item["id"]]}
 
 
-HANDLERS = {"garment": _garment, "back": _back, "turn": _turn}
+# Outfit Photo: how long the person photo and its preview crops are kept (owner decision D6, proposed 24 h).
+OUTFIT_SCAN_TTL = timedelta(hours=24)
+MAX_OUTFIT_CANDIDATES = 8
+
+
+async def _outfit_scan(store, job, providers, tmp, uploads):
+    """Stage 1 (free): find the garments the person wears and store a preview crop of each. No generation.
+    The uploaded photo stays (for the later generate step) until the scan expires; scripts/sweep_storage removes it."""
+    ext = os.path.splitext(job["input_path"])[1] or ".jpg"
+    photo = _write(os.path.join(tmp, "upload" + ext), store.download(job["input_path"]))
+    vision = providers(RunLogger(os.path.join(tmp, "scan_log.jsonl"))).vision
+    try:
+        scan = await vision.detect_outfit(photo)
+    except ValueError as e:  # unreadable photo
+        raise JobRejected(_sentence(str(e))) from e
+    base = f"{job['user_id']}/scans/{job['id']}"
+    candidates = []
+    for c in scan.candidates[:MAX_OUTFIT_CANDIDATES]:
+        local = outfit.preview_crop(photo, c, os.path.join(tmp, f"{c.id}.jpg"))
+        candidates.append({**c.model_dump(mode="json"), "preview_path": uploads.put_photo_if_exists(f"{base}/{c.id}.jpg", local)})
+    expires = datetime.now(timezone.utc) + OUTFIT_SCAN_TTL
+    return {"scene_kind": scan.scene_kind, "person_count": scan.person_count, "candidates": candidates,
+            "expires_at": expires.isoformat()}
+
+
+HANDLERS = {"garment": _garment, "back": _back, "turn": _turn, "outfit_scan": _outfit_scan}
 
 
 def _fail(store, gate, job, uploads, message):
     store.remove(uploads.paths + ([job["input_path"]] if job.get("input_path") else []))
     store.finish_job(job["id"], "failed", error=message)
     try:
-        gate.refund(job["id"])  # AI Credits: a job that failed for good costs nothing
+        if job["kind"] not in FREE_KINDS:  # a free job (outfit scan) holds nothing to give back
+            gate.refund(job["id"])  # AI Credits: a job that failed for good costs nothing
     except Exception:
         log.exception("refund for job %s failed; reconcile will release it", job["id"])
     if job["kind"] == "turn" and store.get_item(job["user_id"], job["item_id"]):
@@ -246,7 +274,8 @@ async def run_once(store, provider_factory, lease_seconds: int = 600, gate: Cred
         # AI Credits: charge only for what the job delivered; the rest of the hold goes back.
         # Outside the try above: the job is done whatever happens here, and reconcile settles it if this fails.
         try:
-            gate.settle(job["id"], charge_for(job, result))
+            if job["kind"] not in FREE_KINDS:  # a free job (outfit scan) has no hold to settle
+                gate.settle(job["id"], charge_for(job, result))
         except Exception:
             log.exception("settle for job %s failed; reconcile will settle it", job["id"])
     return True

@@ -5,7 +5,14 @@ import { updateItem } from "../api/client";
 import type { ClosetItem } from "../api/types";
 import { COLOR_NAMES, PATTERNS, asList, capitalize, colors, hitSlopFor, palettes, radius, swatchFor, type } from "../theme";
 import { haptics } from "../haptics";
-import { PillButton } from "./PillButton";
+import { Button, Chip } from "../ui";
+import { garmentName } from "../garmentName";
+import { CATEGORY_GROUPS } from "../categoryGroups";
+
+// Group shortcuts fill the type with a plain word; the free text stays for anything more specific.
+const GROUP_WORDS: Partial<Record<(typeof CATEGORY_GROUPS)[number], string>> = {
+  Tops: "top", Outerwear: "jacket", Bottoms: "pants", Dresses: "dress", Shoes: "shoes", Bags: "bag", Accessories: "accessory",
+};
 
 const LIGHT_SWATCHES = new Set(["white", "beige", "yellow", "mint", "dusty pink", "pink"]);
 
@@ -26,7 +33,7 @@ function Field({ label, value, onChange, placeholder }: {
         placeholder={placeholder}
         placeholderTextColor={colors.secondaryLabel}
         style={{
-          borderRadius: 12,
+          borderRadius: radius.input,
           paddingHorizontal: 14, paddingVertical: 12, ...type.body, color: colors.label, backgroundColor: colors.grouped,
         }}
       />
@@ -38,6 +45,8 @@ type Props = { item: ClosetItem; onSaved: (updated: ClosetItem) => void; onCance
 
 export function ItemEditForm({ item, onSaved, onCancel }: Props) {
   const { facts } = item;
+  const currentName = facts.name ? asList(facts.name.value)[0] ?? "" : "";
+  const [name, setName] = useState(currentName);
   const [category, setCategory] = useState(asList(facts.category.value)[0] ?? "");
   const [picked, setPicked] = useState<string[]>(asList(facts.colors.value).map((c) => c.toLowerCase()));
   const [pattern, setPattern] = useState(asList(facts.pattern.value)[0] ?? "solid");
@@ -53,7 +62,11 @@ export function ItemEditForm({ item, onSaved, onCancel }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const updated = await updateItem(item, { category, colors: picked, pattern, trims, visible_text: text });
+      const newName = name.trim();
+      const updated = await updateItem(item, {
+        ...(newName && newName !== currentName ? { name: newName } : {}),
+        category, colors: picked, pattern, trims, visible_text: text,
+      });
       haptics.success();
       onSaved(updated);
     } catch (e) {
@@ -65,7 +78,13 @@ export function ItemEditForm({ item, onSaved, onCancel }: Props) {
 
   return (
     <View>
+      <Field label="Name" value={name} onChange={setName} placeholder={garmentName({ facts: { ...facts, name: null } })} />
       <Field label="Type" value={category} onChange={setCategory} placeholder="Fleece" />
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+        {(Object.entries(GROUP_WORDS) as [string, string][]).map(([group, word]) => (
+          <Chip key={group} label={group} selected={category.trim().toLowerCase() === word} onPress={() => setCategory(word)} />
+        ))}
+      </View>
 
       <Label>Colors</Label>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
@@ -94,25 +113,9 @@ export function ItemEditForm({ item, onSaved, onCancel }: Props) {
 
       <Label>Pattern</Label>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        {PATTERNS.map((name) => {
-          const on = name === pattern;
-          return (
-            <Pressable
-              key={name}
-              accessibilityRole="button"
-              accessibilityLabel={capitalize(name)}
-              accessibilityState={{ selected: on }}
-              onPress={() => setPattern(name)}
-              hitSlop={hitSlopFor(30)}
-              style={{
-                paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill,
-                backgroundColor: on ? colors.tint : colors.grouped,
-              }}
-            >
-              <Text style={{ ...type.subhead, color: on ? colors.onTint : colors.label }}>{capitalize(name)}</Text>
-            </Pressable>
-          );
-        })}
+        {PATTERNS.map((p) => (
+          <Chip key={p} label={capitalize(p)} selected={p === pattern} onPress={() => setPattern(p)} />
+        ))}
       </View>
 
       <Field label="Details" value={trims} onChange={setTrims} placeholder="Half zip, white piping" />
@@ -121,8 +124,8 @@ export function ItemEditForm({ item, onSaved, onCancel }: Props) {
       {error ? <Text style={{ ...type.subhead, color: colors.destructive, marginTop: 16 }}>{error}</Text> : null}
 
       <View style={{ gap: 10, marginTop: 28 }}>
-        <PillButton label={saving ? "Saving…" : "Save"} variant="primary" onPress={save} disabled={saving} />
-        <PillButton label="Cancel" onPress={onCancel} disabled={saving} />
+        <Button title="Save" onPress={save} loading={saving} />
+        <Button title="Cancel" variant="text" onPress={onCancel} disabled={saving} />
       </View>
     </View>
   );

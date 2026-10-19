@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, PanResponder, Text, View } from "react-native";
+import { Animated, PanResponder, Pressable, Text, View } from "react-native";
 import { GarmentImage } from "./GarmentImage";
-import { colors, type } from "../theme";
+import { colors, hitSlopFor, radius, type } from "../theme";
+import { Icon, type IconName } from "./Icon";
 import { useReducedMotion } from "../useReducedMotion";
 import { Rise } from "../motion/Rise";
 import { dragPosition, faceFor, flingTarget, wrap } from "../turn";
@@ -124,18 +125,27 @@ export function TurnView({ views, label, onDragActive }: Props) {
           })
         )}
       </View>
-      <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 10 }}>
-        {views.map((v, i) => (
-          <View
-            key={v.path}
-            testID={`turn-dot-${i}`}
-            style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: i === index ? colors.label : colors.separatorStrong }}
-          />
-        ))}
+      <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 14, marginTop: 10 }}>
+        <StepButton icon="chevronLeft" label="Turn left" onPress={() => go(index - 1)} />
+        <View testID="turn-angle" style={{ minWidth: 92, height: 30, paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: colors.card, alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ ...type.footnote, fontWeight: "600", color: colors.label }}>{views[index].label}</Text>
+        </View>
+        <StepButton icon="chevron" label="Turn right" onPress={() => go(index + 1)} />
       </View>
-      {label ? (
-        <Text style={{ ...type.caption, color: colors.secondaryLabel, textAlign: "center", marginTop: 6 }}>{label}</Text>
-      ) : null}
+      <Text style={{ ...type.caption, color: colors.secondaryLabel, textAlign: "center", marginTop: 6 }}>
+        {label ? `Drag to rotate · ${label}` : "Drag to rotate"}
+      </Text>
     </View>
+  );
+}
+
+function StepButton({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={hitSlopFor(32, 32)}
+      style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.fill, alignItems: "center", justifyContent: "center" }}
+    >
+      <Icon name={icon} size={14} color={colors.label} />
+    </Pressable>
   );
 }

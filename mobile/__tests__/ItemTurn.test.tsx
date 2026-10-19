@@ -49,9 +49,11 @@ beforeEach(() => {
 });
 afterEach(() => jest.useRealTimers());
 
-test("offers View in 360 on closet items without one", () => {
+test("offers Generate 360° View on closet items without one", () => {
   sheet(item);
-  expect(screen.getByRole("button", { name: "View in 360" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Generate 360° View" })).toBeTruthy();
+  fireEvent.press(screen.getByRole("tab", { name: "360°" }));
+  expect(screen.getByText("See it from every angle")).toBeTruthy();
 });
 
 test("starting shows progress, polls, and switches to the 360 when done", async () => {
@@ -59,9 +61,9 @@ test("starting shows progress, polls, and switches to the 360 when done", async 
   mockedGet.mockResolvedValueOnce(running).mockResolvedValueOnce(done);
   const onUpdated = sheet(item);
 
-  await act(async () => fireEvent.press(screen.getByRole("button", { name: "View in 360" })));
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Generate 360° View" })));
   expect(onUpdated).toHaveBeenLastCalledWith({ ...item, turn: running });
-  expect(screen.getByText("Dressing the invisible mannequin…")).toBeTruthy();
+  expect(screen.getByText("Creating four angles…")).toBeTruthy();
 
   await tick(2000);
   await tick(2000);
@@ -80,23 +82,24 @@ test("resumes polling when the item is already running", async () => {
 test("a finished 360 opens on the turn view with the AI label", () => {
   sheet({ ...item, turn: done });
   expect(screen.getByLabelText("360 view")).toBeTruthy();
-  expect(screen.getByText("360 · AI view")).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "Front" }));
+  expect(screen.getByText("Drag to rotate · AI view")).toBeTruthy();
+  fireEvent.press(screen.getByRole("tab", { name: "Front" }));
   expect(screen.queryByLabelText("360 view")).toBeNull();
 });
 
 test("a failed job shows the reason and Try again starts it again", async () => {
   mockedStart.mockResolvedValue(running);
   sheet({ ...item, turn: { state: "failed", error: "Interrupted — try again", views: [] } });
+  fireEvent.press(screen.getByRole("tab", { name: "360°" }));
   expect(screen.getByText("Interrupted — try again")).toBeTruthy();
-  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Try again" })));
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Try Again" })));
   expect(mockedStart).toHaveBeenCalled();
 });
 
 test("a start error is shown", async () => {
   mockedStart.mockRejectedValue(new Error("Can't reach your wardrobe server."));
   sheet(item);
-  await act(async () => fireEvent.press(screen.getByRole("button", { name: "View in 360" })));
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Generate 360° View" })));
   expect(screen.getByText("Can't reach your wardrobe server.")).toBeTruthy();
 });
 
@@ -127,7 +130,6 @@ test("a slow status check is never stacked with another one", async () => {
 });
 
 describe("with billing on", () => {
-  const { Alert } = require("react-native");
   const { CreditsContext } = require("../src/credits/CreditsProvider");
   const wallet = (available: number) => ({ balance: available, held: 0, available, granted: 10, used: 0, entries: [], next_before: null });
   function billed(available: number) {
@@ -139,26 +141,23 @@ describe("with billing on", () => {
     );
     return refresh;
   }
-  afterEach(() => jest.restoreAllMocks());
 
   test("the 360 shows its cost and asks before spending it", async () => {
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     mockedStart.mockResolvedValue(running);
     billed(5);
-    expect(screen.getByText(/about a minute · 3 credits/)).toBeTruthy();
-    fireEvent.press(screen.getByText("View in 360"));
-    expect(alert).toHaveBeenCalledWith("Make a 360 view?", "Uses 3 credits. You have 5.", expect.any(Array));
+    expect(screen.getByText("3 credits")).toBeTruthy();
+    fireEvent.press(screen.getByRole("button", { name: "Generate 360° View" }));
     expect(mockedStart).not.toHaveBeenCalled();
-    const buttons = alert.mock.calls[0][2] as { text: string; onPress?: () => void }[];
-    await act(async () => { buttons.find((b) => b.text === "Make 360")!.onPress!(); });
+    expect(screen.getByText("Balance 5 → 2")).toBeTruthy();
+    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Generate · 3 credits" })));
     expect(mockedStart).toHaveBeenCalled();
   });
 
   test("without enough credits the 360 doesn't start and says why", () => {
-    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     billed(2);
-    fireEvent.press(screen.getByText("View in 360"));
-    expect(alert).not.toHaveBeenCalled();
-    expect(screen.getByText(/A 360 view uses 3 credits; you have 2. Ask the app owner for more credits./)).toBeTruthy();
+    fireEvent.press(screen.getByRole("button", { name: "Generate 360° View" }));
+    expect(mockedStart).not.toHaveBeenCalled();
+    expect(screen.getByText("Not enough credits")).toBeTruthy();
+    expect(screen.getByText("/ 3 credits needed")).toBeTruthy();
   });
 });

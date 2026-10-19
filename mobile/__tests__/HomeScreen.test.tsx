@@ -106,8 +106,8 @@ test("editing a garment opened from Home shows the new value in the open sheet",
   fireEvent.press((await screen.findAllByLabelText("Open Gray shirt"))[0]);
   fireEvent.press(screen.getByLabelText("Edit"));
   fireEvent.changeText(screen.getByLabelText("Type"), "blouse");
-  fireEvent.press(screen.getByText("Save"));
-  expect(await screen.findByRole("header", { name: "Blouse" })).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "Save" }));
+  expect(await screen.findByRole("header", { name: "Gray blouse" })).toBeTruthy();
 });
 
 test("the sheet from Home pages through the whole closet", async () => {

@@ -1,7 +1,8 @@
 import React from "react";
 import { Alert } from "react-native";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react-native";
 import { ItemSheet } from "../src/components/ItemSheet";
+import { ToastProvider } from "../src/ui";
 import { updateItem, deleteItem } from "../src/api/client";
 import type { ClosetItem } from "../src/api/types";
 
@@ -41,48 +42,63 @@ test("editing saves only through the API and reports the updated item", async ()
   fireEvent.changeText(screen.getByLabelText("Type"), "fleece");
   fireEvent.press(screen.getByLabelText("Color navy"));      // toggle navy off
   fireEvent.press(screen.getByRole("button", { name: "Striped" }));
-  fireEvent.press(screen.getByText("Save"));
+  fireEvent.press(screen.getByRole("button", { name: "Save" }));
 
   await waitFor(() => expect(onUpdated).toHaveBeenCalledWith(updated));
   expect(mockedUpdate).toHaveBeenCalledWith(item, {
     category: "fleece", colors: ["gray"], pattern: "striped", trims: "zip collar", visible_text: "IETS FRANS",
   });
-  expect(screen.queryByText("Save")).toBeNull();  // back to view mode
+  expect(screen.queryByRole("button", { name: "Save" })).toBeNull();  // back to view mode
+});
+
+test("a new name is saved with the other fields, and the save is confirmed", async () => {
+  mockedUpdate.mockImplementation(async (it) => it);
+  render(<ToastProvider><ItemSheet items={[item]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} /></ToastProvider>);
+  fireEvent.press(screen.getByLabelText("Edit"));
+  fireEvent.changeText(screen.getByLabelText("Name"), " Field jacket ");
+  fireEvent.press(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(mockedUpdate).toHaveBeenCalledWith(item, expect.objectContaining({ name: "Field jacket" })));
+  expect(await screen.findByText("Changes saved")).toBeTruthy();
+});
+
+test("a group shortcut fills the type", () => {
+  render(<ItemSheet items={[item]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
+  fireEvent.press(screen.getByLabelText("Edit"));
+  fireEvent.press(screen.getByRole("button", { name: "Bottoms" }));
+  expect(screen.getByLabelText("Type").props.value).toBe("pants");
 });
 
 test("cancel leaves the item untouched", () => {
   render(<ItemSheet items={[item]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
   fireEvent.press(screen.getByLabelText("Edit"));
   fireEvent.changeText(screen.getByLabelText("Type"), "something else");
-  fireEvent.press(screen.getByText("Cancel"));
+  fireEvent.press(screen.getByRole("button", { name: "Cancel" }));
   expect(mockedUpdate).not.toHaveBeenCalled();
-  expect(screen.getByText("Jacket")).toBeTruthy();
+  expect(screen.getByRole("header", { name: "Gray jacket" })).toBeTruthy();
 });
 
 test("shows the server's error and stays in edit mode when saving fails", async () => {
   mockedUpdate.mockRejectedValue(new Error("category can't be empty"));
   render(<ItemSheet items={[item]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
   fireEvent.press(screen.getByLabelText("Edit"));
-  fireEvent.press(screen.getByText("Save"));
+  fireEvent.press(screen.getByRole("button", { name: "Save" }));
   expect(await screen.findByText("category can't be empty")).toBeTruthy();
-  expect(screen.getByText("Save")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
 });
 
 test("removing asks for confirmation and deletes only after confirming", async () => {
-  const alertSpy = jest.spyOn(Alert, "alert");
   mockedDelete.mockResolvedValue(undefined);
   const onDeleted = jest.fn();
   render(<ItemSheet items={[item]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={onDeleted} />);
 
-  fireEvent.press(screen.getByText("Remove from closet"));
-  expect(alertSpy).toHaveBeenCalled();
-  const buttons = alertSpy.mock.calls[0][2]!;
+  fireEvent.press(screen.getByRole("button", { name: "Remove from closet" }));
+  expect(screen.getByText("Remove from closet?")).toBeTruthy();
+  expect(screen.queryByText(/Credits used/)).toBeNull();  // billing off
+  fireEvent.press(screen.getByRole("button", { name: "Cancel" }));
   expect(mockedDelete).not.toHaveBeenCalled();
 
-  buttons.find((b) => b.style === "cancel")?.onPress?.();  // RN cancel buttons just dismiss
-  expect(mockedDelete).not.toHaveBeenCalled();
-
-  buttons.find((b) => b.style === "destructive")!.onPress!();
+  fireEvent.press(screen.getByRole("button", { name: "Remove from closet" }));
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Remove" })));
   await waitFor(() => expect(onDeleted).toHaveBeenCalledWith(item));
   expect(mockedDelete).toHaveBeenCalledWith(item);
 });
@@ -134,6 +150,6 @@ test("saving confirms with a haptic", async () => {
   mockedUpdate.mockResolvedValue(item);
   render(<ItemSheet items={[item]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
   fireEvent.press(screen.getByLabelText("Edit"));
-  fireEvent.press(screen.getByText("Save"));
+  fireEvent.press(screen.getByRole("button", { name: "Save" }));
   await waitFor(() => expect(spy).toHaveBeenCalled());
 });

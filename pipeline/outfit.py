@@ -9,6 +9,7 @@ Stage 1: detect_candidates — one cheap vision call → candidates with stable 
 crops cut from the real photo (no image generation). Stage 2: generate_selected — the image model
 runs only for the candidate IDs the user picked.
 """
+import asyncio
 import json
 import os
 import time
@@ -20,7 +21,7 @@ from pipeline.providers.gemini import MODEL_IMAGE, MODEL_VISION, _read_prompt, t
 from pipeline.stages import cutout, stage5_verify
 from pipeline.types import BBox, FactField, ItemFacts
 
-DETECT_PROMPT = "outfit_detect_v1.txt"
+DETECT_PROMPT = "outfit_detect_v2.txt"
 GENERATE_PROMPT = "outfit_generate_v1.txt"
 
 # Paid-tier list prices (ai.google.dev/gemini-api/docs/pricing, read 2026-10-19), for the PoC report only.
@@ -31,6 +32,8 @@ IMAGE_USD_PER_IMAGE, IMAGE_USD_PER_M_IN = 0.039, 0.30
 PREVIEW_PADDING = 0.08
 OUTLINE_BGR = (60, 200, 60)
 CONTEXT_BLOCK = " Image 2 is the whole photo, with that garment marked by a green outline, for context only."
+
+CALL_TIMEOUT_S = 120
 
 SceneKind = Literal["worn", "flat", "mixed", "none"]
 
@@ -203,7 +206,9 @@ async def generate_flatlay(client, crop_path: str, context_path: str | None, can
         contents = ["Image 1:", _image_part(crop_path)]
         if context_path:
             contents += ["Image 2:", _image_part(context_path)]
-        response = await client.aio.models.generate_content(model=MODEL_IMAGE, contents=contents + [prompt])
+        # A hung request once never came back (PoC run, 2026-10-19): give up and count it as failed.
+        response = await asyncio.wait_for(
+            client.aio.models.generate_content(model=MODEL_IMAGE, contents=contents + [prompt]), CALL_TIMEOUT_S)
         tin, _ = _tokens(response)
         data = _first_image(response)
         usd = IMAGE_USD_PER_IMAGE + tin / 1e6 * IMAGE_USD_PER_M_IN

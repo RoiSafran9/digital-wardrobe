@@ -211,14 +211,24 @@ async def cmd_generate(args):
     print(f"generate spent ~${total.usd:.3f}")
 
 
-def _rel(path: str) -> str:
-    return os.path.relpath(path, ROOT)
-
-
 def _img(path: str | None, caption: str) -> str:
     if not path or not os.path.exists(path):
         return f'<figure class="missing"><div>—</div><figcaption>{html.escape(caption)}</figcaption></figure>'
-    return f'<figure><img src="{html.escape(_rel(path))}" loading="lazy"><figcaption>{html.escape(caption)}</figcaption></figure>'
+    return f'<figure><img src="{_thumb(path)}" loading="lazy"><figcaption>{html.escape(caption)}</figcaption></figure>'
+
+
+def _thumb(path: str, side: int = 640) -> str:
+    """Embedded JPEG thumbnail, so the report is one file that opens anywhere (still private)."""
+    import base64
+    import cv2
+    image = cv2.imread(path)
+    if image is None:
+        return ""
+    scale = side / max(image.shape[:2])
+    if scale < 1:
+        image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+    ok, data = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, 82])
+    return "data:image/jpeg;base64," + base64.b64encode(data.tobytes()).decode()
 
 
 def _ref_for(candidate: dict, refs: list[dict]) -> dict | None:
@@ -248,7 +258,8 @@ def cmd_report(args):
         for c in (scan or {}).get("candidates", []):
             ref = _ref_for(c, refs)
             figs = [_img(os.path.join(out, "previews", f"{c['id']}.jpg"), f"{c['id']} preview crop")]
-            for variant in ("with_context", "crop_only"):
+            # detect_v2: a re-scan with the v2 detect prompt, then with_context (IDs happened to match v1 here)
+            for variant in ("with_context", "crop_only", "detect_v2"):
                 res = _load(os.path.join(out, variant, "results.json"), {}).get(c["id"])
                 if res:
                     v = (res.get("verification") or {})

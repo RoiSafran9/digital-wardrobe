@@ -81,7 +81,7 @@ Docs drift: `AGENTS.md` → "Credits decision" still says only the M5 hooks exis
 
 All of it is offline and off by default (no route, job kind, migration, flag or UI):
 
-- `pipeline/prompts/outfit_detect_v1.txt`, `pipeline/prompts/outfit_generate_v1.txt` — new versions; `stage1_detect_facts_v4.txt` and `stage4_generate_v5.txt` untouched.
+- `pipeline/prompts/outfit_detect_v1.txt` → `outfit_detect_v2.txt` (current; text-legibility fix from §4.2), `pipeline/prompts/outfit_generate_v1.txt` — new versions; `stage1_detect_facts_v4.txt` and `stage4_generate_v5.txt` untouched.
 - `pipeline/outfit.py` — Stage 1 `detect_candidates` (stable IDs c1…cN top-to-bottom, box parsing, `scene_kind`), `preview_crop` + `outlined` (original-photo previews, no generation), Stage 2 `generate_selected` (only selected IDs; unknown IDs refused before any paid call; per-candidate failure isolation; reuses `stage5_verify` and `cutout`), `facts_for` (maps to the existing `ItemFacts`), cost/latency accounting.
 - `scripts/outfit_poc.py` — `synth` / `detect` / `generate` / `report`, everything under gitignored `runs/outfit_poc/`, hard `--max-usd` cap per command.
 - `tests/test_outfit.py` — 12 offline tests (fakes, no network).
@@ -100,7 +100,60 @@ Limits, stated up front: a synthetic photo is cleaner than a phone snapshot, and
 
 ## 4. Measurements
 
-_Results section — filled in from the PoC run (see §4.1). If empty, the paid run has not happened yet._
+Run on 2026-10-19 with the owner's approval (cap US$1.50). **Tiny, synthetic sample: 4 photos, 11 candidates, 9 generated garments.** Ratings below are my (Claude's) visual comparison against the owner's real garment photos, not owner labels — the owner should re-judge in the report. Nothing here is a success rate.
+
+### 4.1 Cost and latency [measured]
+| Step | Calls | Model | Latency (each) | Cost (list-price estimate from returned tokens) |
+|---|---|---|---|---|
+| Synthetic worn photos (eval only, not product) | 4 | gemini-2.5-flash-image | 10.0–15.8 s | $0.157 |
+| **Stage 1 detect** (v1) | 4 | gemini-3.1-flash-lite | **2.35–2.70 s** | **$0.0047 total ≈ $0.0012 per photo** |
+| **Stage 2 generate** (with context) | 9 | gemini-2.5-flash-image | **8.2–10.4 s** | $0.354 ≈ **$0.039 per garment** |
+| Stage 2 generate (crop only, comparison) | 4 (+1 hung) | gemini-2.5-flash-image | 9.0–9.7 s | $0.157 |
+| Detect v2 + 1 generate (fix check) | 2 | both | — | $0.041 |
+| **Total** | 23 (+1 hung) | | | **$0.714** (≤ $0.753 if the hung call was billed) |
+
+- Every generation passed the existing Lab color check on the first attempt → **cost per accepted front = one image call ($0.039)** in this sample; no automatic retries were triggered. The color check cannot catch invented details (below).
+- One crop-only generation request **never returned** (killed after ~15 min). The harness now has a 120 s timeout. The production `GeminiProvider` has **no request timeout** either; the job lease (600 s) eventually recycles the job — worth a follow-up.
+
+### 4.2 Stage 1 — detection and previews [measured, n = 4]
+| Photo | scene_kind | Candidates (category / layer / visibility) | Correct? |
+|---|---|---|---|
+| s1 tee + jeans | worn ✓ | t-shirt / single / partial · jeans / single / partial | ✓ both; claims "hem tucked into trousers" (it is half-tucked) |
+| s2 quarter-zip fleece over navy tee + trousers | worn ✓ | sweatshirt / outer / full · t-shirt / inner / partial · trousers · shoes | ✓ **layered tee found as its own candidate** from a hem strip; visibility under-reported (should be low) |
+| s3 striped tee + shorts | worn ✓ | t-shirt · shorts · shoes | ✓ |
+| s4 crossed arms, tee + shorts | worn ✓ | t-shirt / full · shorts | ✓ (arms occlude the print; still "full") |
+
+- 11/11 candidates are real separate garments; **0 merges, 0 splits, 0 misses** of the target garments; shoes were returned twice although not requested in v1 scope (they were simply not selected).
+- Box previews (crop of the real photo + labelled outline) made every target garment unambiguous in this sample — no need for segmentation masks yet.
+- **Hallucinated text (important):** for the fleece, v1 returned `visible_text: "supreme"` for a small unreadable chest print. Because facts are binding in the generate prompt, this led the generator to **invent a red "Supreme"-style collar tab** (both variants) and, in the crop-only variant, a legible "Supreme" wordmark. That is exactly the "don't invent logos" failure the product forbids.
+- **Fix tried [measured, n = 1]:** `outfit_detect_v2.txt` — only text read with certainty, never guess a brand, describe unreadable prints instead; inner garments showing only a strip are `low`. Re-scan of s2: `visible_text ""` for every candidate, inner tee → `low` ✓; regenerated fleece: **no invented tab, and the white raglan piping of the real garment now appears** — but the unreadable chest print was rendered as made-up letters ("OYTO FRONT"). v2 is now the PoC default; unreadable small prints remain an open failure mode.
+
+### 4.3 Stage 2 — reconstruction vs the real garment [measured, visual, n = 9]
+| Garment | Result (with context) | vs real photo |
+|---|---|---|
+| s1 white graphic tee | clean tee, chest graphic placed/coloured right, characters approximate | recognisable; text not letter-exact (OCR note only, as in the garment flow) |
+| s1 light-wash jeans | correct wash, fades, 5-pocket | recognisable ✓ |
+| s2 fleece (v1) | colour blocking ✓, **invented red collar tab** | ✗ invented detail (fixed by v2, see above) |
+| s2 navy tee (only hem visible) | full plain navy tee | colour and type right; **everything above the hem is guessed** — plausible, unverifiable |
+| s2 brown trousers | drawstring, colour ✓ | recognisable; leg shape straighter than the real balloon fit |
+| s3 striped tee | stripes, ringer collar, chest print position ✓ | recognisable; print approximate |
+| s3 gray shorts | **white rope drawstring added** | ✗ invented detail (the source showed a thin gray cord) |
+| s4 pink tee, arms crossed | full tee, mint collar, small chest print ✓ — occlusion by arms handled | recognisable ✓ |
+| s4 navy shorts | **white drawstring added** | ✗ invented detail (source: dark cord) |
+
+- **Recognisable as the same piece: 9/9. Free of invented details: 6/9 with v1 prompts** (Supreme tab, 2 × white drawstrings). Both are synthetic-loop results; on real phone photos expect worse.
+- Synthetic step losses (visible in the report, not counted against try-off): the open jacket was rendered closed, the requested tuck-in didn't happen, the striped tee's "MANTRA" print and the fleece's "IETS FRANS" text changed, navy sleeves came out near-black. So these photos are easier and less faithful than real ones.
+
+### 4.4 Context vs crop-only [measured, n = 4]
+- Same quality for fully visible tops (s1, s4).
+- **Inner layer (s2 tee): crop-only produced only the visible strip** (a cut-off half-tee); with the outlined full photo it produced a complete tee. → keep the context image (no extra cost: same single call, one more input image ≈ 260 input tokens).
+- Fleece: crop-only produced a *more* legible fake "Supreme" wordmark — context does not cure the text hallucination; the detect fix does more.
+
+### 4.5 What did not run
+- No real person photos, no same-garment pairs photographed by the owner on a body → the core fidelity question on **real phone photos is still open** [needs owner, D7].
+- No FASHN parser / TryOffDiff comparison (licenses rule them out for the product; GPU needed).
+- No routing measurement on ordinary garment photos (v4 behaviour on worn photos is an assumption).
+- No app, API, DB, billing or pgTAP changes; Jest/tsc/pgTAP not needed.
 
 ---
 
@@ -191,6 +244,19 @@ Thresholds are set **with the owner after the baseline**, not invented here. Sug
 | D4 | Charge when the user discards a successful result ("doesn't look like mine")? Manual regenerate = new paid action? | Charge on success (as today), regenerate = new action; revisit after beta data |
 | D5 | Review-before-save state for outfit items (spec says yes) | Yes: `review_state` pending → kept |
 | D6 | Person-photo retention | Delete after generation, max 24 h |
-| D7 | Provide 30–50 consented photos + same-garment flat-lays, and a paid-call budget for the real eval | ~ $3–5 covers 50 photos detection + ~60 generations at list price **[assumption]** |
+| D7 | Provide 30–50 consented photos + same-garment flat-lays, and a paid-call budget for the real eval | Measured unit costs: ~$0.0012/detect, ~$0.039/front → 50 photos + ~80 fronts ≈ **$3.20** at list price, plus re-runs |
 | D8 | Migrate off `gemini-2.5-flash-image` (deprecated) — whole product | Separate task, before M2 |
+| D10 | Generation prompt v2 before M2: forbid adding drawstrings/tabs/labels not visible; unreadable prints as plain texture, not letters | Yes — then re-run this loop |
 | D9 | JSONB scan result (M1) vs dedicated tables | JSONB now; tables when corrections/manual selection land |
+
+---
+
+## 8. סיכום לבעלים (עברית)
+
+**מה נעשה:** מחקר, ארכיטקטורה מוצעת, ו-PoC מקומי בלבד (לא באפליקציה, לא ב-API, לא בחיוב). נבנה מבחן "לולאה סגורה": מתמונות אמיתיות של הבגדים שלך נוצרו 4 תמונות סינתטיות של אדם לובש אותם (בלי פנים), ואז זיהוי → בחירה → יצירת תמונת קטלוג, והשוואה לתמונה האמיתית של אותו בגד.
+
+**מה נמדד:** עלות כוללת ‎$0.71‎ (מתוך תקרה ‎$1.50‎). זיהוי: ~2.5 שניות ו-~0.1 סנט לתמונה; זוהו נכון כל 11 הבגדים, כולל חולצה שמתחת לפליז. יצירה: ~9 שניות ו-~4 סנט לבגד; כל 9 הבגדים מזוהים כאותו פריט, אבל ב-3 מתוך 9 הומצאו פרטים (תווית אדומה בסגנון Supreme, שרוכים לבנים במכנסיים קצרים). תיקון בפרומפט הזיהוי (v2) העלים את התווית, אבל טקסט קטן ולא קריא עדיין יוצא כאותיות מומצאות.
+
+**חשוב:** הדגימה קטנה וסינתטית, ולכן זו ראיה לכיוון ולא אחוז הצלחה. השאלה המרכזית, נאמנות בתמונות טלפון אמיתיות, עדיין פתוחה.
+
+**החלטות שצריך ממך לפני M1/M2:** D1 בחירת מצב מפורשת במסך ההוספה · D2 בלי נעליים בגרסה הראשונה · D3 מה עושים עם בגד שרובו מוסתר · D4 חיוב כשמשתמש פוסל תוצאה שהצליחה · D5 שלב אישור לפני שמירה · D6 מחיקת תמונת האדם (מוצע: עד 24 שעות) · D7 ‏30–50 תמונות שלך/של חברים עם אישור, ותקציב של ~‎$3–5 · D8 מעבר מ-gemini-2.5-flash-image שהוכרז כ-deprecated · D9 שמירת הסריקה ב-JSONB · D10 פרומפט יצירה v2 שאוסר להוסיף שרוכים, תוויות וטקסט.

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { FlatList, RefreshControl, ScrollView, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -30,7 +30,11 @@ export default function ClosetScreen() {
   const [group, setGroup] = useState<string>(ALL);
   const [color, setColor] = useState<string>(ALL);
   const [query, setQuery] = useState("");
-  const params = useLocalSearchParams<{ group?: string; category?: string; at?: string }>();
+  const params = useLocalSearchParams<{ group?: string; category?: string; search?: string; at?: string }>();
+  const searchField = useRef<TextInput>(null);
+  const wantsSearch = useRef(false);
+  // Home's search field opens the closet ready to type (once the field is there).
+  useEffect(() => { if (params.search) wantsSearch.current = true; }, [params.search, params.at]);
   // Home's group pills open the closet pre-filtered (an older link may still send a category word).
   useEffect(() => {
     const wanted = params.group ?? (params.category ? groupFor(params.category) : null);
@@ -59,6 +63,13 @@ export default function ClosetScreen() {
     await load();
     setRefreshing(false);
   }
+
+  useEffect(() => {
+    if (!wantsSearch.current || items.length === 0) return;
+    wantsSearch.current = false;
+    const timer = setTimeout(() => searchField.current?.focus(), 300);
+    return () => clearTimeout(timer);
+  }, [items.length, params.at]);
 
   const groups = useMemo(() => {
     const present = new Set(items.map(groupOf));
@@ -92,6 +103,7 @@ export default function ClosetScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 40, borderRadius: radius.input, backgroundColor: colors.fill, paddingHorizontal: 10 }}>
             <Icon name="search" size={16} color={colors.secondaryLabel} />
             <TextInput
+              ref={searchField}
               accessibilityLabel="Search your closet"
               placeholder="Search name, color, details"
               placeholderTextColor={colors.secondaryLabel}

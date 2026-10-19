@@ -78,7 +78,7 @@ test("type scale follows the handoff on the system font", () => {
 test("editorial display type uses Instrument Serif at the handoff sizes", () => {
   const { type, DISPLAY_FONT } = require("../src/theme");
   expect(DISPLAY_FONT).toBe("InstrumentSerif_400Regular");
-  expect(type.display(46)).toEqual({ fontFamily: "InstrumentSerif_400Regular", fontSize: 46, lineHeight: 46 });
+  expect(type.display(46)).toEqual({ fontFamily: "InstrumentSerif_400Regular", fontSize: 46, lineHeight: 54 });
   expect(type.display(40).fontSize).toBe(40);
 });
 

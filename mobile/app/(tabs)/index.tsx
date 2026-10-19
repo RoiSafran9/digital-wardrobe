@@ -4,25 +4,27 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { getItems } from "../../src/api/client";
 import type { ClosetItem } from "../../src/api/types";
-import { closetStats } from "../../src/closetStats";
-import { addedLabel, colors, hitSlopFor, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
-import { GarmentTile } from "../../src/components/GarmentTile";
-import { ItemSheet } from "../../src/components/ItemSheet";
+import { CATEGORY_GROUPS, groupOf } from "../../src/categoryGroups";
+import { Icon } from "../../src/components/Icon";
+import { AddRows, AddToCloset, type PhotoActions } from "../../src/components/home/AddToCloset";
 import { CaptureBanner } from "../../src/components/home/CaptureBanner";
+import { CategoryRows, type CategoryRow } from "../../src/components/home/CategoryRows";
 import { Greeting } from "../../src/components/home/Greeting";
 import { HomeEmpty } from "../../src/components/home/HomeEmpty";
-import { StatsRow } from "../../src/components/home/StatsRow";
-import { garmentName } from "../../src/garmentName";
-import { Marquee } from "../../src/motion/Marquee";
-import { Rise } from "../../src/motion/Rise";
-import { pickPhoto } from "../../src/photoPicker";
 import { useCredits } from "../../src/credits/CreditsProvider";
-import { OUTFIT_LINK } from "../../src/outfit/outfit";
-import { Button, Chip } from "../../src/ui";
+import { pickPhoto } from "../../src/photoPicker";
+import { colors, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
+import { Button } from "../../src/ui";
 
-const MARQUEE = { width: 118, height: 148 };
-const RECENT = { width: 150, height: 188 };
-const MARQUEE_SPEED = (118 + 12) / 4;  // about four seconds per tile
+// One row per category group with pieces, in the groups' fixed order, with the group's first piece.
+export function categoryRows(items: ClosetItem[]): CategoryRow[] {
+  const byGroup = new Map<string, ClosetItem[]>();
+  for (const item of items) {
+    const g = groupOf(item);
+    byGroup.set(g, [...(byGroup.get(g) ?? []), item]);
+  }
+  return CATEGORY_GROUPS.filter((g) => byGroup.has(g)).map((g) => ({ name: g, count: byGroup.get(g)!.length, first: byGroup.get(g)![0] }));
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -30,8 +32,7 @@ export default function HomeScreen() {
   const [items, setItems] = useState<ClosetItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  // The open garment by identity: the sheet always reads the live list, so edits and backs show at once.
-  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [pickError, setPickError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -43,54 +44,34 @@ export default function HomeScreen() {
       setLoaded(true);
     }
   }, []);
-
   useFocusEffect(useCallback(() => { load(); }, [load]));
-  const [pickError, setPickError] = useState<string | null>(null);
-  // Take Photo opens the camera flow; From Library goes straight to the preview and quote.
-  const fromLibrary = async () => {
+
+  const rows = useMemo(() => categoryRows(items), [items]);
+  const empty = loaded && items.length === 0;
+
+  // Both pickers open the same system library, but each knows which flow it feeds (garment or outfit).
+  const pickInto = (flow: "garment" | "outfit") => async () => {
     setPickError(null);
     try {
       const uri = await pickPhoto(false);
-      if (uri) router.push({ pathname: "/capture/preview", params: { uri } });
+      if (!uri) return;
+      router.push(flow === "garment"
+        ? { pathname: "/capture/preview", params: { uri, flow } }
+        : { pathname: "/outfit/detect", params: { uri, flow } });
     } catch (e) {
       setPickError(e instanceof Error ? e.message : "Couldn't open your photos.");
     }
   };
-  const keyOf = (i: ClosetItem) => `${i.run_id}/${i.photo_name}/${i.item_id}`;
-  const openIndex = openKey ? items.findIndex((i) => keyOf(i) === openKey) : -1;
-
-  const now = new Date();
-  const stats = useMemo(() => closetStats(items, new Date()), [items]);
-  const empty = loaded && !loadError && items.length === 0;
-  const recent = items.slice(0, 12);
-  const open = (item: ClosetItem) => setOpenKey(keyOf(item));
-
-  const digitize = (
-    <View style={{ gap: 10 }}>
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        <View style={{ flex: 1 }}>
-          <Button title="Take Photo" size="medium" icon="camera" onPress={() => router.push({ pathname: "/capture/camera", params: { mode: "garments" } })} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Button title="From Library" size="medium" variant="secondary" onPress={fromLibrary} />
-        </View>
-      </View>
-      {pickError ? <Text style={{ ...type.footnote, color: colors.destructive }}>{pickError}</Text> : null}
-      {outfitOn ? (
-        <Pressable
-          accessibilityRole="button" hitSlop={hitSlopFor(20)} style={{ alignSelf: "center", paddingTop: 2 }}
-          onPress={() => router.push({ pathname: "/capture/camera", params: { mode: "outfit" } })}
-        >
-          <Text style={{ ...type.subhead, color: colors.tint }}>{OUTFIT_LINK}</Text>
-        </Pressable>
-      ) : null}
-    </View>
-  );
+  const actions: PhotoActions = {
+    onGarmentCamera: () => router.push({ pathname: "/capture/camera", params: { mode: "garments" } }),
+    onGarmentLibrary: pickInto("garment"),
+    onOutfitPhoto: outfitOn ? pickInto("outfit") : undefined,
+  };
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 28 }}>
-        <Greeting now={now} onCredits={() => router.push("/account")} />
+        <Greeting now={new Date()} onCredits={() => router.push("/account")} />
         <CaptureBanner />
 
         {loadError ? (
@@ -100,87 +81,35 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {empty || (loadError && items.length === 0) ? (
+        {empty ? (
           <View style={{ marginTop: 20 }}>
-            <HomeEmpty outfit={!!outfitOn}>{digitize}</HomeEmpty>
+            <HomeEmpty outfit={!!outfitOn}><AddRows {...actions} /></HomeEmpty>
           </View>
-        ) : null}
+        ) : (
+          <View style={{ paddingHorizontal: 20 }}>
+            <Pressable
+              onPress={() => router.push({ pathname: "/closet", params: { search: "1", at: String(Date.now()) } })}
+              accessibilityRole="search" accessibilityLabel={`Search ${items.length} pieces`}
+              style={{ marginTop: 22, height: 44, borderRadius: radius.input, backgroundColor: colors.fill, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12 }}
+            >
+              <Icon name="search" size={17} color={colors.secondaryLabel} />
+              <Text style={{ ...type.callout, color: colors.secondaryLabel }}>{`Search ${items.length} ${items.length === 1 ? "piece" : "pieces"}`}</Text>
+            </Pressable>
 
-        {items.length > 0 ? (
-          <>
-            <View style={{ marginTop: 22, height: MARQUEE.height + 30 }}>
-              <Marquee
-                items={recent}
-                itemWidth={MARQUEE.width}
-                gap={12}
-                speed={MARQUEE_SPEED}
-                testID="marquee"
-                renderItem={(item, i) => (
-                  <View style={{ paddingTop: i % 2 ? 20 : 10 }}>
-                    <GarmentTile item={item} width={MARQUEE.width} height={MARQUEE.height} rounded={20} label={`Open ${garmentName(item)}`} onPress={() => open(item)} />
-                  </View>
-                )}
-              />
-            </View>
+            <Text accessibilityRole="header" style={{ ...type.eyebrow, color: colors.secondaryLabel, paddingTop: 26, paddingBottom: 10 }}>Add to closet</Text>
+            <AddToCloset {...actions} />
 
-            <Rise style={{ marginTop: 8 }}>
-              <StatsRow stats={[
-                { label: "Pieces", value: stats.pieces },
-                { label: "Categories", value: stats.groups.length },
-                { label: "New this week", value: stats.addedThisWeek },
-              ]} />
-            </Rise>
-
-            <View style={{ marginHorizontal: 20, marginTop: 22, padding: 20, borderRadius: radius.feature, backgroundColor: colors.grouped, gap: 14 }}>
-              <View style={{ gap: 4 }}>
-                <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>Digitize clothes</Text>
-                <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>
-                  {outfitOn ? "Snap garments or an outfit. AI turns them into catalog images." : "Snap garments. AI turns them into catalog images."}
-                </Text>
-              </View>
-              {digitize}
-            </View>
-
-            <View style={{ marginTop: 24 }}>
-              <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 12 }}>
-                <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>Recently Added</Text>
-                <Pressable accessibilityRole="button" hitSlop={hitSlopFor(22)} onPress={() => router.push("/closet")}>
-                  <Text style={{ ...type.body, color: colors.tint }}>See All</Text>
-                </Pressable>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingBottom: 18 }}>
-                {recent.map((item) => (
-                  <View key={keyOf(item)} style={{ width: RECENT.width, gap: 8 }}>
-                    <GarmentTile item={item} width={RECENT.width} height={RECENT.height} rounded={20} label={`Open ${garmentName(item)}`} onPress={() => open(item)} />
-                    <View>
-                      <Text numberOfLines={1} style={{ ...type.subhead, fontWeight: "600", color: colors.label }}>{garmentName(item)}</Text>
-                      <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>{addedLabel(item.run_id) ?? ""}</Text>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-
-            {stats.groups.length > 0 ? (
-              <View style={{ marginTop: 10, paddingHorizontal: 20 }}>
-                <Text accessibilityRole="header" style={{ ...type.section, color: colors.label, marginBottom: 12 }}>Browse by category</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {stats.groups.map(({ name, count }) => (
-                    <Chip
-                      key={name} label={name} count={count} variant="outlined"
-                      onPress={() => router.push({ pathname: "/closet", params: { group: name, at: String(Date.now()) } })}
-                    />
-                  ))}
-                </View>
-              </View>
+            {rows.length ? (
+              <>
+                <Text accessibilityRole="header" style={{ ...type.eyebrow, color: colors.secondaryLabel, paddingTop: 28, paddingBottom: 6 }}>Your closet</Text>
+                <CategoryRows rows={rows} onOpen={(g) => router.push({ pathname: "/closet", params: { group: g, at: String(Date.now()) } })} />
+              </>
             ) : null}
-          </>
-        ) : null}
+          </View>
+        )}
+        {pickError ? <Text style={{ ...type.footnote, color: colors.destructive, paddingHorizontal: 20, marginTop: 10 }}>{pickError}</Text> : null}
       </ScrollView>
 
-      <ItemSheet items={items} index={openIndex >= 0 ? openIndex : null} onClose={() => setOpenKey(null)}
-        onUpdated={(updated) => setItems((all) => all.map((i) => (keyOf(i) === keyOf(updated) ? updated : i)))}
-        onDeleted={() => { setOpenKey(null); load(); }} />
     </SafeAreaView>
   );
 }

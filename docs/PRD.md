@@ -45,7 +45,7 @@ Today: the owner, on their own iPhone over home Wi-Fi. Intended: other people wi
 23. 360 "on body" view (optional, on request only): four AI ghost-mannequin angles (front, right, back, left) from the item's catalog images, ~16¢ and ~1 min, generated in the background; the sheet can close and reopen while it runs. Turn by drag, tap or VoiceOver; labelled "360 · AI view". Known accepted weakness: prints may drift between angles.
 
 ### Home and Account
-24. Home: large title with piece count and pieces added this week; two rows of recent garments drifting slowly (touch pauses, tap opens); stats (pieces, categories, colors); quick add; Just added; category chips with counts. Empty closet shows a single empty state with the add buttons.
+24. Home: greeting with the balance, a search field into the closet, "Add to closet" tiles that name the photo they want (garment photo: camera or library → garment flow; outfit photo: choose a photo → outfit flow), and the closet as category rows. Empty closet: labelled garment-photo and outfit-photo rows plus tips. Every photo entry point in the app names the kind of photo it expects.
 25. Account: profile (initials, email), AI Credits balance of what was granted with a low-credit meter, price list and activity, Appearance (System/Light/Dark), Sign Out and Delete Account; or the local-mode note.
 
 ## AI Credits — confirmed direction (not built beyond hooks)

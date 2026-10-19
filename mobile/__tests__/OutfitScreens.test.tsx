@@ -162,6 +162,6 @@ test("a failed scan offers another photo", async () => {
   (scanOutfit as jest.Mock).mockRejectedValue(new Error("Can't reach your wardrobe server."));
   withCredits(<DetectScreen />);
   expect(await screen.findByText("Can't reach your wardrobe server.")).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "Try Another Photo" }));
+  fireEvent.press(screen.getByRole("button", { name: "Try Another Outfit Photo" }));
   expect(mockReplace).toHaveBeenCalledWith({ pathname: "/capture/camera", params: { mode: "outfit" } });
 });

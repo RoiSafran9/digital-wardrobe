@@ -17,7 +17,7 @@ const mockReplace = jest.fn();
 const mockBack = jest.fn();
 let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ replace: mockReplace, back: mockBack, push: jest.fn() }),
+  useRouter: () => ({ replace: mockReplace, back: mockBack, push: jest.fn(), canGoBack: () => true }),
   useLocalSearchParams: () => mockParams,
 }));
 
@@ -50,10 +50,19 @@ function renderWith(ui: React.ReactElement, credits: Partial<CreditsValue> = {})
 beforeEach(() => { jest.clearAllMocks(); mockParams = {}; (global as any).__cameraPermission = undefined; });
 
 describe("camera", () => {
+  test("the close button sits below the status bar and closes the camera", () => {
+    renderWith(<CameraScreen />);
+    fireEvent.press(screen.getByRole("button", { name: "Close camera" }));
+    expect(mockBack).toHaveBeenCalled();
+    // Even when the modal reports no safe-area inset, the controls start below the status bar.
+    const padded = screen.UNSAFE_root.findAll((n) => typeof n.props.style?.paddingTop === "number" && n.props.style.paddingTop >= 60);
+    expect(padded.length).toBeGreaterThan(0);
+  });
+
   test("the shutter takes the photo and opens its preview", async () => {
     renderWith(<CameraScreen />);
     expect(screen.getByText("Lay pieces flat · daylight works best")).toBeTruthy();
-    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take photo" })));
+    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take garment photo" })));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///camera.jpg" } });
   });
 
@@ -63,7 +72,7 @@ describe("camera", () => {
     screen.unmount();
     renderWith(<CameraScreen />, { outfit: true });
     fireEvent.press(screen.getByRole("tab", { name: "Outfit" }));
-    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take photo" })));
+    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take outfit photo" })));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///camera.jpg" } });
   });
 
@@ -72,7 +81,7 @@ describe("camera", () => {
     (pickPhoto as jest.Mock).mockResolvedValue("file:///lib.jpg");
     renderWith(<CameraScreen />);
     expect(screen.getByText("Camera access is off")).toBeTruthy();
-    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose from Library" })));
+    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose Garment Photo" })));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///lib.jpg" } });
   });
 });
@@ -155,7 +164,7 @@ describe("results and saved", () => {
   test("a photo with nothing in it says so and offers another photo", async () => {
     renderWith(<Started result={{ ...RUN, items: [] }}><ResultsScreen /></Started>);
     expect(await screen.findByText("No pieces found")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Take Another Photo" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Take Another Garment Photo" })).toBeTruthy();
   });
 
   test("billing off: Saved shows no credits", async () => {

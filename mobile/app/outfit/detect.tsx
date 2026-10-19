@@ -53,7 +53,7 @@ export default function DetectScreen() {
           <View style={{ gap: 12 }}>
             <Text style={{ ...type.section, color: colors.label }}>Couldn't check this photo</Text>
             <Text style={{ ...type.body, color: colors.secondaryLabel }}>{error}</Text>
-            <Button title="Try Another Photo" onPress={() => router.replace({ pathname: "/capture/camera", params: { mode: "outfit" } })} />
+            <Button title="Try Another Outfit Photo" onPress={() => router.replace({ pathname: "/capture/camera", params: { mode: "outfit" } })} />
           </View>
         ) : (
           <View style={{ alignItems: "center", gap: 8 }}>

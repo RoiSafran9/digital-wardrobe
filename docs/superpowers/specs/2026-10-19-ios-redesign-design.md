@@ -127,6 +127,10 @@ Legend: **R** = restyle of existing code, **N** = new screen/component, **B** = 
 - **D17 · Help & Support, Privacy rows.** No URLs exist. *Recommend:* hide until the owner gives a support email and privacy page.
 - **D18 · Delivery workflow.** Owner's default is commits straight to `main`. *Recommend for this redesign:* one branch + PR per milestone (`feat/redesign-mN`), merged in order, so each can be checked on the phone and reverted on its own.
 
+## 6b. Home update (2026-10-19, M9)
+
+The owner sent an updated handoff ([CHANGE_home_photo_type.md](../../design/design_handoff_digital_wardrobe/CHANGE_home_photo_type.md)): Home drops the marquee, stats, Digitize card, Recently Added and category pills for a search field, labelled "Add to closet" tiles (garment photo vs outfit photo) and category rows; the empty state gets labelled rows; and every photo entry point must name its photo type. Repo rules still apply: no name in the greeting (D8), groups as categories (D4), outfit tile only when the server offers outfits, counts in `secondaryLabel` (the handoff's ink3 fails contrast for text).
+
 ## 7. Backend / API gaps
 
 | Gap | For | Size | Decision |

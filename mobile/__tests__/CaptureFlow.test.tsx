@@ -17,7 +17,7 @@ const mockReplace = jest.fn();
 const mockBack = jest.fn();
 let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ replace: mockReplace, back: mockBack, push: jest.fn() }),
+  useRouter: () => ({ replace: mockReplace, back: mockBack, push: jest.fn(), canGoBack: () => true }),
   useLocalSearchParams: () => mockParams,
 }));
 
@@ -50,6 +50,15 @@ function renderWith(ui: React.ReactElement, credits: Partial<CreditsValue> = {})
 beforeEach(() => { jest.clearAllMocks(); mockParams = {}; (global as any).__cameraPermission = undefined; });
 
 describe("camera", () => {
+  test("the close button sits below the status bar and closes the camera", () => {
+    renderWith(<CameraScreen />);
+    fireEvent.press(screen.getByRole("button", { name: "Close camera" }));
+    expect(mockBack).toHaveBeenCalled();
+    // Even when the modal reports no safe-area inset, the controls start below the status bar.
+    const padded = screen.UNSAFE_root.findAll((n) => typeof n.props.style?.paddingTop === "number" && n.props.style.paddingTop >= 60);
+    expect(padded.length).toBeGreaterThan(0);
+  });
+
   test("the shutter takes the photo and opens its preview", async () => {
     renderWith(<CameraScreen />);
     expect(screen.getByText("Lay pieces flat · daylight works best")).toBeTruthy();

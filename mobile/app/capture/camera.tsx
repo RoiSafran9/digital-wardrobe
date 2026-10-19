@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Icon } from "../../src/components/Icon";
@@ -33,6 +33,11 @@ export default function CameraScreen() {
   const params = useLocalSearchParams<{ mode?: string }>();
   const [mode, setMode] = useState<Mode>(params.mode === "outfit" && outfitOn ? "outfit" : "garments");
   const [permission, requestPermission] = useCameraPermissions();
+  const insets = useSafeAreaInsets();
+  // In a full-screen modal over the camera the reported inset can come back as 0; never let the
+  // close button sit under the status bar or Dynamic Island, where it can't be tapped.
+  const top = Math.max(insets.top, 54) + 6;
+  const bottom = Math.max(insets.bottom, 20);
   const camera = useRef<CameraView>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,15 +69,15 @@ export default function CameraScreen() {
   }
 
   const close = (
-    <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Close camera" hitSlop={hitSlopFor(36, 36)}
-      style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center" }}>
+    <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} accessibilityRole="button" accessibilityLabel="Close camera" hitSlop={hitSlopFor(40, 40)}
+      style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center" }}>
       <Icon name="close" size={16} color={INK} />
     </Pressable>
   );
 
   if (permission && !permission.granted) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#000", padding: 20 }}>
+      <View style={{ flex: 1, backgroundColor: "#000", paddingHorizontal: 20, paddingTop: top, paddingBottom: bottom }}>
         {close}
         <View style={{ flex: 1, justifyContent: "center", gap: 14 }}>
           <Text style={{ ...type.section, color: INK }}>Camera access is off</Text>
@@ -83,18 +88,18 @@ export default function CameraScreen() {
           <Button title={mode === "outfit" ? "Choose Outfit Photo" : "Choose Garment Photo"} variant="secondary" onPress={library} />
           {error ? <Text style={{ ...type.footnote, color: "#FF8A8A" }}>{error}</Text> : null}
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: "#000" }}>
       {permission?.granted ? <CameraView ref={camera} style={StyleSheet.absoluteFill} facing="back" /> : null}
-      <SafeAreaView style={{ flex: 1, justifyContent: "space-between" }}>
-        <View style={{ paddingHorizontal: 20, paddingTop: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+      <View style={{ flex: 1, justifyContent: "space-between", paddingTop: top, paddingBottom: bottom }}>
+        <View style={{ paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           {close}
           <Text style={{ ...type.subhead, fontWeight: "600", color: INK }}>{mode === "outfit" ? "Outfit" : "Garments"}</Text>
-          <View style={{ width: 36 }} />
+          <View style={{ width: 40 }} />
         </View>
 
         {/* Corner brackets frame where the clothes should go. */}
@@ -141,7 +146,7 @@ export default function CameraScreen() {
             <View style={{ width: 48 }} />
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }

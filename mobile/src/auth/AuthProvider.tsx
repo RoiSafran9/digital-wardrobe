@@ -14,6 +14,7 @@ export type AuthContextValue = {
   reason?: string;  // why sign-in isn't configured (status "unconfigured")
   sendCode(email: string): Promise<void>;
   verifyCode(email: string, code: string): Promise<void>;
+  signInWithPassword(email: string, password: string): Promise<void>;  // the App Review demo account only
   signOut(): Promise<void>;
 };
 
@@ -22,7 +23,7 @@ type State = { status: AuthStatus; email: string | null; userId: string | null }
 
 const noop = async () => {};
 export const AuthContext = createContext<AuthContextValue>({
-  status: "loading", email: null, userId: null, sendCode: noop, verifyCode: noop, signOut: noop,
+  status: "loading", email: null, userId: null, sendCode: noop, verifyCode: noop, signInWithPassword: noop, signOut: noop,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -63,6 +64,14 @@ export function AuthProvider({ children, config = authConfig, client: injected }
     setState(fromSession(data.session));
   }, [client]);
 
+  // Only accounts given a password by scripts/demo_account.py can use this; everyone else signs in by code.
+  const signInWithPassword = useCallback(async (email: string, password: string) => {
+    if (!client) return;
+    const { data, error } = await client.auth.signInWithPassword({ email: normalizeEmail(email), password });
+    if (error) throw new Error(authErrorMessage(error));
+    setState(fromSession(data.session));
+  }, [client]);
+
   const signOut = useCallback(async () => {
     if (!client) return;
     const { error } = await client.auth.signOut();
@@ -85,6 +94,9 @@ export function AuthProvider({ children, config = authConfig, client: injected }
   }, [client, state.status, state.userId, signOut]);
 
   const reason = config.mode === "unconfigured" ? config.reason : undefined;
-  const value = useMemo(() => ({ ...state, reason, sendCode, verifyCode, signOut }), [state, reason, sendCode, verifyCode, signOut]);
+  const value = useMemo(
+    () => ({ ...state, reason, sendCode, verifyCode, signInWithPassword, signOut }),
+    [state, reason, sendCode, verifyCode, signInWithPassword, signOut],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

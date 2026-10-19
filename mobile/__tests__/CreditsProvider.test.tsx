@@ -15,7 +15,7 @@ function Show() {
 }
 
 const auth = (status: AuthContextValue["status"], userId: string | null): AuthContextValue =>
-  ({ status, userId, email: null, sendCode: jest.fn(), verifyCode: jest.fn(), signOut: jest.fn() });
+  ({ status, userId, email: null, sendCode: jest.fn(), verifyCode: jest.fn(), signInWithPassword: jest.fn(), signOut: jest.fn() });
 
 const tree = (value: AuthContextValue) => (
   <AuthContext.Provider value={value}><CreditsProvider><Show /></CreditsProvider></AuthContext.Provider>

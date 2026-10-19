@@ -20,7 +20,7 @@ function SignedInFlag() {
 function renderScreen(overrides: Partial<AuthContextValue> = {}) {
   const value: AuthContextValue = {
     status: "signedOut", email: null, userId: null,
-    sendCode: jest.fn(async () => {}), verifyCode: jest.fn(async () => {}), signOut: jest.fn(async () => {}),
+    sendCode: jest.fn(async () => {}), verifyCode: jest.fn(async () => {}), signInWithPassword: jest.fn(async () => {}), signOut: jest.fn(async () => {}),
     ...overrides,
   };
   render(

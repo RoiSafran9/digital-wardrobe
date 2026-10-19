@@ -23,7 +23,7 @@ function Probe() {
   );
 }
 
-const auth: AuthContextValue = { status: "signedIn", email: "a@x.com", userId: "u1", sendCode: jest.fn(), verifyCode: jest.fn(), signOut: jest.fn() };
+const auth: AuthContextValue = { status: "signedIn", email: "a@x.com", userId: "u1", sendCode: jest.fn(), verifyCode: jest.fn(), signInWithPassword: jest.fn(), signOut: jest.fn() };
 const renderProbe = () => render(<AuthContext.Provider value={auth}><NotifyProvider><Probe /></NotifyProvider></AuthContext.Provider>);
 
 beforeEach(async () => {

@@ -23,7 +23,7 @@ iPhone (Expo Go app)
 
 ## Repository layout
 ```text
-mobile/app/            Expo Router: _layout, welcome, intro, sign-in, sign-in-code, welcome-credits, (tabs)/{index (Home), closet, add, account},
+mobile/app/            Expo Router: _layout, welcome, intro, sign-in, sign-in-code, sign-in-password, welcome-credits, (tabs)/{index (Home), closet, add, account},
                        capture/{camera, preview, processing, results, saved}, outfit/{detect, pick, review}
 mobile/src/            api (local client, v1 client, types), auth (Supabase client, secure store, provider),
                        ui (Button, Sheet, Toast, CostSheet, InsufficientCreditsSheet…), components (ItemSheet, TurnView,
@@ -87,7 +87,7 @@ Every model call is appended to a `run_log.jsonl` (stage, model, prompt version,
 
 **Credits (hooks only):** jobs record `cost_credits` from `WARDROBE_CREDIT_PRICES` (unset = billing off); a `CreditGate` is called at reserve/release/settle/refund and is a no-op today. **Wallet (built, inactive):** `credit_wallets` (one per account, `balance`/`held`, created at sign-up) and append-only `credit_ledger` (`grant`/`hold`/`charge`/`release`), written only by `SECURITY DEFINER` functions `credit_grant`, `credit_reserve`, `credit_settle`, `credit_release` (service_role only; row lock + stable operation keys). The app can read its own wallet and activity; nothing in the job flow calls the functions yet. Grants: `scripts/grant_credits.py`. **Billing (built, off by default):** `WARDROBE_BILLING=on` swaps in `WalletGate`; a garment job holds price × `max_fronts`, makes at most that many fronts and is charged per front made; back and 360 are one action each; the worker reconciles unfinished holds every minute (`credit_reconcile`). Design: [wallet design](superpowers/specs/2026-10-18-ai-credits-wallet-design.md). **Approved billing unit: a user-requested AI generation action, not a garment record.** Front-image creation (`garment` internally), back-image creation (`back`) and one 360 creation (`turn`, bundling four internal image calls) are different actions. Optional enhancements can be purchased for an existing garment later. Multi-piece photo quoting and counting still need a product decision; current backend prices one `garment` job per photo even if multiple fronts are produced. Product requirements: [CREDITS.md](CREDITS.md) (one wallet, server-owned prices, atomic reserve → settle/refund); its "Spec vs built hooks" section lists where M5 differs.
 
-**Operations:** `scripts/migrate_runs.py` moves an existing `runs/` closet into an account (dry run by default, idempotent by `legacy_key`, `.trash` → `deleted_at`). `scripts/sweep_storage.py` removes files of deleted accounts and stale job uploads (dry run by default). `scripts/grant_credits.py` gives an account promotional AI Credits (dry run by default, idempotent by `--key`).
+**Operations:** `scripts/migrate_runs.py` moves an existing `runs/` closet into an account (dry run by default, idempotent by `legacy_key`, `.trash` → `deleted_at`). `scripts/sweep_storage.py` removes files of deleted accounts and stale job uploads (dry run by default). `scripts/grant_credits.py` gives an account promotional AI Credits (dry run by default, idempotent by `--key`). `scripts/demo_account.py` creates, re-passwords or blocks the App Review demo account, the only account with a password; holding the Sign In title opens `sign-in-password` (see [DEPLOY.md](DEPLOY.md) §4).
 
 ## Proposed new input path (NOT BUILT)
 

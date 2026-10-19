@@ -27,7 +27,7 @@ const CREDITS: Credits = {
 function renderAccount(overrides: Partial<AuthContextValue>, credits: Partial<CreditsValue> = {}) {
   const value: AuthContextValue = {
     status: "signedIn", email: "me@example.com", userId: "u1",
-    sendCode: jest.fn(), verifyCode: jest.fn(), signOut: jest.fn(async () => {}),
+    sendCode: jest.fn(), verifyCode: jest.fn(), signInWithPassword: jest.fn(), signOut: jest.fn(async () => {}),
     ...overrides,
   };
   const creditsValue: CreditsValue = { billing: false, prices: {}, credits: null, refresh: jest.fn(async () => {}), ...credits };

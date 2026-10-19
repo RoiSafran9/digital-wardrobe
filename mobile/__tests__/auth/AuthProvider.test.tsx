@@ -22,6 +22,11 @@ function fakeClient(initial: ReturnType<typeof session> | null = null) {
       listener("SIGNED_IN", s);
       return { data: { session: s, user: s.user }, error: null as unknown };
     }),
+    signInWithPassword: jest.fn(async ({ email }: { email: string }) => {
+      const s = session(email);
+      listener("SIGNED_IN", s);
+      return { data: { session: s, user: s.user }, error: null as unknown };
+    }),
     signOut: jest.fn(async () => { listener("SIGNED_OUT", null); return { error: null as unknown }; }),
   };
   return { auth, unsubscribe, emit: (e: string, s: unknown) => listener(e, s) };
@@ -92,6 +97,24 @@ test("a wrong code rejects and stays signed out", async () => {
   renderWith({ config: URL_CONFIG, client: client as never });
   await screen.findByText("signedOut|-|-");
   await expect(api.verifyCode("a@b.com", "000000")).rejects.toThrow("That code is wrong or has expired. Check the email or send a new code.");
+  expect(screen.getByText("signedOut|-|-")).toBeTruthy();
+});
+
+test("signInWithPassword signs in with the normalized email", async () => {
+  const client = fakeClient();
+  renderWith({ config: URL_CONFIG, client: client as never });
+  await screen.findByText("signedOut|-|-");
+  await act(() => api.signInWithPassword(" Review@B.com ", "pw"));
+  expect(client.auth.signInWithPassword).toHaveBeenCalledWith({ email: "review@b.com", password: "pw" });
+  expect(screen.getByText("signedIn|review@b.com|id-review@b.com")).toBeTruthy();
+});
+
+test("a wrong password rejects and stays signed out", async () => {
+  const client = fakeClient();
+  client.auth.signInWithPassword.mockResolvedValueOnce({ data: { session: null, user: null } as never, error: Object.assign(new Error("x"), { status: 400, code: "invalid_credentials" }) });
+  renderWith({ config: URL_CONFIG, client: client as never });
+  await screen.findByText("signedOut|-|-");
+  await expect(api.signInWithPassword("a@b.com", "nope")).rejects.toThrow("That email and password don't match.");
   expect(screen.getByText("signedOut|-|-")).toBeTruthy();
 });
 

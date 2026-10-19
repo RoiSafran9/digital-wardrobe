@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { KeyboardAvoidingView, ScrollView, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "../src/auth/AuthProvider";
@@ -38,7 +38,10 @@ export default function SignInScreen() {
           <View style={{ height: 44, justifyContent: "center" }}>
             {router.canGoBack() ? <BackButton onPress={() => router.back()} /> : null}
           </View>
-          <Text accessibilityRole="header" style={{ ...type.screenTitle, color: colors.label, marginTop: 12 }}>Sign in with email</Text>
+          {/* Holding the title opens password sign-in, for the App Review demo account (see docs/DEPLOY.md). */}
+          <Pressable accessible={false} onLongPress={() => router.push("/sign-in-password")} delayLongPress={1000}>
+            <Text accessibilityRole="header" style={{ ...type.screenTitle, color: colors.label, marginTop: 12 }}>Sign in with email</Text>
+          </Pressable>
           <Text style={{ ...type.body, color: colors.secondaryLabel, marginTop: 8, marginBottom: 28 }}>
             We'll send you a six-digit code. No password needed.
           </Text>

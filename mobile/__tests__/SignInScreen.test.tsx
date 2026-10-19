@@ -13,7 +13,7 @@ jest.mock("expo-router", () => ({
 function renderScreen(overrides: Partial<AuthContextValue> = {}) {
   const value: AuthContextValue = {
     status: "signedOut", email: null, userId: null,
-    sendCode: jest.fn(async () => {}), verifyCode: jest.fn(async () => {}), signOut: jest.fn(async () => {}),
+    sendCode: jest.fn(async () => {}), verifyCode: jest.fn(async () => {}), signInWithPassword: jest.fn(async () => {}), signOut: jest.fn(async () => {}),
     ...overrides,
   };
   render(<AuthContext.Provider value={value}><SignInScreen /></AuthContext.Provider>);
@@ -69,4 +69,10 @@ test("Back appears only when there is somewhere to go back to", () => {
   mockCanGoBack = false;
   renderScreen();
   expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
+});
+
+test("holding the title opens password sign-in (App Review demo account)", () => {
+  renderScreen();
+  fireEvent(screen.getByText("Sign in with email"), "longPress");
+  expect(mockPush).toHaveBeenCalledWith("/sign-in-password");
 });

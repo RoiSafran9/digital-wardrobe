@@ -83,6 +83,18 @@ Permission texts (camera, photos, notifications) and the export-compliance flag 
    owner), creates the certificates and the App Store Connect app for `com.roisafran.kips`.
 3. In App Store Connect → TestFlight: beta description, feedback email, a public privacy-policy URL, an external
    tester group; the first external build goes through Beta App Review.
+4. **Demo account for Beta App Review** (the reviewer can't read a sign-in email). From the repo root on the Mac:
+   ```bash
+   python -m scripts.demo_account create --apply
+   ```
+   It creates `review@kipscloset.com` with a confirmed email and prints a new random password once. Put the email
+   and password only in App Store Connect → TestFlight → Test Information → *Sign-in required*, and add to the
+   review notes: *"On the sign-in screen, press and hold the title 'Sign in with email' for one second to open
+   password sign-in."* Testers never see or need it; they sign in by email code as usual. Run `create --apply`
+   again if a reviewer deletes the account or to change the password. After review:
+   `python -m scripts.demo_account disable --apply` blocks it (sign-in and refresh) and drops the password;
+   keep it on while builds are still being reviewed. Only this account has a password; with *Confirm email* on
+   in Supabase, a password sign-up still needs the inbox, so no other account can be entered by password.
 
 **SMTP** — done 2026-10-19: Resend (free tier, 100 emails/day), domain `kipscloset.com` verified (DNS in
 Cloudflare), sender `KIPS <noreply@kipscloset.com>`, Auth email rate limit 100/hour, test code delivered.

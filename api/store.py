@@ -16,6 +16,7 @@ BUCKET = "wardrobe"
 SIGNED_URL_SECONDS = 3600
 ACTIVE = ("queued", "running")
 INTERRUPTED = "Interrupted — try again"
+BANNED_FOR = "876000h"  # ~100 years: Supabase Auth has no "forever"
 
 
 def _now() -> datetime:
@@ -36,6 +37,8 @@ class MemoryStore:
         self.ledger: list[dict] = []
         self.names: dict[str, str] = {}  # user id -> display name
         self.tokens: dict[str, list[str]] = {}  # user id -> Expo push tokens
+        self.passwords: dict[str, str] = {}  # user id -> password (the App Review demo account only)
+        self.banned: set[str] = set()
 
     # Profiles
     def profile_status(self, user_id: str) -> str:
@@ -252,6 +255,16 @@ class MemoryStore:
         return {"queued": len(queued), "oldest_queued_seconds": 0 if oldest is None else round((_now() - oldest).total_seconds(), 1)}
 
     # Accounts
+    def create_auth_user(self, email, password):
+        user_id = str(uuid.uuid4())
+        self.emails[email.strip().lower()] = user_id
+        self.passwords[user_id] = password
+        return user_id
+
+    def update_auth_user(self, user_id, password, banned):
+        self.passwords[user_id] = password
+        (self.banned.add if banned else self.banned.discard)(user_id)
+
     def delete_account(self, user_id):
         """Like deleting the auth user: every row cascades away, then the user's files go."""
         self.deleted_users.add(user_id)
@@ -544,6 +557,17 @@ class SupabaseStore:
         return {"queued": len(rows), "oldest_queued_seconds": round((datetime.now(timezone.utc) - oldest).total_seconds(), 1)}
 
     # Accounts
+    def create_auth_user(self, email, password):
+        """A confirmed account that signs in with a password (the App Review demo account); its profile
+        and wallet are created by the sign-up trigger like any other account's."""
+        body = {"email": email.strip().lower(), "password": password, "email_confirm": True}
+        return self._ok(self.http.post("/auth/v1/admin/users", json=body)).json()["id"]
+
+    def update_auth_user(self, user_id, password, banned):
+        """Sets the password and blocks (banned) or unblocks sign-in; a blocked account can't refresh its session either."""
+        body = {"password": password, "ban_duration": BANNED_FOR if banned else "none"}
+        self._ok(self.http.put(f"/auth/v1/admin/users/{quote(user_id, safe='')}", json=body))
+
     def delete_account(self, user_id):
         """Deletes the auth user (profile, items, jobs, wallet and ledger cascade with it), then removes
         the user's files. Files left behind by a failure here are caught by scripts/sweep_storage.py,

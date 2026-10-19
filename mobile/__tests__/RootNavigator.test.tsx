@@ -11,7 +11,7 @@ import { SEEN_KEY } from "../src/onboarding";
 
 const auth = (status: AuthStatus, userId: string | null = null): AuthContextValue => ({
   status, email: userId ? `${userId}@x.com` : null, userId,
-  sendCode: jest.fn(), verifyCode: jest.fn(), signOut: jest.fn(),
+  sendCode: jest.fn(), verifyCode: jest.fn(), signInWithPassword: jest.fn(), signOut: jest.fn(),
 });
 
 function TabsStub() {

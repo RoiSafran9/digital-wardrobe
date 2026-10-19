@@ -36,6 +36,7 @@ export function RootNavigator() {
         <Stack.Screen name="intro" />
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="sign-in-code" />
+        <Stack.Screen name="sign-in-password" />
       </Stack.Protected>
     </Stack>
   );

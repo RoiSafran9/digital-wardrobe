@@ -200,11 +200,11 @@ async def cmd_generate(args):
         done = _load(os.path.join(out_dir, "results.json"), {})
         todo = [cid for cid in selected if cid not in done or args.force]
         for cid in todo:
-            budget.check((outfit.IMAGE_USD_PER_IMAGE + 0.001) * args.max_attempts)
+            budget.check((outfit.IMAGE_PRICES[args.model][0] + 0.002) * args.max_attempts)
             usage = outfit.Usage()
             done.update(await outfit.generate_selected(client, photo, scan, [cid], out_dir, usage,
                                                        with_context=not args.crop_only, max_attempts=args.max_attempts,
-                                                       prompt_name=args.prompt))
+                                                       prompt_name=args.prompt, model=args.model))
             total.calls += usage.calls
             _append_usage(name, usage, f"generate:{variant}")
             _save(os.path.join(out_dir, "results.json"), done)
@@ -260,7 +260,7 @@ def cmd_report(args):
             ref = _ref_for(c, refs)
             figs = [_img(os.path.join(out, "previews", f"{c['id']}.jpg"), f"{c['id']} preview crop")]
             # detect_v2: a re-scan with the v2 detect prompt, then with_context (IDs happened to match v1 here)
-            for variant in ("with_context", "crop_only", "detect_v2", "gen_v2"):
+            for variant in ("with_context", "crop_only", "detect_v2", "gen_v2", "nb2", "nb21"):
                 res = _load(os.path.join(out, variant, "results.json"), {}).get(c["id"])
                 if res:
                     v = (res.get("verification") or {})
@@ -311,6 +311,7 @@ def main(argv=None):
             q.add_argument("--crop-only", action="store_true", help="variant without the outlined full photo")
             q.add_argument("--max-attempts", type=int, default=2)
             q.add_argument("--prompt", default=outfit.GENERATE_PROMPT, help="generation prompt file to compare")
+            q.add_argument("--model", default=MODEL_IMAGE, choices=sorted(outfit.IMAGE_PRICES), help="image model to compare")
             q.add_argument("--variant", help="output folder name for this run (default with_context / crop_only)")
             q.add_argument("--scan-dir", help="read scan.json from this subfolder (e.g. detect_v2)")
     r = sub.add_parser("report")

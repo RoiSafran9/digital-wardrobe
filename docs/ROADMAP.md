@@ -32,7 +32,7 @@ See README → "Owner setup still open": hosted Supabase SMTP and email template
 - [x] Hooks: job `cost_credits`, server price list (off), credit gate, `GET /v1/prices` (M5)
 - [x] Select provisional F&F action rates for planning: **1 front image / 1 back image / 3 for one 360** (not active billing)
 - [x] Approve **free one-time automatic starter Credits for each new eligible F&F beta user**, no in-app purchases; exact amount not finalized (40 proposed)
-- [ ] Approve starter size (40 suggested), invite/eligibility policy and manual top-up limits; manual regeneration policy and any later public pricing
+- [x] Approve starter size: **40**, open to every account (2026-10-19). Still open: manual top-up limits, later public pricing
 - [x] Wallet M1: per-account wallet, append-only ledger, backend-only grant/reserve/settle/release with idempotency, admin F&F grant CLI, read-only `GET /v1/credits` — billing still off ([design](superpowers/specs/2026-10-18-ai-credits-wallet-design.md), [brief](tasks/ai-credits-wallet-implementation.md))
 - [x] Approve multi-piece accounting: the user approves a maximum number of fronts per photo; charged only for fronts made
 - [x] Billing M2: wallet-backed `CreditGate` behind `WARDROBE_BILLING=on` (off by default), `max_fronts` cap, partial settle, reconcile of expired/crashed jobs, fail-closed prices

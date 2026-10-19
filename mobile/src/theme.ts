@@ -66,6 +66,8 @@ export const type = {
   subhead: { fontSize: 15 },
   footnote: { fontSize: 13 },
   caption: { fontSize: 12 },
+  toast: { fontSize: 14, fontWeight: "600" },
+  tabLabel: { fontSize: 10.5, fontWeight: "500" },
   eyebrow: { fontSize: 13, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.65 },
   stat: { fontSize: 26, fontWeight: "600", fontVariant: ["tabular-nums"] },
   display: (size: 46 | 42 | 40) => ({ fontFamily: DISPLAY_FONT, fontSize: size, lineHeight: size }),

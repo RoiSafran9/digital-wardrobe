@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#e8e7e3;-webkit-font-smoothing:antialiased}
+a{color:#1f6bff;text-decoration:none}a:hover{color:#0a4fd6}
+*::-webkit-scrollbar{display:none}
+input::placeholder{color:var(--ink3,#a1a1a6)}
+@keyframes dw-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes dw-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes dw-fade{from{opacity:0}to{opacity:1}}
+@keyframes dw-pop{0%{opacity:0;transform:scale(.9) translateY(8px)}100%{opacity:1;transform:none}}
+@keyframes dw-scan{0%{top:0}50%{top:100%}100%{top:0}}
+@keyframes dw-shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+@keyframes dw-spin{to{transform:rotate(360deg)}}
+@keyframes dw-toast{0%{opacity:0;transform:translate(-50%,-10px)}12%,88%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-10px)}}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-wrap:wrap;gap:56px;justify-content:center;align-items:flex-start;padding:48px 40px 80px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Helvetica,sans-serif;color:#18181a">
+
+<aside style="width:280px;flex:none;display:flex;flex-direction:column;gap:22px">
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#8a8984">DIGITAL WARDROBE · iOS PROTOTYPE</div>
+    <div style="font-family:'Instrument Serif',serif;font-size:34px;line-height:1.05">User journey</div>
+    <div style="font-size:13px;line-height:1.5;color:#5e5d59;text-wrap:pretty">Fully clickable. Jump to any step below, or use the app directly. Garment images are stand-in silhouettes; drop real catalog shots in later. Theme and starting credits live in Tweaks.</div>
+  </div>
+  <sc-for list="{{ journey }}" as="g" hint-placeholder-count="6">
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div style="font:600 10.5px ui-monospace,Menlo,monospace;letter-spacing:.06em;color:#8a8984;text-transform:uppercase;padding:0 10px 6px">{{ g.title }}</div>
+      <sc-for list="{{ g.items }}" as="j" hint-placeholder-count="3">
+        <button onClick="{{ j.go }}" style="display:flex;align-items:center;gap:10px;text-align:left;border:0;background:{{ j.bg }};color:{{ j.fg }};font-family:inherit;font-size:13.5px;padding:7px 10px;border-radius:8px;cursor:pointer" style-hover="background:rgba(0,0,0,.06)">
+          <span style="font:500 10px ui-monospace,Menlo,monospace;opacity:.6;width:18px">{{ j.n }}</span>{{ j.label }}
+        </button>
+      </sc-for>
+    </div>
+  </sc-for>
+</aside>
+
+<div style="{{ themeVars }}">
+<div data-screen-label="Phone" style="position:relative;width:393px;height:852px;border-radius:58px;background:var(--bg,#fff);box-shadow:0 0 0 11px #121214,0 0 0 12px #3b3b3f,0 50px 90px rgba(0,0,0,.28);overflow:hidden;color:var(--ink,#131315);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Helvetica,sans-serif;isolation:isolate">
+
+<!-- WELCOME -->
+<sc-if value="{{ s.welcome }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Welcome" style="position:absolute;inset:0;background:var(--bg,#fff);display:flex;flex-direction:column">
+  <div style="position:relative;height:470px;margin-top:54px">
+    <sc-for list="{{ welcomeTiles }}" as="t" hint-placeholder-count="5">
+      <div style="position:absolute;left:{{ t.l }};top:{{ t.t }};width:{{ t.w }};height:{{ t.h }};transform:rotate({{ t.r }});border-radius:22px;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,.08);animation:dw-pop .7s cubic-bezier(.2,.8,.2,1) both;animation-delay:{{ t.d }}">
+        <dc-import name="GarmentArt" item="{{ t.item }}" style="width:100%;height:100%" hint-size="100%,100%"></dc-import>
+      </div>
+    </sc-for>
+  </div>
+  <div style="padding:0 28px;display:flex;flex-direction:column;gap:12px">
+    <div style="font-family:'Instrument Serif',serif;font-size:46px;line-height:1">Your closet,<br>beautifully digital.</div>
+    <div style="font-size:17px;line-height:1.4;color:var(--ink2,#6e6e73);text-wrap:pretty">Photograph the clothes you own. AI turns them into clean catalog images you can browse anywhere.</div>
+  </div>
+  <div style="margin-top:auto;padding:0 20px 44px;display:flex;flex-direction:column;gap:6px">
+    <button onClick="{{ toIntro }}" style="height:54px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer">Get Started</button>
+    <button onClick="{{ toEmail }}" style="height:44px;border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:16px;font-weight:500;cursor:pointer">I already have an account</button>
+  </div>
+</div>
+</sc-if>
+
+<!-- INTRO -->
+<sc-if value="{{ s.intro }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Intro" style="position:absolute;inset:0;background:var(--bg,#fff);display:flex;flex-direction:column;padding-top:54px">
+  <div style="display:flex;justify-content:flex-end;padding:8px 20px"><button onClick="{{ toEmail }}" style="border:0;background:none;color:var(--ink2,#6e6e73);font-family:inherit;font-size:16px;cursor:pointer">Skip</button></div>
+  <div style="margin:18px 28px 0;height:400px;border-radius:30px;overflow:hidden;position:relative;background:var(--bg2,#f4f4f2)">
+    <sc-if value="{{ intro.p0 }}" hint-placeholder-val="{{ true }}">
+      <div style="position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:22px;animation:dw-fade .4s both">
+        <div style="border-radius:18px;overflow:hidden;background:repeating-linear-gradient(135deg,var(--ph1,#ecebe7) 0 10px,var(--ph2,#e4e2dd) 10px 20px);position:relative">
+          <dc-import name="GarmentArt" item="{{ introItem }}" bare="{{ true }}" rotate="-9" style="width:100%;height:100%" hint-size="100%,100%"></dc-import>
+          <div style="position:absolute;left:10px;bottom:10px;font:500 10px ui-monospace,Menlo,monospace;color:var(--ink2,#6e6e73)">your photo</div>
+        </div>
+        <div style="border-radius:18px;overflow:hidden;position:relative;background:var(--card,#fff)">
+          <dc-import name="GarmentArt" item="{{ introItem }}" style="width:100%;height:100%" hint-size="100%,100%"></dc-import>
+          <div style="position:absolute;left:10px;bottom:10px;font:500 10px ui-monospace,Menlo,monospace;color:var(--accent,#1f6bff)">catalog image</div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ intro.p1 }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;animation:dw-fade .4s both">
+        <div style="position:relative;width:210px;height:340px;border-radius:20px;overflow:hidden;background:repeating-linear-gradient(135deg,var(--ph1,#ecebe7) 0 10px,var(--ph2,#e4e2dd) 10px 20px)">
+          <sc-for list="{{ candView }}" as="c" hint-placeholder-count="4">
+            <div style="position:absolute;left:{{ c.l }};top:{{ c.t }};width:{{ c.w }};height:{{ c.h }}"><dc-import name="GarmentArt" item="{{ c }}" bare="{{ true }}" scale="1.2" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+            <div style="position:absolute;left:{{ c.l }};top:{{ c.t }};width:{{ c.w }};height:{{ c.h }};border:2px solid var(--accent,#1f6bff);border-radius:10px;box-sizing:border-box"></div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ intro.p2 }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:20px;animation:dw-fade .4s both">
+        <sc-for list="{{ introGrid }}" as="it" hint-placeholder-count="9">
+          <div style="border-radius:14px;overflow:hidden"><dc-import name="GarmentArt" item="{{ it }}" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </div>
+  <div style="padding:28px 28px 0;display:flex;flex-direction:column;gap:10px;min-height:120px">
+    <div style="font-size:28px;font-weight:700;letter-spacing:-.02em">{{ intro.title }}</div>
+    <div style="font-size:17px;line-height:1.4;color:var(--ink2,#6e6e73);text-wrap:pretty">{{ intro.body }}</div>
+  </div>
+  <div style="margin-top:auto;padding:0 20px 44px;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;gap:7px">
+      <sc-for list="{{ intro.dots }}" as="d" hint-placeholder-count="3"><div style="width:{{ d.w }};height:7px;border-radius:4px;background:{{ d.bg }};transition:all .3s"></div></sc-for>
+    </div>
+    <button onClick="{{ introNext }}" style="height:52px;padding:0 28px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer">{{ intro.cta }}</button>
+  </div>
+</div>
+</sc-if>
+
+<!-- EMAIL -->
+<sc-if value="{{ s.email }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Email sign-in" style="position:absolute;inset:0;background:var(--bg,#fff);padding-top:54px;display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;height:44px;padding:0 12px"><button onClick="{{ toWelcome }}" style="border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:17px;cursor:pointer;display:flex;align-items:center;gap:2px"><span style="font-size:30px;line-height:0;margin-top:-4px">‹</span>Back</button></div>
+  <div style="padding:16px 24px 0;display:flex;flex-direction:column;gap:10px">
+    <div style="font-size:32px;font-weight:700;letter-spacing:-.02em">Sign in with email</div>
+    <div style="font-size:16px;line-height:1.4;color:var(--ink2,#6e6e73)">We'll send you a six-digit code. No password needed.</div>
+  </div>
+  <div style="padding:28px 20px 0;display:flex;flex-direction:column;gap:12px">
+    <input value="{{ email }}" onChange="{{ onEmail }}" type="email" placeholder="you@example.com" autofocus style="height:56px;border-radius:14px;border:1.5px solid {{ emailBorder }};background:var(--bg2,#f4f4f2);padding:0 16px;font-family:inherit;font-size:17px;color:var(--ink,#131315);outline:none">
+    <button onClick="{{ sendCode }}" style="height:54px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer;opacity:{{ emailOpacity }}">Continue</button>
+    <div style="font-size:13px;line-height:1.45;color:var(--ink3,#a1a1a6);text-align:center;padding:4px 20px">By continuing you agree to the Terms and acknowledge the Privacy Policy.</div>
+  </div>
+</div>
+</sc-if>
+
+<!-- CODE -->
+<sc-if value="{{ s.code }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Verification code" style="position:absolute;inset:0;background:var(--bg,#fff);padding-top:54px;display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;height:44px;padding:0 12px"><button onClick="{{ toEmail }}" style="border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:17px;cursor:pointer;display:flex;align-items:center;gap:2px"><span style="font-size:30px;line-height:0;margin-top:-4px">‹</span>Back</button></div>
+  <div style="padding:16px 24px 0;display:flex;flex-direction:column;gap:10px">
+    <div style="font-size:32px;font-weight:700;letter-spacing:-.02em">Check your inbox</div>
+    <div style="font-size:16px;line-height:1.4;color:var(--ink2,#6e6e73)">Enter the code we sent to <span style="color:var(--ink,#131315);font-weight:600">{{ emailShown }}</span></div>
+  </div>
+  <label style="position:relative;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:32px 20px 0;cursor:text">
+    <sc-for list="{{ codeBoxes }}" as="b" hint-placeholder-count="6">
+      <div style="height:62px;border-radius:14px;background:var(--bg2,#f4f4f2);border:2px solid {{ b.border }};display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:600;transition:border-color .2s">{{ b.d }}</div>
+    </sc-for>
+    <input value="{{ code }}" onChange="{{ onCode }}" inputMode="numeric" autoComplete="one-time-code" autofocus maxLength="6" style="position:absolute;inset:32px 20px 0;opacity:0;font-size:16px">
+  </label>
+  <div style="padding:20px 24px;display:flex;justify-content:space-between;font-size:15px">
+    <span style="color:var(--ink2,#6e6e73)">{{ codeHint }}</span>
+    <button onClick="{{ fillCode }}" style="border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:15px;font-weight:500;cursor:pointer">Resend code</button>
+  </div>
+</div>
+</sc-if>
+
+<!-- STARTER -->
+<sc-if value="{{ s.starter }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Starter credits" style="position:absolute;inset:0;background:var(--bg,#fff);padding-top:54px;display:flex;flex-direction:column;align-items:center;text-align:center">
+  <div style="margin-top:70px;width:168px;height:168px;border-radius:50%;background:var(--accentSoft,rgba(31,107,255,.1));display:flex;flex-direction:column;align-items:center;justify-content:center;animation:dw-pop .6s cubic-bezier(.2,.8,.2,1) both">
+    <div style="font-size:64px;font-weight:700;letter-spacing:-.04em;color:var(--accent,#1f6bff);line-height:1">25</div>
+    <div style="font-size:14px;font-weight:600;color:var(--accent,#1f6bff);margin-top:4px">AI credits</div>
+  </div>
+  <div style="padding:32px 32px 0;display:flex;flex-direction:column;gap:10px">
+    <div style="font-family:'Instrument Serif',serif;font-size:40px;line-height:1.05">A welcome gift</div>
+    <div style="font-size:17px;line-height:1.4;color:var(--ink2,#6e6e73);text-wrap:pretty">Your starter pack covers about 25 garments. Credits are only used when AI creates an image, and you'll always see the cost first.</div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:24px">
+    <span style="padding:7px 12px;border-radius:20px;background:var(--fill,rgba(120,120,128,.12));font-size:13px;font-weight:500">Front · 1</span>
+    <span style="padding:7px 12px;border-radius:20px;background:var(--fill,rgba(120,120,128,.12));font-size:13px;font-weight:500">Back · 1</span>
+    <span style="padding:7px 12px;border-radius:20px;background:var(--fill,rgba(120,120,128,.12));font-size:13px;font-weight:500">360° · 3</span>
+  </div>
+  <div style="margin-top:auto;width:100%;box-sizing:border-box;padding:0 20px 44px;display:flex;flex-direction:column;gap:6px">
+    <button onClick="{{ firstGarment }}" style="height:54px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer">Digitize Your First Piece</button>
+    <button onClick="{{ exploreEmpty }}" style="height:44px;border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:16px;font-weight:500;cursor:pointer">Explore first</button>
+  </div>
+</div>
+</sc-if>
+
+<!-- HOME -->
+<sc-if value="{{ s.home }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Home" style="position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;background:var(--bg,#fff);padding:54px 0 110px;box-sizing:border-box">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:14px 20px 0">
+    <div>
+      <div style="font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2,#6e6e73)">Sunday, October 19</div>
+      <div style="font-family:'Instrument Serif',serif;font-size:42px;line-height:1.02;margin-top:6px">Good morning,<br>Maya</div>
+    </div>
+    <button onClick="{{ toAccount }}" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:0;border-radius:17px;background:var(--fill,rgba(120,120,128,.12));color:var(--ink,#131315);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;margin-top:4px"><span style="width:8px;height:8px;border-radius:50%;background:var(--accent,#1f6bff)"></span>{{ credits }}</button>
+  </div>
+
+  <sc-if value="{{ hasItems }}" hint-placeholder-val="{{ true }}">
+    <div style="overflow:hidden;margin-top:24px;padding:6px 0 16px">
+      <div style="display:flex;gap:10px;width:max-content;animation:{{ marqueeAnim }}">
+        <sc-for list="{{ marquee }}" as="it" hint-placeholder-count="8">
+          <div onClick="{{ it.open }}" style="width:118px;height:148px;border-radius:20px;overflow:hidden;cursor:pointer;flex:none;transform:translateY({{ it.y }})"><dc-import name="GarmentArt" item="{{ it }}" style="width:100%;height:100%" hint-size="118px,148px"></dc-import></div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);margin:8px 20px 0;border-top:1px solid var(--line,rgba(0,0,0,.08));border-bottom:1px solid var(--line,rgba(0,0,0,.08))">
+      <div style="padding:14px 0;display:flex;flex-direction:column;gap:2px"><div style="font-size:26px;font-weight:600;letter-spacing:-.02em">{{ stats.total }}</div><div style="font-size:13px;color:var(--ink2,#6e6e73)">Pieces</div></div>
+      <div style="padding:14px 0 14px 16px;border-left:1px solid var(--line,rgba(0,0,0,.08));display:flex;flex-direction:column;gap:2px"><div style="font-size:26px;font-weight:600;letter-spacing:-.02em">{{ stats.cats }}</div><div style="font-size:13px;color:var(--ink2,#6e6e73)">Categories</div></div>
+      <div style="padding:14px 0 14px 16px;border-left:1px solid var(--line,rgba(0,0,0,.08));display:flex;flex-direction:column;gap:2px"><div style="font-size:26px;font-weight:600;letter-spacing:-.02em">{{ stats.week }}</div><div style="font-size:13px;color:var(--ink2,#6e6e73)">New this week</div></div>
+    </div>
+    <div style="margin:20px 16px 0;padding:20px;border-radius:26px;background:var(--bg2,#f4f4f2);display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="font-size:20px;font-weight:700;letter-spacing:-.01em">Digitize clothes</div>
+        <div style="font-size:15px;line-height:1.4;color:var(--ink2,#6e6e73)">Snap garments or an outfit. AI turns them into catalog images.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button onClick="{{ toCamera }}" style="height:48px;border:0;border-radius:14px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer">Take Photo</button>
+        <button onClick="{{ toLibrary }}" style="height:48px;border:0;border-radius:14px;background:var(--card,#fff);color:var(--ink,#131315);font-family:inherit;font-size:16px;font-weight:600;cursor:pointer">From Library</button>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding:28px 20px 12px">
+      <div style="font-size:22px;font-weight:700;letter-spacing:-.01em">Recently Added</div>
+      <button onClick="{{ toCloset }}" style="border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:16px;cursor:pointer">See All</button>
+    </div>
+    <div style="display:flex;gap:12px;overflow-x:auto;padding:0 20px;scrollbar-width:none">
+      <sc-for list="{{ recent }}" as="it" hint-placeholder-count="4">
+        <div onClick="{{ it.open }}" style="flex:none;width:150px;display:flex;flex-direction:column;gap:8px;cursor:pointer">
+          <div style="height:188px;border-radius:20px;overflow:hidden"><dc-import name="GarmentArt" item="{{ it }}" style="width:100%;height:100%" hint-size="150px,188px"></dc-import></div>
+          <div style="padding:0 2px"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.name }}</div><div style="font-size:13px;color:var(--ink2,#6e6e73)">Added {{ it.added }}</div></div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size:22px;font-weight:700;letter-spacing:-.01em;padding:28px 20px 12px">Browse by category</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;padding:0 20px">
+      <sc-for list="{{ catCounts }}" as="c" hint-placeholder-count="6">
+        <button onClick="{{ c.go }}" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 14px;border:1px solid var(--line,rgba(0,0,0,.08));border-radius:20px;background:var(--bg,#fff);color:var(--ink,#131315);font-family:inherit;font-size:15px;font-weight:500;cursor:pointer">{{ c.name }}<span style="color:var(--ink3,#a1a1a6)">{{ c.n }}</span></button>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ noItems }}" hint-placeholder-val="{{ false }}">
+    <div style="margin:28px 16px 0;padding:28px 20px 22px;border-radius:30px;background:var(--bg2,#f4f4f2);display:flex;flex-direction:column;align-items:center;text-align:center">
+      <div style="display:flex;gap:10px;margin-bottom:24px">
+        <div style="width:78px;height:98px;border-radius:16px;border:1.5px dashed var(--ink3,#a1a1a6);transform:rotate(-6deg)"></div>
+        <div style="width:78px;height:98px;border-radius:16px;border:1.5px dashed var(--accent,#1f6bff);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:300;color:var(--accent,#1f6bff);transform:translateY(-8px)">+</div>
+        <div style="width:78px;height:98px;border-radius:16px;border:1.5px dashed var(--ink3,#a1a1a6);transform:rotate(6deg)"></div>
+      </div>
+      <div style="font-size:22px;font-weight:700;letter-spacing:-.01em">Your closet starts here</div>
+      <div style="font-size:15px;line-height:1.45;color:var(--ink2,#6e6e73);margin-top:6px;text-wrap:pretty;max-width:290px">Photograph a garment or import an outfit photo. Your first pieces take under a minute.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:22px">
+        <button onClick="{{ toCamera }}" style="height:48px;border:0;border-radius:14px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer">Take Photo</button>
+        <button onClick="{{ toLibrary }}" style="height:48px;border:0;border-radius:14px;background:var(--card,#fff);color:var(--ink,#131315);font-family:inherit;font-size:16px;font-weight:600;cursor:pointer">From Library</button>
+      </div>
+    </div>
+    <div style="padding:22px 24px;display:flex;flex-direction:column;gap:14px">
+      <div style="font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2,#6e6e73)">Tips for great results</div>
+      <div style="display:flex;gap:12px;font-size:15px;line-height:1.4"><span style="color:var(--accent,#1f6bff);font-weight:600">1</span>Lay pieces flat on a bed or floor in daylight.</div>
+      <div style="display:flex;gap:12px;font-size:15px;line-height:1.4"><span style="color:var(--accent,#1f6bff);font-weight:600">2</span>Several garments in one photo is fine. Each becomes its own item.</div>
+      <div style="display:flex;gap:12px;font-size:15px;line-height:1.4"><span style="color:var(--accent,#1f6bff);font-weight:600">3</span>Full-body mirror photos work for outfits.</div>
+    </div>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- CLOSET -->
+<sc-if value="{{ s.closet }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Closet" style="position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;background:var(--bg,#fff);padding:54px 0 110px;box-sizing:border-box">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 20px 0">
+    <div style="font-size:34px;font-weight:700;letter-spacing:-.02em">Closet</div>
+    <div style="font-size:15px;color:var(--ink2,#6e6e73)">{{ filteredCount }}</div>
+  </div>
+  <div style="margin:12px 20px 0;height:40px;border-radius:12px;background:var(--fill,rgba(120,120,128,.12));display:flex;align-items:center;gap:8px;padding:0 12px">
+    <div style="width:12px;height:12px;border-radius:50%;border:2px solid var(--ink3,#a1a1a6);flex:none"></div>
+    <input value="{{ q }}" onChange="{{ onSearch }}" placeholder="Search your closet" style="flex:1;border:0;background:none;outline:none;font-family:inherit;font-size:17px;color:var(--ink,#131315)">
+  </div>
+  <div style="display:flex;gap:8px;overflow-x:auto;padding:14px 20px 0;scrollbar-width:none">
+    <sc-for list="{{ catChips }}" as="c" hint-placeholder-count="7">
+      <button onClick="{{ c.go }}" style="flex:none;height:34px;padding:0 14px;border:0;border-radius:17px;background:{{ c.bg }};color:{{ c.fg }};font-family:inherit;font-size:15px;font-weight:500;cursor:pointer;transition:background .2s">{{ c.name }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;overflow-x:auto;padding:12px 20px 4px;scrollbar-width:none">
+    <sc-for list="{{ colorChips }}" as="c" hint-placeholder-count="8">
+      <button onClick="{{ c.go }}" title="{{ c.name }}" style="flex:none;width:28px;height:28px;border-radius:50%;border:0;padding:0;cursor:pointer;background:{{ c.hex }};box-shadow:inset 0 0 0 1px rgba(0,0,0,.12), 0 0 0 {{ c.ring }} var(--bg,#fff), 0 0 0 {{ c.ring2 }} var(--ink,#131315);font-size:10px;font-weight:600;color:var(--ink,#131315)">{{ c.label }}</button>
+    </sc-for>
+  </div>
+  <sc-if value="{{ hasFiltered }}" hint-placeholder-val="{{ true }}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 12px;padding:16px 20px 0">
+      <sc-for list="{{ filtered }}" as="it" hint-placeholder-count="6">
+        <div onClick="{{ it.open }}" style="display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:transform .2s" style-active="transform:scale(.97)">
+          <div style="aspect-ratio:4/5;border-radius:22px;overflow:hidden;position:relative">
+            <dc-import name="GarmentArt" item="{{ it }}" style="width:100%;height:100%" hint-size="100%,100%"></dc-import>
+            <sc-if value="{{ it.v360 }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:10px;right:10px;padding:3px 7px;border-radius:8px;background:var(--card,#fff);font-size:11px;font-weight:600;color:var(--ink,#131315)">360°</div></sc-if>
+          </div>
+          <div style="padding:0 2px"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.name }}</div><div style="font-size:13px;color:var(--ink2,#6e6e73)">{{ it.cat }} · {{ it.colorName }}</div></div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+  <sc-if value="{{ noFiltered }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:70px 40px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px">
+      <div style="width:64px;height:80px;border-radius:14px;border:1.5px dashed var(--ink3,#a1a1a6);margin-bottom:10px"></div>
+      <div style="font-size:20px;font-weight:700">{{ emptyTitle }}</div>
+      <div style="font-size:15px;line-height:1.4;color:var(--ink2,#6e6e73)">{{ emptyBody }}</div>
+      <button onClick="{{ emptyAction }}" style="margin-top:12px;height:44px;padding:0 20px;border:0;border-radius:14px;background:var(--accentSoft,rgba(31,107,255,.1));color:var(--accent,#1f6bff);font-family:inherit;font-size:16px;font-weight:600;cursor:pointer">{{ emptyCta }}</button>
+    </div>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- ADD -->
+<sc-if value="{{ s.add }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Add Clothes" style="position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;background:var(--bg,#fff);padding:54px 0 110px;box-sizing:border-box">
+  <div style="padding:10px 20px 0;display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:34px;font-weight:700;letter-spacing:-.02em">Add Clothes</div>
+    <div style="font-size:16px;line-height:1.4;color:var(--ink2,#6e6e73)">Choose how to start. Finding garments is always free.</div>
+  </div>
+  <sc-if value="{{ noItems }}" hint-placeholder-val="{{ false }}">
+    <div style="margin:16px 16px 0;padding:14px 16px;border-radius:18px;background:var(--accentSoft,rgba(31,107,255,.1));display:flex;gap:12px;align-items:flex-start">
+      <div style="width:24px;height:24px;border-radius:50%;background:var(--accent,#1f6bff);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">1</div>
+      <div style="font-size:15px;line-height:1.4"><b>Your first piece.</b> Start with something you wear often. Lay it flat in good light and take one photo.</div>
+    </div>
+  </sc-if>
+  <div style="display:flex;flex-direction:column;gap:14px;padding:18px 16px 0">
+    <div onClick="{{ toCamera }}" style="border-radius:26px;overflow:hidden;background:var(--bg2,#f4f4f2);cursor:pointer;transition:transform .2s" style-active="transform:scale(.98)">
+      <div style="height:176px;position:relative;background:repeating-linear-gradient(135deg,var(--ph1,#ecebe7) 0 10px,var(--ph2,#e4e2dd) 10px 20px)">
+        <div style="position:absolute;left:30px;top:28px;width:120px;height:130px"><dc-import name="GarmentArt" item="{{ gNew.0 }}" bare="{{ true }}" rotate="-10" scale="1.2" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+        <div style="position:absolute;left:135px;top:18px;width:110px;height:150px"><dc-import name="GarmentArt" item="{{ gNew.2 }}" bare="{{ true }}" rotate="6" scale="1.1" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+        <div style="position:absolute;left:230px;top:34px;width:110px;height:120px"><dc-import name="GarmentArt" item="{{ gNew.1 }}" bare="{{ true }}" rotate="14" scale="1.1" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+      </div>
+      <div style="padding:16px 18px 18px;display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:19px;font-weight:700">Photograph Garments</div><span style="font-size:24px;color:var(--ink3,#a1a1a6)">›</span></div>
+        <div style="font-size:15px;line-height:1.4;color:var(--ink2,#6e6e73)">Lay one or more pieces on a flat surface. Each becomes its own item.</div>
+        <div style="font-size:13px;font-weight:600;color:var(--accent,#1f6bff);margin-top:4px">1 credit per garment</div>
+      </div>
+    </div>
+    <div onClick="{{ toLibrary }}" style="border-radius:26px;overflow:hidden;background:var(--bg2,#f4f4f2);cursor:pointer;transition:transform .2s" style-active="transform:scale(.98)">
+      <div style="height:176px;position:relative;display:flex;justify-content:center;background:var(--bg2,#f4f4f2)">
+        <div style="position:relative;width:120px;height:176px;background:repeating-linear-gradient(135deg,var(--ph1,#ecebe7) 0 10px,var(--ph2,#e4e2dd) 10px 20px)">
+          <sc-for list="{{ candMini }}" as="c" hint-placeholder-count="4">
+            <div style="position:absolute;left:{{ c.l }};top:{{ c.t }};width:{{ c.w }};height:{{ c.h }}"><dc-import name="GarmentArt" item="{{ c }}" bare="{{ true }}" scale="1.2" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+            <div style="position:absolute;left:{{ c.l }};top:{{ c.t }};width:{{ c.w }};height:{{ c.h }};border:1.5px dashed var(--accent,#1f6bff);border-radius:6px;box-sizing:border-box"></div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="padding:16px 18px 18px;display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:19px;font-weight:700">Import from Outfit Photo</div><span style="font-size:24px;color:var(--ink3,#a1a1a6)">›</span></div>
+        <div style="font-size:15px;line-height:1.4;color:var(--ink2,#6e6e73)">Use a photo of you wearing an outfit, then pick the pieces to keep.</div>
+        <div style="font-size:13px;font-weight:600;color:var(--accent,#1f6bff);margin-top:4px">Free detection · 1 credit per piece</div>
+      </div>
+    </div>
+  </div>
+  <button onClick="{{ toAccount }}" style="display:block;margin:18px auto 0;border:0;background:none;font-family:inherit;font-size:14px;color:var(--ink2,#6e6e73);cursor:pointer">Balance: <b style="color:var(--ink,#131315)">{{ credits }} credits</b> · <span style="color:var(--accent,#1f6bff)">Price list</span></button>
+</div>
+</sc-if>
+
+<!-- CAMERA -->
+<sc-if value="{{ s.gcamera }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Camera" style="position:absolute;inset:0;background:#0b0b0c;color:#fff;display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:60px 18px 10px">
+    <button onClick="{{ toAdd }}" style="width:36px;height:36px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:20px;cursor:pointer">×</button>
+    <div style="font-size:15px;font-weight:600">Garments</div>
+    <div style="width:36px"></div>
+  </div>
+  <div style="flex:1;margin:6px 0;position:relative;background:repeating-linear-gradient(135deg,#1b1b1d 0 10px,#161618 10px 20px);overflow:hidden">
+    <div style="position:absolute;left:60px;top:150px;width:150px;height:160px;opacity:.55"><dc-import name="GarmentArt" item="{{ gNew.0 }}" bare="{{ true }}" rotate="-10" scale="1.2" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+    <div style="position:absolute;left:180px;top:120px;width:140px;height:220px;opacity:.55"><dc-import name="GarmentArt" item="{{ gNew.2 }}" bare="{{ true }}" rotate="6" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+    <div style="position:absolute;left:110px;top:320px;width:150px;height:150px;opacity:.55"><dc-import name="GarmentArt" item="{{ gNew.1 }}" bare="{{ true }}" rotate="14" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+    <div style="position:absolute;inset:40px 28px;border-radius:24px;box-shadow:0 0 0 2000px rgba(0,0,0,.25)"></div>
+    <div style="position:absolute;left:28px;top:40px;width:34px;height:34px;border-left:3px solid #fff;border-top:3px solid #fff;border-top-left-radius:24px"></div>
+    <div style="position:absolute;right:28px;top:40px;width:34px;height:34px;border-right:3px solid #fff;border-top:3px solid #fff;border-top-right-radius:24px"></div>
+    <div style="position:absolute;left:28px;bottom:40px;width:34px;height:34px;border-left:3px solid #fff;border-bottom:3px solid #fff;border-bottom-left-radius:24px"></div>
+    <div style="position:absolute;right:28px;bottom:40px;width:34px;height:34px;border-right:3px solid #fff;border-bottom:3px solid #fff;border-bottom-right-radius:24px"></div>
+    <div style="position:absolute;left:50%;bottom:56px;transform:translateX(-50%);white-space:nowrap;padding:8px 14px;border-radius:18px;background:rgba(0,0,0,.55);font-size:14px">Lay pieces flat · daylight works best</div>
+    <div style="position:absolute;left:12px;top:12px;font:500 10px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.4)">live camera</div>
+  </div>
+  <div style="display:flex;justify-content:center;gap:24px;font-size:13px;font-weight:600;letter-spacing:.06em;padding:10px 0 4px">
+    <span style="color:#ffd60a">GARMENTS</span><span onClick="{{ toLibrary }}" style="color:rgba(255,255,255,.6);cursor:pointer">OUTFIT</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 36px 46px">
+    <div onClick="{{ toPreview }}" style="width:44px;height:44px;border-radius:10px;background:repeating-linear-gradient(135deg,#3a3a3c 0 5px,#2c2c2e 5px 10px);cursor:pointer;border:1.5px solid rgba(255,255,255,.3)"></div>
+    <button onClick="{{ toPreview }}" style="width:76px;height:76px;border-radius:50%;border:4px solid #fff;background:none;padding:4px;cursor:pointer"><div style="width:100%;height:100%;border-radius:50%;background:#fff" style-active="transform:scale(.9)"></div></button>
+    <div style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.14)"></div>
+  </div>
+</div>
+</sc-if>
+
+<!-- G PREVIEW -->
+<sc-if value="{{ s.gpreview }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Garment preview & cost" style="position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;background:var(--bg,#fff);padding:54px 0 120px;box-sizing:border-box">
+  <div style="display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 12px">
+    <button onClick="{{ toCamera }}" style="border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:17px;cursor:pointer;display:flex;align-items:center;gap:2px"><span style="font-size:30px;line-height:0;margin-top:-4px">‹</span>Retake</button>
+    <div style="font-size:17px;font-weight:600">Preview</div><div style="width:70px"></div>
+  </div>
+  <div style="margin:8px 20px 0;aspect-ratio:1/1;border-radius:26px;overflow:hidden;position:relative;background:repeating-linear-gradient(135deg,var(--ph1,#ecebe7) 0 10px,var(--ph2,#e4e2dd) 10px 20px)">
+    <sc-for list="{{ gPhoto }}" as="p" hint-placeholder-count="3">
+      <div style="position:absolute;left:{{ p.l }};top:{{ p.t }};width:{{ p.w }};height:{{ p.h }}"><dc-import name="GarmentArt" item="{{ p }}" bare="{{ true }}" rotate="{{ p.r }}" scale="1.25" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+      <div style="position:absolute;left:{{ p.bl }};top:{{ p.bt }};width:26px;height:26px;border-radius:50%;background:var(--accent,#1f6bff);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px #fff;animation:dw-pop .4s both;animation-delay:{{ p.d }}">{{ p.n }}</div>
+    </sc-for>
+    <div style="position:absolute;left:12px;bottom:12px;font:500 10px ui-monospace,Menlo,monospace;color:var(--ink2,#6e6e73)">photo · 3 garments on bed</div>
+  </div>
+  <div style="padding:20px 20px 0;display:flex;flex-direction:column;gap:10px">
+    <div style="font-size:24px;font-weight:700;letter-spacing:-.01em">3 garments found</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <sc-for list="{{ gPhoto }}" as="p" hint-placeholder-count="3"><span style="padding:6px 11px;border-radius:14px;background:var(--fill,rgba(120,120,128,.12));font-size:14px">{{ p.n }} · {{ p.name }}</span></sc-for>
+    </div>
+  </div>
+  <div style="margin:18px 20px 0;border-radius:18px;background:var(--bg2,#f4f4f2);padding:4px 16px">
+    <div style="display:flex;justify-content:space-between;padding:12px 0;font-size:15px;border-bottom:1px solid var(--line,rgba(0,0,0,.08))"><span>Front catalog image × 3</span><b>3 credits</b></div>
+    <div style="display:flex;justify-content:space-between;padding:12px 0;font-size:15px;color:var(--ink2,#6e6e73)"><span>Balance after</span><span>{{ gAfter }} credits</span></div>
+  </div>
+  <div style="padding:12px 24px 0;font-size:13px;line-height:1.4;color:var(--ink2,#6e6e73);text-align:center">You'll review every image before it's added.</div>
+  <div style="position:absolute;left:0;right:0;bottom:0;padding:12px 20px 38px;background:var(--bg,#fff);border-top:1px solid var(--line,rgba(0,0,0,.08))">
+    <button onClick="{{ gGenerate }}" style="width:100%;height:54px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer">Generate 3 Items · 3 credits</button>
+  </div>
+</div>
+</sc-if>
+
+<!-- PROCESSING -->
+<sc-if value="{{ s.proc }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="AI processing" style="position:absolute;inset:0;background:var(--bg,#fff);padding-top:54px;display:flex;flex-direction:column;align-items:center">
+  <div style="margin-top:60px;width:230px;height:288px;border-radius:30px;overflow:hidden;position:relative;box-shadow:0 20px 50px rgba(0,0,0,.08)">
+    <div style="position:absolute;inset:0;filter:blur({{ proc.blur }});transition:filter .3s"><dc-import name="GarmentArt" item="{{ proc.item }}" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+    <div style="position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);animation:dw-shimmer 1.6s linear infinite"></div>
+    <div style="position:absolute;left:12px;top:12px;padding:4px 9px;border-radius:10px;background:var(--card,#fff);font-size:12px;font-weight:600">{{ proc.count }}</div>
+  </div>
+  <div style="font-size:22px;font-weight:700;margin-top:32px;letter-spacing:-.01em">{{ proc.stage }}</div>
+  <div style="font-size:15px;color:var(--ink2,#6e6e73);margin-top:6px">{{ proc.sub }}</div>
+  <div style="width:260px;height:6px;border-radius:3px;background:var(--fill,rgba(120,120,128,.12));margin-top:22px;overflow:hidden"><div style="height:100%;width:{{ proc.pct }};background:var(--accent,#1f6bff);border-radius:3px;transition:width .1s linear"></div></div>
+  <div style="display:flex;flex-direction:column;gap:12px;margin-top:28px;width:260px">
+    <sc-for list="{{ proc.steps }}" as="st" hint-placeholder-count="4">
+      <div style="display:flex;align-items:center;gap:12px;font-size:15px;color:{{ st.fg }}">
+        <div style="width:20px;height:20px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;background:{{ st.dot }};border:{{ st.border }};box-sizing:border-box;animation:{{ st.anim }}">{{ st.mark }}</div>{{ st.label }}
+      </div>
+    </sc-for>
+  </div>
+  <div style="margin-top:auto;padding:0 40px 44px;font-size:13px;line-height:1.4;color:var(--ink3,#a1a1a6);text-align:center">You can leave this screen. We'll notify you when your pieces are ready.</div>
+</div>
+</sc-if>
+
+<!-- ERROR -->
+<sc-if value="{{ s.gerror }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Generation error" style="position:absolute;inset:0;background:var(--bg,#fff);padding-top:54px;display:flex;flex-direction:column;align-items:center;text-align:center">
+  <div style="margin-top:90px;position:relative;width:200px;height:240px;border-radius:28px;overflow:hidden;filter:grayscale(1);opacity:.55"><dc-import name="GarmentArt" item="{{ gNew.0 }}" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+  <div style="margin-top:-26px;width:52px;height:52px;border-radius:50%;background:var(--bg,#fff);display:flex;align-items:center;justify-content:center;position:relative"><div style="width:40px;height:40px;border-radius:50%;background:var(--danger,#e5484d);color:#fff;font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center">!</div></div>
+  <div style="font-size:24px;font-weight:700;margin-top:18px">Generation paused</div>
+  <div style="font-size:16px;line-height:1.45;color:var(--ink2,#6e6e73);margin-top:8px;padding:0 40px;text-wrap:pretty">We lost the connection while creating your images. Credits for unfinished items were returned to your balance.</div>
+  <div style="margin-top:auto;width:100%;box-sizing:border-box;padding:0 20px 44px;display:flex;flex-direction:column;gap:6px">
+    <button onClick="{{ gRetry }}" style="height:54px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer">Try Again</button>
+    <button onClick="{{ toPreview }}" style="height:44px;border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:16px;font-weight:500;cursor:pointer">Back to Preview</button>
+  </div>
+</div>
+</sc-if>
+
+<!-- G RESULTS -->
+<sc-if value="{{ s.gresults }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Garment results" style="position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;background:var(--bg,#fff);padding:54px 0 130px;box-sizing:border-box">
+  <div style="padding:20px 20px 0;display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--success,#23a55a)">✓ Ready</div>
+    <div style="font-size:32px;font-weight:700;letter-spacing:-.02em">3 pieces created</div>
+    <div style="font-size:16px;color:var(--ink2,#6e6e73)">Tap to deselect anything you don't want to keep.</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 12px;padding:20px 20px 0">
+    <sc-for list="{{ gRes }}" as="it" hint-placeholder-count="3">
+      <div onClick="{{ it.toggle }}" style="display:flex;flex-direction:column;gap:8px;cursor:pointer;animation:dw-pop .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:{{ it.d }}">
+        <div style="aspect-ratio:4/5;border-radius:22px;overflow:hidden;position:relative;opacity:{{ it.op }};transition:opacity .2s">
+          <dc-import name="GarmentArt" item="{{ it }}" style="width:100%;height:100%" hint-size="100%,100%"></dc-import>
+          <div style="position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:{{ it.chk }};border:2px solid {{ it.chkB }};box-sizing:border-box;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ it.mark }}</div>
+        </div>
+        <div style="padding:0 2px"><div style="font-size:15px;font-weight:600">{{ it.name }}</div><div style="font-size:13px;color:var(--ink2,#6e6e73)">{{ it.cat }} · {{ it.colorName }}</div></div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="position:absolute;left:0;right:0;bottom:0;padding:12px 20px 38px;background:var(--bg,#fff);border-top:1px solid var(--line,rgba(0,0,0,.08))">
+    <button onClick="{{ gSave }}" style="width:100%;height:54px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer;opacity:{{ gSaveOp }}">{{ gSaveLabel }}</button>
+  </div>
+</div>
+</sc-if>
+
+<!-- O UPLOAD -->
+<sc-if value="{{ s.oupload }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Choose outfit photo" style="position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;background:var(--bg,#fff);padding:54px 0 40px;box-sizing:border-box">
+  <div style="display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 12px">
+    <button onClick="{{ toAdd }}" style="border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:17px;cursor:pointer">Cancel</button>
+    <div style="font-size:17px;font-weight:600">Outfit Photo</div><div style="width:56px"></div>
+  </div>
+  <div style="padding:6px 20px 14px;font-size:15px;line-height:1.4;color:var(--ink2,#6e6e73)">Pick a photo where your outfit is clearly visible. Full-body shots work best.</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px">
+    <div onClick="{{ toCamera }}" style="aspect-ratio:3/4;background:var(--bg2,#f4f4f2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;color:var(--accent,#1f6bff);font-size:13px;font-weight:600"><div style="width:30px;height:22px;border-radius:6px;border:2px solid currentColor;position:relative"><div style="position:absolute;left:50%;top:50%;width:9px;height:9px;border-radius:50%;border:2px solid currentColor;transform:translate(-50%,-50%)"></div></div>Camera</div>
+    <sc-for list="{{ library }}" as="p" hint-placeholder-count="8">
+      <div onClick="{{ toDetect }}" style="aspect-ratio:3/4;position:relative;cursor:pointer;background:repeating-linear-gradient(135deg,{{ p.a }} 0 8px,{{ p.b }} 8px 16px)">
+        <div style="position:absolute;left:6px;bottom:6px;right:6px;font:500 9px/1.2 ui-monospace,Menlo,monospace;color:var(--ink2,#6e6e73)">{{ p.label }}</div>
+        <sc-if value="{{ p.star }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;box-shadow:inset 0 0 0 3px var(--accent,#1f6bff)"></div><div style="position:absolute;right:6px;top:6px;padding:2px 6px;border-radius:6px;background:var(--accent,#1f6bff);color:#fff;font-size:10px;font-weight:600">Full body</div></sc-if>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<!-- O DETECT + SELECT share photo -->
+<sc-if value="{{ s.odetect }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Detecting garments" style="position:absolute;inset:0;background:var(--bg,#fff);padding-top:54px;display:flex;flex-direction:column;align-items:center">
+  <div style="margin-top:30px;width:290px;height:440px;border-radius:28px;overflow:hidden;position:relative;background:repeating-linear-gradient(135deg,var(--ph1,#ecebe7) 0 10px,var(--ph2,#e4e2dd) 10px 20px)">
+    <sc-for list="{{ candView }}" as="c" hint-placeholder-count="5">
+      <div style="position:absolute;left:{{ c.l }};top:{{ c.t }};width:{{ c.w }};height:{{ c.h }}"><dc-import name="GarmentArt" item="{{ c }}" bare="{{ true }}" scale="1.2" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+      <div style="position:absolute;left:{{ c.l }};top:{{ c.t }};width:{{ c.w }};height:{{ c.h }};border:2px solid #fff;border-radius:10px;box-sizing:border-box;opacity:{{ c.seen }};transform:scale({{ c.sc }});transition:all .35s cubic-bezier(.2,.8,.2,1);box-shadow:0 0 0 1px rgba(0,0,0,.08)"></div>
+    </sc-for>
+    <div style="position:absolute;left:0;right:0;height:80px;margin-top:-40px;background:linear-gradient(180deg,transparent,rgba(31,107,255,.22),transparent);animation:dw-scan 2.4s ease-in-out infinite"></div>
+    <div style="position:absolute;left:12px;bottom:12px;font:500 10px ui-monospace,Menlo,monospace;color:var(--ink2,#6e6e73)">photo · mirror selfie, full outfit</div>
+  </div>
+  <div style="font-size:22px;font-weight:700;margin-top:28px">Finding garments…</div>
+  <div style="font-size:15px;color:var(--ink2,#6e6e73);margin-top:6px">{{ detectFound }}</div>
+  <div style="margin-top:14px;padding:6px 12px;border-radius:14px;background:var(--accentSoft,rgba(31,107,255,.1));color:var(--accent,#1f6bff);font-size:13px;font-weight:600">Detection is free</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ s.oselect }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Select & correct garments" style="position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;background:var(--bg,#fff);padding:54px 0 130px;box-sizing:border-box">
+  <div style="display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 12px">
+    <button onClick="{{ toLibrary }}" style="border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:17px;cursor:pointer;display:flex;align-items:center;gap:2px"><span style="font-size:30px;line-height:0;margin-top:-4px">‹</span>Photos</button>
+    <div style="font-size:17px;font-weight:600">Select Garments</div><div style="width:70px"></div>
+  </div>
+  <div style="margin:6px auto 0;width:220px;height:330px;border-radius:24px;overflow:hidden;position:relative;background:repeating-linear-gradient(135deg,var(--ph1,#ecebe7) 0 10px,var(--ph2,#e4e2dd) 10px 20px)">
+    <sc-for list="{{ candView }}" as="c" hint-placeholder-count="5">
+      <div style="position:absolute;left:{{ c.l }};top:{{ c.t }};width:{{ c.w }};height:{{ c.h }}"><dc-import name="GarmentArt" item="{{ c }}" bare="{{ true }}" scale="1.2" style="width:100%;height:100%" hint-size="100%,100%"></dc-import></div>
+      <div onClick="{{ c.toggle }}" style="position:absolute;left:{{ c.l }};top:{{ c.t }};width:{{ c.w }};height:{{ c.h }};border:2px {{ c.bstyle }} {{ c.bcolor }};border-radius:10px;box-sizing:border-box;cursor:pointer;background:{{ c.tint }};transition:all .2s">
+        <div style="position:absolute;left:-8px;top:-8px;width:20px;height:20px;border-radius:50%;background:{{ c.badge }};color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ c.n }}</div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="padding:20px 20px 4px;display:flex;flex-direction:column;gap:4px">
+    <div style="font-size:24px;font-weight:700;letter-spacing:-.01em">We found {{ candTotal }} garments</div>
+    <div style="font-size:15px;line-height:1.4;color:var(--ink2,#6e6e73)">Choose which to digitize. Tap Edit if something looks off.</div>
+  </div>
+  <div style="display:flex;flex-direction:column;padding:8px 20px 0">
+    <sc-for list="{{ candView }}" as="c" hint-placeholder-count="5">
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line,rgba(0,0,0,.08))">
+        <div onClick="{{ c.toggle }}" style="width:62px;height:62px;border-radius:14px;overflow:hidden;flex:none;position:relative;cursor:pointer;background:repeating-linear-gradient(135deg,var(--ph1,#ecebe7) 0 6px,var(--ph2,#e4e2dd) 6px 12px)"><dc-import name="GarmentArt" item="{{ c }}" bare="{{ true }}" style="width:100%;height:100%" hint-size="62px,62px"></dc-import><div style="position:absolute;left:4px;top:4px;width:16px;height:16px;border-radius:50%;background:{{ c.badge }};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ c.n }}</div></div>
+        <div onClick="{{ c.toggle }}" style="flex:1;min-width:0;cursor:pointer">
+          <div style="font-size:16px;font-weight:600">{{ c.name }}</div>
+          <div style="font-size:13px;color:{{ c.confColor }}">{{ c.cat }} · {{ c.confText }}</div>
+        </div>
+        <button onClick="{{ c.edit }}" style="height:30px;padding:0 12px;border:0;border-radius:15px;background:var(--fill,rgba(120,120,128,.12));color:var(--ink,#131315);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer">Edit</button>
+        <div onClick="{{ c.toggle }}" style="width:26px;height:26px;border-radius:50%;flex:none;cursor:pointer;background:{{ c.chk }};border:2px solid {{ c.chkB }};box-sizing:border-box;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ c.mark }}</div>
+      </div>
+    </sc-for>
+    <button onClick="{{ addMissed }}" style="margin-top:12px;height:50px;border:1.5px dashed var(--ink3,#a1a1a6);border-radius:14px;background:none;color:var(--ink2,#6e6e73);font-family:inherit;font-size:15px;font-weight:500;cursor:pointer">+ Mark a missed garment</button>
+  </div>
+  <div style="position:absolute;left:0;right:0;bottom:0;padding:12px 20px 38px;background:var(--bg,#fff);border-top:1px solid var(--line,rgba(0,0,0,.08));display:flex;align-items:center;gap:14px">
+    <div style="flex:1"><div style="font-size:16px;font-weight:600">{{ selText }}</div><div style="font-size:13px;color:var(--ink2,#6e6e73)">{{ selCost }}</div></div>
+    <button onClick="{{ oGenerate }}" style="height:52px;padding:0 26px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer;opacity:{{ selOp }}">Generate</button>
+  </div>
+</div>
+</sc-if>
+
+<!-- O REVIEW -->
+<sc-if value="{{ s.oreview }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Review results" style="position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;background:var(--bg,#fff);padding:54px 0 130px;box-sizing:border-box">
+  <div style="display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 16px">
+    <div style="width:60px"></div>
+    <div style="font-size:17px;font-weight:600">Review {{ rv.pos }}</div>
+    <div style="width:60px;text-align:right;font-size:15px;color:var(--ink2,#6e6e73)">{{ rv.keptN }} kept</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:10px;padding:12px 16px 0;align-items:end">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink2,#6e6e73)">Your photo</div>
+      <div style="aspect-ratio:3/4;border-radius:18px;overflow:hidden;position:relative;background:repeating-linear-gradient(135deg,var(--ph1,#ecebe7) 0 8px,var(--ph2,#e4e2dd) 8px 16px)"><dc-import name="GarmentArt" item="{{ rv.item }}" bare="{{ true }}" rotate="-4" scale=".9" style="width:100%;height:100%;filter:saturate(.8) contrast(.9)" hint-size="100%,100%"></dc-import><div style="position:absolute;left:8px;bottom:8px;font:500 9px ui-monospace,Menlo,monospace;color:var(--ink2,#6e6e73)">crop</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--accent,#1f6bff)">Generated</div>
+      <div style="aspect-ratio:4/5;border-radius:22px;overflow:hidden;position:relative;opacity:{{ rv.op }};transition:opacity .2s">
+        <dc-import name="GarmentArt" item="{{ rv.item }}" style="width:100%;height:100%" hint-size="100%,100%"></dc-import>
+        <sc-if value="{{ rv.busy }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background:var(--tile,#f3f2ef);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px"><div style="width:26px;height:26px;border-radius:50%;border:3px solid var(--fill,rgba(120,120,128,.2));border-top-color:var(--accent,#1f6bff);animation:dw-spin .8s linear infinite"></div><div style="font-size:13px;color:var(--ink2,#6e6e73)">Regenerating…</div></div></sc-if>
+      </div>
+    </div>
+  </div>
+  <div style="padding:18px 20px 0;display:flex;justify-content:space-between;align-items:center">
+    <div><div style="font-size:22px;font-weight:700">{{ rv.item.name }}</div><div style="font-size:14px;color:var(--ink2,#6e6e73)">{{ rv.item.cat }} · {{ rv.item.colorName }}</div></div>
+    <button onClick="{{ rv.toggle }}" style="display:flex;align-items:center;gap:8px;border:0;background:none;font-family:inherit;font-size:15px;color:var(--ink,#131315);cursor:pointer">Keep<div style="width:51px;height:31px;border-radius:16px;background:{{ rv.sw }};position:relative;transition:background .2s"><div style="position:absolute;top:2px;left:{{ rv.knob }};width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:left .2s"></div></div></button>
+  </div>
+  <div style="padding:10px 20px 0;display:flex;gap:10px">
+    <button onClick="{{ rv.regen }}" style="height:40px;padding:0 14px;border:0;border-radius:12px;background:var(--fill,rgba(120,120,128,.12));color:var(--ink,#131315);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer">↻ Regenerate · 1 credit</button>
+  </div>
+  <div style="display:flex;gap:8px;padding:22px 20px 0;overflow-x:auto;scrollbar-width:none">
+    <sc-for list="{{ rv.strip }}" as="t" hint-placeholder-count="4">
+      <div onClick="{{ t.go }}" style="flex:none;width:58px;height:72px;border-radius:12px;overflow:hidden;position:relative;cursor:pointer;box-shadow:0 0 0 {{ t.ring }} var(--accent,#1f6bff);opacity:{{ t.op }}">
+        <dc-import name="GarmentArt" item="{{ t }}" style="width:100%;height:100%" hint-size="58px,72px"></dc-import>
+      </div>
+    </sc-for>
+  </div>
+  <div style="position:absolute;left:0;right:0;bottom:0;padding:12px 20px 38px;background:var(--bg,#fff);border-top:1px solid var(--line,rgba(0,0,0,.08));display:flex;gap:10px">
+    <button onClick="{{ rv.prev }}" style="width:54px;height:54px;border:0;border-radius:16px;background:var(--fill,rgba(120,120,128,.12));color:var(--ink,#131315);font-size:24px;cursor:pointer;opacity:{{ rv.prevOp }}">‹</button>
+    <button onClick="{{ rv.next }}" style="flex:1;height:54px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer">{{ rv.nextLabel }}</button>
+  </div>
+</div>
+</sc-if>
+
+<!-- SAVED -->
+<sc-if value="{{ s.saved }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Saved" style="position:absolute;inset:0;background:var(--bg,#fff);padding-top:54px;display:flex;flex-direction:column;align-items:center;text-align:center">
+  <div style="position:relative;width:300px;height:270px;margin-top:80px">
+    <sc-for list="{{ savedFan }}" as="t" hint-placeholder-count="3">
+      <div style="position:absolute;left:{{ t.l }};top:{{ t.t }};width:150px;height:190px;border-radius:22px;overflow:hidden;transform:rotate({{ t.r }});box-shadow:0 16px 36px rgba(0,0,0,.12);animation:dw-pop .6s cubic-bezier(.2,.8,.2,1) both;animation-delay:{{ t.d }}"><dc-import name="GarmentArt" item="{{ t }}" style="width:100%;height:100%" hint-size="150px,190px"></dc-import></div>
+    </sc-for>
+    <div style="position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);width:52px;height:52px;border-radius:50%;background:var(--success,#23a55a);color:#fff;font-size:26px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px var(--bg,#fff);animation:dw-pop .5s .5s both">✓</div>
+  </div>
+  <div style="font-family:'Instrument Serif',serif;font-size:40px;line-height:1.05;margin-top:30px">Added to your closet</div>
+  <div style="font-size:16px;color:var(--ink2,#6e6e73);margin-top:8px">{{ savedText }}</div>
+  <div style="margin-top:auto;width:100%;box-sizing:border-box;padding:0 20px 44px;display:flex;flex-direction:column;gap:6px">
+    <button onClick="{{ toCloset }}" style="height:54px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer">View Closet</button>
+    <button onClick="{{ toAdd }}" style="height:44px;border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:16px;font-weight:500;cursor:pointer">Add More Clothes</button>
+  </div>
+</div>
+</sc-if>
+
+<!-- ACCOUNT -->
+<sc-if value="{{ s.account }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Account" style="position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;background:var(--bg2,#f4f4f2);padding:54px 0 110px;box-sizing:border-box">
+  <div style="padding:10px 20px 0;font-size:34px;font-weight:700;letter-spacing:-.02em">Account</div>
+  <div style="margin:14px 16px 0;padding:14px 16px;border-radius:18px;background:var(--card,#fff);display:flex;align-items:center;gap:14px">
+    <div style="width:52px;height:52px;border-radius:50%;background:var(--accentSoft,rgba(31,107,255,.1));color:var(--accent,#1f6bff);display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:600">MC</div>
+    <div><div style="font-size:17px;font-weight:600">Maya Chen</div><div style="font-size:14px;color:var(--ink2,#6e6e73)">{{ emailShown }}</div></div>
+  </div>
+  <div style="margin:14px 16px 0;padding:20px;border-radius:24px;background:var(--card,#fff);display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2,#6e6e73)">AI Credits</div><button onClick="{{ openHow }}" style="border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:14px;cursor:pointer">How it works</button></div>
+    <div style="display:flex;align-items:baseline;gap:8px"><div style="font-size:54px;font-weight:700;letter-spacing:-.04em;line-height:1">{{ credits }}</div><div style="font-size:16px;color:var(--ink2,#6e6e73)">of 25 left</div></div>
+    <div style="height:8px;border-radius:4px;background:var(--fill,rgba(120,120,128,.12));overflow:hidden"><div style="height:100%;width:{{ creditPct }};background:{{ creditBar }};border-radius:4px;transition:width .4s"></div></div>
+    <div style="font-size:14px;color:{{ creditNoteColor }}">{{ creditNote }}</div>
+  </div>
+  <div style="padding:22px 32px 8px;font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2,#6e6e73)">Price list</div>
+  <div style="margin:0 16px;border-radius:18px;background:var(--card,#fff);padding:0 16px">
+    <sc-for list="{{ prices }}" as="p" hint-placeholder-count="4">
+      <div style="display:flex;justify-content:space-between;padding:13px 0;border-bottom:1px solid {{ p.line }};font-size:16px"><span>{{ p.l }}</span><span style="color:var(--ink2,#6e6e73)">{{ p.r }}</span></div>
+    </sc-for>
+  </div>
+  <div style="padding:22px 32px 8px;font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2,#6e6e73)">Recent activity</div>
+  <div style="margin:0 16px;border-radius:18px;background:var(--card,#fff);padding:0 16px">
+    <sc-for list="{{ activityV }}" as="a" hint-placeholder-count="4">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid {{ a.line }}">
+        <div><div style="font-size:15px">{{ a.label }}</div><div style="font-size:13px;color:var(--ink2,#6e6e73)">{{ a.when }}</div></div>
+        <div style="font-size:16px;font-weight:600;color:{{ a.color }}">{{ a.amtText }}</div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="padding:22px 32px 8px;font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2,#6e6e73)">Settings</div>
+  <div style="margin:0 16px;border-radius:18px;background:var(--card,#fff);padding:0 16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line,rgba(0,0,0,.08));font-size:16px"><span>Appearance</span>
+      <div style="display:flex;padding:2px;border-radius:9px;background:var(--fill,rgba(120,120,128,.12))">
+        <button onClick="{{ setLight }}" style="height:28px;padding:0 12px;border:0;border-radius:7px;background:{{ segL }};color:var(--ink,#131315);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Light</button>
+        <button onClick="{{ setDark }}" style="height:28px;padding:0 12px;border:0;border-radius:7px;background:{{ segD }};color:var(--ink,#131315);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Dark</button>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line,rgba(0,0,0,.08));font-size:16px"><span>Notify when ready</span>
+      <div onClick="{{ toggleNotif }}" style="width:51px;height:31px;border-radius:16px;background:{{ notifBg }};position:relative;cursor:pointer;transition:background .2s"><div style="position:absolute;top:2px;left:{{ notifKnob }};width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:left .2s"></div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--line,rgba(0,0,0,.08));font-size:16px"><span>Help &amp; Support</span><span style="color:var(--ink3,#a1a1a6)">›</span></div>
+    <div style="display:flex;justify-content:space-between;padding:13px 0;font-size:16px"><span>Privacy</span><span style="color:var(--ink3,#a1a1a6)">›</span></div>
+  </div>
+  <div style="margin:22px 16px 0;border-radius:18px;background:var(--card,#fff);padding:0 16px">
+    <button onClick="{{ signOut }}" style="display:block;width:100%;text-align:left;padding:13px 0;border:0;border-bottom:1px solid var(--line,rgba(0,0,0,.08));background:none;font-family:inherit;font-size:16px;color:var(--accent,#1f6bff);cursor:pointer">Sign Out</button>
+    <button onClick="{{ askDeleteAcct }}" style="display:block;width:100%;text-align:left;padding:13px 0;border:0;background:none;font-family:inherit;font-size:16px;color:var(--danger,#e5484d);cursor:pointer">Delete Account</button>
+  </div>
+  <div style="padding:16px;text-align:center;font-size:12px;color:var(--ink3,#a1a1a6)">Digital Wardrobe 1.0</div>
+</div>
+</sc-if>
+
+<!-- TAB BAR -->
+<sc-if value="{{ showTabs }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;left:0;right:0;bottom:0;height:84px;background:var(--bar,rgba(250,250,250,.94));backdrop-filter:blur(20px);border-top:1px solid var(--line,rgba(0,0,0,.08));display:grid;grid-template-columns:repeat(4,1fr);padding-top:7px;box-sizing:border-box;z-index:20">
+  <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+    <button onClick="{{ t.go }}" style="border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:4px;color:{{ t.color }};font-family:inherit;font-size:10.5px;font-weight:500;cursor:pointer;height:46px">
+      <div style="width:26px;height:24px;display:flex;align-items:center;justify-content:center;position:relative">
+        <sc-if value="{{ t.isHome }}" hint-placeholder-val="{{ false }}"><div style="width:21px;height:19px;background:currentColor;clip-path:polygon(50% 0,100% 44%,88% 44%,88% 100%,12% 100%,12% 44%,0 44%)"></div></sc-if>
+        <sc-if value="{{ t.isCloset }}" hint-placeholder-val="{{ false }}"><div style="display:grid;grid-template-columns:9px 9px;gap:3px"><div style="height:9px;border-radius:2.5px;background:currentColor"></div><div style="height:9px;border-radius:2.5px;background:currentColor"></div><div style="height:9px;border-radius:2.5px;background:currentColor"></div><div style="height:9px;border-radius:2.5px;background:currentColor"></div></div></sc-if>
+        <sc-if value="{{ t.isAdd }}" hint-placeholder-val="{{ false }}"><div style="width:22px;height:22px;border-radius:50%;background:currentColor;color:var(--bar-solid,#fff);display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:500;line-height:1"><span style="color:var(--bg,#fff);margin-top:-2px">+</span></div></sc-if>
+        <sc-if value="{{ t.isAcct }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:9px;height:9px;border-radius:50%;background:currentColor"></div><div style="width:18px;height:9px;border-radius:9px 9px 3px 3px;background:currentColor"></div></div></sc-if>
+      </div>
+      {{ t.label }}
+    </button>
+  </sc-for>
+</div>
+</sc-if>
+
+<!-- DETAIL SHEET -->
+<sc-if value="{{ hasDetail }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeDetail }}" style="position:absolute;inset:0;background:var(--dim,rgba(0,0,0,.32));z-index:30;animation:dw-fade .25s both"></div>
+<div data-screen-label="Garment details" style="position:absolute;left:0;right:0;top:52px;bottom:0;background:var(--bg,#fff);border-radius:28px 28px 0 0;z-index:31;overflow-y:auto;scrollbar-width:none;animation:dw-up .4s cubic-bezier(.2,.8,.2,1) both;padding-bottom:40px">
+  <div style="width:36px;height:5px;border-radius:3px;background:var(--ink3,#a1a1a6);opacity:.5;margin:7px auto 0"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 14px 0">
+    <button onClick="{{ closeDetail }}" style="width:32px;height:32px;border-radius:50%;border:0;background:var(--fill,rgba(120,120,128,.12));color:var(--ink2,#6e6e73);font-size:18px;cursor:pointer">×</button>
+    <button onClick="{{ openEdit }}" style="border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:17px;font-weight:500;cursor:pointer">Edit</button>
+  </div>
+  <div onPointerDown="{{ dragStart }}" onPointerMove="{{ dragMove }}" onPointerUp="{{ dragEnd }}" onPointerLeave="{{ dragEnd }}" style="margin:8px 16px 0;height:372px;border-radius:28px;overflow:hidden;position:relative;background:var(--tile,#f3f2ef);touch-action:none;cursor:{{ dv.cursor }}">
+    <sc-if value="{{ dv.showArt }}" hint-placeholder-val="{{ true }}">
+      <dc-import name="GarmentArt" item="{{ d }}" view="{{ dv.artView }}" scale="1.05" style="width:100%;height:100%" hint-size="100%,100%"></dc-import>
+    </sc-if>
+    <sc-if value="{{ dv.backEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:18px;border:1.5px dashed var(--ink3,#a1a1a6);border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:0 30px">
+        <div style="font-size:19px;font-weight:700">No back image yet</div>
+        <div style="font-size:15px;line-height:1.4;color:var(--ink2,#6e6e73)">Take a photo of the back and we'll create a matching catalog image.</div>
+        <button onClick="{{ askBack }}" style="margin-top:8px;height:44px;padding:0 18px;border:0;border-radius:14px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer">Add Back Image · 1 credit</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ dv.v360Empty }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:0 40px">
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <div style="width:44px;height:56px;border-radius:10px;overflow:hidden;opacity:.9"><dc-import name="GarmentArt" item="{{ d }}" view="front" style="width:100%;height:100%" hint-size="44px,56px"></dc-import></div>
+          <div style="width:44px;height:56px;border-radius:10px;overflow:hidden;opacity:.6"><dc-import name="GarmentArt" item="{{ d }}" view="side" style="width:100%;height:100%" hint-size="44px,56px"></dc-import></div>
+          <div style="width:44px;height:56px;border-radius:10px;overflow:hidden;opacity:.4"><dc-import name="GarmentArt" item="{{ d }}" view="back" style="width:100%;height:100%" hint-size="44px,56px"></dc-import></div>
+          <div style="width:44px;height:56px;border-radius:10px;overflow:hidden;opacity:.25"><dc-import name="GarmentArt" item="{{ d }}" view="side2" style="width:100%;height:100%" hint-size="44px,56px"></dc-import></div>
+        </div>
+        <div style="font-size:19px;font-weight:700">See it from every angle</div>
+        <div style="font-size:15px;line-height:1.4;color:var(--ink2,#6e6e73)">AI creates four views you can spin through.</div>
+        <button onClick="{{ ask360 }}" style="margin-top:8px;height:44px;padding:0 18px;border:0;border-radius:14px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer">Generate 360° · 3 credits</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ dv.is360 }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:0;right:0;bottom:14px;display:flex;justify-content:center;align-items:center;gap:14px;pointer-events:none">
+        <button onClick="{{ anglePrev }}" style="pointer-events:auto;width:36px;height:36px;border-radius:50%;border:0;background:var(--card,#fff);color:var(--ink,#131315);font-size:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08)">‹</button>
+        <div style="padding:7px 14px;border-radius:16px;background:var(--card,#fff);font-size:13px;font-weight:600;min-width:52px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08)">{{ dv.angleLabel }}</div>
+        <button onClick="{{ angleNext }}" style="pointer-events:auto;width:36px;height:36px;border-radius:50%;border:0;background:var(--card,#fff);color:var(--ink,#131315);font-size:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08)">›</button>
+      </div>
+      <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--ink2,#6e6e73)">Drag to rotate</div>
+    </sc-if>
+    <sc-if value="{{ dv.busy }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;background:var(--tile,#f3f2ef);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;animation:dw-fade .2s both">
+        <div style="position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.5) 50%,transparent 70%);animation:dw-shimmer 1.4s linear infinite"></div>
+        <div style="width:30px;height:30px;border-radius:50%;border:3px solid var(--fill,rgba(120,120,128,.2));border-top-color:var(--accent,#1f6bff);animation:dw-spin .8s linear infinite"></div>
+        <div style="font-size:15px;font-weight:500">{{ dv.busyText }}</div>
+      </div>
+    </sc-if>
+  </div>
+  <div style="margin:14px 16px 0;display:grid;grid-template-columns:repeat(3,1fr);padding:2px;border-radius:10px;background:var(--fill,rgba(120,120,128,.12))">
+    <sc-for list="{{ dv.segs }}" as="sg" hint-placeholder-count="3">
+      <button onClick="{{ sg.go }}" style="height:32px;border:0;border-radius:8px;background:{{ sg.bg }};box-shadow:{{ sg.sh }};color:var(--ink,#131315);font-family:inherit;font-size:14px;font-weight:{{ sg.fw }};cursor:pointer;transition:background .2s">{{ sg.label }}</button>
+    </sc-for>
+  </div>
+  <div style="padding:22px 20px 0">
+    <div style="font-size:28px;font-weight:700;letter-spacing:-.02em">{{ d.name }}</div>
+    <div style="font-size:16px;color:var(--ink2,#6e6e73);margin-top:2px">{{ d.cat }} · Added {{ d.added }}</div>
+  </div>
+  <div style="margin:18px 16px 0;border-radius:18px;background:var(--bg2,#f4f4f2);padding:0 16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--line,rgba(0,0,0,.08));font-size:16px"><span style="color:var(--ink2,#6e6e73)">Color</span><span style="display:flex;align-items:center;gap:8px"><span style="width:16px;height:16px;border-radius:50%;background:{{ d.color }};box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)"></span>{{ d.colorName }}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--line,rgba(0,0,0,.08));font-size:16px"><span style="color:var(--ink2,#6e6e73)">Pattern</span><span>{{ d.pattern }}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--line,rgba(0,0,0,.08));font-size:16px"><span style="color:var(--ink2,#6e6e73)">Material</span><span>{{ d.material }}</span></div>
+    <div style="display:flex;justify-content:space-between;gap:20px;padding:13px 0;font-size:16px"><span style="color:var(--ink2,#6e6e73);flex:none">Details</span><span style="text-align:right">{{ d.details }}</span></div>
+  </div>
+  <div style="margin:14px 16px 0;border-radius:18px;background:var(--bg2,#f4f4f2);padding:0 16px">
+    <sc-if value="{{ dv.needBack }}" hint-placeholder-val="{{ false }}"><button onClick="{{ askBack }}" style="display:flex;justify-content:space-between;width:100%;padding:13px 0;border:0;border-bottom:1px solid var(--line,rgba(0,0,0,.08));background:none;font-family:inherit;font-size:16px;color:var(--accent,#1f6bff);cursor:pointer"><span>Add Back Image</span><span style="color:var(--ink2,#6e6e73)">1 credit</span></button></sc-if>
+    <sc-if value="{{ dv.need360 }}" hint-placeholder-val="{{ false }}"><button onClick="{{ ask360 }}" style="display:flex;justify-content:space-between;width:100%;padding:13px 0;border:0;border-bottom:1px solid var(--line,rgba(0,0,0,.08));background:none;font-family:inherit;font-size:16px;color:var(--accent,#1f6bff);cursor:pointer"><span>Generate 360° View</span><span style="color:var(--ink2,#6e6e73)">3 credits</span></button></sc-if>
+    <button onClick="{{ askRemove }}" style="display:block;width:100%;text-align:left;padding:13px 0;border:0;background:none;font-family:inherit;font-size:16px;color:var(--danger,#e5484d);cursor:pointer">Remove from Closet</button>
+  </div>
+</div>
+</sc-if>
+
+<!-- SHEETS -->
+<sc-if value="{{ hasSheet }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:var(--dim,rgba(0,0,0,.32));z-index:40;animation:dw-fade .2s both"></div>
+<div style="position:absolute;left:8px;right:8px;bottom:8px;background:var(--sheet,#fff);border-radius:34px;z-index:41;animation:dw-up .35s cubic-bezier(.2,.8,.2,1) both;padding:10px 20px 26px;box-shadow:0 -10px 40px rgba(0,0,0,.12)">
+  <div style="width:36px;height:5px;border-radius:3px;background:var(--ink3,#a1a1a6);opacity:.5;margin:0 auto 14px"></div>
+
+  <sc-if value="{{ sh.cost }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:4px;padding:0 4px">
+      <div style="font-size:22px;font-weight:700">{{ cost.title }}</div>
+      <div style="font-size:15px;color:var(--ink2,#6e6e73);line-height:1.4">{{ cost.sub }}</div>
+    </div>
+    <div style="margin-top:16px;border-radius:18px;background:var(--bg2,#f4f4f2);padding:2px 16px">
+      <sc-for list="{{ cost.lines }}" as="ln" hint-placeholder-count="2"><div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line,rgba(0,0,0,.08));font-size:15px"><span>{{ ln.l }}</span><span>{{ ln.r }}</span></div></sc-for>
+      <div style="display:flex;justify-content:space-between;padding:12px 0;font-size:16px;font-weight:700"><span>Total</span><span>{{ cost.total }}</span></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:12px 4px 0;font-size:14px;color:var(--ink2,#6e6e73)"><span>Balance {{ credits }} → {{ cost.after }}</span><span>Detection was free</span></div>
+    <button onClick="{{ cost.confirm }}" style="margin-top:16px;width:100%;height:54px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer">{{ cost.cta }}</button>
+    <button onClick="{{ closeSheet }}" style="margin-top:4px;width:100%;height:44px;border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:16px;cursor:pointer">Cancel</button>
+  </sc-if>
+
+  <sc-if value="{{ sh.low }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:6px 10px 0">
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px"><span style="font-size:48px;font-weight:700;letter-spacing:-.03em">{{ credits }}</span><span style="font-size:17px;color:var(--ink2,#6e6e73)">/ {{ lowNeed }} credits needed</span></div>
+      <div style="width:220px;height:8px;border-radius:4px;background:var(--fill,rgba(120,120,128,.12));overflow:hidden"><div style="height:100%;width:{{ lowPct }};background:#e8a33d;border-radius:4px"></div></div>
+      <div style="font-size:22px;font-weight:700;margin-top:14px">Not enough credits</div>
+      <div style="font-size:15px;line-height:1.45;color:var(--ink2,#6e6e73);text-wrap:pretty">{{ lowBody }}</div>
+    </div>
+    <button onClick="{{ closeSheet }}" style="margin-top:20px;width:100%;height:54px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer">{{ lowCta }}</button>
+    <button onClick="{{ toAccount }}" style="margin-top:4px;width:100%;height:44px;border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:16px;cursor:pointer">View Price List</button>
+  </sc-if>
+
+  <sc-if value="{{ sh.editCand }}" hint-placeholder-val="{{ false }}">
+    <div style="font-size:22px;font-weight:700;padding:0 4px">Correct this garment</div>
+    <div style="font-size:15px;color:var(--ink2,#6e6e73);padding:4px 4px 0">Fixing the type helps AI create an accurate image.</div>
+    <div style="font-size:13px;font-weight:600;color:var(--ink2,#6e6e73);padding:18px 4px 6px">NAME</div>
+    <input value="{{ ec.name }}" onChange="{{ ec.onName }}" style="width:100%;box-sizing:border-box;height:48px;border-radius:12px;border:0;background:var(--bg2,#f4f4f2);padding:0 14px;font-family:inherit;font-size:17px;color:var(--ink,#131315);outline:none">
+    <div style="font-size:13px;font-weight:600;color:var(--ink2,#6e6e73);padding:16px 4px 8px">TYPE</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <sc-for list="{{ ec.cats }}" as="c" hint-placeholder-count="6"><button onClick="{{ c.go }}" style="height:36px;padding:0 14px;border:0;border-radius:18px;background:{{ c.bg }};color:{{ c.fg }};font-family:inherit;font-size:15px;font-weight:500;cursor:pointer">{{ c.name }}</button></sc-for>
+    </div>
+    <button onClick="{{ closeSheet }}" style="margin-top:22px;width:100%;height:54px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer">Done</button>
+    <button onClick="{{ ec.remove }}" style="margin-top:4px;width:100%;height:44px;border:0;background:none;color:var(--danger,#e5484d);font-family:inherit;font-size:16px;cursor:pointer">Not a garment</button>
+  </sc-if>
+
+  <sc-if value="{{ sh.editItem }}" hint-placeholder-val="{{ false }}">
+    <div style="font-size:22px;font-weight:700;padding:0 4px">Edit details</div>
+    <div style="font-size:13px;font-weight:600;color:var(--ink2,#6e6e73);padding:16px 4px 6px">NAME</div>
+    <input value="{{ ei.name }}" onChange="{{ ei.onName }}" style="width:100%;box-sizing:border-box;height:48px;border-radius:12px;border:0;background:var(--bg2,#f4f4f2);padding:0 14px;font-family:inherit;font-size:17px;color:var(--ink,#131315);outline:none">
+    <div style="font-size:13px;font-weight:600;color:var(--ink2,#6e6e73);padding:16px 4px 8px">CATEGORY</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <sc-for list="{{ ei.cats }}" as="c" hint-placeholder-count="6"><button onClick="{{ c.go }}" style="height:36px;padding:0 14px;border:0;border-radius:18px;background:{{ c.bg }};color:{{ c.fg }};font-family:inherit;font-size:15px;font-weight:500;cursor:pointer">{{ c.name }}</button></sc-for>
+    </div>
+    <div style="font-size:13px;font-weight:600;color:var(--ink2,#6e6e73);padding:16px 4px 8px">PATTERN</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <sc-for list="{{ ei.pats }}" as="c" hint-placeholder-count="5"><button onClick="{{ c.go }}" style="height:36px;padding:0 14px;border:0;border-radius:18px;background:{{ c.bg }};color:{{ c.fg }};font-family:inherit;font-size:15px;font-weight:500;cursor:pointer">{{ c.name }}</button></sc-for>
+    </div>
+    <button onClick="{{ saveEdit }}" style="margin-top:22px;width:100%;height:54px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer">Save</button>
+  </sc-if>
+
+  <sc-if value="{{ sh.confirm }}" hint-placeholder-val="{{ false }}">
+    <div style="text-align:center;padding:4px 10px 0"><div style="font-size:20px;font-weight:700">{{ cf.title }}</div><div style="font-size:15px;line-height:1.45;color:var(--ink2,#6e6e73);margin-top:6px">{{ cf.body }}</div></div>
+    <button onClick="{{ cf.go }}" style="margin-top:20px;width:100%;height:54px;border:0;border-radius:16px;background:var(--danger,#e5484d);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer">{{ cf.cta }}</button>
+    <button onClick="{{ closeSheet }}" style="margin-top:4px;width:100%;height:44px;border:0;background:none;color:var(--accent,#1f6bff);font-family:inherit;font-size:16px;cursor:pointer">Cancel</button>
+  </sc-if>
+
+  <sc-if value="{{ sh.how }}" hint-placeholder-val="{{ false }}">
+    <div style="font-size:22px;font-weight:700;padding:0 4px 10px">How credits work</div>
+    <sc-for list="{{ howLines }}" as="h" hint-placeholder-count="3">
+      <div style="display:flex;gap:14px;padding:10px 4px;font-size:15px;line-height:1.4"><div style="width:26px;height:26px;border-radius:50%;flex:none;background:var(--accentSoft,rgba(31,107,255,.1));color:var(--accent,#1f6bff);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ h.n }}</div><div><b>{{ h.t }}</b><br><span style="color:var(--ink2,#6e6e73)">{{ h.b }}</span></div></div>
+    </sc-for>
+    <button onClick="{{ closeSheet }}" style="margin-top:14px;width:100%;height:54px;border:0;border-radius:16px;background:var(--accent,#1f6bff);color:#fff;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer">Got It</button>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- TOAST -->
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;top:60px;left:50%;z-index:60;white-space:nowrap;padding:11px 18px;border-radius:22px;background:var(--ink,#131315);color:var(--bg,#fff);font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.2);animation:dw-toast 2.6s both">{{ toast }}</div>
+</sc-if>
+
+<!-- STATUS BAR -->
+<div style="position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:center;justify-content:space-between;padding:4px 34px 0 44px;box-sizing:border-box;z-index:50;pointer-events:none;color:{{ statusColor }}">
+  <span style="font-size:17px;font-weight:600">9:41</span>
+  <div style="position:absolute;left:50%;top:11px;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000"></div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <div style="display:flex;align-items:flex-end;gap:1.5px;height:12px"><div style="width:3px;height:4px;background:currentColor;border-radius:1px"></div><div style="width:3px;height:6px;background:currentColor;border-radius:1px"></div><div style="width:3px;height:9px;background:currentColor;border-radius:1px"></div><div style="width:3px;height:12px;background:currentColor;border-radius:1px"></div></div>
+    <div style="width:25px;height:12px;border-radius:4px;border:1.2px solid currentColor;opacity:.9;padding:1.5px;box-sizing:border-box"><div style="width:80%;height:100%;background:currentColor;border-radius:2px"></div></div>
+  </div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:136px;height:5px;border-radius:3px;background:{{ statusColor }};z-index:70;opacity:.9"></div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;startCredits&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:25,&quot;step&quot;:1,&quot;default&quot;:18,&quot;tsType&quot;:&quot;number&quot;},&quot;homeMotion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const SAMPLE = [
+  { id: 'g1', name: 'Oxford Shirt', cat: 'Tops', color: '#eef0f3', colorName: 'White', shape: 'shirt', pattern: 'Solid', material: 'Cotton poplin', details: 'Button-down collar, chest pocket', added: 'Oct 18', back: true, v360: false },
+  { id: 'g2', name: 'Cable Knit Sweater', cat: 'Tops', color: '#e7dcc6', colorName: 'Cream', shape: 'sweater', pattern: 'Cable knit', material: 'Merino wool', details: 'Crew neck, ribbed cuffs', added: 'Oct 18', back: false, v360: false },
+  { id: 'g3', name: 'Camel Wool Coat', cat: 'Outerwear', color: '#b98a5c', colorName: 'Camel', shape: 'coat', pattern: 'Solid', material: 'Wool blend', details: 'Notch lapel, two buttons', added: 'Oct 17', back: true, v360: true },
+  { id: 'g4', name: 'Straight-Leg Jeans', cat: 'Bottoms', color: '#46607f', colorName: 'Blue', shape: 'pants', pattern: 'Denim', material: 'Rigid denim', details: 'High rise, five pocket', added: 'Oct 17', back: false, v360: false },
+  { id: 'g5', name: 'Breton Striped Tee', cat: 'Tops', color: '#26324d', colorName: 'Navy', shape: 'tee', pattern: 'Striped', material: 'Cotton jersey', details: 'Boat neck, short sleeve', added: 'Oct 16', back: false, v360: false },
+  { id: 'g6', name: 'Black Slip Dress', cat: 'Dresses', color: '#232326', colorName: 'Black', shape: 'dress', pattern: 'Solid', material: 'Satin', details: 'Bias cut, adjustable straps', added: 'Oct 15', back: false, v360: false },
+  { id: 'g7', name: 'White Leather Sneakers', cat: 'Shoes', color: '#f4f3ef', colorName: 'White', shape: 'shoe', pattern: 'Solid', material: 'Leather', details: 'Low top, rubber sole', added: 'Oct 14', back: false, v360: false },
+  { id: 'g8', name: 'Linen Midi Skirt', cat: 'Bottoms', color: '#a8b496', colorName: 'Sage', shape: 'skirt', pattern: 'Solid', material: 'Linen', details: 'A-line, elastic waist', added: 'Oct 12', back: false, v360: false },
+  { id: 'g9', name: 'Denim Trucker Jacket', cat: 'Outerwear', color: '#7290b3', colorName: 'Blue', shape: 'shirt', pattern: 'Denim', material: 'Washed denim', details: 'Chest flap pockets', added: 'Oct 10', back: false, v360: false },
+  { id: 'g10', name: 'Rose Floral Sundress', cat: 'Dresses', color: '#dca9a3', colorName: 'Pink', shape: 'dress', pattern: 'Floral', material: 'Viscose', details: 'Midi length, thin straps', added: 'Oct 9', back: false, v360: false },
+  { id: 'g11', name: 'Pleated Trousers', cat: 'Bottoms', color: '#4b4b51', colorName: 'Grey', shape: 'pants', pattern: 'Solid', material: 'Wool', details: 'Front pleats, side pockets', added: 'Oct 8', back: false, v360: false },
+  { id: 'g12', name: 'Suede Loafers', cat: 'Shoes', color: '#6f4c35', colorName: 'Brown', shape: 'shoe', pattern: 'Solid', material: 'Suede', details: 'Penny strap', added: 'Oct 6', back: false, v360: false },
+  { id: 'g13', name: 'Rust Ribbed Tank', cat: 'Tops', color: '#c2603f', colorName: 'Rust', shape: 'tee', pattern: 'Ribbed', material: 'Rib knit', details: 'Scoop neck', added: 'Oct 5', back: false, v360: false },
+  { id: 'g14', name: 'Canvas Tote', cat: 'Bags', color: '#d9cdb3', colorName: 'Beige', shape: 'bag', pattern: 'Solid', material: 'Cotton canvas', details: 'Shoulder straps, inner pocket', added: 'Oct 3', back: false, v360: false }
+];
+const GNEW = [
+  { id: 'n1', name: 'Olive Overshirt', cat: 'Outerwear', color: '#6f7350', colorName: 'Olive', shape: 'shirt', pattern: 'Solid', material: 'Cotton twill', details: 'Two chest pockets', added: 'Today', back: false, v360: false, pos: { l: '6%', t: '8%', w: '46%', h: '48%', r: -10, bl: '22%', bt: '10%' } },
+  { id: 'n2', name: 'Grey Crewneck', cat: 'Tops', color: '#a7a8ab', colorName: 'Grey', shape: 'sweater', pattern: 'Solid', material: 'Cotton fleece', details: 'Ribbed hem', added: 'Today', back: false, v360: false, pos: { l: '22%', t: '52%', w: '46%', h: '44%', r: 12, bl: '40%', bt: '58%' } },
+  { id: 'n3', name: 'Khaki Chinos', cat: 'Bottoms', color: '#c4ae86', colorName: 'Khaki', shape: 'pants', pattern: 'Solid', material: 'Cotton', details: 'Slim fit', added: 'Today', back: false, v360: false, pos: { l: '56%', t: '6%', w: '38%', h: '64%', r: 6, bl: '68%', bt: '8%' } }
+];
+const CANDS = [
+  { id: 'c1', name: 'Black Leather Jacket', cat: 'Outerwear', color: '#202023', colorName: 'Black', shape: 'shirt', pattern: 'Solid', material: 'Leather', details: 'Zip front', box: [12, 14, 76, 36], conf: 'high', sel: true, keep: true },
+  { id: 'c2', name: 'White Crew Tee', cat: 'Tops', color: '#f3f2ee', colorName: 'White', shape: 'tee', pattern: 'Solid', material: 'Cotton', details: 'Crew neck', box: [33, 18, 34, 22], conf: 'high', sel: true, keep: true },
+  { id: 'c3', name: 'Ecru Wide-Leg Trousers', cat: 'Bottoms', color: '#e3d8c1', colorName: 'Ecru', shape: 'pants', pattern: 'Solid', material: 'Linen blend', details: 'Wide leg, high rise', box: [24, 48, 52, 36], conf: 'high', sel: true, keep: true },
+  { id: 'c4', name: 'Black Ankle Boots', cat: 'Shoes', color: '#2a2a2d', colorName: 'Black', shape: 'boot', pattern: 'Solid', material: 'Leather', details: 'Block heel', box: [26, 84, 48, 13], conf: 'high', sel: true, keep: true },
+  { id: 'c5', name: 'Belt', cat: 'Accessories', color: '#7a5236', colorName: 'Brown', shape: 'bag', pattern: 'Solid', material: 'Leather', details: 'Crossbody strap', box: [70, 40, 24, 16], conf: 'low', sel: false, keep: true }
+];
+const ACTIVITY = [
+  { id: 'a1', label: 'Back image · Oxford Shirt', when: 'Yesterday', amt: -1 },
+  { id: 'a2', label: '360° view · Camel Wool Coat', when: 'Oct 17', amt: -3 },
+  { id: 'a3', label: 'Front images · 3 garments', when: 'Oct 17', amt: -3 },
+  { id: 'a4', label: 'Starter pack', when: 'Oct 3', amt: 25 }
+];
+const CATS = ['Tops', 'Outerwear', 'Bottoms', 'Dresses', 'Shoes', 'Bags', 'Accessories'];
+const PATS = ['Solid', 'Striped', 'Denim', 'Floral', 'Ribbed'];
+const SHAPE_FOR = { Tops: 'tee', Outerwear: 'shirt', Bottoms: 'pants', Dresses: 'dress', Shoes: 'shoe', Bags: 'bag', Accessories: 'acc' };
+const STAGES = ['Finding each garment', 'Separating the pieces', 'Laying them flat', 'Adding final details'];
+const ANGLES = [['front', 'Front'], ['side', 'Left'], ['back', 'Back'], ['side2', 'Right']];
+const LIGHT = { '--bg': '#ffffff', '--bg2': '#f4f4f2', '--card': '#ffffff', '--tile': '#f3f2ef', '--ink': '#131315', '--ink2': '#6e6e73', '--ink3': '#a1a1a6', '--line': 'rgba(20,20,25,.08)', '--fill': 'rgba(120,120,128,.12)', '--accent': '#1f6bff', '--accentSoft': 'rgba(31,107,255,.1)', '--bar': 'rgba(250,250,250,.94)', '--sheet': '#ffffff', '--ph1': '#ecebe7', '--ph2': '#e4e2dd', '--dim': 'rgba(0,0,0,.32)', '--success': '#23a55a', '--danger': '#e5484d' };
+const DARK = { '--bg': '#000000', '--bg2': '#1c1c1e', '--card': '#1c1c1e', '--tile': '#1b1b1d', '--ink': '#f5f5f7', '--ink2': '#98989f', '--ink3': '#636366', '--line': 'rgba(255,255,255,.1)', '--fill': 'rgba(120,120,128,.26)', '--accent': '#3d86ff', '--accentSoft': 'rgba(61,134,255,.18)', '--bar': 'rgba(18,18,20,.94)', '--sheet': '#1c1c1e', '--ph1': '#242426', '--ph2': '#1e1e20', '--dim': 'rgba(0,0,0,.6)', '--success': '#30c26a', '--danger': '#ff5a5f' };
+
+class Component extends DCLogic {
+  state = { screen: 'home', jk: 'home', theme: null, credits: null, closet: SAMPLE, detailId: null, view: 'front', angle: 0, sheet: null, cat: 'All', color: 'All', q: '', email: 'maya.chen@icloud.com', code: '', introIdx: 0, progress: 0, flow: 'g', gKeep: { n1: true, n2: true, n3: true }, cands: CANDS.map(c => ({ ...c })), editCand: null, rIdx: 0, toast: null, saved: [], savedCredits: 0, activity: ACTIVITY, busy: null, notif: true, lowNeed: 0, editDraft: null };
+
+  componentWillUnmount() { clearInterval(this.t); clearTimeout(this.tt); clearTimeout(this.bt); }
+  componentDidUpdate(pp) {
+    if (pp.startCredits !== this.props.startCredits) this.setState({ credits: null });
+    if (pp.theme !== this.props.theme) this.setState({ theme: null });
+  }
+  get credits() { return this.state.credits ?? (this.props.startCredits ?? 18); }
+  get theme() { return this.state.theme ?? (this.props.theme ?? 'light'); }
+  toastMsg(m) { this.setState({ toast: null }, () => this.setState({ toast: m })); clearTimeout(this.tt); this.tt = setTimeout(() => this.setState({ toast: null }), 2600); }
+  go(screen, extra = {}) { clearInterval(this.t); this.setState({ screen, sheet: null, detailId: null, ...extra }); }
+  run(screen, next, ms, extra = {}) {
+    this.go(screen, { progress: 0, ...extra });
+    const start = Date.now();
+    this.t = setInterval(() => {
+      const p = Math.min(100, (Date.now() - start) / ms * 100);
+      this.setState({ progress: p });
+      if (p >= 100) { clearInterval(this.t); this.go(next); }
+    }, 50);
+  }
+  spend(n, label) { const c = this.credits - n; this.setState(s => ({ credits: c, activity: [{ id: 'x' + Date.now(), label, when: 'Just now', amt: -n }, ...s.activity] })); }
+  needOr(n, fn) { if (this.credits < n) this.setState({ sheet: 'low', lowNeed: n }); else fn(); }
+  updItem(id, patch) { this.setState(s => ({ closet: s.closet.map(i => i.id === id ? { ...i, ...patch } : i) })); }
+  updCand(id, patch) { this.setState(s => ({ cands: s.cands.map(c => c.id === id ? { ...c, ...patch } : c) })); }
+  openItem(id) { this.setState({ detailId: id, view: 'front', angle: 0, sheet: null }); }
+
+  jump(k) {
+    const base = { jk: k };
+    const map = {
+      welcome: () => this.go('welcome', base), intro: () => this.go('intro', { ...base, introIdx: 0 }), email: () => this.go('email', base), code: () => this.go('code', { ...base, code: '' }), starter: () => this.go('starter', base),
+      home: () => this.go('home', { ...base, closet: this.state.closet.length ? this.state.closet : SAMPLE }),
+      'home-empty': () => this.go('home', { ...base, closet: [] }),
+      closet: () => this.go('closet', { ...base, closet: this.state.closet.length ? this.state.closet : SAMPLE, cat: 'All', color: 'All', q: '' }),
+      detail: () => { this.go('closet', { ...base, closet: this.state.closet.length ? this.state.closet : SAMPLE }); setTimeout(() => this.openItem('g2'), 0); },
+      'detail-360': () => { this.go('closet', { ...base, closet: this.state.closet.length ? this.state.closet : SAMPLE }); setTimeout(() => this.setState({ detailId: 'g3', view: '360', angle: 0 }), 0); },
+      'detail-back': () => { this.go('closet', { ...base, closet: this.state.closet.length ? this.state.closet : SAMPLE }); setTimeout(() => this.setState({ detailId: 'g4', view: 'back' }), 0); },
+      add: () => this.go('add', base), 'g-camera': () => this.go('g-camera', base), 'g-preview': () => this.go('g-preview', base),
+      'g-proc': () => this.run('proc', 'g-results', 4500, { ...base, flow: 'g' }), 'g-error': () => this.go('g-error', base),
+      'g-results': () => this.go('g-results', { ...base, gKeep: { n1: true, n2: true, n3: true } }),
+      'o-upload': () => this.go('o-upload', base), 'o-detecting': () => this.run('o-detecting', 'o-select', 2800, base),
+      'o-select': () => this.go('o-select', { ...base, cands: CANDS.map(c => ({ ...c })) }),
+      'o-cost': () => { this.go('o-select', { ...base, cands: CANDS.map(c => ({ ...c })) }); setTimeout(() => this.setState({ sheet: 'cost-o' }), 0); },
+      'o-review': () => this.go('o-review', { ...base, rIdx: 0, cands: CANDS.map(c => ({ ...c })) }),
+      saved: () => this.go('saved', { ...base, saved: GNEW, savedCredits: 3 }),
+      account: () => this.go('account', base),
+      low: () => { this.go('o-select', { ...base, credits: 2, cands: CANDS.map(c => ({ ...c })) }); setTimeout(() => this.setState({ sheet: 'low', lowNeed: 4 }), 0); }
+    };
+    map[k] && map[k]();
+  }
+
+  renderVals() {
+    const st = this.state, scr = st.screen, credits = this.credits, dark = this.theme === 'dark';
+    const s = { welcome: scr === 'welcome', intro: scr === 'intro', email: scr === 'email', code: scr === 'code', starter: scr === 'starter', home: scr === 'home', closet: scr === 'closet', add: scr === 'add', gcamera: scr === 'g-camera', gpreview: scr === 'g-preview', proc: scr === 'proc', gerror: scr === 'g-error', gresults: scr === 'g-results', oupload: scr === 'o-upload', odetect: scr === 'o-detecting', oselect: scr === 'o-select', oreview: scr === 'o-review', saved: scr === 'saved', account: scr === 'account' };
+    const closet = st.closet;
+    const withOpen = it => ({ ...it, open: () => this.openItem(it.id) });
+
+    const J = [
+      ['Onboarding', [['Welcome', 'welcome'], ['Intro', 'intro'], ['Email sign-in', 'email'], ['Verification code', 'code'], ['Starter credits', 'starter']]],
+      ['Home', [['Home dashboard', 'home'], ['Empty state', 'home-empty']]],
+      ['Closet', [['Grid, search & filters', 'closet'], ['Garment details', 'detail'], ['360° viewer', 'detail-360'], ['Back image · empty', 'detail-back']]],
+      ['Add · garment photo', [['Choose method', 'add'], ['Camera', 'g-camera'], ['Preview & cost', 'g-preview'], ['AI processing', 'g-proc'], ['Error & retry', 'g-error'], ['Results', 'g-results']]],
+      ['Add · outfit photo', [['Choose photo', 'o-upload'], ['Detecting', 'o-detecting'], ['Select & correct', 'o-select'], ['Confirm cost', 'o-cost'], ['Review vs. original', 'o-review'], ['Saved', 'saved']]],
+      ['Credits & account', [['Account & credits', 'account'], ['Insufficient credits', 'low']]]
+    ];
+    let n = 0;
+    const journey = J.map(([title, items]) => ({ title, items: items.map(([label, k]) => { n++; const on = st.jk === k; return { label, n: String(n).padStart(2, '0'), go: () => this.jump(k), bg: on ? '#18181a' : 'transparent', fg: on ? '#fff' : '#18181a' }; }) }));
+
+    const tabsDef = [['Home', 'home', 'isHome'], ['Closet', 'closet', 'isCloset'], ['Add', 'add', 'isAdd'], ['Account', 'account', 'isAcct']];
+    const tabs = tabsDef.map(([label, k, flag]) => ({ label, [flag]: true, color: scr === k ? 'var(--accent,#1f6bff)' : 'var(--ink3,#a1a1a6)', go: () => this.go(k, { jk: k }) }));
+
+    // welcome / intro
+    const welcomeTiles = [
+      { item: SAMPLE[2], l: '24px', t: '40px', w: '150px', h: '196px', r: '-7deg', d: '.05s' },
+      { item: SAMPLE[4], l: '200px', t: '10px', w: '160px', h: '170px', r: '5deg', d: '.15s' },
+      { item: SAMPLE[9], l: '190px', t: '200px', w: '150px', h: '210px', r: '-3deg', d: '.25s' },
+      { item: SAMPLE[3], l: '40px', t: '262px', w: '130px', h: '190px', r: '6deg', d: '.35s' },
+      { item: SAMPLE[6], l: '286px', t: '360px', w: '96px', h: '80px', r: '-10deg', d: '.45s' }
+    ];
+    const IN = [
+      ['Snap any garment', 'Lay clothes on a bed or floor. AI separates each piece and creates a clean catalog image.'],
+      ['Or import an outfit', 'Use a photo of yourself. Pick which pieces to digitize. Finding them is free.'],
+      ['Browse what you own', 'Filter by category and color, flip to the back, or spin a piece in 360°.']
+    ];
+    const ii = st.introIdx;
+    const intro = { p0: ii === 0, p1: ii === 1, p2: ii === 2, title: IN[ii][0], body: IN[ii][1], cta: ii === 2 ? 'Continue' : 'Next', dots: IN.map((_, i) => ({ w: i === ii ? '22px' : '7px', bg: i === ii ? 'var(--accent,#1f6bff)' : 'var(--fill,rgba(120,120,128,.25))' })) };
+
+    // code
+    const code = st.code;
+    const codeBoxes = Array.from({ length: 6 }, (_, i) => ({ d: code[i] || '', border: i === Math.min(code.length, 5) && code.length < 6 ? 'var(--accent,#1f6bff)' : code.length === 6 ? 'var(--success,#23a55a)' : 'transparent' }));
+    const emailOk = /.+@.+\..+/.test(st.email);
+
+    // home
+    const stats = { total: closet.length, cats: new Set(closet.map(i => i.cat)).size, week: closet.filter(i => /Oct 1[4-9]|Today/.test(i.added)).length };
+    const motion = this.props.homeMotion ?? true;
+    const marquee = [...closet, ...closet].map((it, i) => ({ ...withOpen(it), y: i % 2 ? '10px' : '0px' }));
+    const recent = closet.slice(0, 6).map(withOpen);
+    const catCounts = CATS.map(c => ({ name: c, n: closet.filter(i => i.cat === c).length, go: () => this.go('closet', { cat: c, color: 'All', q: '', jk: 'closet' }) })).filter(c => c.n);
+
+    // closet
+    const q = st.q.toLowerCase();
+    const filtered = closet.filter(i => (st.cat === 'All' || i.cat === st.cat) && (st.color === 'All' || i.colorName === st.color) && (!q || (i.name + ' ' + i.cat + ' ' + i.colorName + ' ' + i.material).toLowerCase().includes(q))).map(withOpen);
+    const catChips = ['All', ...CATS.filter(c => closet.some(i => i.cat === c))].map(c => ({ name: c, bg: st.cat === c ? 'var(--ink,#131315)' : 'var(--fill,rgba(120,120,128,.12))', fg: st.cat === c ? 'var(--bg,#fff)' : 'var(--ink,#131315)', go: () => this.setState({ cat: c }) }));
+    const colorsSeen = []; closet.forEach(i => { if (!colorsSeen.find(c => c.name === i.colorName)) colorsSeen.push({ name: i.colorName, hex: i.color }); });
+    const colorChips = [{ name: 'All', hex: 'conic-gradient(#e7dcc6,#b98a5c,#46607f,#a8b496,#dca9a3,#232326,#e7dcc6)', label: '' }, ...colorsSeen].map(c => ({ ...c, label: '', ring: st.color === c.name ? '2px' : '0', ring2: st.color === c.name ? '3.5px' : '0', go: () => this.setState({ color: st.color === c.name && c.name !== 'All' ? 'All' : c.name }) }));
+    const closetEmpty = closet.length === 0;
+
+    // garment flow
+    const gNew = GNEW;
+    const gPhoto = GNEW.map((g, i) => ({ ...g, ...g.pos, n: i + 1, d: (0.3 + i * 0.15) + 's' }));
+    const gRes = GNEW.map((g, i) => { const k = st.gKeep[g.id]; return { ...g, d: (i * 0.12) + 's', op: k ? 1 : .4, chk: k ? 'var(--accent,#1f6bff)' : 'rgba(255,255,255,.7)', chkB: k ? 'var(--accent,#1f6bff)' : 'var(--ink3,#a1a1a6)', mark: k ? '✓' : '', toggle: () => this.setState(x => ({ gKeep: { ...x.gKeep, [g.id]: !x.gKeep[g.id] } })) }; });
+    const gKept = GNEW.filter(g => st.gKeep[g.id]);
+
+    // outfit
+    const cands = st.cands;
+    const candView = cands.map((c, i) => {
+      const [x, y, w, h] = c.box;
+      const seen = st.screen === 'o-detecting' ? (st.progress > 15 + i * 16 ? 1 : 0) : 1;
+      return { ...c, n: i + 1, l: x + '%', t: y + '%', w: w + '%', h: h + '%', seen, sc: seen ? 1 : 1.15,
+        bstyle: c.sel ? 'solid' : 'dashed', bcolor: c.sel ? 'var(--accent,#1f6bff)' : 'rgba(255,255,255,.95)', tint: c.sel ? 'rgba(31,107,255,.08)' : 'transparent',
+        badge: c.sel ? 'var(--accent,#1f6bff)' : 'var(--ink3,#a1a1a6)',
+        chk: c.sel ? 'var(--accent,#1f6bff)' : 'transparent', chkB: c.sel ? 'var(--accent,#1f6bff)' : 'var(--ink3,#a1a1a6)', mark: c.sel ? '✓' : '',
+        confText: c.conf === 'low' ? 'Not sure — please check' : 'Clear match', confColor: c.conf === 'low' ? '#c27c12' : 'var(--ink2,#6e6e73)',
+        toggle: () => this.updCand(c.id, { sel: !c.sel }), edit: () => this.setState({ sheet: 'edit-cand', editCand: c.id }) };
+    });
+    const candMini = candView.slice(0, 4);
+    const sel = cands.filter(c => c.sel);
+    const selN = sel.length;
+    const detectFound = `${candView.filter(c => c.seen).length} found so far`;
+
+    // processing
+    const p = st.progress;
+    const procItems = st.flow === 'g' ? GNEW : sel;
+    const pi = Math.min(procItems.length - 1, Math.floor(p / (100 / Math.max(1, procItems.length))));
+    const local = (p % (100 / Math.max(1, procItems.length))) / (100 / Math.max(1, procItems.length));
+    const stageIdx = Math.min(3, Math.floor(p / 25));
+    const proc = {
+      item: procItems[pi] || GNEW[0], blur: Math.max(0, 10 - local * 14) + 'px', pct: p + '%', count: `${Math.min(pi + 1, procItems.length)} of ${procItems.length}`,
+      stage: STAGES[stageIdx] + '…', sub: `Creating ${procItems.length} catalog images`,
+      steps: STAGES.map((l, i) => ({ label: l, done: i < stageIdx, fg: i <= stageIdx ? 'var(--ink,#131315)' : 'var(--ink3,#a1a1a6)', dot: i < stageIdx ? 'var(--success,#23a55a)' : 'transparent', border: i < stageIdx ? '0' : i === stageIdx ? '2px solid var(--accent,#1f6bff)' : '2px solid var(--fill,rgba(120,120,128,.3))', mark: i < stageIdx ? '✓' : '', anim: i === stageIdx ? 'dw-spin 1s linear infinite' : 'none' }))
+    };
+    if (proc.steps[stageIdx]) proc.steps[stageIdx].border = '2px solid var(--fill,rgba(120,120,128,.25))', proc.steps[stageIdx].dot = 'conic-gradient(var(--accent,#1f6bff) 0 25%, transparent 25%)';
+
+    // review
+    const rItems = sel.length ? sel : CANDS.filter(c => c.sel);
+    const ri = Math.min(st.rIdx, rItems.length - 1);
+    const cur = rItems[ri];
+    const isLast = ri === rItems.length - 1;
+    const keptN = rItems.filter(c => c.keep).length;
+    const rv = {
+      item: cur, pos: `${ri + 1} of ${rItems.length}`, keptN, op: cur.keep ? 1 : .4, busy: st.busy === 'regen',
+      sw: cur.keep ? 'var(--success,#23a55a)' : 'var(--fill,rgba(120,120,128,.3))', knob: cur.keep ? '22px' : '2px',
+      toggle: () => this.updCand(cur.id, { keep: !cur.keep }),
+      regen: () => this.needOr(1, () => { this.spend(1, 'Regenerate · ' + cur.name); this.setState({ busy: 'regen' }); clearTimeout(this.bt); this.bt = setTimeout(() => { this.setState({ busy: null }); this.toastMsg('✓ New version ready · 1 credit used'); }, 1600); }),
+      strip: rItems.map((c, i) => ({ ...c, ring: i === ri ? '2.5px' : '0', op: c.keep ? 1 : .4, go: () => this.setState({ rIdx: i }) })),
+      prev: () => this.setState({ rIdx: Math.max(0, ri - 1) }), prevOp: ri === 0 ? .4 : 1,
+      next: () => { if (!isLast) return this.setState({ rIdx: ri + 1 }); this.saveOutfit(rItems); },
+      nextLabel: isLast ? (keptN ? `Save ${keptN} to Closet` : 'Done') : 'Next'
+    };
+
+    // saved
+    const sv = st.saved.length ? st.saved : GNEW;
+    const savedFan = sv.slice(0, 3).map((t, i, a) => {
+      const pos = a.length === 1 ? [[75, 20, 0]] : a.length === 2 ? [[30, 30, -7], [120, 20, 6]] : [[0, 40, -9], [75, 10, 0], [150, 40, 9]];
+      const [l, tp, r] = pos[i]; return { ...t, l: l + 'px', t: tp + 'px', r: r + 'deg', d: (i * .12) + 's' };
+    });
+    const savedText = `${sv.length} new piece${sv.length === 1 ? '' : 's'} · ${st.savedCredits || sv.length} credit${(st.savedCredits || sv.length) === 1 ? '' : 's'} used`;
+
+    // detail
+    const d = closet.find(i => i.id === st.detailId) || null;
+    let dv = {};
+    if (d) {
+      const v = st.view;
+      dv = {
+        showArt: (v === 'front') || (v === 'back' && d.back) || (v === '360' && d.v360),
+        artView: v === 'back' ? 'back' : v === '360' ? ANGLES[st.angle][0] : 'front',
+        backEmpty: v === 'back' && !d.back && st.busy !== 'back', v360Empty: v === '360' && !d.v360 && st.busy !== '360',
+        is360: v === '360' && d.v360 && !st.busy, angleLabel: ANGLES[st.angle][1], cursor: v === '360' && d.v360 ? 'grab' : 'default',
+        busy: st.busy === 'back' || st.busy === '360', busyText: st.busy === '360' ? 'Creating four angles…' : 'Creating back image…',
+        needBack: !d.back, need360: !d.v360,
+        segs: [['front', 'Front'], ['back', 'Back'], ['360', '360°']].map(([k, l]) => ({ label: l, bg: v === k ? 'var(--card,#fff)' : 'transparent', sh: v === k ? '0 1px 3px rgba(0,0,0,.12)' : 'none', fw: v === k ? 600 : 500, go: () => this.setState({ view: k, angle: 0 }) }))
+      };
+    }
+
+    // sheets
+    const sheet = st.sheet;
+    const sh = { cost: /^cost-/.test(sheet || ''), low: sheet === 'low', editCand: sheet === 'edit-cand', editItem: sheet === 'edit-item', confirm: sheet === 'delete' || sheet === 'delete-acct', how: sheet === 'how' };
+    let cost = {};
+    if (sheet === 'cost-o') cost = { title: `Generate ${selN} garment${selN === 1 ? '' : 's'}`, sub: 'High-quality front catalog images for the pieces you selected.', lines: [{ l: `Front image × ${selN}`, r: `${selN} credit${selN === 1 ? '' : 's'}` }], total: `${selN} credit${selN === 1 ? '' : 's'}`, after: credits - selN, cta: `Generate · ${selN} credit${selN === 1 ? '' : 's'}`, confirm: () => { this.spend(selN, `Front images · ${selN} garments`); this.setState({ cands: this.state.cands.map(c => ({ ...c, keep: true })) }); this.run('proc', 'o-review', 4500, { flow: 'o', rIdx: 0 }); } };
+    if (sheet === 'cost-back' && d) cost = { title: 'Add back image', sub: `We'll create a back view of your ${d.name} that matches the front.`, lines: [{ l: 'Back image', r: '1 credit' }], total: '1 credit', after: credits - 1, cta: 'Generate · 1 credit', confirm: () => this.genDetail('back', 1, d) };
+    if (sheet === 'cost-360' && d) cost = { title: 'Generate 360° view', sub: 'Four angles of this garment: front, left, back and right.', lines: [{ l: '360° view (4 angles)', r: '3 credits' }], total: '3 credits', after: credits - 3, cta: 'Generate · 3 credits', confirm: () => this.genDetail('360', 3, d) };
+    const lowNeed = st.lowNeed;
+    const lowBody = scr === 'o-select' ? `You have ${credits} credit${credits === 1 ? '' : 's'} left. Deselect ${lowNeed - credits} garment${lowNeed - credits === 1 ? '' : 's'} to continue with what you have.` : `You have ${credits} credit${credits === 1 ? '' : 's'} left. Your existing closet stays fully available.`;
+    const lowCta = scr === 'o-select' ? 'Adjust Selection' : 'OK';
+    const ecC = cands.find(c => c.id === st.editCand);
+    const ec = ecC ? { name: ecC.name, onName: e => this.updCand(ecC.id, { name: e.target.value }), cats: CATS.map(c => ({ name: c, bg: ecC.cat === c ? 'var(--accent,#1f6bff)' : 'var(--fill,rgba(120,120,128,.12))', fg: ecC.cat === c ? '#fff' : 'var(--ink,#131315)', go: () => this.updCand(ecC.id, { cat: c, shape: SHAPE_FOR[c], conf: 'high', sel: true, name: ecC.conf === 'low' && c === 'Bags' ? 'Leather Shoulder Bag' : ecC.name }) })), remove: () => { this.setState(x => ({ cands: x.cands.filter(c => c.id !== ecC.id), sheet: null })); this.toastMsg('Removed from detections'); } } : {};
+    const dr = st.editDraft;
+    const ei = dr ? { name: dr.name, onName: e => this.setState({ editDraft: { ...dr, name: e.target.value } }), cats: CATS.map(c => ({ name: c, bg: dr.cat === c ? 'var(--accent,#1f6bff)' : 'var(--fill,rgba(120,120,128,.12))', fg: dr.cat === c ? '#fff' : 'var(--ink,#131315)', go: () => this.setState({ editDraft: { ...dr, cat: c } }) })), pats: PATS.map(c => ({ name: c, bg: dr.pattern === c ? 'var(--accent,#1f6bff)' : 'var(--fill,rgba(120,120,128,.12))', fg: dr.pattern === c ? '#fff' : 'var(--ink,#131315)', go: () => this.setState({ editDraft: { ...dr, pattern: c } }) })) } : {};
+    const cf = sheet === 'delete' && d ? { title: `Remove ${d.name}?`, body: 'It will be removed from your closet. Credits used for its images are not returned.', cta: 'Remove', go: () => { this.setState(x => ({ closet: x.closet.filter(i => i.id !== d.id), detailId: null, sheet: null })); this.toastMsg('Removed from closet'); } }
+      : sheet === 'delete-acct' ? { title: 'Delete your account?', body: 'Your closet, images and remaining credits will be permanently deleted. This can’t be undone.', cta: 'Delete Account', go: () => this.go('welcome', { jk: 'welcome' }) } : {};
+
+    const pct = Math.max(0, Math.min(100, credits / 25 * 100));
+    const used = 25 - credits;
+    return {
+      s, journey, tabs, showTabs: s.home || s.closet || s.add || s.account,
+      themeVars: dark ? DARK : LIGHT, statusColor: s.gcamera ? '#fff' : (dark ? '#f5f5f7' : '#131315'),
+      credits, toast: st.toast, hasToast: !!st.toast,
+      welcomeTiles, intro, introItem: SAMPLE[1], introGrid: SAMPLE.slice(0, 9),
+      toIntro: () => this.go('intro', { introIdx: 0, jk: 'intro' }), toEmail: () => this.go('email', { jk: 'email' }), toWelcome: () => this.go('welcome', { jk: 'welcome' }),
+      introNext: () => ii < 2 ? this.setState({ introIdx: ii + 1 }) : this.go('email', { jk: 'email' }),
+      email: st.email, emailShown: st.email || 'maya.chen@icloud.com', onEmail: e => this.setState({ email: e.target.value }), emailBorder: emailOk ? 'var(--accent,#1f6bff)' : 'transparent', emailOpacity: emailOk ? 1 : .4,
+      sendCode: () => emailOk && this.go('code', { code: '', jk: 'code' }),
+      code, codeBoxes, codeHint: code.length === 6 ? 'Verified ✓' : 'Code expires in 10 min',
+      onCode: e => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); this.setState({ code: v }); if (v.length === 6) setTimeout(() => this.go('starter', { jk: 'starter', credits: 25 }), 600); },
+      fillCode: () => { this.setState({ code: '482913' }); setTimeout(() => this.go('starter', { jk: 'starter', credits: 25 }), 700); },
+      firstGarment: () => this.go('add', { closet: [], jk: 'add', activity: [ACTIVITY[3]] }), exploreEmpty: () => this.go('home', { closet: [], jk: 'home-empty', activity: [ACTIVITY[3]] }),
+      hasItems: !closetEmpty, noItems: closetEmpty, stats, marquee, marqueeAnim: motion ? `dw-marquee ${closet.length * 4}s linear infinite` : 'none', recent, catCounts,
+      toAccount: () => this.go('account', { jk: 'account' }), toCloset: () => this.go('closet', { jk: 'closet', cat: 'All', color: 'All', q: '' }), toAdd: () => this.go('add', { jk: 'add' }),
+      toCamera: () => this.go('g-camera', { jk: 'g-camera' }), toLibrary: () => this.go('o-upload', { jk: 'o-upload' }), toPreview: () => this.go('g-preview', { jk: 'g-preview' }),
+      q: st.q, onSearch: e => this.setState({ q: e.target.value }), catChips, colorChips, filtered, hasFiltered: filtered.length > 0, noFiltered: filtered.length === 0,
+      filteredCount: `${filtered.length} piece${filtered.length === 1 ? '' : 's'}`,
+      emptyTitle: closetEmpty ? 'Nothing here yet' : 'No matches', emptyBody: closetEmpty ? 'Digitize your first garment to start your closet.' : 'Try another search or clear your filters.', emptyCta: closetEmpty ? 'Add Clothes' : 'Clear Filters',
+      emptyAction: () => closetEmpty ? this.go('add', { jk: 'add' }) : this.setState({ q: '', cat: 'All', color: 'All' }),
+      gNew, gPhoto, gAfter: credits - 3, gRes, candMini,
+      gGenerate: () => this.needOr(3, () => { this.spend(3, 'Front images · 3 garments'); this.run('proc', 'g-results', 4500, { flow: 'g', gKeep: { n1: true, n2: true, n3: true } }); }),
+      gRetry: () => this.run('proc', 'g-results', 4500, { flow: 'g' }),
+      gSave: () => { if (!gKept.length) return; this.setState(x => ({ closet: [...gKept.map(g => ({ ...g, id: g.id + '-' + Date.now() })), ...x.closet] })); this.go('saved', { saved: gKept, savedCredits: 3, jk: 'saved' }); },
+      gSaveLabel: gKept.length ? `Add ${gKept.length} to Closet` : 'Select at least one', gSaveOp: gKept.length ? 1 : .4,
+      library: [
+        { label: 'mirror selfie · full outfit', star: true, a: 'var(--ph1,#ecebe7)', b: 'var(--ph2,#e4e2dd)' }, { label: 'street · coffee', a: '#e6e1d8', b: '#ddd6ca' }, { label: 'dinner · close-up', a: '#e2e2e6', b: '#d8d8de' },
+        { label: 'park · weekend', a: '#e1e6dc', b: '#d6ddd0' }, { label: 'office · blazer', a: '#e7e3dd', b: '#ddd8d0' }, { label: 'beach', a: '#e8e2d6', b: '#dfd7c8' },
+        { label: 'friends · group', a: '#e3e0e6', b: '#d9d5dd' }, { label: 'travel · airport', a: '#e4e4e0', b: '#dadad5' }
+      ],
+      toDetect: () => this.run('o-detecting', 'o-select', 2800, { jk: 'o-detecting', cands: CANDS.map(c => ({ ...c })) }),
+      candView, candTotal: cands.length, detectFound,
+      selText: `${selN} selected`, selCost: selN ? `${selN} credit${selN === 1 ? '' : 's'} · ${credits} available` : 'Select garments to continue', selOp: selN ? 1 : .4,
+      oGenerate: () => selN && this.needOr(selN, () => this.setState({ sheet: 'cost-o' })),
+      addMissed: () => this.toastMsg('Tap the photo where the garment is'),
+      proc, rv,
+      savedFan, savedText,
+      hasDetail: !!d, d: d || {}, dv,
+      closeDetail: () => this.setState({ detailId: null, busy: null }),
+      askBack: () => this.needOr(1, () => this.setState({ sheet: 'cost-back' })), ask360: () => this.needOr(3, () => this.setState({ sheet: 'cost-360' })),
+      askRemove: () => this.setState({ sheet: 'delete' }),
+      openEdit: () => d && this.setState({ sheet: 'edit-item', editDraft: { name: d.name, cat: d.cat, pattern: d.pattern } }),
+      saveEdit: () => { if (d && dr) this.updItem(d.id, dr); this.setState({ sheet: null }); this.toastMsg('Changes saved'); },
+      anglePrev: e => { e.stopPropagation(); this.setState({ angle: (st.angle + 3) % 4 }); }, angleNext: e => { e.stopPropagation(); this.setState({ angle: (st.angle + 1) % 4 }); },
+      dragStart: e => { this.dx = e.clientX; }, dragEnd: () => { this.dx = null; },
+      dragMove: e => { if (this.dx == null || !(d && d.v360 && st.view === '360')) return; const diff = e.clientX - this.dx; if (Math.abs(diff) > 50) { this.dx = e.clientX; this.setState(x => ({ angle: (x.angle + (diff > 0 ? 3 : 1)) % 4 })); } },
+      hasSheet: !!sheet, sh, cost, closeSheet: () => this.setState({ sheet: null }),
+      lowNeed, lowPct: Math.min(100, credits / Math.max(1, lowNeed) * 100) + '%', lowBody, lowCta, ec, ei, cf,
+      howLines: [{ n: 1, t: 'Detecting is free', b: 'Finding garments in a photo never uses credits.' }, { n: 2, t: 'You pay per image created', b: 'Front and back images cost 1 credit each. A 360° view costs 3.' }, { n: 3, t: 'Always shown first', b: 'You confirm the exact cost before anything is generated.' }],
+      openHow: () => this.setState({ sheet: 'how' }),
+      creditPct: pct + '%', creditBar: credits <= 3 ? '#e8a33d' : 'var(--accent,#1f6bff)',
+      creditNote: credits <= 3 ? `Running low. ${credits} credit${credits === 1 ? '' : 's'} covers ${credits} more front image${credits === 1 ? '' : 's'}.` : `${used} used so far · enough for about ${credits} more garments`,
+      creditNoteColor: credits <= 3 ? '#c27c12' : 'var(--ink2,#6e6e73)',
+      prices: [['Garment detection', 'Free'], ['Front image', '1 credit'], ['Back image', '1 credit'], ['360° view', '3 credits']].map(([l, r], i, a) => ({ l, r, line: i === a.length - 1 ? 'transparent' : 'var(--line,rgba(0,0,0,.08))' })),
+      activityV: st.activity.slice(0, 5).map((a, i, arr) => ({ ...a, amtText: a.amt > 0 ? `+${a.amt}` : `${a.amt}`, color: a.amt > 0 ? 'var(--success,#23a55a)' : 'var(--ink,#131315)', line: i === arr.length - 1 ? 'transparent' : 'var(--line,rgba(0,0,0,.08))' })),
+      segL: !dark ? 'var(--card,#fff)' : 'transparent', segD: dark ? '#636366' : 'transparent',
+      setLight: () => this.setState({ theme: 'light' }), setDark: () => this.setState({ theme: 'dark' }),
+      notifBg: st.notif ? 'var(--success,#23a55a)' : 'var(--fill,rgba(120,120,128,.3))', notifKnob: st.notif ? '22px' : '2px', toggleNotif: () => this.setState({ notif: !st.notif }),
+      signOut: () => this.go('welcome', { jk: 'welcome' }), askDeleteAcct: () => this.setState({ sheet: 'delete-acct' })
+    };
+  }
+
+  genDetail(kind, n, d) {
+    this.spend(n, (kind === 'back' ? 'Back image · ' : '360° view · ') + d.name);
+    this.setState({ sheet: null, busy: kind, view: kind });
+    clearTimeout(this.bt);
+    this.bt = setTimeout(() => {
+      this.updItem(d.id, kind === 'back' ? { back: true } : { v360: true });
+      this.setState({ busy: null, angle: 0 });
+      this.toastMsg(kind === 'back' ? `✓ Back image ready · 1 credit used` : `✓ 360° view ready · 3 credits used`);
+    }, 2200);
+  }
+  saveOutfit(items) {
+    const kept = items.filter(c => c.keep).map(c => ({ ...c, id: c.id + '-' + Date.now(), added: 'Today', back: false, v360: false }));
+    if (!kept.length) return this.go('add', { jk: 'add' });
+    this.setState(x => ({ closet: [...kept, ...x.closet] }));
+    this.go('saved', { saved: kept, savedCredits: items.length, jk: 'saved' });
+  }
+}
+</script>
+</body>
+</html>

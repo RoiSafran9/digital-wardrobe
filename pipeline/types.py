@@ -46,6 +46,7 @@ class ItemFacts(BaseModel):
     trims: FactField
     visible_parts: FactField
     occluded_parts: FactField
+    name: FactField | None = None  # set only by the user (the model never names pieces)
 
 
 def as_item_facts(item: DetectedItemWithFacts) -> ItemFacts:

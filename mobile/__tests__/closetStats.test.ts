@@ -25,9 +25,10 @@ test("counts pieces, categories, colors and this week's additions", () => {
   expect(s.pieces).toBe(3);
   expect(s.categories).toEqual([{ name: "T-shirt", count: 2 }, { name: "Shorts", count: 1 }]);
   expect(s.colors).toBe(3);           // gray, black, navy
+  expect(s.groups).toEqual([{ name: "Tops", count: 2 }, { name: "Bottoms", count: 1 }]);
   expect(s.addedThisWeek).toBe(2);
 });
 
 test("an empty closet is all zeros", () => {
-  expect(closetStats([], new Date())).toEqual({ pieces: 0, categories: [], colors: 0, addedThisWeek: 0 });
+  expect(closetStats([], new Date())).toEqual({ pieces: 0, categories: [], groups: [], colors: 0, addedThisWeek: 0 });
 });

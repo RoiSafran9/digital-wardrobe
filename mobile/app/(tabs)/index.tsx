@@ -5,32 +5,27 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { getItems } from "../../src/api/client";
 import type { ClosetItem } from "../../src/api/types";
 import { closetStats } from "../../src/closetStats";
-import { GarmentImage } from "../../src/components/GarmentImage";
+import { addedLabel, colors, hitSlopFor, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
+import { GarmentTile } from "../../src/components/GarmentTile";
 import { ItemSheet } from "../../src/components/ItemSheet";
 import { JustAdded } from "../../src/components/JustAdded";
-import { PillButton } from "../../src/components/PillButton";
 import { CAPTURE_STEPS, KEEP_OPEN, ProcessingStatus } from "../../src/components/ProcessingStatus";
-import { CountUp } from "../../src/motion/CountUp";
+import { Greeting } from "../../src/components/home/Greeting";
+import { HomeEmpty } from "../../src/components/home/HomeEmpty";
+import { StatsRow } from "../../src/components/home/StatsRow";
+import { garmentName } from "../../src/garmentName";
 import { Marquee } from "../../src/motion/Marquee";
-import { PressScale } from "../../src/motion/PressScale";
 import { Rise } from "../../src/motion/Rise";
-import { colors, hitSlopFor, radius, type } from "../../src/theme";
 import { useCapture } from "../../src/useCapture";
 import { FrontsPicker } from "../../src/components/FrontsPicker";
 import { useFrontsChoice } from "../../src/credits/useFrontsChoice";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { OUTFIT_LINK, TRY_AS_OUTFIT, isWornRejection } from "../../src/outfit/outfit";
+import { Button, Chip } from "../../src/ui";
 
-const TILE = 96;
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <View accessible accessibilityLabel={`${label}, ${value}`} style={{ flex: 1, backgroundColor: colors.grouped, borderRadius: radius.card, padding: 14 }}>
-      <CountUp value={value} style={{ ...type.title2, color: colors.label }} />
-      <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 2 }}>{label}</Text>
-    </View>
-  );
-}
+const MARQUEE = { width: 118, height: 148 };
+const RECENT = { width: 150, height: 188 };
+const MARQUEE_SPEED = (118 + 12) / 4;  // about four seconds per tile
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -59,111 +54,134 @@ export default function HomeScreen() {
   const keyOf = (i: ClosetItem) => `${i.run_id}/${i.photo_name}/${i.item_id}`;
   const openIndex = openKey ? items.findIndex((i) => keyOf(i) === openKey) : -1;
 
+  const now = new Date();
   const stats = useMemo(() => closetStats(items, new Date()), [items]);
-  const rowA = items.filter((_, i) => i % 2 === 0);
-  const rowB = items.filter((_, i) => i % 2 === 1);
   const empty = loaded && !loadError && items.length === 0;
+  const recent = items.slice(0, 12);
+  const open = (item: ClosetItem) => setOpenKey(keyOf(item));
 
-  const garment = (item: ClosetItem) => (
-    <PressScale accessibilityRole="button" accessibilityLabel={`Open ${item.facts.category.value}`} onPress={() => setOpenKey(keyOf(item))}>
-      <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: TILE, height: TILE + 12 }} tile={colors.grouped} />
-    </PressScale>
+  const digitize = (
+    <View style={{ gap: 10 }}>
+      {loading ? (
+        <ProcessingStatus steps={CAPTURE_STEPS} note={KEEP_OPEN} />
+      ) : (
+        <>
+          <FrontsPicker choice={fronts} />
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Button title="Take Photo" size="medium" icon="camera" onPress={() => capture(true, fronts.maxFronts)} disabled={fronts.blocked} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button title="From Library" size="medium" variant="secondary" onPress={() => capture(false, fronts.maxFronts)} disabled={fronts.blocked} />
+            </View>
+          </View>
+        </>
+      )}
+      {captureError ? <Text style={{ ...type.footnote, color: colors.destructive }}>{captureError}</Text> : null}
+      {outfitOn && !loading ? (
+        <Pressable
+          accessibilityRole="button" hitSlop={hitSlopFor(20)} style={{ alignSelf: "center", paddingTop: 2 }}
+          onPress={() => router.push({ pathname: "/add", params: { mode: "outfit", at: String(Date.now()) } })}
+        >
+          <Text style={{ ...type.subhead, color: colors.tint }}>{isWornRejection(captureError) ? TRY_AS_OUTFIT : OUTFIT_LINK}</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
-          <Text accessibilityRole="header" style={{ ...type.largeTitle, color: colors.label }}>Wardrobe</Text>
-          {items.length > 0 ? (
-            <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 2 }}>
-              {stats.pieces === 1 ? "1 piece" : `${stats.pieces} pieces`} · {stats.addedThisWeek} added this week
-            </Text>
-          ) : null}
-        </View>
+      <ScrollView contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 28 }}>
+        <Greeting now={now} onCredits={() => router.push("/account")} />
 
         {loadError ? (
-          <View style={{ margin: 20, padding: 16, borderRadius: radius.card, backgroundColor: colors.destructiveBg, gap: 10 }}>
+          <View style={{ margin: 20, padding: 16, borderRadius: radius.list, backgroundColor: colors.destructiveBg, gap: 10 }}>
             <Text style={{ ...type.subhead, color: colors.destructive }}>{loadError}</Text>
-            <PillButton label="Try again" onPress={load} />
+            <Button title="Try again" size="medium" variant="secondary" onPress={load} />
+          </View>
+        ) : null}
+
+        {empty || (loadError && items.length === 0) ? (
+          <View style={{ marginTop: 20 }}>
+            <HomeEmpty outfit={!!outfitOn}>{digitize}</HomeEmpty>
+            <View style={{ paddingHorizontal: 20, marginTop: 20 }}><JustAdded onClosetChanged={load} /></View>
           </View>
         ) : null}
 
         {items.length > 0 ? (
-          <View style={{ marginTop: 18, gap: 10 }}>
-            <Marquee items={rowA} itemWidth={TILE} renderItem={garment} testID="row-a" />
-            {rowB.length ? <Marquee items={rowB} itemWidth={TILE} renderItem={garment} reverse speed={14} testID="row-b" /> : null}
-          </View>
-        ) : null}
-
-        <View style={{ paddingHorizontal: 20 }}>
-          {empty ? (
-            <Rise style={{ marginTop: 28 }}>
-              <Text style={{ ...type.title2, color: colors.label }}>Start your closet</Text>
-              <Text style={{ ...type.body, color: colors.secondaryLabel, marginTop: 6 }}>
-                Photograph a piece, or a few side by side. Each one becomes a clean catalog shot.
-              </Text>
-            </Rise>
-          ) : null}
-
-          {items.length > 0 ? (
-            <Rise style={{ flexDirection: "row", gap: 10, marginTop: 20 }}>
-              <Stat label="Pieces" value={stats.pieces} />
-              <Stat label="Categories" value={stats.categories.length} />
-              <Stat label="Colors" value={stats.colors} />
-            </Rise>
-          ) : null}
-
-          <View style={{ marginTop: 20, gap: 10 }}>
-            {loading ? (
-              <View style={{ backgroundColor: colors.grouped, borderRadius: radius.card, paddingVertical: 24 }}>
-                <ProcessingStatus steps={CAPTURE_STEPS} note={KEEP_OPEN} />
-              </View>
-            ) : (
-              <>
-                <FrontsPicker choice={fronts} />
-                <PillButton label="Take photo" variant="primary" icon="camera" onPress={() => capture(true, fronts.maxFronts)} disabled={fronts.blocked} />
-                <PillButton label="Choose from library" onPress={() => capture(false, fronts.maxFronts)} disabled={fronts.blocked} />
-              </>
-            )}
-            {captureError ? <Text style={{ ...type.footnote, color: colors.destructive }}>{captureError}</Text> : null}
-            {outfitOn && !loading ? (
-              <Pressable
-                accessibilityRole="button" hitSlop={hitSlopFor(20)} style={{ alignSelf: "center" }}
-                onPress={() => router.push({ pathname: "/add", params: { mode: "outfit", at: String(Date.now()) } })}
-              >
-                <Text style={{ ...type.subhead, color: colors.tint }}>
-                  {isWornRejection(captureError) ? TRY_AS_OUTFIT : OUTFIT_LINK}
-                </Text>
-              </Pressable>
-            ) : null}
-          </View>
-
-          <View style={{ marginTop: 28 }}>
-            <JustAdded onClosetChanged={load} />
-          </View>
-
-          {stats.categories.length > 0 ? (
-            <View style={{ marginTop: 8 }}>
-              <Text style={{ ...type.headline, color: colors.label, marginBottom: 10 }}>By category</Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {stats.categories.map(({ name, count }) => (
-                  <PressScale
-                    key={name}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${name}, ${count}`}
-                    hitSlop={hitSlopFor(34)}
-                    onPress={() => router.push({ pathname: "/closet", params: { category: name, at: String(Date.now()) } })}
-                    style={{ flexDirection: "row", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.grouped }}
-                  >
-                    <Text style={{ ...type.subhead, color: colors.label }}>{name}</Text>
-                    <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>{count}</Text>
-                  </PressScale>
-                ))}
-              </View>
+          <>
+            <View style={{ marginTop: 22, height: MARQUEE.height + 30 }}>
+              <Marquee
+                items={recent}
+                itemWidth={MARQUEE.width}
+                gap={12}
+                speed={MARQUEE_SPEED}
+                testID="marquee"
+                renderItem={(item, i) => (
+                  <View style={{ paddingTop: i % 2 ? 20 : 10 }}>
+                    <GarmentTile item={item} width={MARQUEE.width} height={MARQUEE.height} rounded={20} label={`Open ${garmentName(item)}`} onPress={() => open(item)} />
+                  </View>
+                )}
+              />
             </View>
-          ) : null}
-        </View>
+
+            <Rise style={{ marginTop: 8 }}>
+              <StatsRow stats={[
+                { label: "Pieces", value: stats.pieces },
+                { label: "Categories", value: stats.groups.length },
+                { label: "New this week", value: stats.addedThisWeek },
+              ]} />
+            </Rise>
+
+            <View style={{ marginHorizontal: 20, marginTop: 22, padding: 20, borderRadius: radius.feature, backgroundColor: colors.grouped, gap: 14 }}>
+              <View style={{ gap: 4 }}>
+                <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>Digitize clothes</Text>
+                <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>
+                  {outfitOn ? "Snap garments or an outfit. AI turns them into catalog images." : "Snap garments. AI turns them into catalog images."}
+                </Text>
+              </View>
+              {digitize}
+            </View>
+
+            <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
+              <JustAdded onClosetChanged={load} />
+            </View>
+
+            <View style={{ marginTop: 8 }}>
+              <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 12 }}>
+                <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>Recently Added</Text>
+                <Pressable accessibilityRole="button" hitSlop={hitSlopFor(22)} onPress={() => router.push("/closet")}>
+                  <Text style={{ ...type.body, color: colors.tint }}>See All</Text>
+                </Pressable>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingBottom: 18 }}>
+                {recent.map((item) => (
+                  <View key={keyOf(item)} style={{ width: RECENT.width, gap: 8 }}>
+                    <GarmentTile item={item} width={RECENT.width} height={RECENT.height} rounded={20} label={`Open ${garmentName(item)}`} onPress={() => open(item)} />
+                    <View>
+                      <Text numberOfLines={1} style={{ ...type.subhead, fontWeight: "600", color: colors.label }}>{garmentName(item)}</Text>
+                      <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>{addedLabel(item.run_id) ?? ""}</Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+
+            {stats.groups.length > 0 ? (
+              <View style={{ marginTop: 10, paddingHorizontal: 20 }}>
+                <Text accessibilityRole="header" style={{ ...type.section, color: colors.label, marginBottom: 12 }}>Browse by category</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {stats.groups.map(({ name, count }) => (
+                    <Chip
+                      key={name} label={name} count={count} variant="outlined"
+                      onPress={() => router.push({ pathname: "/closet", params: { group: name, at: String(Date.now()) } })}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </>
+        ) : null}
       </ScrollView>
 
       <ItemSheet items={items} index={openIndex >= 0 ? openIndex : null} onClose={() => setOpenKey(null)}

@@ -106,7 +106,7 @@ class AccountDeleteIn(BaseModel):
 
 class JobOut(BaseModel):
     id: str
-    kind: Literal["garment", "back", "turn", "outfit_scan", "outfit_generate"]
+    kind: Literal["garment", "back", "turn", "outfit_scan", "outfit_generate", "outfit_regenerate"]
     status: Literal["queued", "running", "succeeded", "failed", "canceled"]
     error: str | None = None
     item_id: str | None = None
@@ -194,4 +194,22 @@ class OutfitScanOut(BaseModel):
 class OutfitGenerateIn(BaseModel):
     """Stage 2: the garments the user picked and the per-front price they were shown (null while billing is off)."""
     candidate_ids: list[str]
+    expected_unit_price: int | None = None
+    corrections: dict[str, str] | None = None  # candidate id -> the type the user corrected it to
+
+
+class RegionBox(BaseModel):
+    x: float
+    y: float
+    width: float
+    height: float
+
+
+class RegionIn(BaseModel):
+    """A garment the scan missed: the area the user marked on the photo (photo pixels) and its type."""
+    box: RegionBox
+    category: str
+
+
+class RegenerateIn(BaseModel):
     expected_unit_price: int | None = None

@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from api.auth import User, current_user
 from api.credits import MAX_FRONTS, InsufficientCredits, action_for, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
-from api.schemas import (AccountDeleteIn, ProfileIn, ProfileOut, PushTokenIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
+from api.schemas import (AccountDeleteIn, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
                          TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse)
 from api.store import INTERRUPTED, get_store
 from pipeline.types import ItemFacts
@@ -324,12 +324,101 @@ def generate_from_scan(scan_id: str, body: OutfitGenerateIn, user: User = Depend
         raise HTTPException(400, f"pick 1 to {MAX_PICKS} garments")
     if any(p not in known for p in picks):
         raise HTTPException(400, "unknown garment in this scan")
+    corrections = {}
+    for cid, category in (body.corrections or {}).items():
+        category = (category or "").strip()
+        if cid not in picks:
+            raise HTTPException(400, "corrections must be for picked garments")
+        if not 1 <= len(category) <= CATEGORY_MAX:
+            raise HTTPException(400, f"a corrected type must be 1 to {CATEGORY_MAX} characters")
+        corrections[cid] = category
     unit = job_cost(prices, "outfit_generate")
     if body.expected_unit_price != unit:
         raise HTTPException(409, "the price changed — check it and confirm again")
+    extra = {"scan_job_id": scan["id"], "candidate_ids": picks}
+    if corrections:
+        extra["corrections"] = corrections
     return queue_job(store, user, "outfit_generate", key, None, gate, prices,
-                     max_items=len(picks) if prices else None,
-                     extra={"scan_job_id": scan["id"], "candidate_ids": picks})
+                     max_items=len(picks) if prices else None, extra=extra)
+
+
+CATEGORY_MAX = 40
+MAX_SCAN_CANDIDATES = 8
+MIN_REGION_PX = 8
+MARKED_NOTE = "Marked by you — the details come from your photo."
+
+
+@router.post("/outfit-scans/{scan_id}/regions", response_model=OutfitScanOut, dependencies=[Depends(outfit_on)])
+def mark_region(scan_id: str, body: RegionIn, user: User = Depends(current_user), store=Depends(get_store)):
+    """A garment the scan missed: the user marks it on the photo. No model call (free); it becomes a candidate
+    with a crop of that area, and generation works from the crop like any other pick."""
+    import tempfile
+    import cv2
+    import numpy as np
+    from pipeline.outfit import OutfitCandidate, preview_crop
+    from pipeline.types import BBox
+    scan = _own_scan(store, user, scan_id)
+    if scan["status"] != "succeeded":
+        raise HTTPException(409, "the scan isn't finished yet")
+    result = dict(scan.get("result") or {})
+    candidates = list(result.get("candidates") or [])
+    if len(candidates) >= MAX_SCAN_CANDIDATES:
+        raise HTTPException(400, f"a photo can have at most {MAX_SCAN_CANDIDATES} garments")
+    category = body.category.strip()
+    if not 1 <= len(category) <= CATEGORY_MAX:
+        raise HTTPException(400, f"the type must be 1 to {CATEGORY_MAX} characters")
+    image = cv2.imdecode(np.frombuffer(store.download(scan["input_path"]), np.uint8), cv2.IMREAD_COLOR)
+    if image is None:
+        raise HTTPException(409, "this scan's photo is no longer available — scan it again")
+    h, w = image.shape[:2]
+    b = body.box
+    if b.x < 0 or b.y < 0 or b.width < MIN_REGION_PX or b.height < MIN_REGION_PX or b.x + b.width > w or b.y + b.height > h:
+        raise HTTPException(400, "mark an area inside the photo")
+    n = 1 + sum(1 for c in candidates if str(c.get("id", "")).startswith("m"))
+    candidate = OutfitCandidate(
+        id=f"m{n}", box=BBox(x=b.x, y=b.y, width=b.width, height=b.height), cut_off_by_frame=False,
+        category=category, layer="single", colors=[], pattern="", visible_text="",
+        description=f"{category}, marked by the user", visible_parts=[], hidden_parts=[],
+        visibility="partial", uncertainty=MARKED_NOTE)
+    with tempfile.TemporaryDirectory() as tmp:
+        photo = f"{tmp}/photo.jpg"
+        cv2.imwrite(photo, image)
+        crop = preview_crop(photo, candidate, f"{tmp}/{candidate.id}.jpg")
+        ok, jpg = cv2.imencode(".jpg", cv2.imread(crop), [cv2.IMWRITE_JPEG_QUALITY, 85])
+    path = f"{user.id}/scans/{scan['id']}/{candidate.id}.jpg"
+    store.upload(path, jpg.tobytes(), "image/jpeg")
+    candidates.append({**candidate.model_dump(mode="json"), "preview_path": path})
+    result["candidates"] = candidates
+    store.finish_job(scan["id"], "succeeded", result)
+    return scan_out(store.get_job(user.id, scan["id"]), store)
+
+
+@router.post("/items/{item_id}/regenerate", response_model=JobOut, status_code=202, dependencies=[Depends(outfit_on)])
+def regenerate_item(item_id: str, body: RegenerateIn, user: User = Depends(current_user),
+                    key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
+                    prices=Depends(get_prices)):
+    """A new image for an outfit result still waiting for review. Priced and charged like one front image;
+    409 if the price changed, the result was already kept, or its scan has expired."""
+    existing = store.job_by_key(user.id, key)
+    if existing:
+        if existing["kind"] != "outfit_regenerate":
+            raise HTTPException(409, "this Idempotency-Key was already used for another request")
+        return JSONResponse(status_code=200, content=job_out(existing).model_dump())
+    item = _own_item(store, user, item_id)
+    if item.get("origin") != "outfit_photo" or item.get("review_state") != "pending":
+        raise HTTPException(409, "only outfit results waiting for review can be made again")
+    source = store.get_job(user.id, item.get("job_id") or "") if item.get("job_id") else None
+    if not source or source["kind"] != "outfit_generate":
+        raise HTTPException(409, "this result can't be made again")
+    unit = job_cost(prices, "outfit_regenerate")
+    if body.expected_unit_price != unit:
+        raise HTTPException(409, "the price changed — check it and confirm again")
+    piece = item["piece_index"]
+    cid = f"m{piece - 100}" if piece >= 100 else f"c{piece}"
+    extra = {"scan_job_id": source["scan_job_id"], "candidate_ids": [cid]}
+    if source.get("corrections"):
+        extra["corrections"] = {k: v for k, v in source["corrections"].items() if k == cid}
+    return queue_job(store, user, "outfit_regenerate", key, None, gate, prices, item_id=item_id, extra=extra)
 
 
 @router.post("/items/{item_id}/keep", response_model=V1ItemOut, dependencies=[Depends(outfit_on)])

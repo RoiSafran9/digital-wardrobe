@@ -23,7 +23,7 @@ def send(batch: list[dict]) -> None:
 def _message(job: dict, status: str, result: dict | None, error: str | None) -> tuple[str, str] | None:
     kind = job["kind"]
     if status != "succeeded":
-        if kind in ("garment", "back", "turn", "outfit_generate"):
+        if kind in ("garment", "back", "turn", "outfit_generate", "outfit_regenerate"):
             return "Generation paused", error or "Something went wrong — open the app to try again."
         return None
     if kind == "garment":
@@ -35,6 +35,8 @@ def _message(job: dict, status: str, result: dict | None, error: str | None) -> 
         return "Back image ready", "The back of your piece is in your closet."
     if kind == "turn":
         return "360° view ready", "Open the piece to turn it around."
+    if kind == "outfit_regenerate":
+        return "New image ready", "Your remade piece is waiting for your review."
     if kind == "outfit_generate":
         made = len((result or {}).get("item_ids", []))
         return "Your outfit pieces are ready", f"{made} {'piece is' if made == 1 else 'pieces are'} waiting for your review."

@@ -20,7 +20,7 @@ ACTIONS = ("garment", "back", "turn")
 # Job kinds that are never charged (Outfit Photo scans: detection and previews are free to the user).
 FREE_KINDS = ("outfit_scan",)
 # Job kinds billed as another action: an Outfit Photo generate job makes front images, one per picked garment.
-ACTION_OF = {"outfit_generate": "garment"}
+ACTION_OF = {"outfit_generate": "garment", "outfit_regenerate": "garment"}
 
 
 def action_for(kind: str) -> str:

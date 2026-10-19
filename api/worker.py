@@ -250,7 +250,18 @@ def _scan_for(store, job) -> tuple[dict, "outfit.OutfitScan"]:
     if (not scan_job or scan_job["kind"] != "outfit_scan" or scan_job["status"] != "succeeded"
             or not expires or datetime.fromisoformat(expires) <= datetime.now(timezone.utc)):
         raise JobRejected(SCAN_GONE)
-    return scan_job, outfit.OutfitScan.model_validate(result)
+    scan = outfit.OutfitScan.model_validate(result)
+    # The user's corrections replace the type the scan guessed, for the prompt and the saved facts alike.
+    fixes = job.get("corrections") or {}
+    if fixes:
+        scan = scan.model_copy(update={"candidates": [
+            c.model_copy(update={"category": fixes[c.id]}) if c.id in fixes else c for c in scan.candidates]})
+    return scan_job, scan
+
+
+def _piece(cid: str) -> int:
+    """c3 → 3; a garment the user marked (m2) → 102, so the two kinds never share a piece index."""
+    return int(cid[1:]) + (100 if cid.startswith("m") else 0)
 
 
 async def _outfit_generate(store, job, providers, tmp, uploads):
@@ -277,7 +288,7 @@ async def _outfit_generate(store, job, providers, tmp, uploads):
             failed.append(cid)
             continue
         candidate = by_id[cid]
-        piece = int(cid[1:])
+        piece = _piece(cid)
         item_id = _item_id(job["id"], piece)
         base = f"{user}/items/{item_id}"
         crop = uploads.put_photo_if_exists(f"{base}/crop.jpg", os.path.join(item_dir, "crop.png"))
@@ -296,8 +307,38 @@ async def _outfit_generate(store, job, providers, tmp, uploads):
     return {"item_ids": item_ids, "failed": failed}
 
 
+async def _outfit_regenerate(store, job, providers, tmp, uploads):
+    """A new image for one outfit result still in review; the item keeps its place and stays pending.
+    Charged one front (its item id in the result); a failure leaves the old image and costs nothing."""
+    user = job["user_id"]
+    item = store.get_item(user, job["item_id"])
+    if item is None or item.get("review_state") != "pending":
+        raise JobRejected("This piece was already kept or removed")
+    scan_job, scan = _scan_for(store, job)
+    try:
+        original = store.download(scan_job["input_path"])
+    except Exception as e:
+        raise JobRejected(SCAN_GONE) from e
+    photo = _write(os.path.join(tmp, "upload" + (os.path.splitext(scan_job["input_path"])[1] or ".jpg")), original)
+    out_dir = os.path.join(tmp, "out")
+    imagegen = providers(RunLogger(os.path.join(tmp, "outfit_log.jsonl"))).imagegen
+    cid = job["candidate_ids"][0]
+    results = await imagegen.generate_outfit(photo, scan, [cid], out_dir)
+    item_dir = os.path.join(out_dir, cid)
+    if (results.get(cid) or {}).get("status") != "generated" or not os.path.exists(os.path.join(item_dir, "generated.png")):
+        raise JobRejected("Couldn't make a new image — the current one stays; try again later")
+    base = f"{user}/items/{item['id']}"
+    tag = job["id"][:8]
+    fields = {
+        "display_path": uploads.put(f"{base}/generated-{tag}.png", os.path.join(item_dir, "generated.png")),
+        "cutout_path": uploads.put_if_exists(f"{base}/cutout-{tag}.png", os.path.join(item_dir, "cutout.png")),
+    }
+    store.update_item(user, item["id"], fields)
+    return {"item_ids": [item["id"]]}
+
+
 HANDLERS = {"garment": _garment, "back": _back, "turn": _turn, "outfit_scan": _outfit_scan,
-            "outfit_generate": _outfit_generate}
+            "outfit_generate": _outfit_generate, "outfit_regenerate": _outfit_regenerate}
 
 
 def _fail(store, gate, job, uploads, message):

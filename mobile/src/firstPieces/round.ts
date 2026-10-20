@@ -5,6 +5,7 @@ import type { GarmentScan } from "../api/types";
 
 // Most pieces one round makes, across all its photos (owner decision; a UX limit, not a price).
 export const ROUND_CAP = 5;
+export const CAP_TOAST = `Up to ${ROUND_CAP} per round — deselect one first.`;
 // The goal the flow is named after.
 export const FIRST_GOAL = 3;
 

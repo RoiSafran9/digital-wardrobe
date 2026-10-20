@@ -214,3 +214,50 @@ test("regenerate asks for the front price first, then replaces the image", async
   await act(async () => fireEvent.press(screen.getByRole("button", { name: "Regenerate · 1 credit" })));
   expect(regenerateItem).toHaveBeenCalledWith(expect.objectContaining({ item_id: "i1" }), 1);
 });
+
+// First 3 Pieces, Path B: the same outfit flow in onboarding mode.
+const SIX: OutfitScan = { ...SCAN, id: "scan-6", candidates: ["blazer", "shirt", "trousers", "belt", "scarf", "skirt"].map((c, i) => cand(`c${i + 1}`, c)) };
+
+test("onboarding mode: the detect step carries the mode to the pick screen", async () => {
+  jest.useFakeTimers();
+  mockParams = { uri: "file:///outfit.jpg", onboarding: "1" };
+  (scanOutfit as jest.Mock).mockResolvedValue(SCAN);
+  withCredits(<DetectScreen />);
+  await screen.findByText("3 garments found");
+  await act(async () => { jest.advanceTimersByTime(1500); });
+  expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/pick", params: { scanId: "scan-1", uri: "file:///outfit.jpg", onboarding: "1" } });
+  jest.useRealTimers();
+});
+
+test("onboarding mode picks at most five and carries the mode to review", async () => {
+  mockParams = { scanId: "scan-6", onboarding: "1" };
+  (getOutfitScan as jest.Mock).mockResolvedValue(SIX);
+  (generateOutfit as jest.Mock).mockResolvedValue({ items: [], failed: [] });
+  withCredits(<PickScreen />);
+  await screen.findByText("Blazer");
+  expect(screen.getAllByRole("checkbox").map((c) => c.props.accessibilityState.checked)).toEqual([true, true, true, true, true, false]);
+  fireEvent.press(screen.getByLabelText(/^Skirt\./));
+  expect(screen.getAllByRole("checkbox")[5].props.accessibilityState.checked).toBe(false);  // the sixth is refused
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Generate" })));
+  expect(generateOutfit).toHaveBeenCalledWith("scan-6", ["c1", "c2", "c3", "c4", "c5"], null, {});
+  expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/review", params: { onboarding: "1" } });
+});
+
+test("outside onboarding the outfit flow keeps its own limits", async () => {
+  mockParams = { scanId: "scan-6" };
+  (getOutfitScan as jest.Mock).mockResolvedValue(SIX);
+  withCredits(<PickScreen />);
+  await screen.findByText("Blazer");
+  expect(screen.getAllByRole("checkbox").every((c) => c.props.accessibilityState.checked)).toBe(true);
+});
+
+test("onboarding mode: saving kept pieces opens the closet with the first-success popup", async () => {
+  mockParams = { onboarding: "1" };
+  (getPendingItems as jest.Mock).mockResolvedValue([item("i1", "blazer"), item("i2", "shirt")]);
+  (keepItem as jest.Mock).mockResolvedValue({});
+  withCredits(<ReviewScreen />);
+  await screen.findByText("Review 1 of 2");
+  fireEvent.press(screen.getByRole("button", { name: "Next" }));
+  fireEvent.press(screen.getByRole("button", { name: "Save 2 to Closet" }));
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: "/closet", params: expect.objectContaining({ celebrate: "1", ids: "i1,i2" }) }));
+});

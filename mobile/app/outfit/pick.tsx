@@ -12,12 +12,13 @@ import { PhotoWithBoxes } from "../../src/components/outfit/PhotoWithBoxes";
 import { creditsLabel } from "../../src/credits/credits";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { haptics } from "../../src/haptics";
-import { candidateTitle, defaultPicks, pickable, sceneNote, visibilityNote } from "../../src/outfit/outfit";
+import { cappedPicks, candidateTitle, defaultPicks, pickable, sceneNote, visibilityNote } from "../../src/outfit/outfit";
 import { cachedScan, rememberScan } from "../../src/outfit/scanCache";
 import { MarkRegion, type PhotoBox } from "../../src/components/outfit/MarkRegion";
 import { colors, hitSlopFor, radius, type } from "../../src/theme";
 import { TextInput } from "react-native";
-import { BackButton, Button, Chip, CostSheet, InsufficientCreditsSheet, Sheet } from "../../src/ui";
+import { BackButton, Button, Chip, CostSheet, InsufficientCreditsSheet, Sheet, useToast } from "../../src/ui";
+import { CAP_TOAST, ROUND_CAP } from "../../src/firstPieces/round";
 
 export const OUTFIT_STAGES: Stage[] = [
   { label: "Taking them off the photo", at: 0 },
@@ -36,7 +37,10 @@ export function unsure(c: OutfitCandidate): boolean {
 // Outfit Photo, between the stages: the garments found on the person. The user picks which to add,
 // confirms the exact price, and only then are images made.
 export default function PickScreen() {
-  const { scanId, uri } = useLocalSearchParams<{ scanId: string; uri?: string }>();
+  const { scanId, uri, onboarding } = useLocalSearchParams<{ scanId: string; uri?: string; onboarding?: string }>();
+  // First 3 Pieces: at most ROUND_CAP pieces per round, like the garment path.
+  const cap = onboarding === "1" ? ROUND_CAP : undefined;
+  const toast = useToast();
   const router = useRouter();
   const { billing, prices, credits, refresh } = useCredits();
   const [scan, setScan] = useState<OutfitScan | null>(() => (scanId ? cachedScan(scanId) ?? null : null));
@@ -65,7 +69,7 @@ export default function PickScreen() {
       rememberScan(updated);
       setScan(updated);
       const added = updated.candidates.find((c) => !before.has(c.id));
-      if (added) setPicks([...selected, added.id]);
+      if (added && (cap === undefined || selected.length < cap)) setPicks([...selected, added.id]);
       setMarking(false);
     } catch (e) {
       setMarkError(e instanceof Error ? e.message : "Couldn't add it. Try again.");
@@ -80,7 +84,7 @@ export default function PickScreen() {
   }, [scan, scanId]);
 
   const candidates = useMemo(() => (scan ? pickable(scan).filter((c) => !removed.includes(c.id)) : []), [scan, removed]);
-  const selected = (picks ?? defaultPicks(candidates)).filter((id) => candidates.some((c) => c.id === id));
+  const selected = (picks ?? cappedPicks(defaultPicks(candidates), cap)).filter((id) => candidates.some((c) => c.id === id));
   const unitPrice = billing ? prices.garment : undefined;
   const total = unitPrice !== undefined ? selected.length * unitPrice : 0;
   const available = credits?.available ?? 0;
@@ -89,6 +93,7 @@ export default function PickScreen() {
 
   const toggle = (id: string) => {
     haptics.selection();
+    if (!selected.includes(id) && cap !== undefined && selected.length >= cap) return toast.show(CAP_TOAST);
     setPicks(selected.includes(id) ? selected.filter((p) => p !== id) : [...selected, id]);
   };
 
@@ -111,7 +116,7 @@ export default function PickScreen() {
       haptics.success();
       const failed = result.failed.map((id) => scan.candidates.find((c) => c.id === id)).filter(Boolean)
         .map((c) => candidateTitle(c as OutfitCandidate).toLowerCase());
-      router.replace({ pathname: "/outfit/review", params: failed.length ? { failed: failed.join(", ") } : {} });
+      router.replace({ pathname: "/outfit/review", params: { ...(failed.length ? { failed: failed.join(", ") } : {}), ...(cap ? { onboarding: "1" } : {}) } });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong. Try again.";
       if (message === NO_CREDITS) setShort(true);

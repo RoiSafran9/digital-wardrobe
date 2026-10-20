@@ -18,7 +18,8 @@ export const SHOW_BOXES_MS = 1400;  // let the boxes land before moving on
 // open the pick screen. No image is generated and no credits are used here.
 export default function DetectScreen() {
   const router = useRouter();
-  const { uri } = useLocalSearchParams<{ uri: string }>();
+  const { uri, onboarding } = useLocalSearchParams<{ uri: string; onboarding?: string }>();
+  const mode = onboarding === "1" ? { onboarding: "1" } : {};  // First 3 Pieces carries on through pick and review
   const [scan, setScan] = useState<OutfitScan | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +38,7 @@ export default function DetectScreen() {
 
   useEffect(() => {
     if (!scan) return;
-    const timer = setTimeout(() => router.replace({ pathname: "/outfit/pick", params: { scanId: scan.id, uri } }), SHOW_BOXES_MS);
+    const timer = setTimeout(() => router.replace({ pathname: "/outfit/pick", params: { scanId: scan.id, uri, ...mode } }), SHOW_BOXES_MS);
     return () => clearTimeout(timer);
   }, [scan]);
 
@@ -53,7 +54,7 @@ export default function DetectScreen() {
           <View style={{ gap: 12 }}>
             <Text style={{ ...type.section, color: colors.label }}>Couldn't check this photo</Text>
             <Text style={{ ...type.body, color: colors.secondaryLabel }}>{error}</Text>
-            <Button title="Try Another Outfit Photo" onPress={() => router.replace({ pathname: "/capture/camera", params: { mode: "outfit" } })} />
+            <Button title="Try Another Outfit Photo" onPress={() => router.replace({ pathname: "/capture/camera", params: { mode: "outfit", ...mode } })} />
           </View>
         ) : (
           <View style={{ alignItems: "center", gap: 8 }}>

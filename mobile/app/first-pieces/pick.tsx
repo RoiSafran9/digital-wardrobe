@@ -7,14 +7,14 @@ import { ScanBand } from "../../src/components/outfit/ScanBand";
 import { creditsLabel } from "../../src/credits/credits";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { useFirstPieces } from "../../src/firstPieces/FirstPiecesProvider";
-import { FIRST_GOAL, ROUND_CAP, roundQuote, type RoundPhoto, type RoundPiece } from "../../src/firstPieces/round";
+import { CAP_TOAST, FIRST_GOAL, ROUND_CAP, roundQuote, type RoundPhoto, type RoundPiece } from "../../src/firstPieces/round";
 import { garmentName } from "../../src/garmentName";
 import { haptics } from "../../src/haptics";
 import { isWornRejection, TRY_AS_OUTFIT } from "../../src/outfit/outfit";
 import { colors, radius, type } from "../../src/theme";
 import { BackButton, Button, CostSheet, InsufficientCreditsSheet, useToast } from "../../src/ui";
 
-export const CAP_TOAST = `Up to ${ROUND_CAP} per round — deselect one first.`;
+export { CAP_TOAST };
 
 const pieceLabel = (photo: RoundPhoto, index: number) => {
   const p = photo.scan?.pieces.find((x) => x.index === index);

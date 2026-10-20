@@ -13,6 +13,11 @@ export function defaultPicks(candidates: OutfitCandidate[]): string[] {
   return candidates.filter((c) => c.visibility !== "low").map((c) => c.id);
 }
 
+// First 3 Pieces (onboarding mode): a round makes at most `cap` pieces, so the first picks are capped too.
+export function cappedPicks(ids: string[], cap: number | undefined): string[] {
+  return cap === undefined ? ids : ids.slice(0, cap);
+}
+
 export function candidateTitle(c: OutfitCandidate): string {
   return c.category.charAt(0).toUpperCase() + c.category.slice(1);
 }

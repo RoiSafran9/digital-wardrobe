@@ -15,6 +15,7 @@ import { garmentName } from "../../src/garmentName";
 import { haptics } from "../../src/haptics";
 import { AI_NOTE } from "../../src/outfit/outfit";
 import { useCaptureJobs } from "../../src/store/captureJobs";
+import { idsParam } from "../../src/firstPieces/celebrate";
 import { colors, hitSlopFor, radius, type } from "../../src/theme";
 import { Button, CostSheet, InsufficientCreditsSheet } from "../../src/ui";
 
@@ -22,7 +23,7 @@ import { Button, CostSheet, InsufficientCreditsSheet } from "../../src/ui";
 // next to the generated image. Listed from the server, so it works after an app restart. Credits were
 // charged when an image was made (owner decision D4). Regenerate remakes one result as a new front image (D14).
 export default function ReviewScreen() {
-  const { failed } = useLocalSearchParams<{ failed?: string }>();
+  const { failed, onboarding } = useLocalSearchParams<{ failed?: string; onboarding?: string }>();
   const router = useRouter();
   const { billing, prices, refresh } = useCredits();
   const { setSaved } = useCaptureJobs();
@@ -77,8 +78,13 @@ export default function ReviewScreen() {
         else await keepItem(i);
       }
       haptics.success();
-      setSaved({ items: kept, creditsUsed: billing && prices.garment !== undefined ? list.length * prices.garment : null });
       void refresh();
+      // First 3 Pieces: the kept pieces open the closet with the first-success popup instead of Saved.
+      if (onboarding === "1" && kept.length) {
+        router.replace({ pathname: "/closet", params: { celebrate: "1", ids: idsParam(kept.map((i) => i.item_id)), at: String(Date.now()) } });
+        return;
+      }
+      setSaved({ items: kept, creditsUsed: billing && prices.garment !== undefined ? list.length * prices.garment : null });
       router.replace("/capture/saved");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Try again.");

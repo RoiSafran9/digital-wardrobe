@@ -1,5 +1,5 @@
 # Roadmap — Digital Wardrobe
-Updated: 2026-10-19
+Updated: 2026-10-20
 
 ## Done — single-owner app
 - [x] Pipeline: quality check → one Gemini call for detection + facts → crop → catalog image with color/text check and retries → tier
@@ -22,8 +22,8 @@ Updated: 2026-10-19
 - [x] M4 — End-to-end two-user verification (automated on the local stack; on-device check by the owner), storage sweeper, product docs updated
 - [x] M5 — Credit system readiness: job `cost_credits`, server price list (off), credit gate hooks, `GET /v1/prices`, [integration notes](superpowers/specs/2026-10-18-credits-readiness.md); no payments
 
-## Owner steps open
-See README → "Owner setup still open": hosted Supabase SMTP and email template, `db push`, backend secret key, moving the current closet, the on-device account-mode check.
+## Owner steps
+Done: hosted Supabase SMTP (Resend, `kipscloset.com`) and code templates, all migrations on hosted, backend secret key, the owner's closet moved, the on-device account-mode check, the tunnel at `api.kipscloset.com`. Open: see README → "Owner setup status".
 
 ## AI Credits workstream ([decisions](CREDITS.md))
 - [x] Approve one pooled credit balance per account and a transparent in-app AI price list
@@ -42,18 +42,19 @@ See README → "Owner setup still open": hosted Supabase SMTP and email template
 - [ ] F&F grant process, activity tracking and cost caps
 - [ ] Before paid public launch: payments and receipt verification, refunds and App Store compliance
 
-## Outfit Photo import — planned, NOT BUILT
+## Outfit Photo import — BUILT (behind `WARDROBE_OUTFIT=on`)
 
 - [x] Agree product direction: keep existing garment-only photos, add a **worn-outfit two-stage import** for a photo of a person wearing clothes.
 - [x] Agree Stage 1 detection/candidate preview + user selection, followed by Stage 2 quality generation **only for selected garments**.
 - [x] Agree Stage 1 detection is **free to the user**; confirmed successful high-quality front-image actions use the existing wallet and server price list.
 - [x] Document [feature spec](superpowers/specs/2026-10-19-outfit-photo-two-step-design.md) and [Claude Code research/POC task](tasks/outfit-photo-two-step-flow.md).
-- [ ] Research current worn-garment extraction methods, quality and commercial/privacy licenses.
-- [ ] Offline POC on consented person photos compared to the same real garments laid flat; report fidelity and cost.
-- [ ] Approve launch scope, candidate UI, uncertainty disclosure and subjective failure/regeneration credit policy.
-- [ ] Implement secure candidate scan with previews, selection and confirmation (do not modify existing garment-only route).
-- [ ] Integrate HQ generation, per-selected action billing, privacy tests and resumable jobs, all behind feature flag.
-- [ ] Implement iPhone candidate selection and final review; limited F&F experiment.
+- [x] Research and offline PoC with a fidelity/cost evaluation ([evaluation](superpowers/specs/outfit-import-evaluation.md), PR #14)
+- [x] Free scan with preview crops, behind the flag (PR #15)
+- [x] Generate picked garments, price consent, review before the closet (PR #16)
+- [x] iPhone: outfit mode, pick with exact quote, review (PR #17), redesigned (PR #24)
+- [x] Follow-ups: correct a garment's type, mark a missed garment, ↻ Regenerate in review
+- [x] Hosted migrations applied and owner phone check (2026-10-19)
+- [ ] Real worn photos from beta testers: watch fidelity on saturated colors and layered garments
 
 ## TestFlight Friends & Family Beta — next main delivery
 
@@ -61,13 +62,13 @@ See README → "Owner setup still open": hosted Supabase SMTP and email template
 **Claude Code kickoff:** [Beta TestFlight staged execution](tasks/testflight-beta-launch-execution.md)
 
 - [x] Set beta direction: real iOS TestFlight build, external friends, per-account private wardrobe, free welcome Credits, **no purchases/subscriptions/payments**.
-- [ ] Freeze beta scope and migrate to a supported image-generation model with full regression evaluation; decide whether Outfit import is ready or feature-flagged for a follow-up.
-- [ ] Complete hosted Supabase auth SMTP, verified 6-digit email codes, database migrations, private storage and off-LAN account tests.
-- [x] Implement secure **exactly-once welcome-credit grant** after verified eligible signup (built 2026-10-19 behind `WARDROBE_WELCOME_CREDITS` / `WARDROBE_BETA_INVITES`; amount not set yet).
-- [ ] Host FastAPI + durable worker behind HTTPS, with bounded concurrency, timeouts, restarts and cost controls; demonstrate mobile data usage with Mac off. *(Prepared 2026-10-19: `Dockerfile`, [DEPLOY.md](DEPLOY.md), daily AI job cap, scheduled cleanup. Still open: pick and pay for a host, deploy, cellular test.)*
-- [ ] Ship user-initiated account deletion covering private photos, privacy/support links and safe data retention policy. *(Deletion built in redesign M8: `DELETE /v1/account` + Account → Delete Account; privacy/support links and the retention policy still open.)*
+- [x] Freeze beta scope: Outfit import in the beta (`WARDROBE_OUTFIT=on`); image model stays `gemini-2.5-flash-image` with an automatic fallback to `gemini-3.1-flash-image` (owner's choice after a 4-item comparison, 2026-10-19).
+- [x] Hosted Supabase auth SMTP (Resend, `noreply@kipscloset.com`), 6-digit codes for sign-in and sign-up, database migrations, private storage; off-LAN access through `api.kipscloset.com`.
+- [x] Implement secure **exactly-once welcome-credit grant** after verified eligible signup (built 2026-10-19 behind `WARDROBE_WELCOME_CREDITS` / `WARDROBE_BETA_INVITES`; amount 40).
+- [ ] Host FastAPI + durable worker behind HTTPS, with bounded concurrency, timeouts, restarts and cost controls. *(For the small beta: the owner's Mac behind a Cloudflare Tunnel at `https://api.kipscloset.com`. Prepared for later: `Dockerfile`, [DEPLOY.md](DEPLOY.md), daily AI job cap, scheduled cleanup. Still open: a real cloud host so the Mac can be off.)*
+- [ ] Ship user-initiated account deletion covering private photos, privacy/support links and safe data retention policy. *(Built: `DELETE /v1/account` + Account → Delete Account; in-app Help & Privacy screens; `kipscloset.com` landing, privacy and support pages. Retention policy text still open.)*
 - [ ] Add operational health, AI cost monitoring, free Outfit-detection rate limits, provider-failure kill switch, privacy-respecting basic analytics. *(Built 2026-10-19: `/healthz`, free-scan limits, `WARDROBE_GENERATION=off` pause switch, Gemini timeouts. Still open: cost monitoring/alerts, analytics.)*
-- [ ] Configure Apple Developer / Expo EAS / `mobile/app.json` app identity / `mobile/eas.json`; build and upload store-signed TestFlight IPA. *(Prepared 2026-10-19: Expo project, `eas.json`, permission texts, release API-URL guard. Still open: bundle ID, Apple Developer account, first build.)*
+- [ ] Configure Apple Developer / Expo EAS / `mobile/app.json` app identity / `mobile/eas.json`; build and upload store-signed TestFlight IPA. *(Done 2026-10-19: Expo project, `eas.json`, bundle ID `com.roisafran.kips`, app name KIPS and icon, App Store Connect app and texts, review demo account, release API-URL guard. Still open: TestFlight builds and review.)*
 - [ ] Run end-to-end phone checks and Apple external Beta App Review; invite 3–5 testers, then 10–20 if stable.
 - [ ] Confirm 5 friends can complete sign-in → free credits → create → reopen closet with no help, on networks other than home Wi-Fi.
 
@@ -80,7 +81,7 @@ See README → "Owner setup still open": hosted Supabase SMTP and email template
 
 ## Next (candidates — owner to pick)
 - Main priority: follow the [Friends & Family Beta Master Plan](tasks/testflight-beta-launch-master-plan.md) — no payment integration in beta
-- Complete startup credit grant, cloud hosting, hosted auth and native iOS/TestFlight distribution
+- Beta env on the server (billing on, prices, welcome grant), TestFlight build and testers; later a cloud host
 - Better print fidelity across 360 angles (prompt work or a better model)
 - Labeled eval set of real photos to measure fidelity
 - Restore a removed item inside the app
@@ -92,7 +93,7 @@ Kept so the intent isn't lost; none is committed.
 - Regenerating an already-saved item from its retained original (account-mode items now keep the original upload)
 - A fixed category list (the plan had nine: T-Shirts, Shirts, Sweaters & Hoodies, Pants, Shorts, Jackets & Coats, Shoes, Accessories, Dresses & Skirts); brand, name and notes fields
 - Original-photo retention notice and controls for deleting retained originals
-- Outfit creation and recommendations, weather/context suggestions, AI wardrobe search
+- Outfit recommendations/styling, weather/context suggestions, AI wardrobe search
 
 ## Workflow
 Small focused commits directly to `main` (the owner's choice); a branch or PR when the owner asks. Record material product or architecture changes in the PRD/architecture docs in the same change.

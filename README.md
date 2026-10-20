@@ -1,15 +1,17 @@
-# Digital Wardrobe
+# KIPS (Digital Wardrobe)
 
-An iPhone closet. Photograph clothes laid on a bed or floor; the app turns each piece into a clean, faithful catalog image with its facts (category, colors, pattern, details, printed text) and keeps them together as a browsable closet.
+An iPhone closet. Photograph clothes laid on a bed or floor — or a photo of yourself wearing them — and the app turns each piece into a clean, faithful catalog image with its facts (category, colors, pattern, details, printed text) and keeps them together as a browsable closet.
 
-> Status: **working app with accounts.** An Expo app (`mobile/`) talks to a FastAPI server (`api/`) on the owner's Mac that runs the Gemini pipeline (`pipeline/`). Signed in, each person's items, photos and AI jobs live in Supabase (Postgres + private Storage) and are isolated by row level security and the API; without Supabase settings the app and server run in **local mode**, the original single-owner setup over `runs/`. Design and decisions: [multi-user design](docs/superpowers/specs/2026-10-18-multiuser-architecture-design.md). Only the owner uses it today; the server isn't reachable from outside the home network yet.
+> Status: **working app with accounts.** An Expo app (`mobile/`) talks to a FastAPI server (`api/`) on the owner's Mac that runs the Gemini pipeline (`pipeline/`). Signed in, each person's items, photos and AI jobs live in Supabase (Postgres + private Storage) and are isolated by row level security and the API; without Supabase settings the app and server run in **local mode**, the original single-owner setup over `runs/`. Design and decisions: [multi-user design](docs/superpowers/specs/2026-10-18-multiuser-architecture-design.md). The server runs on the owner's Mac and is reachable at `https://api.kipscloset.com` (Cloudflare Tunnel); the website `kipscloset.com` has the landing, privacy and support pages. A friends-and-family TestFlight beta is being prepared ([DEPLOY.md](docs/DEPLOY.md)).
 
 ## What it does
 - Sign in with a 6-digit email code (account mode) or run without an account (local mode, development only).
-- Capture one or several pieces in one photo (camera or library); each piece becomes its own item and lands in the closet — no separate review/Save step.
+- **Garment photo:** capture one or several pieces laid flat (camera or library); a free pre-scan shows the pieces found, the user picks which to create, and each becomes its own item.
+- **Outfit photo** (behind `WARDROBE_OUTFIT=on`): a photo of someone wearing clothes; a free scan finds the garments, the user picks, corrects or adds missed ones, the picks are generated as catalog images and reviewed (keep, discard, regenerate) before entering the closet.
 - Pipeline: quality check, detection with facts, catalog image generation with a color/text check and retries, local background removal (rembg). Pieces touching the photo edge are completed with a tip; real failures ask for a retake.
-- Tabs: Home (running garments, stats, quick add, just added, categories) · Closet (grid, category filter) · Add · Account.
-- Item sheet: front/back, edit facts, remove (recoverable soft delete), optional back photo, optional AI 360 "on body" view (labelled as AI).
+- Onboarding and sign-in (name at sign-up), then tabs: Home · Closet · Add · Account ([SCREENS.md](docs/SCREENS.md)).
+- Item sheet: front/back/360°, edit facts and name, remove (recoverable soft delete), optional back photo, optional AI 360 "on body" view (labelled as AI).
+- AI Credits: balance, price list and activity in Account; every paid action shows its cost first; a one-time welcome grant; billing off unless the server enables it. "Notify when ready" push, Help & Support, Privacy, Delete Account.
 
 ## Project source of truth
 - [Product](PRODUCT.md) — users, purpose, principles · [Design system](DESIGN.md) — native iOS look and motion
@@ -25,7 +27,7 @@ GitHub is the authoritative source for **code and project decisions**. Clothing 
 - **App:** Expo SDK 57 (React Native + TypeScript, Expo Router), run in Expo Go; tests with Jest.
 - **Accounts and data:** Supabase Auth (6-digit email code), Postgres with row level security, a private Storage bucket (`supabase/` holds migrations, pgTAP tests and the local CLI config).
 - **AI backend:** FastAPI + the Python pipeline (Gemini vision/image models, OpenCV, local rembg cutouts), with a Postgres-backed job queue and an in-process worker. Hosted on the owner's Mac for now.
-- **Later:** EAS Build → App Store Connect → TestFlight; a cloud host for the backend.
+- **Distribution:** EAS Build → App Store Connect → TestFlight (bundle ID `com.roisafran.kips`). A Docker image for a cloud host is prepared, not deployed.
 
 ## Run it (local mode)
 ```bash
@@ -63,9 +65,9 @@ The hosted project's settings live in `mobile/.env` (git-ignored, publishable ke
 2. Start the API in account mode (one terminal, repo root): `WARDROBE_AUTH=on SUPABASE_URL=http://127.0.0.1:54321 SUPABASE_SECRET_KEY=<local secret key> SUPABASE_PUBLIC_URL=http://<your-Mac-LAN-IP>:54321 uvicorn api.main:app --host 0.0.0.0 --port 8000`. `SUPABASE_PUBLIC_URL` is what the phone uses to load your private images through signed links.
 3. Sign in on the phone and add a piece. Move your existing closet in with `python -m scripts.migrate_runs --email <you> --apply` (against the same Supabase).
 
-Away from home Wi-Fi: point `EXPO_PUBLIC_API_URL` at a tunnel to the Mac's port 8000 (e.g. Cloudflare Tunnel or ngrok), and use a Supabase URL the phone can reach (the hosted project, or a second tunnel for the local stack) for both `EXPO_PUBLIC_SUPABASE_URL` and the server's `SUPABASE_PUBLIC_URL`. Not set up yet.
+Away from home Wi-Fi: a Cloudflare Tunnel (`cloudflared`, a launchd service on the Mac) serves the Mac's port 8000 at `https://api.kipscloset.com`; release builds use that URL with the hosted Supabase project. The tunnel restarts on its own; the server must be started by hand after a reboot, and the Mac must not sleep.
 
-To use the hosted project: configure custom SMTP in Supabase (Auth → SMTP), put `{{ .Token }}` in its Magic Link email template (see `supabase/templates/magic_link.html`), then delete `mobile/.env.local`. Never put a secret or service-role key in `mobile/`.
+The hosted project is set up: custom SMTP through Resend (sender `noreply@kipscloset.com`), 6-digit code templates for sign-in and sign-up, and every migration applied. Delete `mobile/.env.local` to use it from development. Never put a secret or service-role key in `mobile/`.
 
 **AI Credits (billing off by default):** every account has a wallet (`credit_wallets`) and an append-only activity ledger (`credit_ledger`). Billing turns on only with `WARDROBE_BILLING=on` plus a price for every action in `WARDROBE_CREDIT_PRICES` (see `.env.example`); then jobs hold and charge credits per AI action. Don't switch it on until the app shows prices (M3) and the hosted database has the billing migration. The signed-in app can read `GET /v1/credits`. To give someone promotional credits (admin only, from the repo root with the server's `.env`):
 
@@ -79,13 +81,10 @@ It is a dry run until you add `--apply`; the same `--key` never grants twice. Th
 
 **Testing:** `PYTHONPATH=$PWD .venv/bin/pytest -q` (backend), `cd mobile && npx jest && npx tsc --noEmit` (app), `npx supabase test db` (database rules). With the local stack running and `SUPABASE_TEST_URL`, `SUPABASE_TEST_SECRET_KEY`, `SUPABASE_TEST_PUBLISHABLE_KEY` set, `pytest tests/integration` runs the two-user end-to-end suite.
 
-## Owner setup still open
+## Owner setup status
 
-- Hosted Supabase: custom SMTP (so code emails can be sent), then `{{ .Token }}` in the Magic Link template; database password reset and `npx supabase db push`; a backend secret key for the server.
-- Apply the AI Credits wallet migration to the hosted project with `npx supabase db push` (after reviewing the PR); decide the F&F grant size before running `scripts/grant_credits.py` against it.
-- Move the current closet: `python -m scripts.migrate_runs --email <you> --apply`.
-- Try the app in account mode on the iPhone (steps above).
+Done: hosted Supabase (SMTP, code templates, all migrations), the server secret key, the owner's closet moved into their account, the tunnel at `api.kipscloset.com`, the website, the App Store Connect app and the review demo account. Open: the beta's server env (billing, prices, welcome grant — [DEPLOY.md](docs/DEPLOY.md)), TestFlight builds and testers.
 
 ## Next
 
-**Primary next goal:** [Friends & Family TestFlight Beta](docs/tasks/testflight-beta-launch-master-plan.md). Finish the Outfit quality decision, hosted Auth/SMTP and cloud worker, automatic **one-time free AI Credits grant per eligible new user**, production iOS build, privacy/deletion and external TestFlight testing. **No payments or in-app purchases in beta.**
+**Primary next goal:** [Friends & Family TestFlight Beta](docs/tasks/testflight-beta-launch-master-plan.md): turn on the beta env, ship the TestFlight build, invite testers. **No payments or in-app purchases in beta.**

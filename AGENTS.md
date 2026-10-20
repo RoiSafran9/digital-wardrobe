@@ -16,12 +16,13 @@ This repository is the source of truth for Digital Wardrobe code and product dec
 - **Jobs:** AI work in account mode is a `generation_jobs` row run by the worker. Job-creating requests carry an `Idempotency-Key`; retries must never create duplicate items or a second paid model call.
 - **Garment fidelity:** the catalog image reproduces the real piece as photographed (color, wash, texture, print, text, trims, proportions), only unfolded, smoothed and isolated. Don't invent logos or details. Pieces running past the photo edge are completed, with a non-blocking tip. Generated views that weren't photographed (360) are labelled as AI.
 - Closet images: transparent cutout first, white-background generated image as fallback, photo crop last. Removal is a soft delete and stays recoverable; the model's original facts are kept on first edit.
-- Cost and latency: no extra paid model calls or waiting beyond what a feature needs; expensive features run only on request. Billing stays off until the owner sets prices.
+- Cost and latency: no extra paid model calls or waiting beyond what a feature needs; expensive features run only on request. Prices and grants come only from server env; billing is off unless `WARDROBE_BILLING=on`.
+- Two capture flows must keep working: garment photo (laid flat) and outfit photo (worn, behind `WARDROBE_OUTFIT=on`).
 - Add tests for behavior changes and update `docs/PRD.md`, `docs/ARCHITECTURE.md` or `docs/ROADMAP.md` when an agreed requirement or design changes.
 - No invented users, testimonials or metrics in docs or UI.
 
 ## Credits decision
-- Approved product direction: **one unified AI Credits wallet per account**, with **billing per user-requested AI generation action rather than per garment record** (front image, optional back image, one bundled 360 action), a remaining-balance meter in Account, and an in-app AI Price List. Built so far: only the M5 hooks (job `cost_credits`, env price list, a no-op `CreditGate`, `GET /v1/prices`); billing is off and there is no wallet, ledger, meter or price-list screen.
+- Approved product direction: **one unified AI Credits wallet per account**, with **billing per user-requested AI generation action rather than per garment record** (front image, optional back image, one bundled 360 action), a remaining-balance meter in Account, and an in-app AI Price List. Built: wallet and append-only ledger, backend-only grant/reserve/settle/release, per-action billing behind `WARDROBE_BILLING=on` (off by default), reconcile, the in-app balance/price list/activity and cost confirmations, and the one-time welcome grant. There are no purchases.
 - Do not invent numerical credit prices or purchase plans. Build billing only on reviewed scope: server-owned prices, identity from the verified token, atomic/idempotent ledger changes, clear user confirmation and failure reconciliation. Read `docs/CREDITS.md` (decisions, and where they differ from the built hooks) first.
 
 ## Checks

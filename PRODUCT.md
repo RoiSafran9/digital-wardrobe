@@ -8,9 +8,9 @@ ios
 
 ## Users
 
-Today: the owner, using it on their own iPhone on home Wi-Fi, photographing their real clothes to build a digital copy of their closet.
+Today: the owner, photographing their real clothes to build a digital copy of their closet, and a small friends-and-family TestFlight beta being prepared (app name **KIPS**).
 
-Intended: a product for other people with the same job. Accounts and per-user private wardrobes exist (email-code sign-in); the backend still runs on the owner's Mac, so other people can't use it yet (see Capabilities and Constraints).
+Intended: a product for other people with the same job. Accounts and per-user private wardrobes exist (email-code sign-in); the backend runs on the owner's Mac but is reachable from anywhere at `api.kipscloset.com` (see Capabilities and Constraints).
 
 ## Product Purpose
 
@@ -32,12 +32,13 @@ Fidelity to the owner's actual garment, not an idealized product shot. Each piec
 - Pipeline per photo: quality check → detection with facts (Gemini vision) → crop → catalog image generation (Gemini image) with a color check and retries → local background removal (rembg, no API cost).
 - Pieces touching the photo edge are completed rather than rejected, with a non-blocking tip; real failures ask for a retake with a concrete instruction.
 - Paid model calls cost money; the owner prefers no extra calls or added latency beyond what a feature needs.
-- Backend runs on the owner's Mac (FastAPI); the phone reaches it over the LAN. Signed in, items, photos and AI jobs are stored per account in Supabase and follow the account across devices; work keeps running on the server if the phone disconnects. Without Supabase settings the app runs in local mode over `runs/`. No cloud host yet.
+- Backend runs on the owner's Mac (FastAPI), reachable over HTTPS at `api.kipscloset.com` through a Cloudflare Tunnel (home Wi-Fi in development). Signed in, items, photos and AI jobs are stored per account in Supabase and follow the account across devices; work keeps running on the server if the phone disconnects. Without Supabase settings the app runs in local mode over `runs/`. A Docker image for a cloud host is prepared, not deployed; the Mac must stay on and awake.
 - Removed items are soft-deleted and recoverable.
 - Optional 360 "on body" view per item: four AI ghost-mannequin angles (~16¢, ~1 min), made on request in the background and labelled as AI.
-- AI Credits wallet, ledger, per-action pricing hooks, automated reconciliation and in-app balance/price views are already implemented. Actual deduction remains OFF by default unless `WARDROBE_BILLING=on` is configured and verified. There is no payment integration. Automatic starter Credits for new beta users are planned, not yet built.
-- **Planned (not implemented):** a second capture path for photos of a person wearing multiple garments: detect candidates first, let the user choose, then generate high-quality catalog fronts only for chosen candidates. Detection is free to the user; paid AI-generation actions use the same account wallet. Preserve the existing laid-flat capture route. See `docs/superpowers/specs/2026-10-19-outfit-photo-two-step-design.md`.
-- Undecided: outfit recommendations/styling, the cloud host, and opening the product to other users.
+- AI Credits wallet, ledger, per-action pricing hooks, automated reconciliation and in-app balance/price views are already implemented. Actual deduction remains OFF by default unless `WARDROBE_BILLING=on` is configured and verified. There is no payment integration. A one-time 40-credit welcome grant for new beta accounts is built (`WARDROBE_WELCOME_CREDITS`, `WARDROBE_BETA_INVITES`).
+- **Outfit photo import (built, behind `WARDROBE_OUTFIT=on`):** a second capture path for a photo of a person wearing clothes: a free scan finds the garments, the user picks (and can correct or add missed ones), catalog fronts are generated only for the picks at the front-image price, and results wait in a review step (keep, discard, regenerate) before they enter the closet. The laid-flat garment route is unchanged. See `docs/superpowers/specs/2026-10-19-outfit-photo-two-step-design.md`.
+- Garment photos get a free pre-scan too: the user sees the pieces found and picks which to create before paying.
+- Undecided: outfit recommendations/styling, a cloud host, and opening the product beyond the friends-and-family beta.
 
 ## Confirmed direction: AI Credits
 

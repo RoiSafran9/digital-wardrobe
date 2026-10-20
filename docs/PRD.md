@@ -1,5 +1,5 @@
 # Product Requirements — Digital Wardrobe
-Status: **Describes the app as built** · Updated: 2026-10-18
+Status: **Describes the app as built** · Updated: 2026-10-20
 
 `PRODUCT.md` holds users, purpose and principles; this document holds the concrete requirements. Ideas from earlier planning that are not built are listed under "Later" in [ROADMAP.md](ROADMAP.md).
 
@@ -7,7 +7,7 @@ Status: **Describes the app as built** · Updated: 2026-10-18
 Know what you own. Turn a casual phone photo of clothes into a clean, faithful catalog image of each piece and keep them together as a closet you can scan and recognize as yours.
 
 ## Users
-Today: the owner, on their own iPhone over home Wi-Fi. Intended: other people with the same job, each with a private wardrobe; accounts exist, but the backend still runs on the owner's Mac, so nobody else can use it yet.
+Today: the owner, and a friends-and-family TestFlight beta being prepared (app name KIPS). Each person has a private wardrobe; the backend runs on the owner's Mac and is reachable at `api.kipscloset.com`.
 
 ## Requirements as built
 
@@ -19,7 +19,7 @@ Today: the owner, on their own iPhone over home Wi-Fi. Intended: other people wi
 5. **Local mode:** a development build without Supabase settings runs as the original single-owner app over `runs/`; Account shows "Local mode" ("Not signed in. Your items live on your computer's wardrobe server."). A release build without settings won't start.
 
 ### Capture
-6. Take a photo with the in-app camera or choose one from the library (Add tab or Home). A preview confirms the photo and, with billing on, the most front images to pay for; processing runs on the server (the user can leave the screen), then a Results screen shows the pieces made.
+6. Take a photo with the in-app camera or choose one from the library (Add tab or Home). In account mode a **free pre-scan** shows the pieces found with numbered boxes; the user leaves out any piece and sees the cost ("Generate N Items · N credits"). Processing runs on the server (the user can leave the screen, optionally get a push when ready), then a Results screen shows the pieces made. If the pre-scan fails, the approved max-fronts quote is used.
 7. One photo may hold one piece or several side by side; each included piece becomes its own item. Clothes being worn, accessories (sunglasses, jewelry) and non-clothing objects are skipped.
 8. The user waits in the app (roughly 15–60 s) with a staged status ("Finding your pieces" → "Smoothing them out" → "Cutting them out") that never claims to be done early.
 9. A photo that is blurry, too dark or too small is rejected before any model call; the app asks to try again laid flat in good light (for a back photo it names the exact problem).
@@ -48,17 +48,17 @@ Today: the owner, on their own iPhone over home Wi-Fi. Intended: other people wi
 24. Home: greeting with the balance, a search field into the closet, "Add to closet" tiles that name the photo they want (garment photo: camera or library → garment flow; outfit photo: choose a photo → outfit flow), and the closet as category rows. Empty closet: labelled garment-photo and outfit-photo rows plus tips. Every photo entry point in the app names the kind of photo it expects.
 25. Account: profile (initials, email), AI Credits balance of what was granted with a low-credit meter, price list and activity, Appearance (System/Light/Dark), Sign Out and Delete Account; or the local-mode note.
 
-## AI Credits — confirmed direction (not built beyond hooks)
+## AI Credits — confirmed direction (built; billing off unless enabled on the server)
 - **One AI Credits wallet per account**, not separate caps for garments, back images and 360, and not provider tokens or currency as the unit.
 - **Billing is per requested AI generation action, not per saved garment or existing wardrobe item.** Separate actions are front-image generation, optional back-image generation and optional 360 generation (one user-facing 360 action includes its four generated views). Each billable action has a fixed, **user-visible** credit price, presented before generation and in an in-app **AI Price List**. A garment can receive a back image or 360 later without requiring a second front-image purchase.
 - Account shows **credits remaining** with a clearly labeled usage meter; no invented monthly reset or ambiguous denominator when balances come from several grants or purchases.
 - F&F participants may receive promotional credits; real-launch users may buy credit packs. **Amounts, prices and policies are not approved.**
 - No surprise charges for hidden AI retries, timeouts or failed generations. Users without enough credits can't start a chargeable action but keep full access to their wardrobe. Wallet changes are server-controlled.
-- Built today: job cost recording, the server price list (off), credit gate hooks and `GET /v1/prices`; an over-budget request would get "not enough AI credits" (HTTP 402) before anything is uploaded. No wallet, balance, meter, price-list screen or purchases. Details and open decisions: [CREDITS.md](CREDITS.md).
+- Built: per-account wallet and append-only ledger, per-action billing behind `WARDROBE_BILLING=on` (hold → charge only what was made → release), reconcile of unfinished holds, in-app balance, price list, activity and a cost sheet before every paid action, a one-time welcome grant (F&F: 40), and "not enough AI credits" (HTTP 402) before anything is uploaded. No purchases. Details and open decisions: [CREDITS.md](CREDITS.md).
 
-## Planned feature — import garments from a photo of a person wearing clothes (NOT BUILT)
+## Outfit photo import — garments from a photo of a person wearing clothes (BUILT, behind `WARDROBE_OUTFIT=on`)
 
-**Owner-approved high-level direction (2026-10-19):** support two separate input contexts without changing the existing laid-flat capture behavior.
+**Owner-approved direction (2026-10-19), now built (PRs #14–#17, #24 and follow-ups):** two separate input contexts, the laid-flat capture unchanged.
 
 1. **Garment Photo:** the current single/multi-piece photo pipeline remains as built.
 2. **Outfit Photo:** recognize clothing **worn by a person**, detect candidate items, show cheap original-image crop previews, let the user select/correct the desired items, display an exact AI Credits quote, and generate complete high-quality flat-lay catalog images **only for selected candidates**. Review generated results before saving in this new route.
@@ -67,7 +67,7 @@ Today: the owner, on their own iPhone over home Wi-Fi. Intended: other people wi
 5. Routing may be automatic with manual override, or explicit mode choice at first, after accuracy/cost benchmarking.
 6. Rescans, partial success, privacy/retention of photos containing people, ambiguous/multiple-person images and regeneration/refund policy need detailed design and evaluation.
 
-**Not yet implemented:** mode classification, worn-garment detection, candidate picker, person-photo reconstruction, selection-specific charging. These require an offline feasibility gate first.
+**As built:** the user chooses the mode (no automatic classification; a garment photo refused as worn offers "Try it as an outfit photo"); a free scan detects up to 8 worn garments with preview crops of the real photo; the user picks, corrects a garment's type, removes non-garments or marks a missed one; fronts are generated only for the picks at the front-image price (exact quote, `409` if the price changed); results wait in review (keep / discard / ↻ regenerate at one front's price) and are hidden from the closet until kept. Failed picks aren't charged. The person photo is never saved as an item file and is removed after 24 h. Screens: [SCREENS.md](SCREENS.md).
 
 See [two-stage outfit import design](superpowers/specs/2026-10-19-outfit-photo-two-step-design.md) and [Claude Code task](tasks/outfit-photo-two-step-flow.md).
 
@@ -77,14 +77,14 @@ See [two-stage outfit import design](superpowers/specs/2026-10-19-outfit-photo-t
 - Photos are sent to Gemini for processing; no secret key is ever in the app.
 
 ## Non-goals (current)
-Outfits and recommendations, sharing/social, shopping, payments, Sign in with Apple or passwords, brand detection, size/season tags.
+Outfit recommendations/styling, sharing/social, shopping, payments, Sign in with Apple or passwords (the only password account is the App Review demo account), brand detection, size/season tags.
 
 ## Acceptance
 - Automated: `pytest`, `npx jest`, `npx tsc --noEmit`, `npx supabase test db`, and the two-user suite `pytest tests/integration` on the local stack (another account can't read, change or delete your rows, files or jobs).
 - Manual, on the owner's iPhone: camera and library capture; a multi-piece photo yields one item per piece; catalog images recognizably the owner's pieces; blurry/dark photos rejected; edit, remove, back photo and 360 work and survive an app and server restart; sign-in, restart still signed in, sign-out.
 
 ## Open questions
-- **Outfit Photo import:** high-level two-stage direction approved, implementation and quality pending evaluation (see linked planned-feature section). Outfit recommendations remain undecided.
-- The cloud host, and opening the product to other users.
-- Exact credit prices **per front-image, back-image and 360 generation action**; multi-piece photos need an explicit counting and up-front quote rule. The number of garments stored is not itself a billing unit (see the credits integration notes).
+- Outfit recommendations/styling remain undecided.
+- A cloud host instead of the owner's Mac, and opening the product beyond the friends-and-family beta.
+- Public credit prices (F&F uses provisional 1 / 1 / 3) and purchase packs; regeneration and refund policy beyond the beta.
 - Better print fidelity across 360 angles.

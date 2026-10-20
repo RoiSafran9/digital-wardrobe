@@ -70,7 +70,7 @@ The existing new-user trigger creates a zero-balance wallet; `credit_grant` and 
 1. **Provisional F&F ratio is 1 front / 1 back / 3 for 360**, but final deployment/public prices still require verification. ~~Multi-front rule~~ decided (Confirmed §6). Never frame the price as ownership of a wardrobe item.
 2. Charge when successful generation completes versus at Save; handling created-but-unsaved previews.
 3. Number of free user-triggered regenerations, failure/refund thresholds.
-4. **Automatic one-time F&F starter grant is decided**; choose exact size (40 proposed), invite eligibility, limits, operator top-up rules and duration before enabling.
+4. **Automatic one-time F&F starter grant: decided and built** — 40 credits for every account (`WARDROBE_WELCOME_CREDITS=40`, `WARDROBE_BETA_INVITES=*`, granted once via `POST /v1/bootstrap`). Still open: operator top-up rules and duration.
 5. Real-launch free trial/packs/prices, expiration policies if any, and iOS in-app purchase flow.
 6. Account balance meter definition and low-balance experience.
 
@@ -84,9 +84,9 @@ The existing new-user trigger creates a zero-balance wallet; `credit_grant` and 
 - Monitor API/model cost separately from user credits; log action type, attempts, model cost, ledger operation, outcome and per-user usage without exposing private photos.
 - Test data isolation, atomic debit under parallel requests, insufficient-credit refusal, retries, failure releases/refunds and ledger auditability.
 
-## Planned Outfit Photo import (separate two-stage workflow; NOT BUILT)
+## Outfit Photo import (separate two-stage workflow; BUILT behind `WARDROBE_OUTFIT=on`)
 
-A photograph of a person wearing clothing can enter a **candidate detection + user-selection** step before final generation. That first step costs the app AI inference but consumes **zero user credits**. Only selected candidates submitted for successful high-quality catalog-front generation may be charged, using the **existing** front-image action price from the server/wallet. The user receives a quote and explicitly confirms the selected candidate IDs and total before generation; no automatic 360 or back-image charges. A final review/subjective rejection and manual regeneration refund rule remains open. Distinguish this two-stage flow from the existing laid-flat `max_fronts` pricing, which is already implemented and must continue working.
+A photograph of a person wearing clothing can enter a **candidate detection + user-selection** step before final generation. That first step costs the app AI inference but consumes **zero user credits**. Only selected candidates submitted for successful high-quality catalog-front generation may be charged, using the **existing** front-image action price from the server/wallet. The user receives a quote and explicitly confirms the selected candidate IDs and total before generation; no automatic 360 or back-image charges. **As built:** the scan never touches the wallet; generate holds the front price × picks and charges per image made (failed picks free); ↻ Regenerate in review is charged as one front image after a cost confirmation; discarding a result does not return its credits. Laid-flat photos now get a free pre-scan too, so the user picks the pieces before paying; the `max_fronts` quote remains as the fallback.
 
 See [outfit-photo design](superpowers/specs/2026-10-19-outfit-photo-two-step-design.md).
 
@@ -95,7 +95,7 @@ See [outfit-photo design](superpowers/specs/2026-10-19-outfit-photo-two-step-des
 
 **Wallet M1 (built):** one `credit_wallets` row per account (`balance`, `held`), an append-only `credit_ledger` (`grant`/`hold`/`charge`/`release`, stable operation keys), backend-only Postgres functions for grant/reserve/settle/release, an admin grant CLI (`scripts/grant_credits.py`) and a read-only `GET /v1/credits`. Nothing in the job flow calls the wallet yet; `NoCharge` stays the gate. Design and the Milestone 2 decisions still needed: [wallet design](superpowers/specs/2026-10-18-ai-credits-wallet-design.md).
 
-Accounts exist (multi-user M1–M4): Supabase email-code sign-in, per-user Postgres rows with RLS, private Storage, and AI work as server jobs on a FastAPI backend that still runs on the owner's Mac. Multi-user M5 added **credits-readiness hooks only**, described in [credits integration notes](superpowers/specs/2026-10-18-credits-readiness.md): billing is off. Wallet M1 has since added the wallet, ledger and grant tool (above); there is still no balance meter, price-list screen, charge or purchase. Real charge enforcement and credit packs remain future work.
+Accounts exist (multi-user M1–M4): Supabase email-code sign-in, per-user Postgres rows with RLS, private Storage, and AI work as server jobs on a FastAPI backend on the owner's Mac (public at `api.kipscloset.com`). On top: the wallet (M1), billing (M2, off by default), the in-app credits UI (M3), the welcome grant and the free pre-scan. Purchases and credit packs remain future work.
 
 ## Spec vs built hooks (M5)
 This record and the built hooks were written separately. Where they differ, neither is rewritten here; the difference is listed so the owner can decide.
@@ -112,6 +112,6 @@ This record and the built hooks were written separately. Where they differ, neit
 | Price shown to users | In-app AI Price List and price at each entry point | `GET /v1/prices` returns `{"billing": false, "prices": {}}`; no app screen uses it yet. Each job stores `cost_credits` (null while billing is off). |
 | Example figures | 1 / 1 / 3 are illustration only, not approved | The `.env.example` and integration notes reuse the same figures as a format example only; nothing is hardcoded. |
 
-## Next engineering delivery — wallet foundation
+## Next
 
-See [Claude Code AI Credits task](tasks/ai-credits-wallet-implementation.md) for a staged research and implementation brief. First ship an **inactive** authenticated wallet, append-only ledger, admin-controlled F&F grants and transaction/idempotency tests. Do **not** enable paid-job enforcement until multi-piece quoting, terminal failure reconciliation and user-facing price confirmation are reviewed.
+The wallet, billing and app milestones from the [Claude Code AI Credits task](tasks/ai-credits-wallet-implementation.md) are built. For the F&F beta: set the beta env ([DEPLOY.md](DEPLOY.md)), phone-check the credits UI with billing on, then invite testers. Payments, packs and public prices come later.

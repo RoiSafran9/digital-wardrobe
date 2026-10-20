@@ -1,7 +1,8 @@
 # Deploying KIPS for the TestFlight beta
 
-Status: **Prepared, not deployed.** The pieces below are in the repo; choosing and paying for a host, the Apple
-Developer account and the app's bundle ID are the owner's steps. Plan: [TestFlight master plan](tasks/testflight-beta-launch-master-plan.md).
+Status (2026-10-20): **Beta runs from the owner's Mac** behind a Cloudflare Tunnel at `https://api.kipscloset.com`; the
+cloud-host path below is prepared, not deployed. Done: bundle ID `com.roisafran.kips`, App Store Connect app, SMTP
+(Resend, `kipscloset.com`), hosted migrations, the review demo account. Plan: [TestFlight master plan](tasks/testflight-beta-launch-master-plan.md).
 
 ## 1. Server (FastAPI + the in-process AI worker)
 

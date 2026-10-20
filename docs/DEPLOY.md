@@ -30,6 +30,7 @@ It needs ~2 GB RAM for the background-removal model; one instance is enough for 
 | `WARDROBE_DAILY_AI_JOBS` | a daily cap on paid AI jobs (cost guard), e.g. `300` |
 | `WARDROBE_FREE_SCANS_PER_HOUR` | free scans per account per hour (default 30) |
 | `WARDROBE_SWEEP_EVERY_HOURS` | `6` — Storage cleanup inside the worker |
+| `WARDROBE_WORKER_CONCURRENCY` | `2` — jobs the worker runs at once (1–4, default 1); lets the photos of one round overlap |
 | `PORT` | whatever the host gives (default 8000) |
 
 **Health check:** `GET /healthz` (no sign-in) — queue depth, oldest queued job, worker heartbeat, AI jobs today.

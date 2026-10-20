@@ -461,8 +461,34 @@ def last_beat() -> float | None:
     return _last_beat
 
 
-async def run_forever(store, provider_factory, idle_seconds: float = 2.0, gate: CreditGate | None = None) -> None:
+async def _run_jobs(store, provider_factory, idle_seconds: float, gate: CreditGate) -> None:
+    """An extra job loop (WARDROBE_WORKER_CONCURRENCY > 1): claims and runs jobs, nothing else.
+    Claims are safe to race: claim_generation_job skips rows another loop has locked."""
+    while True:
+        try:
+            worked = await run_once(store, provider_factory, gate=gate)
+        except Exception:
+            log.exception("worker loop error")
+            worked = False
+        if not worked:
+            await asyncio.sleep(idle_seconds)
+
+
+async def run_forever(store, provider_factory, idle_seconds: float = 2.0, gate: CreditGate | None = None,
+                      concurrency: int | None = None) -> None:
+    """The main loop (reconcile, sweep, jobs) plus concurrency - 1 extra job loops."""
+    from api.controls import worker_concurrency
     gate = gate or NoCharge()
+    extra = [asyncio.create_task(_run_jobs(store, provider_factory, idle_seconds, gate))
+             for _ in range((concurrency or worker_concurrency()) - 1)]
+    try:
+        await _main_loop(store, provider_factory, idle_seconds, gate)
+    finally:
+        for task in extra:
+            task.cancel()
+
+
+async def _main_loop(store, provider_factory, idle_seconds: float, gate: CreditGate) -> None:
     last_reconcile = float("-inf")
     global _last_beat
     while True:

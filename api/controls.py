@@ -7,6 +7,8 @@
 - WARDROBE_BETA_INVITES        who gets it: "*" for everyone, or a comma list of emails and @domains.
 - WARDROBE_DAILY_AI_JOBS       a hard cap on paid AI jobs per UTC day across all accounts (cost guard); unset = none.
 - WARDROBE_SWEEP_EVERY_HOURS   run the Storage cleanup (scripts/sweep_storage.py) in the worker this often; unset = never.
+- WARDROBE_WORKER_CONCURRENCY  how many jobs the in-process worker runs at once (1-4). Default 1, one job at a time.
+                               A multi-photo round makes one job per photo; 2 lets them overlap. Same AI calls either way.
 """
 import os
 from fastapi import HTTPException
@@ -61,6 +63,13 @@ def daily_ai_jobs() -> int:
 
 def sweep_every_hours() -> int:
     return _int_env("WARDROBE_SWEEP_EVERY_HOURS", 0)
+
+
+WORKER_CONCURRENCY_MAX = 4
+
+
+def worker_concurrency() -> int:
+    return min(WORKER_CONCURRENCY_MAX, max(1, _int_env("WARDROBE_WORKER_CONCURRENCY", 1)))
 
 
 def start_of_day():

@@ -13,6 +13,10 @@ import { ALL, colorsPresent, filterCloset } from "../../src/closetFilter";
 import { garmentName } from "../../src/garmentName";
 import { asList, capitalize, colors, radius, swatchFor, TAB_BAR_HEIGHT, type } from "../../src/theme";
 import { Button, Chip, Swatch } from "../../src/ui";
+import { useAuth } from "../../src/auth/AuthProvider";
+import { FirstPiecesPopup } from "../../src/components/firstPieces/FirstPiecesPopup";
+import { useFirstPiecesMaybe } from "../../src/firstPieces/FirstPiecesProvider";
+import { markCelebrated, parseIds, wasCelebrated } from "../../src/firstPieces/celebrate";
 
 const GAP = 12;
 
@@ -30,7 +34,7 @@ export default function ClosetScreen() {
   const [group, setGroup] = useState<string>(ALL);
   const [color, setColor] = useState<string>(ALL);
   const [query, setQuery] = useState("");
-  const params = useLocalSearchParams<{ group?: string; category?: string; search?: string; at?: string }>();
+  const params = useLocalSearchParams<{ group?: string; category?: string; search?: string; at?: string; celebrate?: string; ids?: string }>();
   const searchField = useRef<TextInput>(null);
   const wantsSearch = useRef(false);
   // Home's search field opens the closet ready to type (once the field is there).
@@ -54,6 +58,35 @@ export default function ClosetScreen() {
       setLoaded(true);
     }
   }, []);
+
+  // First 3 Pieces' first success: once per account, over the closet, with the pieces just made — from a
+  // round's finish (celebrate=1&ids=…) or a round that finished while the user was elsewhere.
+  const { userId } = useAuth();
+  const firstPieces = useFirstPiecesMaybe();
+  const settled = firstPieces?.summary?.settled && firstPieces.summary.made > 0 ? firstPieces.round : null;
+  const wanted = useMemo(() => (params.celebrate ? parseIds(params.ids) : settled ? settled.jobs.flatMap((j) => j.itemIds ?? []) : []),
+    [params.celebrate, params.ids, params.at, settled]);
+  const [celebrating, setCelebrating] = useState(false);
+  useEffect(() => {
+    if (!loaded || !wanted.length) return;
+    let live = true;
+    wasCelebrated(userId).then((done) => {
+      if (!live) return;
+      if (!done) setCelebrating(true);
+      else if (settled) firstPieces?.finishRound();
+    });
+    return () => { live = false; };
+  }, [loaded, wanted, userId]);  // eslint-disable-line react-hooks/exhaustive-deps
+  const endCelebration = (then?: () => void) => {
+    setCelebrating(false);
+    void markCelebrated(userId);
+    if (firstPieces?.summary?.settled) firstPieces.finishRound();
+    then?.();
+  };
+  const celebrated = useMemo(() => {
+    const mine = items.filter((i) => wanted.includes(i.item_id));
+    return mine.length ? mine : items.slice(0, 3);
+  }, [items, wanted]);
 
   // Tabs stay mounted, so reload on every focus to pick up items from new runs.
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -201,6 +234,15 @@ export default function ClosetScreen() {
           setSelectedIndex(null);
           setItems((all) => all.filter((i) => !sameItem(i, removed)));
         }}
+      />
+      <FirstPiecesPopup
+        visible={celebrating && celebrated.length > 0}
+        items={celebrated}
+        onExplore={() => endCelebration()}
+        onClose={() => endCelebration()}
+        onAddMore={() => endCelebration(() => router.push(firstPieces?.pieces.length
+          ? "/first-pieces/pick"
+          : { pathname: "/first-pieces", params: { entry: "home" } }))}
       />
     </SafeAreaView>
   );

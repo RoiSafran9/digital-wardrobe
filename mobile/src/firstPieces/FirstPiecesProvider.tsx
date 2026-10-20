@@ -53,6 +53,9 @@ type Value = {
 
 const FirstPiecesContext = createContext<Value | undefined>(undefined);
 
+// For screens that also render outside the provider (in tests): null there.
+export const useFirstPiecesMaybe = (): Value | null => useContext(FirstPiecesContext) ?? null;
+
 export function useFirstPieces(): Value {
   const value = useContext(FirstPiecesContext);
   if (!value) throw new Error("useFirstPieces must be used within a FirstPiecesProvider");

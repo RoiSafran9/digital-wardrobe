@@ -52,14 +52,18 @@ export function starterEligible(billing: boolean, credits: Credits | null): bool
 }
 
 // Once credits have loaded after a fresh sign-in, decide once whether to show the starter screen.
+// Returns whether that decision is made (true when there was nothing to decide: no fresh sign-in), so
+// First 3 Pieces waits for it.
 export function useStarterCredits(
   userId: string | null, billing: boolean, credits: Credits | null, show: () => void, ready = true,
-) {
+): boolean {
   const { justSignedIn, clearSignedIn } = useOnboarding();
   const deciding = useRef(false);
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!ready || !justSignedIn || !userId || !credits || deciding.current) return;
     deciding.current = true;
+    setBusy(true);
     clearSignedIn();
     (async () => {
       if (!starterEligible(billing, credits)) return;
@@ -67,8 +71,9 @@ export function useStarterCredits(
       if (shown) return;
       await AsyncStorage.setItem(starterKey(userId), "1").catch(() => {});
       show();
-    })().finally(() => { deciding.current = false; });
+    })().finally(() => { deciding.current = false; setBusy(false); });
   }, [ready, justSignedIn, userId, billing, credits, clearSignedIn, show]);
+  return !justSignedIn && !busy;
 }
 
 // The price chips on the starter screen: only actions the server prices, in a fixed order.

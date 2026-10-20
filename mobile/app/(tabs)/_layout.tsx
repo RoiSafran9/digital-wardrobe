@@ -6,6 +6,8 @@ import { Icon, type IconName } from "../../src/components/Icon";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { useNameStep, useStarterCredits } from "../../src/onboarding";
+import { useFirstPiecesMaybe } from "../../src/firstPieces/FirstPiecesProvider";
+import { markOffered, useFirstPiecesOffer } from "../../src/firstPieces/offer";
 import { useProfile } from "../../src/profile";
 import { colors, TAB_BAR_HEIGHT, type } from "../../src/theme";
 
@@ -28,12 +30,19 @@ function TabBarBackground() {
 export default function TabsLayout() {
   const router = useRouter();
   const { userId, status } = useAuth();
-  const { billing, credits } = useCredits();
+  const { billing, credits, generation } = useCredits();
+  const firstPieces = useFirstPiecesMaybe();
   const { profile, loaded } = useProfile();
   const askName = useCallback(() => router.push("/your-name"), [router]);
   const named = useNameStep(status === "signedIn", loaded, profile?.display_name, askName);
-  const showStarter = useCallback(() => router.push("/welcome-credits"), [router]);
-  useStarterCredits(userId, billing, credits, showStarter, named);
+  const showStarter = useCallback(() => {
+    if (userId) void markOffered(userId);  // its button leads into First 3 Pieces
+    router.push("/welcome-credits");
+  }, [router, userId]);
+  const starterDecided = useStarterCredits(userId, billing, credits, showStarter, named);
+  const openFirstPieces = useCallback(() => router.push({ pathname: "/first-pieces", params: { entry: "auto" } }), [router]);
+  useFirstPiecesOffer({ userId, signedIn: status === "signedIn", named, starterDecided, generation: generation !== false,
+                        loaded: !!credits, inflight: !!firstPieces?.round, open: openFirstPieces });
   return (
     <Tabs
       screenOptions={{

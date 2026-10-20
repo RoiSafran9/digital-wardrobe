@@ -9,6 +9,8 @@ import { OnboardingProvider, priceChips, starterEligible, starterKey, useOnboard
 
 const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ replace: mockReplace }) }));
+jest.mock("../src/api/client", () => ({ getItems: jest.fn(async () => ({ items: [] })) }));
+const mockGetItems = jest.requireMock("../src/api/client").getItems as jest.Mock;
 
 const credits = (available: number, granted = 200) =>
   ({ balance: available, held: 0, available, granted, used: granted - available, entries: [], next_before: null }) as Credits;
@@ -35,12 +37,21 @@ test("price chips come from the server prices", () => {
   expect(screen.queryByText(/Back ·/)).toBeNull();
 });
 
-test("Digitize Your First Piece opens Add with the first-piece hint; Explore first opens Home", () => {
+test("a new closet continues into First 3 Pieces; Explore first opens Home", async () => {
   renderScreen({});
-  fireEvent.press(screen.getByRole("button", { name: "Digitize Your First Piece" }));
-  expect(mockReplace).toHaveBeenCalledWith({ pathname: "/add", params: { firstPiece: "1" } });
+  await act(async () => {});
+  fireEvent.press(screen.getByRole("button", { name: "Add Your First 3 Pieces" }));
+  expect(mockReplace).toHaveBeenCalledWith({ pathname: "/first-pieces", params: { entry: "starter" } });
   fireEvent.press(screen.getByRole("button", { name: "Explore first" }));
   expect(mockReplace).toHaveBeenCalledWith("/");
+});
+
+test("an account that already has pieces (a new device) goes to Add instead", async () => {
+  mockGetItems.mockResolvedValueOnce({ items: [{ item_id: "i1" }] });
+  renderScreen({});
+  fireEvent.press(await screen.findByRole("button", { name: "Add Clothes" }));
+  expect(mockReplace).toHaveBeenCalledWith("/add");
+  expect(screen.queryByRole("button", { name: "Add Your First 3 Pieces" })).toBeNull();
 });
 
 test("eligibility: billing on and something granted", () => {
@@ -51,12 +62,25 @@ test("eligibility: billing on and something granted", () => {
   expect(priceChips({ garment: 1, back: 1, turn: 3 })).toEqual(["Front · 1", "Back · 1", "360° · 3"]);
 });
 
-function Harness({ billing, value, show }: { billing: boolean; value: Credits | null; show: () => void }) {
+function Harness({ billing, value, show, fresh = true }: { billing: boolean; value: Credits | null; show: () => void; fresh?: boolean }) {
   const { noteSignedIn } = useOnboarding();
-  useEffect(() => { noteSignedIn(); }, [noteSignedIn]);
-  useStarterCredits("u1", billing, value, show);
-  return <Text>harness</Text>;
+  useEffect(() => { if (fresh) noteSignedIn(); }, [noteSignedIn, fresh]);
+  const decided = useStarterCredits("u1", billing, value, show);
+  return <Text>{decided ? "decided" : "deciding"}</Text>;
 }
+
+test("First 3 Pieces waits until the starter decision is made", async () => {
+  const show = jest.fn();
+  const { rerender } = render(<OnboardingProvider><Harness billing value={null} show={show} /></OnboardingProvider>);
+  await act(async () => {});
+  expect(screen.getByText("deciding")).toBeTruthy();  // a fresh sign-in, credits not in yet
+  rerender(<OnboardingProvider><Harness billing={false} value={credits(37)} show={show} /></OnboardingProvider>);
+  await waitFor(() => expect(screen.getByText("decided")).toBeTruthy());
+  screen.unmount();
+  render(<OnboardingProvider><Harness billing value={null} show={show} fresh={false} /></OnboardingProvider>);
+  await act(async () => {});
+  expect(screen.getByText("decided")).toBeTruthy();  // no fresh sign-in: nothing to decide
+});
 
 test("after a fresh sign-in the starter screen is shown once per account", async () => {
   const show = jest.fn();

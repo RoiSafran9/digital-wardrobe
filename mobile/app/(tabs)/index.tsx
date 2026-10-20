@@ -13,6 +13,7 @@ import { Greeting } from "../../src/components/home/Greeting";
 import { HomeEmpty } from "../../src/components/home/HomeEmpty";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { useProfile } from "../../src/profile";
+import { useAuth } from "../../src/auth/AuthProvider";
 import { pickPhoto } from "../../src/photoPicker";
 import { colors, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
 import { Button } from "../../src/ui";
@@ -30,6 +31,7 @@ export function categoryRows(items: ClosetItem[]): CategoryRow[] {
 export default function HomeScreen() {
   const router = useRouter();
   const { outfit: outfitOn } = useCredits();
+  const { status } = useAuth();
   const { profile } = useProfile();
   const [items, setItems] = useState<ClosetItem[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -85,7 +87,8 @@ export default function HomeScreen() {
 
         {empty ? (
           <View style={{ marginTop: 20 }}>
-            <HomeEmpty outfit={!!outfitOn}><AddRows {...actions} /></HomeEmpty>
+            <HomeEmpty outfit={!!outfitOn}
+              onFirstPieces={status === "signedIn" ? () => router.push({ pathname: "/first-pieces", params: { entry: "home" } }) : undefined}><AddRows {...actions} /></HomeEmpty>
           </View>
         ) : (
           <View style={{ paddingHorizontal: 20 }}>

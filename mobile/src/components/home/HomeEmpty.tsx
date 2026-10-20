@@ -1,6 +1,7 @@
 import React from "react";
 import { Text, View } from "react-native";
 import { Icon } from "../Icon";
+import { PressScale } from "../../motion/PressScale";
 import { colors, radius, type } from "../../theme";
 
 const TIPS = [
@@ -10,7 +11,8 @@ const TIPS = [
 ];
 
 // Three dashed frames waiting to be filled, then the labelled add rows (from the caller) and the tips.
-export function HomeEmpty({ children, outfit }: { children: React.ReactNode; outfit: boolean }) {
+// onFirstPieces (account mode): the guided First 3 Pieces flow, offered above the plain add rows.
+export function HomeEmpty({ children, outfit, onFirstPieces }: { children: React.ReactNode; outfit: boolean; onFirstPieces?: () => void }) {
   const tips = outfit ? TIPS : TIPS.slice(0, 2);
   return (
     <View style={{ paddingHorizontal: 20, gap: 22 }}>
@@ -34,6 +36,16 @@ export function HomeEmpty({ children, outfit }: { children: React.ReactNode; out
           {outfit ? "Photograph a garment or import an outfit photo. Your first pieces take under a minute." : "Photograph a garment. Your first pieces take under a minute."}
         </Text>
       </View>
+      {onFirstPieces ? (
+        <PressScale onPress={onFirstPieces} accessibilityRole="button" accessibilityLabel="Add your first 3 pieces" scaleTo={0.98}
+          style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderRadius: radius.list, backgroundColor: colors.tint }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ ...type.headline, color: colors.onTint }}>Add your first 3 pieces</Text>
+            <Text style={{ ...type.subhead, color: colors.onTint }}>A guided start. Finding your clothes is free.</Text>
+          </View>
+          <Icon name="chevron" size={15} color={colors.onTint} />
+        </PressScale>
+      ) : null}
       {children}
       <View style={{ gap: 12 }}>
         <Text style={{ ...type.eyebrow, color: colors.secondaryLabel }}>Tips for great results</Text>

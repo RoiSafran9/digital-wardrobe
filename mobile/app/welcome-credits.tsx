@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { getItems } from "../src/api/client";
 import { useCredits } from "../src/credits/CreditsProvider";
 import { PopIn } from "../src/motion/PopIn";
 import { priceChips } from "../src/onboarding";
@@ -13,6 +14,13 @@ import { Button } from "../src/ui";
 export default function WelcomeCreditsScreen() {
   const router = useRouter();
   const { credits, prices } = useCredits();
+  // A new closet goes into First 3 Pieces; an account that already has pieces (a new device) goes to Add.
+  const [hasItems, setHasItems] = useState(false);
+  useEffect(() => {
+    let live = true;
+    getItems().then((r) => live && setHasItems(r.items.length > 0)).catch(() => {});
+    return () => { live = false; };
+  }, []);
   const available = credits?.available ?? 0;
   const fronts = prices.garment ? Math.floor(available / prices.garment) : null;
   const covers = fronts ? `Your starter pack covers about ${fronts} ${fronts === 1 ? "garment" : "garments"}. ` : "";
@@ -43,7 +51,11 @@ export default function WelcomeCreditsScreen() {
           </View>
         </View>
         <View style={{ gap: 6 }}>
-          <Button title="Digitize Your First Piece" onPress={() => router.replace({ pathname: "/add", params: { firstPiece: "1" } })} />
+          {hasItems ? (
+            <Button title="Add Clothes" onPress={() => router.replace("/add")} />
+          ) : (
+            <Button title="Add Your First 3 Pieces" onPress={() => router.replace({ pathname: "/first-pieces", params: { entry: "starter" } })} />
+          )}
           <Button title="Explore first" variant="text" onPress={() => router.replace("/")} />
         </View>
       </View>

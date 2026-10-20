@@ -4,6 +4,7 @@ import { Stack } from "expo-router";
 import { useAuth } from "./auth/AuthProvider";
 import { NotConfigured } from "./components/NotConfigured";
 import { CaptureJobsProvider } from "./store/captureJobs";
+import { FirstPiecesProvider } from "./firstPieces/FirstPiecesProvider";
 import { OnboardingProvider } from "./onboarding";
 import { colors } from "./theme";
 
@@ -42,13 +43,15 @@ export function RootNavigator() {
   );
 }
 
-// Per-user app state (the capture in progress) starts fresh whenever the signed-in person changes.
+// Per-user app state (the capture in progress, the First 3 Pieces round) starts fresh whenever the signed-in person changes.
 export function AppShell() {
   const { userId } = useAuth();
   return (
     <OnboardingProvider>
       <CaptureJobsProvider key={userId ?? "local"}>
-        <RootNavigator />
+        <FirstPiecesProvider key={userId ?? "local"} userId={userId}>
+          <RootNavigator />
+        </FirstPiecesProvider>
       </CaptureJobsProvider>
     </OnboardingProvider>
   );

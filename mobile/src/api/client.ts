@@ -31,13 +31,27 @@ export async function postRun(photoUri: string, maxFronts?: number, onProgress?:
 }
 
 // The free garment pre-scan needs the account API; local mode keeps the max-fronts capture.
-export async function scanGarments(photoUri: string): Promise<GarmentScan | null> {
-  return account ? v1.scanGarments(account, current, photoUri) : null;
+export async function scanGarments(photoUri: string, key?: string): Promise<GarmentScan | null> {
+  return account ? v1.scanGarments(account, current, photoUri, key) : null;
+}
+
+// For several photos at once (First 3 Pieces): start a generate job under a key the caller keeps, and
+// wait for any job by id. Both need a signed-in account, like the pre-scan.
+export const PICKING_NEEDS_ACCOUNT = "Picking pieces needs a signed-in account.";
+
+export async function startGarmentGenerate(scanId: string, indexes: number[], unitPrice: number | null, key: string): Promise<v1.Job> {
+  if (!account) throw new Error(PICKING_NEEDS_ACCOUNT);
+  return v1.startGarmentGenerate(account, scanId, indexes, unitPrice, key);
+}
+
+export async function pollJob(jobId: string, onProgress?: (p: v1.JobProgress) => void): Promise<v1.Job> {
+  if (!account) throw new Error(PICKING_NEEDS_ACCOUNT);
+  return v1.pollJob(account, current, jobId, onProgress);
 }
 
 export async function generateFromGarmentScan(scanId: string, indexes: number[], unitPrice: number | null,
                                               onProgress?: (p: v1.JobProgress) => void): Promise<RunResponse> {
-  if (!account) throw new Error("Picking pieces needs a signed-in account.");
+  if (!account) throw new Error(PICKING_NEEDS_ACCOUNT);
   return v1.generateFromGarmentScan(account, current, scanId, indexes, unitPrice, onProgress);
 }
 

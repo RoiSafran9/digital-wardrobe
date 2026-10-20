@@ -1,4 +1,4 @@
-import { API_BASE_URL, DELETE_NEEDS_ACCOUNT, getProfile, setDisplayName, OUTFIT_NEEDS_ACCOUNT, addBack, configureApi, deleteAccount, deleteItem, generateOutfit, getCredits, getItems, getOutfitScan, getPendingItems, getPrices, getTurn, imageUrl, keepItem, postRun, scanOutfit, startTurn, updateItem } from "../src/api/client";
+import { API_BASE_URL, DELETE_NEEDS_ACCOUNT, PICKING_NEEDS_ACCOUNT, pollJob, scanGarments, startGarmentGenerate, getProfile, setDisplayName, OUTFIT_NEEDS_ACCOUNT, addBack, configureApi, deleteAccount, deleteItem, generateOutfit, getCredits, getItems, getOutfitScan, getPendingItems, getPrices, getTurn, imageUrl, keepItem, postRun, scanOutfit, startTurn, updateItem } from "../src/api/client";
 import { NO_CREDITS, SCAN_EXPIRED } from "../src/api/v1";
 import { addedLabel } from "../src/theme";
 
@@ -296,4 +296,46 @@ test("the profile and its name come from /v1/profile; local mode has none", asyn
   expect((await getProfile())?.display_name).toBeNull();
   expect((await setDisplayName("Maya")).display_name).toBe("Maya");
   expect(JSON.parse(calls[1].init.body as string)).toEqual({ display_name: "Maya" });
+});
+
+// First 3 Pieces: several generate jobs, each under a key the app keeps so a restart never makes a second one.
+test("a generate job is started under the caller's key and sent again with it when there was no answer", async () => {
+  signIn();
+  on("POST", "/v1/garment-scans/scan-1/generate",
+     () => Promise.reject(new TypeError("Network request failed")), reply(job("queued"), 200));
+  const started = await startGarmentGenerate("scan-1", [0, 2], 1, "fp:r1:scan-1");
+  expect(started.id).toBe("job-1");
+  const posts = calls.filter((c) => c.init.method === "POST");
+  expect(posts.map((c) => (c.init.headers as Record<string, string>)["Idempotency-Key"])).toEqual(["fp:r1:scan-1", "fp:r1:scan-1"]);
+  expect(JSON.parse(posts[0].init.body as string)).toEqual({ piece_indexes: [0, 2], expected_unit_price: 1 });
+});
+
+test("a job started earlier is polled by id with progress until it finishes", async () => {
+  jest.useFakeTimers();
+  signIn();
+  on("GET", "/v1/jobs/job-1", reply(job("running", { progress: { done: 1, total: 2 } })),
+     reply(job("succeeded", { item_ids: ["i1", "i2"], progress: { done: 2, total: 2 } })));
+  const seen: { done: number; total: number }[] = [];
+  const pending = pollJob("job-1", (p) => seen.push(p));
+  await jest.advanceTimersByTimeAsync(2000);
+  const done = await pending;
+  expect(done.item_ids).toEqual(["i1", "i2"]);
+  expect(seen).toEqual([{ done: 1, total: 2 }, { done: 2, total: 2 }]);
+});
+
+test("polling a failed job throws its sentence", async () => {
+  signIn();
+  on("GET", "/v1/jobs/job-1", reply(job("failed", { error: "this photo's scan has expired — take the photo again" })));
+  await expect(pollJob("job-1")).rejects.toThrow("This photo's scan has expired — take the photo again");
+});
+
+test("a pre-scan can use the caller's key; starting and polling need an account", async () => {
+  jest.useFakeTimers();
+  signIn();
+  on("POST", "/v1/garment-scans", reply({ id: "scan-1", status: "succeeded", pieces: [] }, 202));
+  await scanGarments("file:///p.jpg", "fp-scan-1");
+  expect((calls[0].init.headers as Record<string, string>)["Idempotency-Key"]).toBe("fp-scan-1");
+  configureApi(null);
+  await expect(startGarmentGenerate("scan-1", [0], null, "k")).rejects.toThrow(PICKING_NEEDS_ACCOUNT);
+  await expect(pollJob("job-1")).rejects.toThrow(PICKING_NEEDS_ACCOUNT);
 });

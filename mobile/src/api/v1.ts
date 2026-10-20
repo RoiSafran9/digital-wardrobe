@@ -32,7 +32,7 @@ type V1Item = {
   review_state?: "pending" | "kept" | null;
 };
 
-type Job = {
+export type Job = {
   id: string;
   status: "queued" | "running" | "succeeded" | "failed" | "canceled";
   error: string | null;
@@ -95,9 +95,10 @@ async function read<T>(response: Response): Promise<T> {
 const call = async <T>(account: Account, path: string, init?: RequestInit) => read<T>(await send(account, path, init));
 
 // Starts a job. A request that never got an answer is sent once more with the same key, so the
-// server returns the job it may already have made instead of starting a second one.
-async function startJob(account: Account, path: string, photoUri?: string, fields: Record<string, string> = {}): Promise<Job> {
-  const key = randomUUID();
+// server returns the job it may already have made instead of starting a second one. A caller that keeps
+// the key (to send it again after an app restart) passes its own.
+async function startJob(account: Account, path: string, photoUri?: string, fields: Record<string, string> = {},
+                        key: string = randomUUID()): Promise<Job> {
   const attempt = () => {
     let body: FormData | undefined;
     if (photoUri) {
@@ -163,8 +164,9 @@ async function runFromJob(account: Account, job: Job): Promise<RunResponse> {
 const garmentScanPath = (id: string) => `/v1/garment-scans/${encodeURIComponent(id)}`;
 
 // Free pre-scan of a garment photo: finds the pieces (with boxes) before anything is made or charged.
-export async function scanGarments(account: Account, current: () => Account | null, photoUri: string): Promise<GarmentScan> {
-  let scan = (await startJob(account, "/v1/garment-scans", photoUri)) as unknown as GarmentScan;
+export async function scanGarments(account: Account, current: () => Account | null, photoUri: string,
+                                   key?: string): Promise<GarmentScan> {
+  let scan = (await startJob(account, "/v1/garment-scans", photoUri, {}, key)) as unknown as GarmentScan;
   for (let waited = 0; ; waited += POLL_MS) {
     if (scan.status === "succeeded") return scan;
     if (scan.status === "failed" || scan.status === "canceled") throw new Error(sentence(scan.error ?? "Something went wrong — try again"));
@@ -175,22 +177,33 @@ export async function scanGarments(account: Account, current: () => Account | nu
   }
 }
 
-// Front images for the picked pieces of a pre-scan, at the per-front price the user saw.
-export async function generateFromGarmentScan(account: Account, current: () => Account | null, scanId: string,
-                                              indexes: number[], unitPrice: number | null,
-                                              onProgress?: (p: JobProgress) => void): Promise<RunResponse> {
-  const key = randomUUID();
+// Starts front images for the picked pieces of a pre-scan, at the per-front price the user saw. The key
+// makes it safe to send again (same key → the same job, never a second charge).
+export async function startGarmentGenerate(account: Account, scanId: string, indexes: number[], unitPrice: number | null,
+                                           key: string): Promise<Job> {
   const attempt = () => call<Job>(account, `${garmentScanPath(scanId)}/generate`, {
     method: "POST", headers: { "Idempotency-Key": key, "Content-Type": "application/json" },
     body: JSON.stringify({ piece_indexes: indexes, expected_unit_price: unitPrice }),
   });
-  let started: Job;
   try {
-    started = await attempt();
+    return await attempt();
   } catch (e) {
     if (!(e instanceof Error && e.message === UNREACHABLE)) throw e;
-    started = await attempt();
+    return attempt();
   }
+}
+
+// Waits for a job started earlier (also one from before an app restart) until it succeeds; throws its sentence if not.
+export async function pollJob(account: Account, current: () => Account | null, jobId: string,
+                              onProgress?: (p: JobProgress) => void): Promise<Job> {
+  return waitFor(account, current, await call<Job>(account, `/v1/jobs/${encodeURIComponent(jobId)}`), onProgress);
+}
+
+// Front images for the picked pieces of a pre-scan, at the per-front price the user saw.
+export async function generateFromGarmentScan(account: Account, current: () => Account | null, scanId: string,
+                                              indexes: number[], unitPrice: number | null,
+                                              onProgress?: (p: JobProgress) => void): Promise<RunResponse> {
+  const started = await startGarmentGenerate(account, scanId, indexes, unitPrice, randomUUID());
   return runFromJob(account, await waitFor(account, current, started, onProgress));
 }
 

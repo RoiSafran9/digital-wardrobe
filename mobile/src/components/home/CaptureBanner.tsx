@@ -39,7 +39,7 @@ function RoundBanner() {
   const ready = summary.settled && summary.made > 0;
   const label = running ? "Creating your first pieces…" : ready ? "Your first pieces are ready — see them" : "Your pieces couldn't be made — tap to see why";
   const open = () => (ready && summary.notMade === 0
-    ? router.push({ pathname: "/closet", params: { celebrate: "1", ids: idsParam(round.jobs.flatMap((j) => j.itemIds ?? [])), at: String(Date.now()) } })
+    ? router.push({ pathname: "/closet", params: { celebrate: "1", ids: idsParam(round.jobs.flatMap((j) => j.itemIds ?? [])), path: "near", at: String(Date.now()) } })
     : router.push("/first-pieces/processing"));
   const failed = !running && !ready;
   return (

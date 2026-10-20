@@ -19,6 +19,7 @@ import { colors, hitSlopFor, radius, type } from "../../src/theme";
 import { TextInput } from "react-native";
 import { BackButton, Button, Chip, CostSheet, InsufficientCreditsSheet, Sheet, useToast } from "../../src/ui";
 import { CAP_TOAST, ROUND_CAP } from "../../src/firstPieces/round";
+import { track } from "../../src/firstPieces/analytics";
 
 export const OUTFIT_STAGES: Stage[] = [
   { label: "Taking them off the photo", at: 0 },
@@ -112,6 +113,7 @@ export default function PickScreen() {
     try {
       const ordered = candidates.map((c) => c.id).filter((id) => selected.includes(id));
       const fixes = Object.fromEntries(Object.entries(corrections).filter(([id]) => ordered.includes(id)));
+      if (cap) track("generation_started", { pieces: ordered.length, photos: 1, round: 1, path: "not_near" });
       const result = await generateOutfit(scan.id, ordered, unitPrice ?? null, fixes);
       haptics.success();
       const failed = result.failed.map((id) => scan.candidates.find((c) => c.id === id)).filter(Boolean)

@@ -139,6 +139,11 @@ export async function getTurn(item: ClosetItem): Promise<Turn> {
   return parseJsonOrThrow<Turn>(response);
 }
 
+// Activation steps exist only in account mode; local mode sends nothing.
+export async function postEvent(event: string, props: Record<string, string | number> = {}): Promise<void> {
+  if (account) return v1.postEvent(account, event, props);
+}
+
 export async function bootstrap(): Promise<number> {
   if (!account) return 0;
   return (await v1.bootstrap(account)).welcome_granted;

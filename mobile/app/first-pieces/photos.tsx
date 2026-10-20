@@ -7,6 +7,7 @@ import { useFirstPieces } from "../../src/firstPieces/FirstPiecesProvider";
 import { ROUND_CAP } from "../../src/firstPieces/round";
 import { haptics } from "../../src/haptics";
 import { pickPhotos } from "../../src/photoPicker";
+import { track } from "../../src/firstPieces/analytics";
 import { colors, hitSlopFor, radius, type } from "../../src/theme";
 import { BackButton, Button } from "../../src/ui";
 
@@ -30,14 +31,14 @@ export default function FirstPiecesPhotos() {
     if (!photos.length) return router.back();
     Alert.alert("Leave?", "Your photos won't be kept.", [
       { text: "Stay", style: "cancel" },
-      { text: "Leave", style: "destructive", onPress: () => { reset(); router.back(); } },
+      { text: "Leave", style: "destructive", onPress: () => { track("onboarding_abandoned", { step: "photos" }); reset(); router.back(); } },
     ]);
   };
   const library = async () => {
     setError(null);
     try {
       const uris = await pickPhotos();
-      if (uris.length) { haptics.light(); addPhotos(uris); }
+      if (uris.length) { haptics.light(); addPhotos(uris, "library"); }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't open your photos.");
     }
@@ -99,7 +100,11 @@ export default function FirstPiecesPhotos() {
         </View>
       </ScrollView>
       <View style={{ paddingHorizontal: 20, paddingVertical: 8, gap: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator }}>
-        <Button title="Find My Pieces" onPress={() => router.push("/first-pieces/pick")} disabled={!photos.length} />
+        <Button title="Find My Pieces" disabled={!photos.length} onPress={() => {
+          track("photos_collected", { count: photos.length, camera: photos.filter((p) => p.source === "camera").length,
+                                      library: photos.filter((p) => p.source === "library").length });
+          router.push("/first-pieces/pick");
+        }} />
         <Text style={{ ...type.footnote, fontWeight: "600", color: colors.successText, textAlign: "center" }}>Finding them is free</Text>
       </View>
     </SafeAreaView>

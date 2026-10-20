@@ -29,7 +29,7 @@ export default function FirstPiecesProcessing() {
 
   const toCloset = () => {
     if (!round) return;
-    router.replace({ pathname: "/closet", params: { celebrate: "1", ids: idsParam(madeIds(round)), at: String(Date.now()) } });
+    router.replace({ pathname: "/closet", params: { celebrate: "1", ids: idsParam(madeIds(round)), path: "near", at: String(Date.now()) } });
   };
   const clean = !!summary && summary.settled && summary.made > 0 && summary.notMade === 0 && summary.unsent === 0;
   useEffect(() => { if (clean) toCloset(); }, [clean]);  // eslint-disable-line react-hooks/exhaustive-deps

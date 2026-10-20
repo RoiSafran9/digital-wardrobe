@@ -7,6 +7,7 @@ import { ScanBand } from "../../src/components/outfit/ScanBand";
 import { creditsLabel } from "../../src/credits/credits";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { useFirstPieces } from "../../src/firstPieces/FirstPiecesProvider";
+import { track } from "../../src/firstPieces/analytics";
 import { CAP_TOAST, FIRST_GOAL, ROUND_CAP, roundQuote, type RoundPhoto, type RoundPiece } from "../../src/firstPieces/round";
 import { garmentName } from "../../src/garmentName";
 import { haptics } from "../../src/haptics";
@@ -46,6 +47,15 @@ export default function FirstPiecesPick() {
   useEffect(() => { void scanAll(); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const scanning = photos.some((p) => p.state === "waiting" || p.state === "scanning");
+  const wasScanning = React.useRef(false);
+  useEffect(() => {
+    if (scanning) wasScanning.current = true;
+    else if (wasScanning.current) {
+      wasScanning.current = false;
+      track("detection_completed", { photos: photos.length, found: pieces.length,
+        unusable: photos.filter((p) => p.state === "unusable").length, limited: photos.filter((p) => p.state === "limited").length });
+    }
+  }, [scanning]);  // eslint-disable-line react-hooks/exhaustive-deps
   const unitPrice = billing ? prices.garment : undefined;
   const quote = roundQuote(selected.length, unitPrice, credits?.available ?? 0);
   const byPhoto = useMemo(() => {

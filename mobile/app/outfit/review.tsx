@@ -81,7 +81,7 @@ export default function ReviewScreen() {
       void refresh();
       // First 3 Pieces: the kept pieces open the closet with the first-success popup instead of Saved.
       if (onboarding === "1" && kept.length) {
-        router.replace({ pathname: "/closet", params: { celebrate: "1", ids: idsParam(kept.map((i) => i.item_id)), at: String(Date.now()) } });
+        router.replace({ pathname: "/closet", params: { celebrate: "1", ids: idsParam(kept.map((i) => i.item_id)), path: "not_near", at: String(Date.now()) } });
         return;
       }
       setSaved({ items: kept, creditsUsed: billing && prices.garment !== undefined ? list.length * prices.garment : null });

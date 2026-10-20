@@ -18,7 +18,7 @@ export type PhotoState =
   | "limited"    // too many free scans this hour; can be checked later
   | "failed";    // the scan itself failed
 
-export type RoundPhoto = { id: string; uri: string; state: PhotoState; scan?: GarmentScan | null };
+export type RoundPhoto = { id: string; uri: string; state: PhotoState; scan?: GarmentScan | null; source?: "camera" | "library" };
 
 // The state a finished pre-scan puts its photo in.
 export function photoStateFor(scan: GarmentScan): PhotoState {

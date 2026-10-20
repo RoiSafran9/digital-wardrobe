@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -7,6 +7,7 @@ import { useCredits } from "../../src/credits/CreditsProvider";
 import { haptics } from "../../src/haptics";
 import { PressScale } from "../../src/motion/PressScale";
 import { pickPhoto } from "../../src/photoPicker";
+import { entryOf, track } from "../../src/firstPieces/analytics";
 import { colors, hitSlopFor, radius, type } from "../../src/theme";
 import { Button } from "../../src/ui";
 
@@ -39,8 +40,12 @@ export default function FirstPiecesStart() {
   const [away, setAway] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
-  const near = () => { haptics.selection(); router.push({ pathname: "/first-pieces/photos", params: entry ? { entry } : {} }); };
+  useEffect(() => { track("onboarding_started", { entry: entryOf(entry) }); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+  const close = () => {
+    track("onboarding_abandoned", { step: "start" });
+    if (router.canGoBack()) router.back(); else router.replace("/");
+  };
+  const near = () => { haptics.selection(); track("path_selected", { path: "near" }); router.push({ pathname: "/first-pieces/photos", params: entry ? { entry } : {} }); };
   const outfitPhoto = async () => {
     setError(null);
     try {
@@ -85,7 +90,7 @@ export default function FirstPiecesStart() {
             <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>{NEAR_QUESTION}</Text>
             <Choice icon="hanger" title="Yes, I'm near it" body="Photograph a few pieces. Several in one photo is fine." onPress={near} />
             <Choice icon="person2" title="Not right now" body="Use what you're wearing, or an outfit photo you have." selected={away}
-              onPress={() => { haptics.selection(); setAway(true); }} />
+              onPress={() => { haptics.selection(); if (!away) track("path_selected", { path: "not_near" }); setAway(true); }} />
             {away ? (
               <View style={{ gap: 8, marginTop: 4 }}>
                 <Button title="Take Outfit Photo" onPress={() => router.push({ pathname: "/capture/camera", params: { mode: "outfit", onboarding: "1" } })} />

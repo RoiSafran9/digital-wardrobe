@@ -1,4 +1,4 @@
-import { API_BASE_URL, DELETE_NEEDS_ACCOUNT, PICKING_NEEDS_ACCOUNT, pollJob, scanGarments, startGarmentGenerate, getProfile, setDisplayName, OUTFIT_NEEDS_ACCOUNT, addBack, configureApi, deleteAccount, deleteItem, generateOutfit, getCredits, getItems, getOutfitScan, getPendingItems, getPrices, getTurn, imageUrl, keepItem, postRun, scanOutfit, startTurn, updateItem } from "../src/api/client";
+import { API_BASE_URL, DELETE_NEEDS_ACCOUNT, PICKING_NEEDS_ACCOUNT, pollJob, postEvent, scanGarments, startGarmentGenerate, getProfile, setDisplayName, OUTFIT_NEEDS_ACCOUNT, addBack, configureApi, deleteAccount, deleteItem, generateOutfit, getCredits, getItems, getOutfitScan, getPendingItems, getPrices, getTurn, imageUrl, keepItem, postRun, scanOutfit, startTurn, updateItem } from "../src/api/client";
 import { NO_CREDITS, SCAN_EXPIRED } from "../src/api/v1";
 import { addedLabel } from "../src/theme";
 
@@ -338,4 +338,13 @@ test("a pre-scan can use the caller's key; starting and polling need an account"
   configureApi(null);
   await expect(startGarmentGenerate("scan-1", [0], null, "k")).rejects.toThrow(PICKING_NEEDS_ACCOUNT);
   await expect(pollJob("job-1")).rejects.toThrow(PICKING_NEEDS_ACCOUNT);
+});
+
+test("activation steps go to /v1/events when signed in; local mode sends nothing", async () => {
+  await postEvent("popup_shown", { saved: 2 });
+  expect(calls).toHaveLength(0);
+  signIn();
+  on("POST", "/v1/events", reply(undefined, 204));
+  await postEvent("popup_shown", { saved: 2 });
+  expect(JSON.parse(calls[0].init.body as string)).toEqual({ event: "popup_shown", props: { saved: 2 } });
 });

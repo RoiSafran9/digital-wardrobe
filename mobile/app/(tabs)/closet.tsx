@@ -17,6 +17,8 @@ import { useAuth } from "../../src/auth/AuthProvider";
 import { FirstPiecesPopup } from "../../src/components/firstPieces/FirstPiecesPopup";
 import { useFirstPiecesMaybe } from "../../src/firstPieces/FirstPiecesProvider";
 import { markCelebrated, parseIds, wasCelebrated } from "../../src/firstPieces/celebrate";
+import { FIRST_GOAL } from "../../src/firstPieces/round";
+import { pathOf, track } from "../../src/firstPieces/analytics";
 
 const GAP = 12;
 
@@ -34,7 +36,7 @@ export default function ClosetScreen() {
   const [group, setGroup] = useState<string>(ALL);
   const [color, setColor] = useState<string>(ALL);
   const [query, setQuery] = useState("");
-  const params = useLocalSearchParams<{ group?: string; category?: string; search?: string; at?: string; celebrate?: string; ids?: string }>();
+  const params = useLocalSearchParams<{ group?: string; category?: string; search?: string; at?: string; celebrate?: string; ids?: string; path?: string }>();
   const searchField = useRef<TextInput>(null);
   const wantsSearch = useRef(false);
   // Home's search field opens the closet ready to type (once the field is there).
@@ -72,7 +74,14 @@ export default function ClosetScreen() {
     let live = true;
     wasCelebrated(userId).then((done) => {
       if (!live) return;
-      if (!done) setCelebrating(true);
+      // Milestones are recorded once per account by the server, so repeats here are harmless.
+      const path = pathOf(params.path) ?? (settled ? "near" : undefined);
+      track("first_garment_saved", { path });
+      if (items.length >= FIRST_GOAL) track("first_3_saved", { path });
+      if (!done) {
+        track("popup_shown", { saved: wanted.length });
+        setCelebrating(true);
+      }
       else if (settled) firstPieces?.finishRound();
     });
     return () => { live = false; };
@@ -240,9 +249,9 @@ export default function ClosetScreen() {
         items={celebrated}
         onExplore={() => endCelebration()}
         onClose={() => endCelebration()}
-        onAddMore={() => endCelebration(() => router.push(firstPieces?.pieces.length
+        onAddMore={() => endCelebration(() => { track("popup_add_more", {}); router.push(firstPieces?.pieces.length
           ? "/first-pieces/pick"
-          : { pathname: "/first-pieces", params: { entry: "home" } }))}
+          : { pathname: "/first-pieces", params: { entry: "home" } }); })}
       />
     </SafeAreaView>
   );

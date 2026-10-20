@@ -51,7 +51,7 @@ export default function CameraScreen() {
   const done = () => (router.canGoBack() ? router.back() : router.replace("/first-pieces/photos"));
   const go = (uri: string) => {
     if (!collecting) return router.replace(nextRoute(mode, uri, params.onboarding === "1"));
-    firstPieces!.addPhotos([uri]);
+    firstPieces!.addPhotos([uri], "camera");
     setTaken((t) => [...t, uri]);
   };
 
@@ -74,7 +74,7 @@ export default function CameraScreen() {
     try {
       if (collecting) {
         const uris = await pickPhotos();
-        if (uris.length) { firstPieces!.addPhotos(uris); done(); }
+        if (uris.length) { firstPieces!.addPhotos(uris, "library"); done(); }
         return;
       }
       const uri = await pickPhoto(false);

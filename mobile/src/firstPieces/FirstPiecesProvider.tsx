@@ -4,6 +4,7 @@ import { randomUUID } from "expo-crypto";
 import { pollJob, scanGarments, startGarmentGenerate } from "../api/client";
 import { NO_CREDITS, SIGNED_OUT } from "../api/v1";
 import { useCredits } from "../credits/CreditsProvider";
+import { track } from "./analytics";
 import {
   allPieces, defaultSelection, jobKey, jobsFor, photoStateFor, summarize, toggle as toggleRule,
   type JobPlan, type RoundJob, type RoundPhoto, type RoundPiece, type RoundSummary,
@@ -40,7 +41,7 @@ type Value = {
   selected: string[];
   round: Round | null;
   summary: RoundSummary | null;
-  addPhotos: (uris: string[]) => void;
+  addPhotos: (uris: string[], source?: "camera" | "library") => void;
   removePhoto: (id: string) => void;
   scanAll: () => Promise<void>;
   togglePiece: (key: string) => boolean;  // false when blocked by the round cap
@@ -70,6 +71,7 @@ export function FirstPiecesProvider({ userId, children }: { userId: string | nul
   const [round, setRound] = useState<Round | null>(null);
   const roundRef = useRef<Round | null>(null);
   const nextPhoto = useRef(0);
+  const rounds = useRef(0);
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
 
@@ -150,8 +152,8 @@ export function FirstPiecesProvider({ userId, children }: { userId: string | nul
     return () => { live = false; };
   }, [userId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const addPhotos = useCallback((uris: string[]) => {
-    setPhotos((list) => [...list, ...uris.map((uri) => ({ id: `ph${++nextPhoto.current}`, uri, state: "waiting" as const }))]);
+  const addPhotos = useCallback((uris: string[], source?: "camera" | "library") => {
+    setPhotos((list) => [...list, ...uris.map((uri) => ({ id: `ph${++nextPhoto.current}`, uri, state: "waiting" as const, source }))]);
   }, []);
   const removePhoto = useCallback((id: string) => setPhotos((list) => list.filter((p) => p.id !== id)), []);
 
@@ -194,6 +196,7 @@ export function FirstPiecesProvider({ userId, children }: { userId: string | nul
     const uriOf = (photoId: string) => photos.find((p) => p.id === photoId)?.uri ?? "";
     await commit({ id, startedAt: Date.now(), stopped: null,
       jobs: plans.map((plan) => ({ plan, key: jobKey(id, plan.scanId), status: "unsent", photoUri: uriOf(plan.photoId), unitPrice })) });
+    track("generation_started", { pieces: selected.length, photos: plans.length, round: ++rounds.current, path: "near" });
     setUsed((u) => new Set([...u, ...selected]));
     setSelection(null);
     await send();

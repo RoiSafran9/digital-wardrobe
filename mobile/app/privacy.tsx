@@ -7,6 +7,7 @@ import { APP_NAME } from "../src/appName";
 export const PRIVACY_SECTIONS: InfoSection[] = [
   { title: "What is stored", body: [
     "Your email and the name you chose, the photos you upload, the catalog images, cutouts, back images and 360° views made from them, the details of each piece, and your AI Credits activity.",
+    "When you add your first pieces, which onboarding steps you reached (for example, how many photos you added and pieces found) — never the photos, text or anything about your device. Kept for 180 days.",
     "For outfit photos, the photo of you is not added to your closet: it is kept only to make the pieces you pick and is marked for removal after 24 hours. Only crops of the garments are kept with your pieces.",
   ] },
   { title: "Who can see it", body: [

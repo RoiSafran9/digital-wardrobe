@@ -1,12 +1,13 @@
 import React, { useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Icon } from "../../src/components/Icon";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { haptics } from "../../src/haptics";
-import { pickPhoto } from "../../src/photoPicker";
+import { useFirstPiecesMaybe } from "../../src/firstPieces/FirstPiecesProvider";
+import { pickPhoto, pickPhotos } from "../../src/photoPicker";
 import { hitSlopFor, radius, type } from "../../src/theme";
 import { Button } from "../../src/ui";
 
@@ -20,17 +21,22 @@ export const HINTS: Record<Mode, string> = {
   outfit: "Full body in view · good light",
 };
 
-// Where a photo goes next: garments to the preview and quote, outfits to the free scan.
-export function nextRoute(mode: Mode, uri: string) {
+// Where a photo goes next: garments to the preview and quote, outfits to the free scan (in First 3
+// Pieces' onboarding mode when it came from there).
+export function nextRoute(mode: Mode, uri: string, onboarding = false) {
   return mode === "outfit"
-    ? { pathname: "/outfit/detect" as const, params: { uri } }
+    ? { pathname: "/outfit/detect" as const, params: onboarding ? { uri, onboarding: "1" } : { uri } }
     : { pathname: "/capture/preview" as const, params: { uri } };
 }
 
 export default function CameraScreen() {
   const router = useRouter();
   const { outfit: outfitOn } = useCredits();
-  const params = useLocalSearchParams<{ mode?: string }>();
+  const params = useLocalSearchParams<{ mode?: string; collect?: string; onboarding?: string }>();
+  // First 3 Pieces, Path A: each shot joins the photo tray and the camera stays open until Done.
+  const firstPieces = useFirstPiecesMaybe();
+  const collecting = params.collect === "1" && !!firstPieces;
+  const [taken, setTaken] = useState<string[]>([]);
   const [mode, setMode] = useState<Mode>(params.mode === "outfit" && outfitOn ? "outfit" : "garments");
   const [permission, requestPermission] = useCameraPermissions();
   const insets = useSafeAreaInsets();
@@ -42,7 +48,12 @@ export default function CameraScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const go = (uri: string) => router.replace(nextRoute(mode, uri));
+  const done = () => (router.canGoBack() ? router.back() : router.replace("/first-pieces/photos"));
+  const go = (uri: string) => {
+    if (!collecting) return router.replace(nextRoute(mode, uri, params.onboarding === "1"));
+    firstPieces!.addPhotos([uri]);
+    setTaken((t) => [...t, uri]);
+  };
 
   async function shoot() {
     if (busy) return;
@@ -61,6 +72,11 @@ export default function CameraScreen() {
   async function library() {
     setError(null);
     try {
+      if (collecting) {
+        const uris = await pickPhotos();
+        if (uris.length) { firstPieces!.addPhotos(uris); done(); }
+        return;
+      }
       const uri = await pickPhoto(false);
       if (uri) go(uri);
     } catch (e) {
@@ -85,7 +101,7 @@ export default function CameraScreen() {
             Allow the camera to photograph your clothes, or pick a photo you already took.
           </Text>
           {permission.canAskAgain ? <Button title="Allow Camera" onPress={() => void requestPermission()} /> : null}
-          <Button title={mode === "outfit" ? "Choose Outfit Photo" : "Choose Garment Photo"} variant="secondary" onPress={library} />
+          <Button title={mode === "outfit" ? "Choose Outfit Photo" : collecting ? "Choose Garment Photos" : "Choose Garment Photo"} variant="secondary" onPress={library} />
           {error ? <Text style={{ ...type.footnote, color: "#FF8A8A" }}>{error}</Text> : null}
         </View>
       </View>
@@ -99,7 +115,12 @@ export default function CameraScreen() {
         <View style={{ paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           {close}
           <Text style={{ ...type.subhead, fontWeight: "600", color: INK }}>{mode === "outfit" ? "Outfit" : "Garments"}</Text>
-          <View style={{ width: 40 }} />
+          {collecting ? (
+            <Pressable onPress={done} accessibilityRole="button" accessibilityLabel={`Done, ${taken.length} ${taken.length === 1 ? "photo" : "photos"}`} hitSlop={hitSlopFor(40, 60)}
+              style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: MODE_ON, justifyContent: "center" }}>
+              <Text style={{ ...type.subhead, fontWeight: "700", color: "#000" }}>Done</Text>
+            </Pressable>
+          ) : <View style={{ width: 40 }} />}
         </View>
 
         {/* Corner brackets frame where the clothes should go. */}
@@ -122,7 +143,11 @@ export default function CameraScreen() {
 
         <View style={{ paddingBottom: 12, gap: 18 }}>
           {error ? <Text style={{ ...type.footnote, color: "#FF8A8A", textAlign: "center" }}>{error}</Text> : null}
-          {outfitOn ? (
+          {collecting ? (
+            <Text accessibilityLiveRegion="polite" style={{ ...type.footnote, fontWeight: "600", color: INK, textAlign: "center" }}>
+              {taken.length ? `${taken.length} ${taken.length === 1 ? "photo" : "photos"} added · keep going or tap Done` : "Take as many photos as you like"}
+            </Text>
+          ) : outfitOn ? (
             <View style={{ flexDirection: "row", justifyContent: "center", gap: 22 }}>
               {(["garments", "outfit"] as const).map((m) => (
                 <Pressable key={m} onPress={() => { haptics.selection(); setMode(m); }} accessibilityRole="tab"
@@ -143,7 +168,10 @@ export default function CameraScreen() {
               style={{ width: 76, height: 76, borderRadius: 38, borderWidth: 4, borderColor: INK, alignItems: "center", justifyContent: "center", opacity: busy ? 0.6 : 1 }}>
               <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: INK }} />
             </Pressable>
-            <View style={{ width: 48 }} />
+            {collecting && taken.length ? (
+              <Image source={{ uri: taken[taken.length - 1] }} accessibilityLabel="Last photo taken"
+                style={{ width: 48, height: 48, borderRadius: 12, borderWidth: 2, borderColor: INK }} />
+            ) : <View style={{ width: 48 }} />}
           </View>
         </View>
       </View>

@@ -24,6 +24,7 @@ export function RootNavigator() {
         <Stack.Screen name="capture/results" options={{ gestureEnabled: false }} />
         <Stack.Screen name="capture/saved" options={{ gestureEnabled: false }} />
         <Stack.Screen name="first-pieces/index" />
+        <Stack.Screen name="first-pieces/photos" />
         <Stack.Screen name="outfit/detect" />
         <Stack.Screen name="outfit/pick" />
         <Stack.Screen name="outfit/review" />

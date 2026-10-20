@@ -38,6 +38,8 @@ It needs ~2 GB RAM for the background-removal model; one instance is enough for 
 **Emergency stop:** set `WARDROBE_GENERATION=off` and restart: new AI work is refused (the closet keeps working).
 Don't use `WARDROBE_BILLING=off` for this — that makes AI work free instead of stopping it.
 
+**Activation report** (First 3 Pieces, read-only): `python -m scripts.activation_report --days 30` prints Time to First Item, Time to First 3 Items, first-session activation, second import rate and the onboarding funnel. Needs the `activation_events` migration.
+
 ## 2. Database
 
 Migrations live in `supabase/migrations/`. Apply new ones to the hosted project from a checkout linked to it:

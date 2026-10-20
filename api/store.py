@@ -10,13 +10,19 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 import httpx
 from api.auth import Settings
+from api.controls import PAID_KINDS
 from api.credits import ACTIONS, CreditError
+from api.events import ONCE
 
 BUCKET = "wardrobe"
 SIGNED_URL_SECONDS = 3600
 ACTIVE = ("queued", "running")
 INTERRUPTED = "Interrupted — try again"
 BANNED_FOR = "876000h"  # ~100 years: Supabase Auth has no "forever"
+
+
+def _parse_time(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 def _now() -> datetime:
@@ -39,6 +45,8 @@ class MemoryStore:
         self.tokens: dict[str, list[str]] = {}  # user id -> Expo push tokens
         self.passwords: dict[str, str] = {}  # user id -> password (the App Review demo account only)
         self.banned: set[str] = set()
+        self.events: list[dict] = []  # activation events (api/events.py)
+        self.signups: dict[str, datetime] = {}  # user id -> profile created_at, for the activation report
 
     # Profiles
     def profile_status(self, user_id: str) -> str:
@@ -272,6 +280,7 @@ class MemoryStore:
         self.jobs = {k: v for k, v in self.jobs.items() if v["user_id"] != user_id}
         self.wallets.pop(user_id, None)
         self.ledger = [e for e in self.ledger if e["user_id"] != user_id]
+        self.events = [e for e in self.events if e["user_id"] != user_id]
         self.emails = {e: u for e, u in self.emails.items() if u != user_id}
         self.names.pop(user_id, None)
         self.tokens.pop(user_id, None)
@@ -349,6 +358,36 @@ class MemoryStore:
     def list_paths(self, prefix):
         return sorted(self.list_files(prefix))
 
+
+    # Activation events (api/events.py)
+    def insert_event(self, user_id, event, props):
+        """False when a once-only event was already recorded (the database's unique index)."""
+        if event in ONCE and any(e["user_id"] == user_id and e["event"] == event for e in self.events):
+            return False
+        self.events.append({"user_id": user_id, "event": event, "props": copy.deepcopy(props),
+                            "created_at": _now() + timedelta(microseconds=len(self.events))})
+        return True
+
+    def count_recent_events(self, user_id, seconds):
+        since = _now() - timedelta(seconds=seconds)
+        return sum(1 for e in self.events if e["user_id"] == user_id and e["created_at"] >= since)
+
+    def purge_events(self, before):
+        kept = [e for e in self.events if e["created_at"] >= before]
+        removed, self.events = len(self.events) - len(kept), kept
+        return removed
+
+    def activation_rows(self, since):
+        """Admin view for scripts/activation_report.py: sign-ups since `since` and what they did."""
+        users = {u for u, at in self.signups.items() if at >= since}
+        return {
+            "signups": [{"user_id": u, "created_at": self.signups[u]} for u in users],
+            "items": [{"user_id": i["user_id"], "created_at": i["created_at"]} for i in self.items.values()
+                      if i["user_id"] in users and i.get("review_state") in (None, "kept")],
+            "events": [copy.deepcopy(e) for e in self.events if e["user_id"] in users],
+            "paid_jobs": [{"user_id": j["user_id"], "created_at": j["created_at"]} for j in self.jobs.values()
+                          if j["user_id"] in users and j["kind"] in PAID_KINDS],
+        }
 
 class StoreError(Exception):
     pass
@@ -617,6 +656,36 @@ class SupabaseStore:
         rows = self._ok(self.http.post(f"/storage/v1/object/sign/{BUCKET}",
                                        json={"expiresIn": SIGNED_URL_SECONDS, "paths": list(paths)})).json()
         return {r["path"]: f"{self.settings.public_url}/storage/v1{r['signedURL']}" for r in rows if r.get("signedURL")}
+
+    # Activation events: written and read by the backend only (api/events.py)
+    def insert_event(self, user_id, event, props):
+        return self._insert("activation_events", {"user_id": user_id, "event": event, "props": props}) is not None
+
+    def count_recent_events(self, user_id, seconds):
+        since = (datetime.now(timezone.utc) - timedelta(seconds=seconds)).isoformat()
+        return len(self._rows("activation_events", {"select": "id", "user_id": f"eq.{user_id}", "created_at": f"gte.{since}"}))
+
+    def purge_events(self, before):
+        r = self.http.delete("/rest/v1/activation_events", params={"created_at": f"lt.{before.isoformat()}"},
+                             headers={"Prefer": "return=representation"})
+        return len(self._ok(r).json())
+
+    def activation_rows(self, since):
+        at = f"gte.{since.isoformat()}"
+        signups = [{"user_id": r["id"], "created_at": _parse_time(r["created_at"])}
+                   for r in self._rows("profiles", {"select": "id,created_at", "created_at": at})]
+        users = {s["user_id"] for s in signups}
+        def mine(rows):
+            return [{**r, "created_at": _parse_time(r["created_at"])} for r in rows if r["user_id"] in users]
+        items = [r for r in self._rows("wardrobe_items", {"select": "user_id,created_at,review_state", "created_at": at})
+                 if r.get("review_state") in (None, "kept")]
+        return {
+            "signups": signups,
+            "items": mine([{"user_id": r["user_id"], "created_at": r["created_at"]} for r in items]),
+            "events": mine(self._rows("activation_events", {"select": "user_id,event,props,created_at", "created_at": at})),
+            "paid_jobs": mine(self._rows("generation_jobs", {"select": "user_id,created_at", "created_at": at,
+                                                             "kind": f"in.({','.join(PAID_KINDS)})"})),
+        }
 
 
 def get_store():

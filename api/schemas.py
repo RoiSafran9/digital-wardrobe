@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 from pydantic import BaseModel
 from pipeline.types import ItemFacts
 
@@ -98,6 +98,11 @@ class ProfileIn(BaseModel):
 
 class PushTokenIn(BaseModel):
     token: str | None = None
+
+
+class EventIn(BaseModel):
+    event: str
+    props: dict[str, Any] | None = None
 
 
 class AccountDeleteIn(BaseModel):

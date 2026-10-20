@@ -127,6 +127,9 @@ The closet is a directory scan (newest first). The full original photo is not ke
 ## Beta controls
 Server environment only (`api/controls.py`): `WARDROBE_GENERATION=off` pauses every route that starts AI work (503; `/v1/prices` says `generation: false`, Add shows a notice); `WARDROBE_FREE_SCANS_PER_HOUR` caps free scans per account (429, default 30); `WARDROBE_WELCOME_CREDITS` + `WARDROBE_BETA_INVITES` control the one-time welcome grant; `WARDROBE_DAILY_AI_JOBS` caps paid AI jobs per UTC day across all accounts (503, nothing held); `WARDROBE_SWEEP_EVERY_HOURS` runs the Storage cleanup inside the worker; `WARDROBE_WORKER_CONCURRENCY` (1–4, default 1) runs that many jobs at once (extra claim loops; `claim_generation_job` skips locked rows). Gemini calls time out (detection 60 s, images 120 s). `/healthz` also reports `ai_jobs_today`.
 
+## Activation analytics
+`POST /v1/events` records First 3 Pieces onboarding steps in `activation_events` (backend-only table; `api/events.py` allow-lists event names and props — counts and fixed choices, no photos, text or device data; server time; milestones once per account; 120 per account per hour; deleted with the account; purged after 180 days by the worker's sweep). `scripts/activation_report.py` derives times to first pieces from `wardrobe_items` and `profiles.created_at`, and the funnel from the events.
+
 ## Known limits
 - The server and worker run on the owner's Mac, public through the Cloudflare Tunnel; the Mac must stay on and awake, and the server is started by hand after a reboot. A Docker image for a cloud host is prepared, not deployed.
 - Image model: `gemini-2.5-flash-image` (deprecated) with an automatic switch to `gemini-3.1-flash-image` once Google answers "model not found".

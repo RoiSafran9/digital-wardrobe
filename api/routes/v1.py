@@ -12,7 +12,8 @@ from api.credits import CreditError
 from api.controls import BUDGET_USED, PAID_KINDS, WELCOME_KEY, daily_ai_jobs, start_of_day, free_scans_per_hour, generation_on, invited, require_generation, welcome_credits
 from api.credits import MAX_FRONTS, InsufficientCredits, action_for, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
-from api.schemas import (AccountDeleteIn, GarmentGenerateIn, GarmentScanOut, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
+from api.events import EVENTS_PER_HOUR, validate as validate_event
+from api.schemas import (AccountDeleteIn, EventIn, GarmentGenerateIn, GarmentScanOut, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
                          TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse)
 from api.store import INTERRUPTED, get_store
 from pipeline.types import ItemFacts
@@ -573,3 +574,17 @@ def bootstrap(user: User = Depends(current_user), store=Depends(get_store)):
     except CreditError:
         return {"welcome_granted": 0}
     return {"welcome_granted": amount}
+
+
+@router.post("/events", status_code=204)
+def record_event(body: EventIn, user: User = Depends(current_user), store=Depends(get_store)):
+    """First 3 Pieces activation steps (api/events.py): allow-listed names and props only, server time.
+    Once-only events that were already recorded are ignored."""
+    try:
+        props = validate_event(body.event, body.props)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    if store.count_recent_events(user.id, 3600) >= EVENTS_PER_HOUR:
+        raise HTTPException(429, "too many events")
+    store.insert_event(user.id, body.event, props)
+    return Response(status_code=204)

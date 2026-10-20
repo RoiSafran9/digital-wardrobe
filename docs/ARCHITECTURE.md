@@ -120,6 +120,7 @@ The closet is a directory scan (newest first). The full original photo is not ke
 - Plain `fetch` clients (`src/api/client.ts` local, `src/api/v1.ts` account) adapting both to the same item shapes; local component state.
 - The design handoff's look per `DESIGN.md` (SF Pro, Instrument Serif for four headlines, warm-grey grouped cards, one blue accent); `Animated` motion that honors Reduce Motion; `expo-haptics`, `expo-camera`, `expo-blur`, `expo-linear-gradient`. Everything runs in Expo Go.
 - `GarmentImage` falls back cutout → generated → crop → placeholder.
+- First 3 Pieces (`app/first-pieces/`, `src/firstPieces/`): `FirstPiecesProvider` (keyed by user in `AppShell`) holds the photos, their free scans and picks in memory, and runs a round as one `POST /v1/garment-scans/{id}/generate` job per photo under keys `fp:{round}:{scan}`. The round's jobs are written to AsyncStorage (`firstPieces.inflight.{user}`) before each is sent, so a restart polls the same jobs or resends an unsent one under the same key. Pure rules (5-per-round cap, quote, summary, when to offer) live in `src/firstPieces/round.ts`. Path B reuses the outfit screens with `onboarding=1`.
 
 ## Quality gates
 `pytest` (providers faked), `npx jest`, `npx tsc --noEmit`, `npx supabase test db`; `pytest tests/integration` with the local Supabase stack running. Manual runs on real photos for prompt or generation changes; manual phone checks for UI.

@@ -56,6 +56,15 @@ Done: hosted Supabase SMTP (Resend, `kipscloset.com`) and code templates, all mi
 - [x] Hosted migrations applied and owner phone check (2026-10-19)
 - [ ] Real worn photos from beta testers: watch fidelity on saturated colors and layered garments
 
+## First 3 Pieces onboarding — BUILT ([plan](superpowers/plans/2026-10-20-first-3-pieces-onboarding.md))
+
+- [x] Plan approved with recommendations F1–F9 (2026-10-20)
+- [x] M1 worker concurrency (`WARDROBE_WORKER_CONCURRENCY`, default 1) · M2 keyed generate start, poll by id, multi-photo picker · M3 round rules
+- [x] M4 round provider with resumable jobs · M5 entry, offer gate, Start screen · M6 photo tray, camera collect mode · M7 pick across photos · M8 round progress · M9 first-success popup · M10 Path B through the outfit flow
+- [x] M11 activation events (`POST /v1/events`, `activation_events`, `scripts/activation_report.py`)
+- [ ] Hosted migration (`activation_events`), `WARDROBE_WORKER_CONCURRENCY=2` on the beta server, owner phone check
+- [ ] Reconcile with `docs/features/first-3-pieces-onboarding/` once those docs are committed (M0)
+
 ## TestFlight Friends & Family Beta — next main delivery
 
 **Master plan:** [Beta TestFlight launch master plan](tasks/testflight-beta-launch-master-plan.md)  

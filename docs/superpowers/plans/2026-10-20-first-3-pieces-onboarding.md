@@ -1,6 +1,6 @@
 # First 3 Pieces Onboarding — Implementation Plan
 
-Status: **Approved 2026-10-20 (F1–F9 as recommended).** Done: M1, M2, M3, M11 server part. Next: M4.
+Status: **Approved 2026-10-20 (F1–F9 as recommended).** Built: M1–M11. Left: hosted migration + phone QA (M12), M0 when the feature docs land.
 
 > **Source note.** The brief points to `docs/features/first-3-pieces-onboarding/` (`01-product-prd.md`, `02-ux-flows-and-copy.md`, `03-technical-design-brief.md`, `04-claude-code-handoff.md`, `README.md`). **None of these files exist** — not on `main` (115a9b7), not on any remote branch, not anywhere on this Mac. This plan is built from the owner's confirmed decisions as relayed in the task brief (quoted in §0) and from the code as built. Where the missing docs would normally decide copy or detail, this plan says so and gives a recommendation. Milestone M0 reconciles the plan once the docs land.
 

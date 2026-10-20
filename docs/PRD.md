@@ -25,6 +25,13 @@ Today: the owner, and a friends-and-family TestFlight beta being prepared (app n
 9. A photo that is blurry, too dark or too small is rejected before any model call; the app asks to try again laid flat in good light (for a back photo it names the exact problem).
 10. Processed items are saved when made; the Results screen lets the user deselect pieces before "Add N to Closet" (deselected pieces are soft-deleted; credits for made pieces are not returned). The owner corrects or removes later too.
 
+### First 3 Pieces (new accounts)
+- A new account with an empty closet (checked on the server, so people with pieces never see it, on any device) is offered a guided start once, after the name and starter-credits steps; Home's empty state offers it too. "Let's add your first 3 pieces" → "Are you near your wardrobe?"
+- **Near it:** collect any number of garment photos (camera that stays open, and/or several from the library), remove any, then **Find My Pieces** (free pre-scan of every photo). Pieces are listed photo by photo; one round makes at most **5** pieces in total (the largest start picked; a sixth tap is refused); more rounds can follow. The cost is confirmed at the server price, then one generate job per photo runs. Leaving or closing the app keeps the submitted jobs (they are resumed under the same keys, never sent twice); the photos and picks are not kept.
+- **Not near it** (when outfits are on): an outfit photo through the outfit flow, same 5-per-round cap, review before the closet.
+- When ≥ 1 piece is saved: a popup over the closet — "Your first pieces are in!" / "Your digital closet has officially started." — with the user's own pieces, Explore My Closet, Add More, close. Once per account per device.
+- Activation steps are recorded without photos, text or device data (`POST /v1/events`); times to first pieces come from the closet itself.
+
 ### Catalog image
 11. For each piece the model generates a catalog image of the **same** garment, unfolded and smoothed on a white background, then a local cutout removes the background.
 12. **Fidelity first**: color, wash, fade, texture, print, printed text, trims and proportions match the photographed piece. No invented logos, details or idealized versions. A local check compares color and printed text with the photo and retries generation with the violations.

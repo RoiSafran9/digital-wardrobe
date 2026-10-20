@@ -1,5 +1,5 @@
 # Screen Map — Digital Wardrobe
-Status: **As built** · Updated: 2026-10-19 (redesign M9, Home update)
+Status: **As built** · Updated: 2026-10-20 (First 3 Pieces)
 
 Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: system font, grouped backgrounds, one blue tint, light/dark, Reduce Motion). Feature specs: `docs/superpowers/specs/`.
 
@@ -14,6 +14,14 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 - **Check your inbox** (`app/sign-in-code.tsx`): six boxes over one one-time-code field (Mail autofill, paste); verifies 600 ms after the sixth digit; a wrong or expired code shows the message and clears the boxes; "Resend code in Ns" (60 s); "Use a different email".
 - **What should we call you?** (`app/your-name.tsx`): part of signing up. Shown once after the code when the account has no name yet (also for existing accounts, once); 1–40 characters; saved to the profile. The greeting and Account use it.
 - **A welcome gift** (`app/welcome-credits.tsx`): once per account, right after a sign-in, only when billing is on and the server has granted credits. Shows the server's available balance ("about N garments" at the front price) and server price chips; **Digitize Your First Piece** → Add, **Explore first** → Home. Never a fixed amount.
+
+## 0b. First 3 Pieces (`mobile/app/first-pieces/`; account mode; [plan](superpowers/plans/2026-10-20-first-3-pieces-onboarding.md))
+- **Offered** once per account per device to a new account with an empty closet and no outfit results waiting, after the name and starter-credits steps; the starter screen's button ("Add Your First 3 Pieces", or "Add Clothes" for an account that already has pieces) and a card on Home's empty state ("Add your first 3 pieces") open it too.
+- **Start** (`first-pieces/index.tsx`): three numbered dashed frames, "Let's add your first 3 pieces", "It takes about a minute. Finding your clothes is free.", "Are you near your wardrobe?" → **Yes, I'm near it** (photo tray) / **Not right now** (Take Outfit Photo / Choose Outfit Photo → the outfit flow in onboarding mode). Without outfits: no question, **Get Started**. Paused generation shows a note. × closes.
+- **Your photos** (`first-pieces/photos.tsx`): grid of collected photos with remove buttons, **Take Garment Photos** (camera in collect mode: each shot is added, the camera stays open, "N photos added", **Done**), **Choose Garment Photos** (several at once), tips, **Find My Pieces** ("Finding them is free"). Leaving with photos asks first ("Your photos won't be kept.").
+- **Pick** (`first-pieces/pick.tsx`): scans every photo (two at a time) with the scan band; then "We found N pieces", each photo with its boxes and piece chips, "k of 5 selected" (a sixth tap → toast "Up to 5 per round — deselect one first."), notes for unusable / empty / worn ("Try it as an outfit photo") / not-yet-checked photos (Check Again), the quote at the server price, **Create N Pieces · N credits** → cost sheet; short of credits → "Leave out K pieces"; nothing found → Add Photos.
+- **Progress** (`first-pieces/processing.tsx`): the processing card with the round's piece count and one row per photo; leaving is fine (Home's banner "Creating your first pieces…" — also after a restart). Partial results: "N pieces created", what wasn't made, credits returned, See My Closet / Try the Rest Again; nothing made: Try Again / Choose Other Photos; out of credits or a changed price mid-round: what wasn't started and why.
+- **First-success popup** (over Closet): fan of the round's own pieces, "Your first pieces are in!", "Your digital closet has officially started.", **Explore My Closet**, **Add More** (the round's leftover pieces, or Start), ×. Once per account per device; also after an outfit (Path B) review saves pieces.
 
 ## 1. Home (`mobile/app/(tabs)/index.tsx`)
 Rule (handoff [CHANGE_home_photo_type.md](design/design_handoff_digital_wardrobe/CHANGE_home_photo_type.md)): every photo entry point says which photo it wants — garment photo (laid flat or on a hanger → garment flow) or outfit photo (someone wearing it → outfit flow).

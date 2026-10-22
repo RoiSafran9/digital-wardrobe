@@ -46,6 +46,7 @@ class MemoryStore:
         self.passwords: dict[str, str] = {}  # user id -> password (the App Review demo account only)
         self.banned: set[str] = set()
         self.events: list[dict] = []  # activation events (api/events.py)
+        self.ai_calls: list[dict] = []  # model calls, kept without the account when it is deleted (D1)
         self.signups: dict[str, datetime] = {}  # user id -> profile created_at, for the activation report
 
     # Profiles
@@ -240,8 +241,9 @@ class MemoryStore:
                    started_at=job["started_at"] or now)
         return copy.deepcopy(job)
 
-    def finish_job(self, job_id, status, result=None, error=None):
-        self.jobs[job_id].update(status=status, result=result, error=error, finished_at=_now(), locked_until=None)
+    def finish_job(self, job_id, status, result=None, error=None, failure_code=None):
+        self.jobs[job_id].update(status=status, result=result, error=error, finished_at=_now(), locked_until=None,
+                                 failure_code=failure_code)
 
     def retry_job(self, job_id, error):
         self.jobs[job_id].update(status="queued", error=error, locked_until=None)
@@ -285,6 +287,9 @@ class MemoryStore:
         self.wallets.pop(user_id, None)
         self.ledger = [e for e in self.ledger if e["user_id"] != user_id]
         self.events = [e for e in self.events if e["user_id"] != user_id]
+        for call in self.ai_calls:  # like "on delete set null": the cost stays, the account and job go
+            if call.get("user_id") == user_id:
+                call.update(user_id=None, job_id=None)
         self.emails = {e: u for e, u in self.emails.items() if u != user_id}
         self.names.pop(user_id, None)
         self.tokens.pop(user_id, None)
@@ -362,6 +367,16 @@ class MemoryStore:
     def list_paths(self, prefix):
         return sorted(self.list_files(prefix))
 
+
+    # Model calls (ai_calls): cost and latency per call, written by the worker
+    def insert_ai_calls(self, rows):
+        for row in rows:
+            self.ai_calls.append({"created_at": _now(), **copy.deepcopy(row)})
+
+    def purge_ai_calls(self, before):
+        kept = [c for c in self.ai_calls if c["created_at"] >= before]
+        removed, self.ai_calls = len(self.ai_calls) - len(kept), kept
+        return removed
 
     # Activation events (api/events.py)
     def insert_event(self, user_id, event, props):
@@ -540,8 +555,9 @@ class SupabaseStore:
         rows = self._ok(self.http.post("/rest/v1/rpc/claim_generation_job", json={"lease_seconds": lease_seconds})).json()
         return rows[0] if rows else None
 
-    def finish_job(self, job_id, status, result=None, error=None):
+    def finish_job(self, job_id, status, result=None, error=None, failure_code=None):
         self._patch("generation_jobs", {"id": f"eq.{job_id}"}, {"status": status, "result": result, "error": error,
+                                                                 "failure_code": failure_code,
                                                                  "finished_at": _now().isoformat(), "locked_until": None})
 
     def retry_job(self, job_id, error):
@@ -668,6 +684,19 @@ class SupabaseStore:
         rows = self._ok(self.http.post(f"/storage/v1/object/sign/{BUCKET}",
                                        json={"expiresIn": SIGNED_URL_SECONDS, "paths": list(paths)})).json()
         return {r["path"]: f"{self.settings.public_url}/storage/v1{r['signedURL']}" for r in rows if r.get("signedURL")}
+
+    # Model calls (ai_calls): backend only
+    def insert_ai_calls(self, rows):
+        if rows:
+            self._ok(self.http.post("/rest/v1/ai_calls", json=[
+                {**r, "created_at": r["created_at"].isoformat()} if isinstance(r.get("created_at"), datetime) else r
+                for r in rows], headers={"Prefer": "return=minimal"}))
+
+    def purge_ai_calls(self, before):
+        r = self.http.delete("/rest/v1/ai_calls", params={"created_at": f"lt.{before.isoformat()}"},
+                             headers={"Prefer": "count=exact,return=minimal"})
+        total = self._ok(r).headers.get("content-range", "*/0").rsplit("/", 1)[-1]
+        return int(total) if total.isdigit() else 0
 
     # Activation events: written and read by the backend only (api/events.py)
     def insert_event(self, user_id, event, props):

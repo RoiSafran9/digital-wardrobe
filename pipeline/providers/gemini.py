@@ -25,6 +25,17 @@ def image_model() -> str:
     return MODEL_IMAGE_FALLBACK if _image_model_gone else MODEL_IMAGE
 
 
+class NoImageReturned(RuntimeError):
+    """The image model answered without an image (often a safety refusal)."""
+
+
+def _first_image(response) -> bytes:
+    for part in response.candidates[0].content.parts:
+        if part.inline_data is not None:
+            return part.inline_data.data
+    raise NoImageReturned("the model returned no image")
+
+
 def _usage(response) -> tuple[int | None, int | None, int | None]:
     """(input tokens, output tokens, images returned) from a Gemini response; Nones when there is none."""
     if response is None:
@@ -249,8 +260,7 @@ class GeminiProvider:
                 self.client, [{"inline_data": {"mime_type": "image/png", "data": crop_bytes}}, prompt])
             out_path = crop_path.rsplit(".", 1)[0] + "_generated.png"
             # Newer image models can put a short text part before the image.
-            image_bytes = next(p.inline_data.data for p in response.candidates[0].content.parts
-                               if p.inline_data is not None)
+            image_bytes = _first_image(response)
             with open(out_path, "wb") as f:
                 f.write(image_bytes)
             self._log("stage4_generate", image_model(), "v5", start, "ok", response=response)
@@ -284,8 +294,7 @@ class GeminiProvider:
                 ],
             )
             out_path = crop_path.rsplit(".", 1)[0] + "_generated.png"
-            image_bytes = next(p.inline_data.data for p in response.candidates[0].content.parts
-                               if p.inline_data is not None)
+            image_bytes = _first_image(response)
             with open(out_path, "wb") as f:
                 f.write(image_bytes)
             self._log("stage4_generate_back", image_model(), "v2", start, "ok", response=response)
@@ -318,8 +327,7 @@ class GeminiProvider:
                 retry_block="\n" + retry_note if retry_note else ""))
             # Async client: the 360 job runs in the background while the app polls the same server.
             response = await image_content(self.client, contents)
-            data = next(p.inline_data.data for p in response.candidates[0].content.parts
-                        if p.inline_data is not None)
+            data = _first_image(response)
             self._log("turn_view", image_model(), "v2", start, "ok", response=response)
             return data
         except Exception as e:

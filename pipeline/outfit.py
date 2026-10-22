@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 import cv2
 from pydantic import BaseModel
+from pipeline.providers.gemini import _first_image as gemini_first_image
 from pipeline.providers.gemini import MODEL_IMAGE, MODEL_VISION, _read_prompt, image_content, image_model, touches_frame
 from pipeline.costs import RATES
 from pipeline.stages import cutout, stage5_verify
@@ -209,7 +210,7 @@ def _image_part(path: str) -> dict:
 
 
 def _first_image(response) -> bytes:
-    return next(p.inline_data.data for p in response.candidates[0].content.parts if p.inline_data is not None)
+    return gemini_first_image(response)
 
 
 async def detect_candidates(client, image_path: str, usage: Usage) -> OutfitScan:

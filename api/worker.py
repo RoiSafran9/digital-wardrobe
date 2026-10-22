@@ -36,7 +36,48 @@ CROP_JPEG_QUALITY = 90
 
 
 class JobRejected(Exception):
-    """The job can't succeed as asked (bad photo, item gone); retrying won't help. Message is for the user."""
+    """The job can't succeed as asked (bad photo, item gone); retrying won't help. Message is for the user;
+    code is the failure category kept on the job (generation_jobs.failure_code)."""
+    def __init__(self, message: str, code: str = "internal"):
+        super().__init__(message)
+        self.code = code
+
+
+AI_CALLS_RETENTION_DAYS = 400
+
+
+def _failure_code(error: Exception) -> str:
+    """The category of an unexpected error that failed a job for good (never its message)."""
+    from pipeline.providers.gemini import NoImageReturned
+    if isinstance(error, (asyncio.TimeoutError, TimeoutError)):
+        return "model_timeout"
+    if isinstance(error, NoImageReturned):
+        return "model_refused"
+    if type(error).__module__.startswith("google."):
+        return "model_error"
+    return "internal"
+
+
+def _ai_call_rows(job: dict, tmp: str) -> list[dict]:
+    """The job's model calls from the run logs its handler wrote in tmp, as ai_calls rows (no messages)."""
+    rows = []
+    for path in sorted(glob.glob(os.path.join(tmp, "*.jsonl"))):
+        for e in RunLogger(path).read_all():
+            if e.model == "n/a":  # the orchestrator's own error note, not a model call
+                continue
+            rows.append({"job_id": job["id"], "user_id": job["user_id"], "job_kind": job["kind"], "attempt": job["attempts"],
+                         "stage": e.stage, "model": e.model, "prompt_version": e.prompt_version, "status": e.status,
+                         "error_class": e.error_class, "latency_ms": round(e.latency_ms), "input_tokens": e.input_tokens,
+                         "output_tokens": e.output_tokens, "images_out": e.images_out, "fallback": e.fallback,
+                         "est_cost_usd": e.cost_usd, "created_at": e.ts})
+    return rows
+
+
+def _keep_ai_calls(store, job, tmp) -> None:
+    try:
+        store.insert_ai_calls(_ai_call_rows(job, tmp))
+    except Exception:
+        log.warning("model calls of job %s not kept", job["id"], exc_info=True)
 
 
 def _sentence(message: str) -> str:
@@ -119,7 +160,7 @@ async def _garment_scan(store, job, providers, tmp, uploads):
     try:
         found = await vision.detect_items_with_facts(photo)
     except ValueError as e:
-        raise JobRejected(_sentence(str(e))) from e
+        raise JobRejected(_sentence(str(e)), "photo_quality") from e
     included = [d for d in found if d.included]
     pieces = [{"index": i, "category": str(d.category.value), "colors": list(d.colors.value) if isinstance(d.colors.value, list) else [d.colors.value],
                "box": d.box.model_dump()} for i, d in enumerate(included)]
@@ -135,7 +176,7 @@ def _picked_detection(store, job) -> list | None:
     result = (scan or {}).get("result") or {}
     expires = result.get("expires_at")
     if not scan or scan["kind"] != "garment_scan" or not expires or datetime.fromisoformat(expires) <= datetime.now(timezone.utc):
-        raise JobRejected("This photo's scan has expired — take the photo again")
+        raise JobRejected("This photo's scan has expired — take the photo again", "scan_expired")
     detected = [DetectedItemWithFacts.model_validate(d) for d in result.get("detected") or []]
     picks = [int(cid[1:]) for cid in job.get("candidate_ids") or []]
     return [detected[i] for i in picks if 0 <= i < len(detected)]
@@ -157,7 +198,7 @@ async def _garment(store, job, providers, tmp, uploads):
                                   max_items=None if picked is not None else job.get("max_items"), detected_items=picked,
                                   on_progress=lambda done, total: store.set_job_progress(job["id"], done, total))
     except ValueError as e:
-        raise JobRejected(_sentence(str(e))) from e
+        raise JobRejected(_sentence(str(e)), "photo_quality") from e
 
     item_ids, retakes = [], []
     for item_dir in sorted(glob.glob(os.path.join(output_dir, "item_*")), key=lambda d: int(d.rsplit("_", 1)[1])):
@@ -185,7 +226,7 @@ async def _garment(store, job, providers, tmp, uploads):
     quality = outcome["quality"]
     if quality.status == "ok" and not item_ids and not retakes and not outcome["failed"]:
         # Nothing detected (or everything left out): a "succeeded" job with no items looked like a hang.
-        raise JobRejected(_sentence(_nothing_found(vision.detected)))
+        raise JobRejected(_sentence(_nothing_found(vision.detected)), "no_garment")
     store.remove([job["input_path"]])  # each item keeps its own copy as source
     return {"item_ids": item_ids, "quality": {"status": quality.status, "reason": quality.reason},
             "failed": outcome["failed"], "retakes": retakes, "over_limit": outcome.get("over_limit", 0)}
@@ -194,7 +235,7 @@ async def _garment(store, job, providers, tmp, uploads):
 def _item_or_reject(store, job) -> dict:
     item = store.get_item(job["user_id"], job["item_id"])
     if item is None:
-        raise JobRejected(ITEM_GONE)
+        raise JobRejected(ITEM_GONE, "item_gone")
     return item
 
 
@@ -213,7 +254,7 @@ async def _back(store, job, providers, tmp, uploads):
     try:
         facts = await run_back(photo, front, out, providers(logger), logger)
     except (BackPhotoRejected, ValueError) as e:
-        raise JobRejected(_sentence(str(e))) from e
+        raise JobRejected(_sentence(str(e)), "photo_quality") from e
     base = f"{job['user_id']}/items/{item['id']}/back/{job['id']}"
     back = {
         "generated_path": uploads.put(f"{base}/generated.png", os.path.join(out, "generated.png")),
@@ -247,7 +288,7 @@ async def _turn(store, job, providers, tmp, uploads):
     try:
         await run_turn(refs_for_item(item_dir), out, imagegen)
     except TurnFailed as e:
-        raise JobRejected(_sentence(str(e))) from e
+        raise JobRejected(_sentence(str(e)), "model_error") from e
     base = f"{job['user_id']}/items/{item['id']}/turn/{job['id']}"
     views = [{"angle": view,
               "path": uploads.put(f"{base}/{view}.png", os.path.join(out, f"{view}.png")),
@@ -271,7 +312,7 @@ async def _outfit_scan(store, job, providers, tmp, uploads):
     try:
         scan = await vision.detect_outfit(photo)
     except ValueError as e:  # unreadable photo
-        raise JobRejected(_sentence(str(e))) from e
+        raise JobRejected(_sentence(str(e)), "photo_quality") from e
     base = f"{job['user_id']}/scans/{job['id']}"
     candidates = []
     for c in scan.candidates[:MAX_OUTFIT_CANDIDATES]:
@@ -293,7 +334,7 @@ def _scan_for(store, job) -> tuple[dict, "outfit.OutfitScan"]:
     expires = result.get("expires_at")
     if (not scan_job or scan_job["kind"] != "outfit_scan" or scan_job["status"] != "succeeded"
             or not expires or datetime.fromisoformat(expires) <= datetime.now(timezone.utc)):
-        raise JobRejected(SCAN_GONE)
+        raise JobRejected(SCAN_GONE, "scan_expired")
     scan = outfit.OutfitScan.model_validate(result)
     # The user's corrections replace the type the scan guessed, for the prompt and the saved facts alike.
     fixes = job.get("corrections") or {}
@@ -316,14 +357,14 @@ async def _outfit_generate(store, job, providers, tmp, uploads):
     try:
         original = store.download(scan_job["input_path"])
     except Exception as e:
-        raise JobRejected(SCAN_GONE) from e
+        raise JobRejected(SCAN_GONE, "scan_expired") from e
     photo = _write(os.path.join(tmp, "upload" + (os.path.splitext(scan_job["input_path"])[1] or ".jpg")), original)
     out_dir = os.path.join(tmp, "out")
     imagegen = providers(RunLogger(os.path.join(tmp, "outfit_log.jsonl"))).imagegen
     try:
         results = await imagegen.generate_outfit(photo, scan, list(job["candidate_ids"]), out_dir)
     except ValueError as e:  # unknown candidate IDs or an unreadable photo
-        raise JobRejected(_sentence(str(e))) from e
+        raise JobRejected(_sentence(str(e)), "photo_quality") from e
     by_id = {c.id: c for c in scan.candidates}
     item_ids, failed = [], []
     for cid in job["candidate_ids"]:
@@ -347,7 +388,8 @@ async def _outfit_generate(store, job, providers, tmp, uploads):
         }
         item_ids.append(store.insert_item(row)["id"])
     if not item_ids:
-        raise JobRejected("Couldn't make an image of the selected garments — try again or photograph them laid flat")
+        raise JobRejected("Couldn't make an image of the selected garments — try again or photograph them laid flat",
+                          "all_pieces_failed")
     return {"item_ids": item_ids, "failed": failed}
 
 
@@ -357,12 +399,12 @@ async def _outfit_regenerate(store, job, providers, tmp, uploads):
     user = job["user_id"]
     item = store.get_item(user, job["item_id"])
     if item is None or item.get("review_state") != "pending":
-        raise JobRejected("This piece was already kept or removed")
+        raise JobRejected("This piece was already kept or removed", "item_gone")
     scan_job, scan = _scan_for(store, job)
     try:
         original = store.download(scan_job["input_path"])
     except Exception as e:
-        raise JobRejected(SCAN_GONE) from e
+        raise JobRejected(SCAN_GONE, "scan_expired") from e
     photo = _write(os.path.join(tmp, "upload" + (os.path.splitext(scan_job["input_path"])[1] or ".jpg")), original)
     out_dir = os.path.join(tmp, "out")
     imagegen = providers(RunLogger(os.path.join(tmp, "outfit_log.jsonl"))).imagegen
@@ -370,7 +412,7 @@ async def _outfit_regenerate(store, job, providers, tmp, uploads):
     results = await imagegen.generate_outfit(photo, scan, [cid], out_dir)
     item_dir = os.path.join(out_dir, cid)
     if (results.get(cid) or {}).get("status") != "generated" or not os.path.exists(os.path.join(item_dir, "generated.png")):
-        raise JobRejected("Couldn't make a new image — the current one stays; try again later")
+        raise JobRejected("Couldn't make a new image — the current one stays; try again later", "model_error")
     base = f"{user}/items/{item['id']}"
     tag = job["id"][:8]
     fields = {
@@ -385,9 +427,9 @@ HANDLERS = {"garment": _garment, "back": _back, "turn": _turn, "outfit_scan": _o
             "outfit_generate": _outfit_generate, "outfit_regenerate": _outfit_regenerate, "garment_scan": _garment_scan}
 
 
-def _fail(store, gate, job, uploads, message):
+def _fail(store, gate, job, uploads, message, code="internal"):
     store.remove(uploads.paths + ([job["input_path"]] if job.get("input_path") else []))
-    store.finish_job(job["id"], "failed", error=message)
+    store.finish_job(job["id"], "failed", error=message, failure_code=code)
     push.notify_job(store, job, "failed", error=message)
     try:
         if job["kind"] not in FREE_KINDS:  # a free job (outfit scan) holds nothing to give back
@@ -407,15 +449,18 @@ async def run_once(store, provider_factory, lease_seconds: int = 600, gate: Cred
     uploads = _Uploads(store)
     try:
         with tempfile.TemporaryDirectory() as tmp:
-            result = await HANDLERS[job["kind"]](store, job, provider_factory, tmp, uploads)
+            try:
+                result = await HANDLERS[job["kind"]](store, job, provider_factory, tmp, uploads)
+            finally:
+                _keep_ai_calls(store, job, tmp)  # every attempt's calls cost money, success or not
         store.finish_job(job["id"], "succeeded", result)
         push.notify_job(store, job, "succeeded", result)
     except JobRejected as e:
-        _fail(store, gate, job, uploads, str(e))
-    except Exception:
+        _fail(store, gate, job, uploads, str(e), e.code)
+    except Exception as e:
         log.exception("job %s (%s) failed on attempt %s", job["id"], job["kind"], job["attempts"])
         if job["attempts"] >= job["max_attempts"]:
-            _fail(store, gate, job, uploads, GENERIC_FAILURE)
+            _fail(store, gate, job, uploads, GENERIC_FAILURE, _failure_code(e))
         else:
             store.retry_job(job["id"], GENERIC_FAILURE)
     else:
@@ -442,6 +487,8 @@ def _sweep_now(store) -> None:
     from api.events import RETENTION_DAYS
     purged = store.purge_events(datetime.now(timezone.utc) - timedelta(days=RETENTION_DAYS))
     log.info("purged %s activation events older than %s days", purged, RETENTION_DAYS)
+    purged = store.purge_ai_calls(datetime.now(timezone.utc) - timedelta(days=AI_CALLS_RETENTION_DAYS))
+    log.info("purged %s model-call rows older than %s days", purged, AI_CALLS_RETENTION_DAYS)
 
 
 def maybe_sweep(store, now: float) -> bool:

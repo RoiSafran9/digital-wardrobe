@@ -15,6 +15,7 @@ import { haptics } from "../../src/haptics";
 import { useCaptureJobs } from "../../src/store/captureJobs";
 import { asList, capitalize, colors, radius, type } from "../../src/theme";
 import { Button } from "../../src/ui";
+import { useScreenViewed } from "../../src/activity/track";
 
 type Made = ClosetItem & Pick<RunItem, "reason" | "retake_instruction">;
 const key = (i: { photo_name: string; item_id: string }) => `${i.photo_name}/${i.item_id}`;
@@ -22,6 +23,7 @@ const key = (i: { photo_name: string; item_id: string }) => `${i.photo_name}/${i
 // The pieces the photo produced. They are already saved (and the fronts made were charged); anything
 // deselected here is removed on "Add N to Closet".
 export default function ResultsScreen() {
+  useScreenViewed("results");
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { current, clear, setSaved } = useCaptureJobs();

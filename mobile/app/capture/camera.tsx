@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -10,6 +10,7 @@ import { useFirstPiecesMaybe } from "../../src/firstPieces/FirstPiecesProvider";
 import { pickPhoto, pickPhotos } from "../../src/photoPicker";
 import { hitSlopFor, radius, type } from "../../src/theme";
 import { Button } from "../../src/ui";
+import { track, trackPermission, useScreenViewed } from "../../src/activity/track";
 
 type Mode = "garments" | "outfit";
 // The camera is always dark, whatever the appearance; these are fixed, not theme colors.
@@ -30,6 +31,7 @@ export function nextRoute(mode: Mode, uri: string, onboarding = false) {
 }
 
 export default function CameraScreen() {
+  useScreenViewed("camera");
   const router = useRouter();
   const { outfit: outfitOn } = useCredits();
   const params = useLocalSearchParams<{ mode?: string; collect?: string; onboarding?: string }>();
@@ -49,8 +51,15 @@ export default function CameraScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const done = () => (router.canGoBack() ? router.back() : router.replace("/first-pieces/photos"));
-  const go = (uri: string) => {
-    if (!collecting) return router.replace(nextRoute(mode, uri, params.onboarding === "1"));
+  useEffect(() => {
+    if (permission && permission.status !== "undetermined") trackPermission("camera", permission.granted);
+  }, [permission?.status, permission?.granted]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const go = (uri: string, from: "camera" | "library") => {
+    if (!collecting) {
+      track("capture_source", { flow: mode === "outfit" ? "outfit" : "garment", from });
+      return router.replace(nextRoute(mode, uri, params.onboarding === "1"));
+    }
     firstPieces!.addPhotos([uri], "camera");
     setTaken((t) => [...t, uri]);
   };
@@ -61,7 +70,7 @@ export default function CameraScreen() {
     try {
       const photo = await camera.current?.takePictureAsync({ quality: 0.8 });
       haptics.light();
-      if (photo?.uri) go(photo.uri);
+      if (photo?.uri) go(photo.uri, "camera");
     } catch {
       setError("Couldn't take the photo. Try again.");
     } finally {
@@ -78,7 +87,7 @@ export default function CameraScreen() {
         return;
       }
       const uri = await pickPhoto(false);
-      if (uri) go(uri);
+      if (uri) go(uri, "library");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't open your photos.");
     }

@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import Constants from "expo-constants";
+import { trackPermission } from "./activity/track";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { registerPushToken, unregisterPushToken } from "./api/client";
@@ -47,6 +48,7 @@ export function NotifyProvider({ children }: { children: React.ReactNode }) {
         const id = projectId();
         if (!id) throw new Error(NOT_SET_UP);
         const perm = await Notifications.requestPermissionsAsync();
+        trackPermission("notifications", perm.granted);
         if (!perm.granted) throw new Error(DENIED);
         const { data } = await Notifications.getExpoPushTokenAsync({ projectId: id });
         await registerPushToken(data);

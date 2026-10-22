@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { track, type Action } from "../activity/track";
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useCredits } from "../credits/CreditsProvider";
@@ -14,12 +15,14 @@ type Props = {
   onClose: () => void;
   onAdjust?: () => void;  // when the user can lower the cost (deselect pieces)
   body?: string;  // the contextual sentence, e.g. "Deselect 2 garments to continue with what you have."
+  action?: Action;  // for the activity record
 };
 
 // Not enough credits for what the user asked. No purchase: the wardrobe stays usable and the owner
 // tops up by hand.
-export function InsufficientCreditsSheet({ visible, needed, onClose, onAdjust, body }: Props) {
+export function InsufficientCreditsSheet({ visible, needed, onClose, onAdjust, body, action }: Props) {
   const router = useRouter();
+  useEffect(() => { if (visible) track("out_of_credits_shown", { action }); }, [visible, action]);
   const { credits } = useCredits();
   const available = credits?.available ?? 0;
   const left = `You have ${available === 1 ? "1 credit" : `${available} credits`} left.`;

@@ -14,6 +14,7 @@ import { useNotify } from "../../src/notifications";
 import { BILLING_OFF, creditsLabel, entryLabel, entrySign, visibleEntries } from "../../src/credits/credits";
 import { colors, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
 import { Button, GroupedList, ProgressBar, Row, Segmented, Sheet } from "../../src/ui";
+import { useScreenViewed } from "../../src/activity/track";
 
 export const LOW_CREDITS = 3;
 const PRICE_ROWS: [CreditAction, string][] = [["garment", "Front image"], ["back", "Back image"], ["turn", "360° view"]];
@@ -33,6 +34,7 @@ export function initials(email: string | null, displayName?: string | null): str
 }
 
 export default function AccountScreen() {
+  useScreenViewed("account");
   const router = useRouter();
   const { status, email, signOut } = useAuth();
   const { billing, prices, credits, outfit, refresh } = useCredits();

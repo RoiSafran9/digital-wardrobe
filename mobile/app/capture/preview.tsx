@@ -16,6 +16,7 @@ import { useCredits } from "../../src/credits/CreditsProvider";
 import { garmentName } from "../../src/garmentName";
 import { haptics } from "../../src/haptics";
 import { TRY_AS_OUTFIT, isWornRejection } from "../../src/outfit/outfit";
+import { useScreenViewed } from "../../src/activity/track";
 
 // The fallback quote (local mode, or when the free pre-scan isn't available): following the approved
 // rule (CREDITS §6), the user approves the most front images they'll pay for; the server makes at most
@@ -106,6 +107,7 @@ export const SCAN_FALLBACK = "Couldn't find the pieces first — choose how many
 // Garment photo preview (spec D6 b): a free pre-scan finds the pieces, the user picks which to create and
 // pays only for those. Local mode, or a server without pre-scans, uses the max-fronts quote instead.
 export default function PreviewScreen() {
+  useScreenViewed("preview");
   const router = useRouter();
   const { uri } = useLocalSearchParams<{ uri: string }>();
   const { startFromScan } = useCaptureJobs();

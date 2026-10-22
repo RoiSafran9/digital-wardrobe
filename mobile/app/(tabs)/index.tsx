@@ -17,6 +17,7 @@ import { useAuth } from "../../src/auth/AuthProvider";
 import { pickPhoto } from "../../src/photoPicker";
 import { colors, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
 import { Button } from "../../src/ui";
+import { track, useScreenViewed } from "../../src/activity/track";
 
 // One row per category group with pieces, in the groups' fixed order, with the group's first piece.
 export function categoryRows(items: ClosetItem[]): CategoryRow[] {
@@ -29,6 +30,7 @@ export function categoryRows(items: ClosetItem[]): CategoryRow[] {
 }
 
 export default function HomeScreen() {
+  useScreenViewed("home");
   const router = useRouter();
   const { outfit: outfitOn } = useCredits();
   const { status } = useAuth();
@@ -59,6 +61,7 @@ export default function HomeScreen() {
     try {
       const uri = await pickPhoto(false);
       if (!uri) return;
+      track("capture_source", { flow, from: "library" });
       router.push(flow === "garment"
         ? { pathname: "/capture/preview", params: { uri, flow } }
         : { pathname: "/outfit/detect", params: { uri, flow } });

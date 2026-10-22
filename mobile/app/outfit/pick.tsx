@@ -20,6 +20,7 @@ import { TextInput } from "react-native";
 import { BackButton, Button, Chip, CostSheet, InsufficientCreditsSheet, Sheet, useToast } from "../../src/ui";
 import { CAP_TOAST, ROUND_CAP } from "../../src/firstPieces/round";
 import { track } from "../../src/firstPieces/analytics";
+import { useScreenViewed } from "../../src/activity/track";
 
 export const OUTFIT_STAGES: Stage[] = [
   { label: "Taking them off the photo", at: 0 },
@@ -38,6 +39,7 @@ export function unsure(c: OutfitCandidate): boolean {
 // Outfit Photo, between the stages: the garments found on the person. The user picks which to add,
 // confirms the exact price, and only then are images made.
 export default function PickScreen() {
+  useScreenViewed("outfit_pick");
   const { scanId, uri, onboarding } = useLocalSearchParams<{ scanId: string; uri?: string; onboarding?: string }>();
   // First 3 Pieces: at most ROUND_CAP pieces per round, like the garment path.
   const cap = onboarding === "1" ? ROUND_CAP : undefined;
@@ -233,8 +235,10 @@ export default function PickScreen() {
         confirmLabel={`Generate · ${creditsLabel(total)}`}
         onConfirm={create}
         onClose={() => setConfirming(false)}
+        action="outfit"
       />
       <InsufficientCreditsSheet
+        action="outfit"
         visible={short}
         needed={total}
         onClose={() => setShort(false)}

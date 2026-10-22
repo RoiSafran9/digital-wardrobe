@@ -18,11 +18,13 @@ import { useCaptureJobs } from "../../src/store/captureJobs";
 import { idsParam } from "../../src/firstPieces/celebrate";
 import { colors, hitSlopFor, radius, type } from "../../src/theme";
 import { Button, CostSheet, InsufficientCreditsSheet } from "../../src/ui";
+import { useScreenViewed } from "../../src/activity/track";
 
 // Outfit Photo results wait here until the user keeps or discards each one: the crop of their photo
 // next to the generated image. Listed from the server, so it works after an app restart. Credits were
 // charged when an image was made (owner decision D4). Regenerate remakes one result as a new front image (D14).
 export default function ReviewScreen() {
+  useScreenViewed("outfit_review");
   const { failed, onboarding } = useLocalSearchParams<{ failed?: string; onboarding?: string }>();
   const router = useRouter();
   const { billing, prices, refresh } = useCredits();
@@ -199,8 +201,9 @@ export default function ReviewScreen() {
         confirmLabel={unit ? `Regenerate · ${creditsLabel(unit)}` : "Regenerate"}
         onConfirm={() => item && void regenerate(item)}
         onClose={() => setConfirmRegen(false)}
+        action="regenerate"
       />
-      <InsufficientCreditsSheet visible={short} needed={unit ?? 0} onClose={() => setShort(false)} />
+      <InsufficientCreditsSheet action="regenerate" visible={short} needed={unit ?? 0} onClose={() => setShort(false)} />
     </SafeAreaView>
   );
 }

@@ -19,6 +19,7 @@ import { useFirstPiecesMaybe } from "../../src/firstPieces/FirstPiecesProvider";
 import { markCelebrated, parseIds, wasCelebrated } from "../../src/firstPieces/celebrate";
 import { FIRST_GOAL } from "../../src/firstPieces/round";
 import { pathOf, track } from "../../src/firstPieces/analytics";
+import { useScreenViewed } from "../../src/activity/track";
 
 const GAP = 12;
 
@@ -27,6 +28,7 @@ function sameItem(a: ClosetItem, b: ClosetItem): boolean {
 }
 
 export default function ClosetScreen() {
+  useScreenViewed("closet");
   const router = useRouter();
   const { width } = useWindowDimensions();
   const [items, setItems] = useState<ClosetItem[]>([]);

@@ -5,6 +5,7 @@ import { APP_NAME } from "../src/appName";
 import { useCredits } from "../src/credits/CreditsProvider";
 import { SUPPORT_EMAIL } from "../src/support";
 import { Button } from "../src/ui";
+import { useScreenViewed } from "../src/activity/track";
 
 export function helpSections(outfit: boolean, billing: boolean): InfoSection[] {
   return [
@@ -34,6 +35,7 @@ export function helpSections(outfit: boolean, billing: boolean): InfoSection[] {
 }
 
 export default function HelpScreen() {
+  useScreenViewed("help");
   const { outfit, billing } = useCredits();
   return (
     <InfoPage title="Help" intro={`How ${APP_NAME} turns your photos into a closet.`} sections={helpSections(!!outfit, billing)}>

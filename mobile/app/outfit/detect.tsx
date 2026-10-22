@@ -11,12 +11,14 @@ import { pickable } from "../../src/outfit/outfit";
 import { rememberScan } from "../../src/outfit/scanCache";
 import { colors, radius, type } from "../../src/theme";
 import { BackButton, Button } from "../../src/ui";
+import { useScreenViewed } from "../../src/activity/track";
 
 export const SHOW_BOXES_MS = 1400;  // let the boxes land before moving on
 
 // Outfit Photo, Stage 1 (free): upload the photo, find the garments on the person, show them, then
 // open the pick screen. No image is generated and no credits are used here.
 export default function DetectScreen() {
+  useScreenViewed("outfit_detect");
   const router = useRouter();
   const { uri, onboarding } = useLocalSearchParams<{ uri: string; onboarding?: string }>();
   const mode = onboarding === "1" ? { onboarding: "1" } : {};  // First 3 Pieces carries on through pick and review

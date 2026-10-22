@@ -19,6 +19,7 @@ import { groupOf } from "../categoryGroups";
 import { useCredits } from "../credits/CreditsProvider";
 import { creditsLabel } from "../credits/credits";
 import { Button, CostSheet, GroupedList, InsufficientCreditsSheet, Row, Segmented, Sheet, Shimmer, useToast } from "../ui";
+import { track } from "../activity/track";
 
 type Item = RunItem | ClosetItem;
 
@@ -56,6 +57,10 @@ function isClosetItem(item: Item): item is ClosetItem {
 // Opens on items[index]; swipe left/right to page through the rest of the list.
 export function ItemSheet({ items, index, onClose, onUpdated, onDeleted }: Props) {
   const visible = index !== null && index >= 0 && index < items.length;
+  const opened = visible ? items[index!] : null;
+  useEffect(() => {
+    if (opened && isClosetItem(opened)) track("item_opened", { has_back: !!opened.back, has_turn: opened.turn?.state === "done" });
+  }, [opened?.item_id]);  // eslint-disable-line react-hooks/exhaustive-deps
   const [editing, setEditing] = useState(false);
 
   const close = () => {

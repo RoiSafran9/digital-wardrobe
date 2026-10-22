@@ -10,11 +10,13 @@ import { useCaptureJobs } from "../../src/store/captureJobs";
 import { useNotify } from "../../src/notifications";
 import { colors, hitSlopFor, radius, type } from "../../src/theme";
 import { Button, InsufficientCreditsSheet } from "../../src/ui";
+import { useScreenViewed } from "../../src/activity/track";
 
 export const LEAVE_NOTE = "You can leave this screen — your pieces will appear in your closet.";
 export const LEAVE_NOTE_NOTIFY = "You can leave this screen. We'll notify you when your pieces are ready.";
 
 export default function ProcessingScreen() {
+  useScreenViewed("processing");
   const router = useRouter();
   const { current, retry, clear } = useCaptureJobs();
   const { billing, outfit: outfitOn, prices } = useCredits();

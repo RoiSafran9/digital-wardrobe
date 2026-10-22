@@ -9,6 +9,7 @@ import { useCredits } from "../../src/credits/CreditsProvider";
 import { creditsLabel } from "../../src/credits/credits";
 import { PressScale } from "../../src/motion/PressScale";
 import { colors, hitSlopFor, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
+import { useScreenViewed } from "../../src/activity/track";
 
 const FIRST_PIECE = [
   "Lay one garment flat on a bed or the floor.",
@@ -36,6 +37,7 @@ function MethodCard({ title, body, price, art, onPress }: { title: string; body:
 const ROW: IconName[] = ["garment", "jacket", "shoe"];
 
 export default function AddScreen() {
+  useScreenViewed("add");
   const router = useRouter();
   const { outfit: outfitOn, billing, prices, credits, generation } = useCredits();
   const { mode, firstPiece, at } = useLocalSearchParams<{ mode?: string; firstPiece?: string; at?: string }>();

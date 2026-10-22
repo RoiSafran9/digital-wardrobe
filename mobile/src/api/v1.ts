@@ -3,6 +3,7 @@
 import { randomUUID } from "expo-crypto";
 import { File } from "expo-file-system";
 import { API_BASE_URL, UNREACHABLE, sentence } from "./http";
+import { track } from "../activity/track";
 import type { BackView, ClosetItem, Credits, GarmentScan, ItemFacts, ItemPatch, ItemsResponse, OutfitResult, OutfitScan, Prices, RunItem, RunResponse, Tier, Turn } from "./types";
 
 export type Account = {
@@ -70,8 +71,10 @@ async function send(account: Account, path: string, init: RequestInit = {}): Pro
       ...init, headers: { ...(init.headers as Record<string, string>), Authorization: `Bearer ${token}` },
     });
   } catch {
+    if (!path.startsWith("/v1/events")) track("client_error", { where: "global", kind: "network" });
     throw new Error(UNREACHABLE);
   }
+  if (response.status >= 500 && !path.startsWith("/v1/events")) track("client_error", { where: "global", kind: "http_5xx" });
   if (response.status === 401) {
     account.onUnauthorized();
     throw new Error(SESSION_EXPIRED);

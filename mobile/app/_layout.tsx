@@ -9,6 +9,9 @@ import { ToastProvider } from "../src/ui";
 import { AppearanceProvider } from "../src/appearance";
 import { ProfileProvider } from "../src/profile";
 import { NotifyProvider } from "../src/notifications";
+import { ErrorBoundary, reportUncaughtErrors } from "../src/ui/ErrorBoundary";
+
+reportUncaughtErrors();
 
 export default function RootLayout() {
   // Instrument Serif, for the editorial headlines only. If it fails to load, iOS falls back to the
@@ -23,7 +26,9 @@ export default function RootLayout() {
             <NotifyProvider>
               <ToastProvider>
                 <StatusBar style="auto" />
-                <AppShell />
+                <ErrorBoundary>
+                  <AppShell />
+                </ErrorBoundary>
               </ToastProvider>
             </NotifyProvider>
           </ProfileProvider>

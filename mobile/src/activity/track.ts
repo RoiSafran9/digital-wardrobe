@@ -29,7 +29,7 @@ export type Events = {
   app_opened: { cold: boolean };
   screen_viewed: { screen: Screen };
   cost_sheet: { action: Action; choice: "confirmed" | "cancelled"; pieces?: number };
-  out_of_credits_shown: { action: Action };
+  out_of_credits_shown: { action?: Action };
   permission: { kind: "camera" | "photos" | "notifications"; granted: boolean };
   capture_source: { flow: "garment" | "outfit"; from: "camera" | "library" };
   item_opened: { has_back: boolean; has_turn: boolean };
@@ -56,6 +56,7 @@ let stopTimers: (() => void) | null = null;
 function newSession(cold: boolean): void {
   sessionId = randomUUID();
   seenScreens = new Set();
+  seenPermissions = new Set();
   track("app_opened", { cold });
 }
 
@@ -112,6 +113,15 @@ export function trackScreen(screen: Screen): void {
 
 export function useScreenViewed(screen: Screen): void {
   useEffect(() => { trackScreen(screen); }, [screen]);
+}
+
+// A permission answer, once per session per kind and answer (pickers ask again on every photo).
+let seenPermissions = new Set<string>();
+export function trackPermission(kind: Events["permission"]["kind"], granted: boolean): void {
+  const key = `${kind}:${granted}`;
+  if (!queue || seenPermissions.has(key)) return;
+  seenPermissions.add(key);
+  track("permission", { kind, granted });
 }
 
 export function flushActivity(): Promise<void> {

@@ -65,10 +65,11 @@ Done: hosted Supabase SMTP (Resend, `kipscloset.com`) and code templates, all mi
 - [ ] Hosted migration (`activation_events`), `WARDROBE_WORKER_CONCURRENCY=2` on the beta server, owner phone check
 - [ ] Reconcile with `docs/features/first-3-pieces-onboarding/` once those docs are committed (M0)
 
-## Activity and operations logging — PROPOSED ([spec](superpowers/specs/2026-10-22-activity-logging-design.md), [plan](superpowers/plans/2026-10-22-activity-logging.md))
+## Activity and operations logging — BUILT ([spec](superpowers/specs/2026-10-22-activity-logging-design.md), [plan](superpowers/plans/2026-10-22-activity-logging.md))
 
-- [ ] Owner approval of the plan and decisions D1–D3 (deleted accounts' cost rows, per-tester timeline, privacy text)
-- [ ] L0 privacy page + App Privacy answers · L1 server log · L2 AI cost per call · L3 server events · L4 app events · L5 usage report · L6 docs and hosted SQL
+- [x] Plan approved with D1–D3 as recommended (2026-10-22): cost rows kept without the account, per-tester timeline (disclosed), privacy text published
+- [x] L0 privacy page (live) + App Privacy answers · L1 server log · L2 AI cost per call · L3 server events · L4 app events · L5 usage report and `reports` views · L6 docs
+- [ ] Owner: hosted SQL (`ai_calls`, `activity_events`, `reports`), restart the server with `--no-access-log`, App Privacy answers in App Store Connect, next TestFlight build, phone check with `usage_report --user`
 
 ## TestFlight Friends & Family Beta — next main delivery
 
@@ -81,7 +82,7 @@ Done: hosted Supabase SMTP (Resend, `kipscloset.com`) and code templates, all mi
 - [x] Implement secure **exactly-once welcome-credit grant** after verified eligible signup (built 2026-10-19 behind `WARDROBE_WELCOME_CREDITS` / `WARDROBE_BETA_INVITES`; amount 40).
 - [ ] Host FastAPI + durable worker behind HTTPS, with bounded concurrency, timeouts, restarts and cost controls. *(For the small beta: the owner's Mac behind a Cloudflare Tunnel at `https://api.kipscloset.com`. Prepared for later: `Dockerfile`, [DEPLOY.md](DEPLOY.md), daily AI job cap, scheduled cleanup. Still open: a real cloud host so the Mac can be off.)*
 - [ ] Ship user-initiated account deletion covering private photos, privacy/support links and safe data retention policy. *(Built: `DELETE /v1/account` + Account → Delete Account; in-app Help & Privacy screens; `kipscloset.com` landing, privacy and support pages. Retention policy text still open.)*
-- [ ] Add operational health, AI cost monitoring, free Outfit-detection rate limits, provider-failure kill switch, privacy-respecting basic analytics. *(Built 2026-10-19: `/healthz`, free-scan limits, `WARDROBE_GENERATION=off` pause switch, Gemini timeouts. Still open: cost monitoring/alerts, analytics.)*
+- [ ] Add operational health, AI cost monitoring, free Outfit-detection rate limits, provider-failure kill switch, privacy-respecting basic analytics. *(Built 2026-10-19: `/healthz`, free-scan limits, `WARDROBE_GENERATION=off` pause switch, Gemini timeouts. Built 2026-10-22: activity events, AI cost per model call and the usage report. Still open: cost alerts.)*
 - [ ] Configure Apple Developer / Expo EAS / `mobile/app.json` app identity / `mobile/eas.json`; build and upload store-signed TestFlight IPA. *(Done 2026-10-19: Expo project, `eas.json`, bundle ID `com.roisafran.kips`, app name KIPS and icon, App Store Connect app and texts, review demo account, release API-URL guard. Still open: TestFlight builds and review.)*
 - [ ] Run end-to-end phone checks and Apple external Beta App Review; invite 3–5 testers, then 10–20 if stable.
 - [ ] Confirm 5 friends can complete sign-in → free credits → create → reopen closet with no help, on networks other than home Wi-Fi.

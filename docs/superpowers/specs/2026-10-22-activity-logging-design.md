@@ -1,6 +1,6 @@
 # Activity and operations logging — design
 
-Status: **Proposed 2026-10-22, waiting for the owner's approval.** Nothing here is built yet.
+Status: **Approved 2026-10-22 (D1–D3 as recommended) and built the same day.** Differences from this text are listed in §12.
 Plan: [2026-10-22-activity-logging.md](../plans/2026-10-22-activity-logging.md).
 
 ## 1. Why
@@ -288,3 +288,13 @@ the owner can also open it in the Supabase SQL editor.
 
 Everything else in §3 is my call (no third-party tool, Postgres + log files, retention 180/400/14 days, no web
 dashboard, TestFlight for native crashes) and can be changed without reworking the plan.
+
+## 12. As built (2026-10-22)
+
+- D1 = keep cost rows without the account; D2 = per-tester timeline, disclosed; D3 = privacy page published (live on kipscloset.com) and App Privacy answers in `docs/APP_STORE_CONNECT.md` §5.
+- `region_added` has no props: the type the user typed is free text, so it isn't kept.
+- `out_of_credits_shown` sends `action` only where the screen knows it (outfit pick, review); otherwise none.
+- `scripts/activation_report.py` stays (the usage report reuses its First 3 Pieces numbers) instead of being folded in.
+- `require_generation` now signs the user in first, so a paused-AI refusal is recorded for its account; signed-out requests get 401 before 503.
+- The app's queue keeps unsent events under the account's own AsyncStorage key after sign-out and sends them at that account's next sign-in, never with another account's token.
+- `screen_viewed` covers home, closet, add, account, camera, preview, processing, results, the three outfit screens and help; `price_list` and `credits_activity` are allowed but no screen of their own exists.

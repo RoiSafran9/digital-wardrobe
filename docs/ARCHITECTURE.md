@@ -49,7 +49,7 @@ cli.py, ui/app.py      batch CLI and Streamlit harness for running the pipeline 
    - **Score** (`stage6_score`): tier high/medium/low with reason and retake tip.
 4. One item failing does not fail the others; a failed detect call fails the photo.
 
-Every model call is appended to a `run_log.jsonl` (stage, model, prompt version, latency, status). Prompts are versioned files in `pipeline/prompts/`.
+Every model call is appended to a `run_log.jsonl` (stage, model, prompt version, latency, status, tokens, images returned, estimated cost from `pipeline/costs.py`, fallback model, error class); in account mode the worker copies these into `ai_calls`. Prompts are versioned files in `pipeline/prompts/`.
 **Back** (`pipeline/back.py`): same stages on one more photo, generation conditioned on the item's front image; the largest detected piece is used.
 **360** (`pipeline/turn.py`): four ghost-mannequin views (front first, then right/back/left anchored on it), each cut out.
 
@@ -72,7 +72,8 @@ Every model call is appended to a `run_log.jsonl` (stage, model, prompt version,
 | DELETE | `/v1/items/{id}` | soft delete (`deleted_at`) |
 | POST | `/v1/items/{id}/back`, `/v1/items/{id}/turn` | start a back or 360 job |
 | POST | `/v1/bootstrap` | called by the app after each sign-in: grants `WARDROBE_WELCOME_CREDITS` once per invited account (`WARDROBE_BETA_INVITES`), operation key `welcome:beta-v1`; `{welcome_granted}`; off unless configured |
-| GET | `/healthz` | no sign-in: `status`, `generation` (pause switch), `queued`, `oldest_queued_seconds`, `worker_seconds_since_beat` |
+| GET | `/healthz` | no sign-in: `status`, `generation` (pause switch), `queued`, `oldest_queued_seconds`, `worker_seconds_since_beat`, `ai_jobs_today`, `failed_jobs_last_hour`, `image_model` |
+| POST | `/v1/events`, `/v1/events/batch` | app activity events (one, or up to 50 with client ids, session id and app version); see Activity and operations logging |
 | GET / PATCH | `/v1/profile` | the user's email and `display_name` (1–40 trimmed characters, set at sign-up; backend-only writes) |
 | POST / DELETE | `/v1/push-token` | `{token}`: this phone's Expo push token for "Notify when ready" (`push_tokens`, backend-only). The worker pushes through Expo's push service (`api/push.py`, on a side thread) when a garment, back, 360 or outfit job finishes or fails for good. The app's Expo project id is in `mobile/app.json` (`extra.eas.projectId`). |
 | DELETE | `/v1/account` | body `{"confirm": "DELETE"}`: deletes the signed-in user through the Supabase admin API (profile, items, jobs, wallet and ledger cascade), then removes their files; leftovers are caught by `scripts/sweep_storage.py` |
@@ -128,8 +129,13 @@ The closet is a directory scan (newest first). The full original photo is not ke
 ## Beta controls
 Server environment only (`api/controls.py`): `WARDROBE_GENERATION=off` pauses every route that starts AI work (503; `/v1/prices` says `generation: false`, Add shows a notice); `WARDROBE_FREE_SCANS_PER_HOUR` caps free scans per account (429, default 30); `WARDROBE_WELCOME_CREDITS` + `WARDROBE_BETA_INVITES` control the one-time welcome grant; `WARDROBE_DAILY_AI_JOBS` caps paid AI jobs per UTC day across all accounts (503, nothing held); `WARDROBE_SWEEP_EVERY_HOURS` runs the Storage cleanup inside the worker; `WARDROBE_WORKER_CONCURRENCY` (1–4, default 1) runs that many jobs at once (extra claim loops; `claim_generation_job` skips locked rows). Gemini calls time out (detection 60 s, images 120 s). `/healthz` also reports `ai_jobs_today`.
 
-## Activation analytics
-`POST /v1/events` records First 3 Pieces onboarding steps in `activation_events` (backend-only table; `api/events.py` allow-lists event names and props — counts and fixed choices, no photos, text or device data; server time; milestones once per account; 120 per account per hour; deleted with the account; purged after 180 days by the worker's sweep). `scripts/activation_report.py` derives times to first pieces from `wardrobe_items` and `profiles.created_at`, and the funnel from the events.
+## Activity and operations logging
+Design: [activity logging spec](superpowers/specs/2026-10-22-activity-logging-design.md). Three stores, none with photos, piece details or text:
+- **`activity_events`** (backend-only table; was `activation_events`): what accounts did. Server events (`source = 'server'`) are written from the verified token after the action succeeded, through `BackgroundTasks` or after the worker saved the job — sign-in (`/v1/bootstrap`), welcome grant, item edited (field name only), deleted (outfit discard vs closet removal), kept, missed garment marked, push on/off, `job_finished` (kind, outcome, failure code, seconds, pieces) and `refused` (402/409/429/503 on AI routes, from the request log). App events (`source = 'app'`) come batched from `mobile/src/activity/` (`POST /v1/events/batch`, ≤ 50, `client_event_id` makes resends no-ops; per-account queue in memory + AsyncStorage, sent every 30 s, on background and before sign-out): First 3 Pieces steps, `app_opened` (session id; new after 30 min in the background), `screen_viewed`, `cost_sheet`, `out_of_credits_shown`, `permission`, `capture_source`, `item_opened`, `client_error` (kind only). `api/activity.py` allow-lists names and props (counts, booleans, fixed choices); `record()` never raises. 600 per account per hour; deleted with the account; purged after 180 days. The real tables stay the truth for jobs, credits and pieces.
+- **`ai_calls`** (backend-only): one row per model call of every job attempt (model, stage, latency, tokens, images, estimated USD, fallback, error class), written by the worker after the job; `generation_jobs.failure_code` says why a job failed. Kept 400 days; on account deletion the rows stay without the account or job (owner decision D1).
+- **Server log** (`api/logs.py`, account mode): JSON lines to stderr and `logs/server.jsonl` (daily, 14 kept; `WARDROBE_LOG_DIR`, `off` = unchanged). Each request is logged by route template with a request id (`X-Request-ID`); uvicorn runs with `--no-access-log`.
+
+Reading it: `python -m scripts.usage_report [--days N] [--json]` (funnel, activation, retention, features, reliability, AI cost, credits) and `--user EMAIL_OR_ID` (one account's timeline); `scripts/activation_report.py` keeps the First 3 Pieces numbers the usage report reuses. The `reports` schema (`timeline`, `job_outcomes`, `ai_cost_daily`, `daily_active`) has the same views for the Supabase SQL editor; the app's keys can't read it.
 
 ## Known limits
 - The server and worker run on the owner's Mac, public through the Cloudflare Tunnel; the Mac must stay on and awake, and the server is started by hand after a reboot. A Docker image for a cloud host is prepared, not deployed.

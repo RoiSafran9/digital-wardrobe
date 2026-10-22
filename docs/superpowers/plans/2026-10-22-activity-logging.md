@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **Waiting for the owner's approval (and D1–D3 in the spec §11). Do not start before that.**
+Status: **Approved 2026-10-22 and built (L0–L6).** Owner steps left: hosted SQL, server restart, App Privacy answers, TestFlight build, phone check.
 
 **Goal:** Record every meaningful action in KIPS — server-side truth plus a few app-side events — with per-model-call AI cost, a structured server log and one report script, without storing personal content or slowing any request.
 

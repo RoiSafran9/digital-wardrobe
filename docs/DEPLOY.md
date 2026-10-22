@@ -33,12 +33,16 @@ It needs ~2 GB RAM for the background-removal model; one instance is enough for 
 | `WARDROBE_WORKER_CONCURRENCY` | `2` — jobs the worker runs at once (1–4, default 1); lets the photos of one round overlap |
 | `PORT` | whatever the host gives (default 8000) |
 
-**Health check:** `GET /healthz` (no sign-in) — queue depth, oldest queued job, worker heartbeat, AI jobs today.
+**Health check:** `GET /healthz` (no sign-in) — queue depth, oldest queued job, worker heartbeat, AI jobs today, jobs failed in the last hour, the image model in use.
 
 **Emergency stop:** set `WARDROBE_GENERATION=off` and restart: new AI work is refused (the closet keeps working).
 Don't use `WARDROBE_BILLING=off` for this — that makes AI work free instead of stopping it.
 
-**Activation report** (First 3 Pieces, read-only): `python -m scripts.activation_report --days 30` prints Time to First Item, Time to First 3 Items, first-session activation, second import rate and the onboarding funnel. Needs the `activation_events` migration.
+**Usage report** (read-only): `python -m scripts.usage_report --days 30` prints the funnel, First 3 Pieces activation, retention, feature use, reliability, estimated AI cost and credits; `--user <email or id>` prints one account's timeline; `--json` gives the numbers. (`scripts.activation_report` still prints the First 3 Pieces numbers alone.)
+
+**Server log:** start uvicorn with `--no-access-log` (client addresses aren't logged); JSON lines go to the terminal and to `logs/server.jsonl` (one file a day, 14 kept). `WARDROBE_LOG_DIR` moves it (`off` leaves logging unconfigured).
+
+**Logging migrations** (paste into the hosted SQL editor in this order, before restarting a server with this code): `20261020120000_activation_events.sql` if it isn't there yet, `20261022120000_ai_calls.sql`, `20261022130000_activity_events.sql`, `20261022140000_reports.sql`.
 
 ## 2. Database
 

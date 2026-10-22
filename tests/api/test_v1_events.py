@@ -1,7 +1,7 @@
 """POST /v1/events: First 3 Pieces activation steps, allow-listed and private; the activation report."""
 from datetime import datetime, timedelta, timezone
 import pytest
-from api.events import EVENTS_PER_HOUR, RETENTION_DAYS
+from api.activity import EVENTS_PER_HOUR, RETENTION_DAYS
 from api.store import MemoryStore
 from api.worker import _sweep_now
 from scripts.activation_report import main, metrics
@@ -141,7 +141,7 @@ def test_supabase_store_reads_activation_rows_for_recent_sign_ups_only():
         "wardrobe_items": [{"user_id": "u1", "created_at": "2026-10-20T09:04:00Z", "review_state": None},
                            {"user_id": "u1", "created_at": "2026-10-20T09:05:00Z", "review_state": "pending"},
                            {"user_id": "old", "created_at": "2026-10-20T09:06:00Z", "review_state": None}],
-        "activation_events": [{"user_id": "u1", "event": "popup_shown", "props": {"saved": 1}, "created_at": "2026-10-20T09:07:00Z"}],
+        "activity_events": [{"user_id": "u1", "event": "popup_shown", "props": {"saved": 1}, "created_at": "2026-10-20T09:07:00Z"}],
         "generation_jobs": [{"user_id": "u1", "created_at": "2026-10-20T09:03:00Z"}],
     }
     store = supabase(lambda request: httpx.Response(200, json=tables[request.url.path.rsplit("/", 1)[1]]))

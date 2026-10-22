@@ -12,7 +12,7 @@ import httpx
 from api.auth import Settings
 from api.controls import PAID_KINDS
 from api.credits import ACTIONS, CreditError
-from api.events import ONCE
+from api.activity import ONCE
 
 BUCKET = "wardrobe"
 SIGNED_URL_SECONDS = 3600
@@ -45,7 +45,7 @@ class MemoryStore:
         self.tokens: dict[str, list[str]] = {}  # user id -> Expo push tokens
         self.passwords: dict[str, str] = {}  # user id -> password (the App Review demo account only)
         self.banned: set[str] = set()
-        self.events: list[dict] = []  # activation events (api/events.py)
+        self.events: list[dict] = []  # activity events (api/activity.py)
         self.ai_calls: list[dict] = []  # model calls, kept without the account when it is deleted (D1)
         self.signups: dict[str, datetime] = {}  # user id -> profile created_at, for the activation report
 
@@ -378,14 +378,27 @@ class MemoryStore:
         removed, self.ai_calls = len(self.ai_calls) - len(kept), kept
         return removed
 
-    # Activation events (api/events.py)
+    # Activity events (api/activity.py)
     def insert_event(self, user_id, event, props):
         """False when a once-only event was already recorded (the database's unique index)."""
-        if event in ONCE and any(e["user_id"] == user_id and e["event"] == event for e in self.events):
-            return False
-        self.events.append({"user_id": user_id, "event": event, "props": copy.deepcopy(props),
-                            "created_at": _now() + timedelta(microseconds=len(self.events))})
-        return True
+        return self.insert_events([{"user_id": user_id, "event": event, "props": props}]) == 1
+
+    def insert_events(self, rows):
+        """Rows already validated; a repeat of a once-only event or of an app event id is skipped. Rows written."""
+        written = 0
+        for row in rows:
+            user, event, cid = row["user_id"], row["event"], row.get("client_event_id")
+            if event in ONCE and any(e["user_id"] == user and e["event"] == event for e in self.events):
+                continue
+            if cid and any(e["user_id"] == user and e.get("client_event_id") == cid for e in self.events):
+                continue
+            self.events.append({"source": "app", **copy.deepcopy(row), "props": copy.deepcopy(row.get("props") or {}),
+                                "created_at": _now() + timedelta(microseconds=len(self.events))})
+            written += 1
+        return written
+
+    def has_event(self, user_id, event):
+        return any(e["user_id"] == user_id and e["event"] == event for e in self.events)
 
     def count_recent_events(self, user_id, seconds):
         since = _now() - timedelta(seconds=seconds)
@@ -699,16 +712,31 @@ class SupabaseStore:
         total = self._ok(r).headers.get("content-range", "*/0").rsplit("/", 1)[-1]
         return int(total) if total.isdigit() else 0
 
-    # Activation events: written and read by the backend only (api/events.py)
+    # Activity events: written and read by the backend only (api/activity.py)
     def insert_event(self, user_id, event, props):
-        return self._insert("activation_events", {"user_id": user_id, "event": event, "props": props}) is not None
+        return self._insert("activity_events", {"user_id": user_id, "event": event, "props": props}) is not None
+
+    def insert_events(self, rows):
+        """One request for the batch; if a row repeats a once-only event or an app event id (409), the rows go
+        one by one so the others are still written. Rows written."""
+        if not rows:
+            return 0
+        body = [{k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in r.items()} for r in rows]
+        r = self.http.post("/rest/v1/activity_events", json=body, headers={"Prefer": "return=minimal"})
+        if r.status_code != 409:
+            self._ok(r)
+            return len(rows)
+        return sum(1 for row in body if self._insert("activity_events", row) is not None)
+
+    def has_event(self, user_id, event):
+        return self._one("activity_events", {"select": "id", "user_id": f"eq.{user_id}", "event": f"eq.{event}"}) is not None
 
     def count_recent_events(self, user_id, seconds):
         since = (datetime.now(timezone.utc) - timedelta(seconds=seconds)).isoformat()
-        return len(self._rows("activation_events", {"select": "id", "user_id": f"eq.{user_id}", "created_at": f"gte.{since}"}))
+        return len(self._rows("activity_events", {"select": "id", "user_id": f"eq.{user_id}", "created_at": f"gte.{since}"}))
 
     def purge_events(self, before):
-        r = self.http.delete("/rest/v1/activation_events", params={"created_at": f"lt.{before.isoformat()}"},
+        r = self.http.delete("/rest/v1/activity_events", params={"created_at": f"lt.{before.isoformat()}"},
                              headers={"Prefer": "return=representation"})
         return len(self._ok(r).json())
 
@@ -724,7 +752,7 @@ class SupabaseStore:
         return {
             "signups": signups,
             "items": mine([{"user_id": r["user_id"], "created_at": r["created_at"]} for r in items]),
-            "events": mine(self._rows("activation_events", {"select": "user_id,event,props,created_at", "created_at": at})),
+            "events": mine(self._rows("activity_events", {"select": "user_id,event,props,created_at", "created_at": at})),
             "paid_jobs": mine(self._rows("generation_jobs", {"select": "user_id,created_at", "created_at": at,
                                                              "kind": f"in.({','.join(PAID_KINDS)})"})),
         }

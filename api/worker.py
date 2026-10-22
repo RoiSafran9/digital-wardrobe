@@ -484,7 +484,7 @@ def _sweep_now(store) -> None:
     sweep = plan_sweep(store, datetime.now(timezone.utc))
     apply_sweep(store, sweep)
     log.info("storage sweep removed %s files", len(sweep.remove))
-    from api.events import RETENTION_DAYS
+    from api.activity import RETENTION_DAYS
     purged = store.purge_events(datetime.now(timezone.utc) - timedelta(days=RETENTION_DAYS))
     log.info("purged %s activation events older than %s days", purged, RETENTION_DAYS)
     purged = store.purge_ai_calls(datetime.now(timezone.utc) - timedelta(days=AI_CALLS_RETENTION_DAYS))

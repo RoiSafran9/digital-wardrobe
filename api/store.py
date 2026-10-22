@@ -421,6 +421,59 @@ class MemoryStore:
                           if j["user_id"] in users and j["kind"] in PAID_KINDS],
         }
 
+    def usage_rows(self, since):
+        """Admin view for scripts/usage_report.py: everything since `since`, no personal content."""
+        def recent(rows, field="created_at"):
+            return [r for r in rows if r.get(field) and r[field] >= since]
+        items = [{**_pick(i, REPORT_ITEM_FIELDS), "has_back": bool(i.get("back")),
+                  "has_turn": (i.get("turn") or {}).get("state") == "done"} for i in self.items.values()]
+        return {
+            "now": _now(),
+            "signups": [{"user_id": u, "created_at": at} for u, at in self.signups.items() if at >= since],
+            "items": recent(items),
+            "removed": [i for i in items if i["deleted_at"] and _as_time(i["deleted_at"]) >= since],
+            "jobs": recent([_pick(j, REPORT_JOB_FIELDS) for j in self.jobs.values()]),
+            "ledger": recent([_pick(e, REPORT_LEDGER_FIELDS) for e in self.ledger], "created_at"),
+            "events": recent([_pick(e, REPORT_EVENT_FIELDS) for e in self.events]),
+            "ai_calls": recent([_pick(c, REPORT_CALL_FIELDS) for c in self.ai_calls]),
+        }
+
+    def user_rows(self, user_id):
+        """One account's history for the --user timeline: the same columns as usage_rows."""
+        rows = self.usage_rows(datetime.min.replace(tzinfo=timezone.utc))
+        mine = {k: [r for r in v if r.get("user_id") == user_id] for k, v in rows.items() if isinstance(v, list)}
+        mine["signups"] = [{"user_id": user_id, "created_at": self.signups[user_id]}] if user_id in self.signups else []
+        return {**mine, "now": rows["now"]}
+
+    def find_user(self, email_or_id):
+        key = (email_or_id or "").strip().lower()
+        if key in self.emails:
+            return self.emails[key]
+        known = set(self.signups) | {j["user_id"] for j in self.jobs.values()} | {e["user_id"] for e in self.events}
+        return email_or_id if email_or_id in known else None
+
+# Columns the usage report reads (scripts/usage_report.py): ids, kinds, numbers and times — no facts, paths or text.
+REPORT_ITEM_FIELDS = ("id", "user_id", "job_id", "created_at", "deleted_at", "origin", "review_state")
+REPORT_JOB_FIELDS = ("id", "user_id", "kind", "status", "failure_code", "attempts", "cost_credits", "created_at", "finished_at")
+REPORT_LEDGER_FIELDS = ("user_id", "kind", "amount", "action", "job_id", "created_at")
+REPORT_EVENT_FIELDS = ("user_id", "event", "props", "source", "job_id", "item_id", "session_id", "app_version", "created_at")
+REPORT_CALL_FIELDS = ("user_id", "job_id", "job_kind", "stage", "model", "status", "attempt", "fallback", "latency_ms",
+                      "est_cost_usd", "created_at")
+
+
+def _as_time(value):
+    return _parse_time(value) if isinstance(value, str) else value
+
+
+def _pick(row: dict, fields) -> dict:
+    """The listed fields, with times as datetimes whichever way the store kept them."""
+    out = {f: row.get(f) for f in fields}
+    for key in ("created_at", "finished_at", "deleted_at"):
+        if out.get(key) is not None:
+            out[key] = _as_time(out[key])
+    return out
+
+
 class StoreError(Exception):
     pass
 
@@ -756,6 +809,50 @@ class SupabaseStore:
             "paid_jobs": mine(self._rows("generation_jobs", {"select": "user_id,created_at", "created_at": at,
                                                              "kind": f"in.({','.join(PAID_KINDS)})"})),
         }
+
+    def _report(self, table, fields, params):
+        rows, page = [], 1000
+        while True:
+            batch = self._rows(table, {"select": ",".join(fields), "order": "created_at.asc",
+                                       "limit": str(page), "offset": str(len(rows)), **params})
+            rows += batch
+            if len(batch) < page:
+                break
+        for r in rows:
+            for key in ("created_at", "finished_at", "deleted_at"):
+                if r.get(key):
+                    r[key] = _parse_time(r[key])
+        return rows
+
+    def usage_rows(self, since, user_id=None):
+        at = {"created_at": f"gte.{since.isoformat()}"}
+        mine = {"user_id": f"eq.{user_id}"} if user_id else {}
+        item_fields = REPORT_ITEM_FIELDS + ("back", "turn")
+        items = [{**_pick(i, REPORT_ITEM_FIELDS), "has_back": bool(i.get("back")),
+                  "has_turn": (i.get("turn") or {}).get("state") == "done"}
+                 for i in self._report("wardrobe_items", item_fields, {**at, **mine})]
+        removed = [{**_pick(i, REPORT_ITEM_FIELDS), "has_back": False, "has_turn": False}
+                   for i in self._report("wardrobe_items", REPORT_ITEM_FIELDS,
+                                         {"deleted_at": f"gte.{since.isoformat()}", **mine})]
+        signups = [{"user_id": r["id"], "created_at": r["created_at"]} for r in
+                   self._report("profiles", ("id", "created_at"), {**at, **({"id": f"eq.{user_id}"} if user_id else {})})]
+        return {
+            "now": datetime.now(timezone.utc),
+            "signups": signups, "items": items, "removed": removed,
+            "jobs": self._report("generation_jobs", REPORT_JOB_FIELDS, {**at, **mine}),
+            "ledger": self._report("credit_ledger", REPORT_LEDGER_FIELDS, {**at, **mine}),
+            "events": self._report("activity_events", REPORT_EVENT_FIELDS, {**at, **mine}),
+            "ai_calls": self._report("ai_calls", REPORT_CALL_FIELDS, {**at, **mine}),
+        }
+
+    def user_rows(self, user_id):
+        return self.usage_rows(datetime(2000, 1, 1, tzinfo=timezone.utc), user_id=user_id)
+
+    def find_user(self, email_or_id):
+        key = (email_or_id or "").strip()
+        row = self._one("profiles", {"select": "id", "email": f"eq.{key.lower()}"}) if "@" in key else \
+            self._one("profiles", {"select": "id", "id": f"eq.{key}"}) if len(key) == 36 else None
+        return row["id"] if row else None
 
 
 def get_store():

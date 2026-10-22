@@ -207,7 +207,14 @@ export async function generateFromGarmentScan(account: Account, current: () => A
   return runFromJob(account, await waitFor(account, current, started, onProgress));
 }
 
-// First 3 Pieces activation steps (server allow-list in api/events.py). No answer needed.
+// App activity events, batched (src/activity; server allow-list in api/activity.py).
+export async function postEventBatch(account: Account, body: { app_version: string; events: unknown[] }): Promise<void> {
+  await call<{ stored: number; skipped: number }>(account, "/v1/events/batch", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+}
+
+// A single event (TestFlight build 7 and earlier send these). No answer needed.
 export async function postEvent(account: Account, event: string, props: Record<string, string | number>): Promise<void> {
   await call<void>(account, "/v1/events", {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ event, props }),

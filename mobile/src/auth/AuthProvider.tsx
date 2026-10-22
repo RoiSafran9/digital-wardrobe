@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { configureApi } from "../api/client";
+import { postEventBatch, type Account } from "../api/v1";
+import { startActivity, stopActivity } from "../activity/track";
 import { authConfig, type AuthConfig } from "./config";
 import { authErrorMessage, normalizeEmail } from "./messages";
 import { createSupabase, watchAppState } from "./supabase";
@@ -74,6 +76,7 @@ export function AuthProvider({ children, config = authConfig, client: injected }
 
   const signOut = useCallback(async () => {
     if (!client) return;
+    await stopActivity();  // send this account's last events while its session still works
     const { error } = await client.auth.signOut();
     // Offline or server trouble: still forget the session on this device.
     if (error) await client.auth.signOut({ scope: "local" });
@@ -86,11 +89,14 @@ export function AuthProvider({ children, config = authConfig, client: injected }
       configureApi(null);
       return;
     }
-    configureApi({
+    const account: Account = {
       getToken: async () => (await client.auth.getSession()).data.session?.access_token ?? null,
       onUnauthorized: () => { void signOut(); },
-    });
-    return () => configureApi(null);
+    };
+    configureApi(account);
+    // Activity events wait in this account's own queue (src/activity); never sent for another account.
+    if (state.userId) startActivity(state.userId, (body) => postEventBatch(account, body));
+    return () => { configureApi(null); void stopActivity(); };
   }, [client, state.status, state.userId, signOut]);
 
   const reason = config.mode === "unconfigured" ? config.reason : undefined;

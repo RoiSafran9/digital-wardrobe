@@ -556,9 +556,10 @@ class SupabaseStore:
         return rows[0] if rows else None
 
     def finish_job(self, job_id, status, result=None, error=None, failure_code=None):
-        self._patch("generation_jobs", {"id": f"eq.{job_id}"}, {"status": status, "result": result, "error": error,
-                                                                 "failure_code": failure_code,
-                                                                 "finished_at": _now().isoformat(), "locked_until": None})
+        fields = {"status": status, "result": result, "error": error, "finished_at": _now().isoformat(), "locked_until": None}
+        if failure_code:  # only failed jobs: a success never depends on the ai_calls migration being applied
+            fields["failure_code"] = failure_code
+        self._patch("generation_jobs", {"id": f"eq.{job_id}"}, fields)
 
     def retry_job(self, job_id, error):
         self._patch("generation_jobs", {"id": f"eq.{job_id}"}, {"status": "queued", "error": error, "locked_until": None})

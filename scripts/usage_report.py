@@ -34,7 +34,9 @@ EVENT_FEATURES = {"edits": "item_edited", "outfit_kept": "item_kept", "missed_ga
 
 
 def _in_closet(item: dict) -> bool:
-    return item.get("review_state") in (None, "kept")
+    """A piece made in the app that reached the closet. Pieces moved in from runs/ (migrated) keep their old
+    file times, from before the account existed: they never count as made."""
+    return item.get("review_state") in (None, "kept") and not item.get("migrated")
 
 
 def _pct(values: list[float], q: float) -> float | None:
@@ -62,8 +64,9 @@ def _funnel(rows: dict) -> dict:
     def having(rs, test=lambda r: True):
         return {r["user_id"] for r in rs if r.get("user_id") in users and test(r)}
     items: dict[str, list] = {}
+    joined = {s["user_id"]: s["created_at"] for s in rows["signups"]}
     for i in rows["items"]:
-        if i["user_id"] in users and _in_closet(i):
+        if i["user_id"] in users and _in_closet(i) and i["created_at"] >= joined[i["user_id"]]:
             items.setdefault(i["user_id"], []).append(i["created_at"])
     gap = timedelta(minutes=SECOND_IMPORT_GAP_MINUTES)
     return {
@@ -232,6 +235,9 @@ def timeline(rows: dict) -> str:
     for e in rows["ledger"]:
         entries.append((e["created_at"], 1, f"credits {e['kind']} {e['amount']}" + (f" ({e['action']})" if e.get("action") else "")))
     for i in rows["items"]:
+        if i.get("migrated"):
+            entries.append((i["created_at"], 1, "server piece moved from the old closet (runs/), dated by its file"))
+            continue
         entries.append((i["created_at"], 1, f"server piece created ({i.get('origin') or 'garment_photo'}"
                                             + (f", {i['review_state']}" if i.get("review_state") else "") + ")"))
     for i in rows.get("removed", []):

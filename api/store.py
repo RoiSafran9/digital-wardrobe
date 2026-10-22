@@ -415,7 +415,7 @@ class MemoryStore:
         return {
             "signups": [{"user_id": u, "created_at": self.signups[u]} for u in users],
             "items": [{"user_id": i["user_id"], "created_at": i["created_at"]} for i in self.items.values()
-                      if i["user_id"] in users and i.get("review_state") in (None, "kept")],
+                      if i["user_id"] in users and i.get("review_state") in (None, "kept") and not i.get("legacy_key")],
             "events": [copy.deepcopy(e) for e in self.events if e["user_id"] in users],
             "paid_jobs": [{"user_id": j["user_id"], "created_at": j["created_at"]} for j in self.jobs.values()
                           if j["user_id"] in users and j["kind"] in PAID_KINDS],
@@ -425,7 +425,7 @@ class MemoryStore:
         """Admin view for scripts/usage_report.py: everything since `since`, no personal content."""
         def recent(rows, field="created_at"):
             return [r for r in rows if r.get(field) and r[field] >= since]
-        items = [{**_pick(i, REPORT_ITEM_FIELDS), "has_back": bool(i.get("back")),
+        items = [{**_pick(i, REPORT_ITEM_FIELDS), "has_back": bool(i.get("back")), "migrated": bool(i.get("legacy_key")),
                   "has_turn": (i.get("turn") or {}).get("state") == "done"} for i in self.items.values()]
         return {
             "now": _now(),
@@ -800,7 +800,8 @@ class SupabaseStore:
         users = {s["user_id"] for s in signups}
         def mine(rows):
             return [{**r, "created_at": _parse_time(r["created_at"])} for r in rows if r["user_id"] in users]
-        items = [r for r in self._rows("wardrobe_items", {"select": "user_id,created_at,review_state", "created_at": at})
+        items = [r for r in self._rows("wardrobe_items", {"select": "user_id,created_at,review_state", "created_at": at,
+                                                          "legacy_key": "is.null"})  # moved in from runs/: not made here
                  if r.get("review_state") in (None, "kept")]
         return {
             "signups": signups,
@@ -827,11 +828,11 @@ class SupabaseStore:
     def usage_rows(self, since, user_id=None):
         at = {"created_at": f"gte.{since.isoformat()}"}
         mine = {"user_id": f"eq.{user_id}"} if user_id else {}
-        item_fields = REPORT_ITEM_FIELDS + ("back", "turn")
-        items = [{**_pick(i, REPORT_ITEM_FIELDS), "has_back": bool(i.get("back")),
+        item_fields = REPORT_ITEM_FIELDS + ("back", "turn", "legacy_key")
+        items = [{**_pick(i, REPORT_ITEM_FIELDS), "has_back": bool(i.get("back")), "migrated": bool(i.get("legacy_key")),
                   "has_turn": (i.get("turn") or {}).get("state") == "done"}
                  for i in self._report("wardrobe_items", item_fields, {**at, **mine})]
-        removed = [{**_pick(i, REPORT_ITEM_FIELDS), "has_back": False, "has_turn": False}
+        removed = [{**_pick(i, REPORT_ITEM_FIELDS), "has_back": False, "has_turn": False, "migrated": False}
                    for i in self._report("wardrobe_items", REPORT_ITEM_FIELDS,
                                          {"deleted_at": f"gte.{since.isoformat()}", **mine})]
         signups = [{"user_id": r["id"], "created_at": r["created_at"]} for r in

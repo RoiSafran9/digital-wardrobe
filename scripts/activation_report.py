@@ -1,7 +1,8 @@
 """First 3 Pieces activation report. Admin only, read-only: runs on the server with its secret key.
 
 Times come from the database, not the phone: sign-up = profiles.created_at, a piece = a closet item
-(wardrobe_items, review_state null or kept; later removal still counts). Onboarding steps come from
+(wardrobe_items, review_state null or kept; later removal still counts) made in the app — not one moved in
+from runs/ (legacy_key), and never one dated before the sign-up. Onboarding steps come from
 activation_events (api/events.py).
 
   Time to First Item        first closet item − sign-up (median, p75)
@@ -48,7 +49,9 @@ def metrics(rows: dict) -> dict:
 
     to_first, to_three, first_session, second_import = [], [], 0, 0
     for user, joined in signed.items():
-        times = sorted(items.get(user, []))
+        # A piece older than the account (moved in by scripts/migrate_runs.py, or a clock slip) wasn't made
+        # after signing up: it never counts, so no time here is negative.
+        times = sorted(t for t in items.get(user, []) if t >= joined)
         if not times:
             continue
         to_first.append((times[0] - joined).total_seconds() / 60)

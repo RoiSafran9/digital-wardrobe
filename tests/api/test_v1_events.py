@@ -230,3 +230,22 @@ def test_supabase_store_falls_back_to_one_by_one_when_a_batch_repeats_an_event()
     rows = [{"user_id": A, "event": "app_opened", "props": {}, "client_event_id": cid} for cid in ("dup", "new")]
     assert store.insert_events(rows) == 1
     assert len(calls) == 3 and all(c is not None for c in calls)
+
+
+def test_the_activation_report_ignores_pieces_older_than_the_account():
+    rows = {"signups": [{"user_id": "u1", "created_at": T0}],
+            "items": [{"user_id": "u1", "created_at": at(-4000)}, {"user_id": "u1", "created_at": at(5)}],
+            "paid_jobs": [], "events": []}
+    m = metrics(rows)
+    assert m["time_to_first_item_min"] == {"n": 1, "median": 5.0, "p75": 5.0}
+
+
+def test_the_store_leaves_moved_pieces_out_of_activation(store):
+    store.signups = {A: datetime.now(timezone.utc) - timedelta(days=1)}
+    from tests.api.test_v1_items import add_item
+    add_item(store, A, legacy_key="20261015-101010/photo/item_0")
+    add_item(store, A)
+    rows = store.activation_rows(datetime.now(timezone.utc) - timedelta(days=30))
+    assert len(rows["items"]) == 1
+    usage = store.usage_rows(datetime.now(timezone.utc) - timedelta(days=30))
+    assert sorted(i["migrated"] for i in usage["items"]) == [False, True]

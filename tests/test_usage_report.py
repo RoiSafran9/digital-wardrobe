@@ -26,7 +26,8 @@ def event(user, name, minutes=0, days=0, source="app", **props):
 
 def item(user, minutes, days=0, **extra):
     return {"id": f"i-{user}-{days}-{minutes}", "user_id": user, "job_id": None, "created_at": at(minutes, days),
-            "deleted_at": None, "origin": "garment_photo", "review_state": None, "has_back": False, "has_turn": False, **extra}
+            "deleted_at": None, "origin": "garment_photo", "review_state": None, "has_back": False, "has_turn": False,
+            "migrated": False, **extra}
 
 
 def call(user, kind, model, usd, attempt=1, fallback=False, status="ok", job_id=None):
@@ -150,3 +151,25 @@ def test_user_timeline_by_email_or_id(capsys):
     store.insert_event("u1", "onboarding_started", {"entry": "auto"})
     assert "onboarding_started" in main(["--user", "tester@example.com"], store=store)
     assert "No account" in main(["--user", "nobody@example.com"], store=store)
+
+
+def test_pieces_moved_from_runs_never_count_as_made_after_sign_up(rows):
+    # The owner's closet was moved in by scripts/migrate_runs.py: those items keep their old file times,
+    # days before the account existed. They are not pieces made in the app.
+    rows["items"] += [item("u3", -4000, migrated=True), item("u3", -3900, migrated=True), item("u3", -3800, migrated=True)]
+    m = metrics(rows)
+    a = m["activation"]
+    assert a["activated"] == 2 and a["time_to_first_item_min"]["median"] >= 0
+    assert m["funnel"]["first_piece"] == 2 and m["funnel"]["three_pieces"] == 1
+
+
+def test_a_piece_dated_before_sign_up_is_never_a_negative_time(rows):
+    rows["items"].append(item("u3", -60))  # not marked as moved, but older than the account (clock or data slip)
+    a = metrics(rows)["activation"]
+    assert a["time_to_first_item_min"]["median"] >= 0 and a["activated"] == 2
+
+
+def test_timeline_marks_moved_pieces():
+    rows = {"now": NOW, "signups": [{"user_id": "u1", "created_at": T0}], "removed": [], "ledger": [], "jobs": [],
+            "ai_calls": [], "events": [], "items": [item("u1", -4000, migrated=True)]}
+    assert "moved from the old closet" in timeline(rows)

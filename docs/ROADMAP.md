@@ -65,6 +65,11 @@ Done: hosted Supabase SMTP (Resend, `kipscloset.com`) and code templates, all mi
 - [ ] Hosted migration (`activation_events`), `WARDROBE_WORKER_CONCURRENCY=2` on the beta server, owner phone check
 - [ ] Reconcile with `docs/features/first-3-pieces-onboarding/` once those docs are committed (M0)
 
+## Activity and operations logging — PROPOSED ([spec](superpowers/specs/2026-10-22-activity-logging-design.md), [plan](superpowers/plans/2026-10-22-activity-logging.md))
+
+- [ ] Owner approval of the plan and decisions D1–D3 (deleted accounts' cost rows, per-tester timeline, privacy text)
+- [ ] L0 privacy page + App Privacy answers · L1 server log · L2 AI cost per call · L3 server events · L4 app events · L5 usage report · L6 docs and hosted SQL
+
 ## TestFlight Friends & Family Beta — next main delivery
 
 **Master plan:** [Beta TestFlight launch master plan](tasks/testflight-beta-launch-master-plan.md)  

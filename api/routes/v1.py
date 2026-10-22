@@ -5,7 +5,7 @@ Anything belonging to someone else answers 404, exactly like something that does
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTTPException, Response, UploadFile
 from fastapi.responses import JSONResponse
 from api.auth import User, current_user
@@ -14,7 +14,7 @@ from api.controls import BUDGET_USED, PAID_KINDS, WELCOME_KEY, daily_ai_jobs, st
 from api.credits import MAX_FRONTS, InsufficientCredits, action_for, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
 from api.activity import EVENTS_PER_HOUR, record, validate as validate_event
-from api.schemas import (AccountDeleteIn, EventIn, GarmentGenerateIn, GarmentScanOut, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
+from api.schemas import (AccountDeleteIn, EventBatchIn, EventBatchOut, EventIn, GarmentGenerateIn, GarmentScanOut, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
                          TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse)
 from api.store import INTERRUPTED, get_store
 from pipeline.types import ItemFacts
@@ -622,3 +622,28 @@ def record_event(body: EventIn, user: User = Depends(current_user), store=Depend
         raise HTTPException(429, "too many events")
     store.insert_event(user.id, body.event, props)
     return Response(status_code=204)
+
+
+CLIENT_TIME_WINDOW = timedelta(days=7)
+
+
+@router.post("/events/batch", response_model=EventBatchOut)
+def record_events(body: EventBatchIn, user: User = Depends(current_user), store=Depends(get_store)):
+    """App events, up to 50 at a time (api/activity.py). Invalid ones are skipped, not a 400 for the batch;
+    an event id already stored is skipped too, so a resent batch changes nothing. Server time is kept; the
+    phone's time only for ordering, clamped to the last week."""
+    if store.count_recent_events(user.id, 3600) >= EVENTS_PER_HOUR:
+        raise HTTPException(429, "too many events")
+    now = datetime.now(timezone.utc)
+    rows = []
+    for e in body.events:
+        try:
+            props = validate_event(e.event, e.props)
+        except ValueError:
+            continue
+        at = e.client_at if e.client_at.tzinfo else e.client_at.replace(tzinfo=timezone.utc)
+        rows.append({"user_id": user.id, "event": e.event, "props": props, "source": "app",
+                     "client_event_id": str(e.client_event_id), "client_at": min(max(at, now - CLIENT_TIME_WINDOW), now),
+                     "session_id": str(e.session_id) if e.session_id else None, "app_version": body.app_version})
+    stored = store.insert_events(rows)
+    return {"stored": stored, "skipped": len(body.events) - stored}

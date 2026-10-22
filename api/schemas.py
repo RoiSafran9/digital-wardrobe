@@ -1,5 +1,7 @@
+from datetime import datetime
 from typing import Any, Literal
-from pydantic import BaseModel
+from uuid import UUID
+from pydantic import BaseModel, Field
 from pipeline.types import ItemFacts
 
 
@@ -103,6 +105,25 @@ class PushTokenIn(BaseModel):
 class EventIn(BaseModel):
     event: str
     props: dict[str, Any] | None = None
+
+
+class EventBatchItem(BaseModel):
+    """One app event (api/activity.py). Unknown keys (a user_id, an item_id) are ignored, never stored."""
+    event: str
+    props: dict[str, Any] | None = None
+    client_event_id: UUID
+    client_at: datetime
+    session_id: UUID | None = None
+
+
+class EventBatchIn(BaseModel):
+    app_version: str = Field(min_length=1, max_length=20, pattern=r"^[0-9A-Za-z.\-+ ()]+$")
+    events: list[EventBatchItem] = Field(min_length=1, max_length=50)
+
+
+class EventBatchOut(BaseModel):
+    stored: int
+    skipped: int
 
 
 class AccountDeleteIn(BaseModel):

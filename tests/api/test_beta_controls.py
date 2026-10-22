@@ -1,4 +1,5 @@
 """Beta controls: pausing new AI work, limits on free scans, the one-time welcome grant, and health."""
+from datetime import timedelta
 import pytest
 from fastapi.testclient import TestClient
 from api.store import MemoryStore
@@ -85,6 +86,24 @@ def test_health_needs_no_sign_in_and_reports_the_queue(store):
     body = TestClient(app).get("/healthz").json()
     assert body["status"] == "ok" and body["queued"] == 1 and body["oldest_queued_seconds"] >= 0
     assert "generation" in body
+
+
+def test_health_reports_recent_failures_and_the_image_model(store):
+    from api.routes.health import router
+    from api.store import get_store
+    from fastapi import FastAPI
+    from pipeline.providers import gemini
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_store] = lambda: store
+    old, failed, ok = (store.create_job(A, "garment", k, None)[0] for k in ("old", "failed", "ok"))
+    store.finish_job(old["id"], "failed", error="x")
+    store.jobs[old["id"]]["finished_at"] -= timedelta(hours=2)
+    store.finish_job(failed["id"], "failed", error="x")
+    store.finish_job(ok["id"], "succeeded", {})
+    body = TestClient(app).get("/healthz").json()
+    assert body["failed_jobs_last_hour"] == 1
+    assert body["image_model"] == gemini.image_model()
 
 
 # --- daily AI budget -----------------------------------------------------------------------------------

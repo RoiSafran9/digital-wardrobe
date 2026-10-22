@@ -25,6 +25,11 @@ def create_app(settings: Settings | None = None, start_worker: bool = True) -> F
     from api.store import SupabaseStore, get_store
     from api.worker import run_forever
 
+    import os
+    from api.logs import add_request_log, configure_logging
+    log_dir = os.environ.get("WARDROBE_LOG_DIR", "logs")
+    configure_logging(None if log_dir == "off" else log_dir)
+
     store = SupabaseStore(settings)
     # Billing is off unless WARDROBE_BILLING=on (then every action must be priced, or startup stops here).
     prices = load_prices()
@@ -39,6 +44,7 @@ def create_app(settings: Settings | None = None, start_worker: bool = True) -> F
 
     app = FastAPI(lifespan=lifespan)
     add_error_handlers(app)
+    add_request_log(app)
     app.include_router(v1_router)
     app.include_router(health_router)
     app.dependency_overrides[get_settings] = lambda: settings

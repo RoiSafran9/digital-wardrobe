@@ -257,6 +257,10 @@ class MemoryStore:
         """All accounts (admin view): jobs of these kinds created since `since`."""
         return sum(1 for j in self.jobs.values() if j["kind"] in kinds and j["created_at"] >= since)
 
+    def count_failed_jobs_since(self, since):
+        """All accounts (admin view): jobs that failed for good since `since`."""
+        return sum(1 for j in self.jobs.values() if j["status"] == "failed" and j["finished_at"] and j["finished_at"] >= since)
+
     def queue_stats(self):
         queued = [j for j in self.jobs.values() if j["status"] == "queued"]
         oldest = min((j["created_at"] for j in queued), default=None)
@@ -583,6 +587,14 @@ class SupabaseStore:
     def count_jobs_since(self, kinds, since):
         r = self.http.get("/rest/v1/generation_jobs", params={"select": "id", "kind": f"in.({','.join(kinds)})",
                                                               "created_at": f"gte.{since.isoformat()}"},
+                          headers={"Prefer": "count=exact", "Range": "0-0"})
+        self._ok(r)
+        total = r.headers.get("content-range", "*/0").rsplit("/", 1)[-1]
+        return int(total) if total.isdigit() else len(r.json())
+
+    def count_failed_jobs_since(self, since):
+        r = self.http.get("/rest/v1/generation_jobs", params={"select": "id", "status": "eq.failed",
+                                                              "finished_at": f"gte.{since.isoformat()}"},
                           headers={"Prefer": "count=exact", "Range": "0-0"})
         self._ok(r)
         total = r.headers.get("content-range", "*/0").rsplit("/", 1)[-1]

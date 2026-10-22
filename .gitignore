@@ -12,3 +12,6 @@ __pycache__/
 .dev.vars*
 !.dev.vars.example
 !.env.example
+
+# server logs (api/logs.py)
+logs/

@@ -33,7 +33,7 @@ GitHub is the authoritative source for **code and project decisions**. Clothing 
 ```bash
 cp .env.example .env                  # add GEMINI_API_KEY
 python3.11 -m venv .venv && .venv/bin/pip install -e '.[dev]'
-.venv/bin/uvicorn api.main:app --host 0.0.0.0 --port 8000
+.venv/bin/uvicorn api.main:app --host 0.0.0.0 --port 8000 --no-access-log
 cd mobile && npm install && npx expo start   # open in Expo Go on the same Wi-Fi
 ```
 With `mobile/.env` Supabase settings blank, a development build runs in local mode over `runs/`. The app finds the API on the host serving it through Expo, port 8000 (`EXPO_PUBLIC_API_URL` overrides). `python cli.py run <photos_dir> [--output runs]` and the Streamlit harness (`streamlit run ui/app.py`) run the pipeline without the app. Account mode: see below.

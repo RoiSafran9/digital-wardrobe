@@ -86,9 +86,11 @@ def current_user(request: Request, verifier: TokenVerifier = Depends(get_verifie
     if scheme.lower() != "bearer" or not token.strip():
         raise UNAUTHORIZED
     try:
-        return verifier.verify(token.strip())
+        user = verifier.verify(token.strip())
     except InvalidToken:
         raise UNAUTHORIZED
+    request.state.user_id = user.id  # for the request log and refusal events (api/logs.py)
+    return user
 
 
 def add_error_handlers(app) -> None:

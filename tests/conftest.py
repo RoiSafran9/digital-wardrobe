@@ -1,3 +1,7 @@
+import os
+
+# Tests never configure the server log (api/logs.py) or write logs/.
+os.environ.setdefault("WARDROBE_LOG_DIR", "off")
 import numpy as np
 import pytest
 from PIL import Image

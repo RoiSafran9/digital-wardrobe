@@ -5,6 +5,7 @@ import time
 import cv2
 from google import genai
 from google.genai import types
+from pipeline import costs
 from pipeline.config import require_env
 from pipeline.types import BBox, DetectedItemWithFacts, DetectionFields, ItemFacts
 from pipeline.run_log import RunLogger
@@ -22,6 +23,20 @@ log = logging.getLogger("wardrobe.gemini")
 
 def image_model() -> str:
     return MODEL_IMAGE_FALLBACK if _image_model_gone else MODEL_IMAGE
+
+
+def _usage(response) -> tuple[int | None, int | None, int | None]:
+    """(input tokens, output tokens, images returned) from a Gemini response; Nones when there is none."""
+    if response is None:
+        return None, None, None
+    meta = getattr(response, "usage_metadata", None)
+    tin = getattr(meta, "prompt_token_count", None)
+    tout = getattr(meta, "candidates_token_count", None)
+    try:
+        images = sum(1 for p in response.candidates[0].content.parts if getattr(p, "inline_data", None) is not None)
+    except (AttributeError, IndexError, TypeError):
+        images = 0
+    return (tin if isinstance(tin, int) else None, tout if isinstance(tout, int) else None, images)
 
 
 def _model_gone(error: Exception) -> bool:
@@ -147,11 +162,30 @@ class GeminiProvider:
         self.client = genai.Client(api_key=api_key)
         self.logger = logger
 
-    def _log(self, stage, model, prompt_version, start, status, error=None):
-        if self.logger:
-            self.logger.log(stage=stage, model=model, prompt_version=prompt_version,
-                             latency_ms=(time.monotonic() - start) * 1000,
-                             status=status, error=error)
+    def _log(self, stage, model, prompt_version, start, status, error=None, response=None):
+        """One model call for run_log.jsonl / ai_calls: latency, tokens, images, estimated cost, fallback.
+        `error` is the exception (its class is kept everywhere; its text only in the local file)."""
+        if not self.logger:
+            return
+        tin, tout, images = _usage(response)
+        self.logger.log(stage=stage, model=model, prompt_version=prompt_version,
+                         latency_ms=(time.monotonic() - start) * 1000, status=status,
+                         error=None if error is None else str(error)[:500],
+                         error_class=None if error is None or isinstance(error, str) else type(error).__name__,
+                         input_tokens=tin, output_tokens=tout, images_out=images,
+                         cost_usd=costs.estimate_usd(model, tin, tout, images or 0) if response is not None else None,
+                         fallback=model == MODEL_IMAGE_FALLBACK)
+
+    def _log_usage(self, stage, prompt_version, usage):
+        """Outfit calls are made in pipeline/outfit.py, which keeps each one in a Usage; log them one by one."""
+        if not self.logger:
+            return
+        for call in usage.calls:
+            self.logger.log(stage=f"{stage}_{call['kind']}", model=call["model"], prompt_version=prompt_version,
+                             latency_ms=call["latency_s"] * 1000, status="ok" if call["ok"] else "error",
+                             error_class=call.get("error_class"), cost_usd=call["usd"] if call["ok"] else None,
+                             input_tokens=call.get("input_tokens"), output_tokens=call.get("output_tokens"),
+                             images_out=call.get("images_out"), fallback=call["model"] == MODEL_IMAGE_FALLBACK)
 
     async def detect_items_with_facts(self, image_path: str) -> list[DetectedItemWithFacts]:
         start = time.monotonic()
@@ -175,33 +209,29 @@ class GeminiProvider:
                 fields = detection.model_dump(exclude={"box_2d"})
                 fields["cut_off_by_frame"] = detection.cut_off_by_frame or touches_frame(detection.box_2d)
                 items.append(DetectedItemWithFacts(**fields, box=box_2d_to_bbox(detection.box_2d, width, height)))
-            self._log("stage1_detect_facts", MODEL_VISION, "v4", start, "ok")
+            self._log("stage1_detect_facts", MODEL_VISION, "v4", start, "ok", response=response)
             return items
         except Exception as e:
-            self._log("stage1_detect_facts", MODEL_VISION, "v4", start, "error", str(e))
+            self._log("stage1_detect_facts", MODEL_VISION, "v4", start, "error", e)
             raise
 
     async def detect_outfit(self, image_path: str):
         """Outfit Photo Stage 1: garments worn by the person, as candidates (pipeline/outfit.py)."""
         from pipeline import outfit
-        start = time.monotonic()
+        usage = outfit.Usage()
         try:
-            scan = await outfit.detect_candidates(self.client, image_path, outfit.Usage())
-            self._log("outfit_detect", MODEL_VISION, outfit.DETECT_PROMPT, start, "ok")
-            return scan
-        except Exception as e:
-            self._log("outfit_detect", MODEL_VISION, outfit.DETECT_PROMPT, start, "error", str(e))
-            raise
+            return await outfit.detect_candidates(self.client, image_path, usage)
+        finally:
+            self._log_usage("outfit", outfit.DETECT_PROMPT, usage)
 
     async def generate_outfit(self, image_path: str, scan, candidate_ids: list[str], out_dir: str) -> dict[str, dict]:
         """Outfit Photo Stage 2: catalog images for the picked candidates only (pipeline/outfit.py)."""
         from pipeline import outfit
-        start = time.monotonic()
-        results = await outfit.generate_selected(self.client, image_path, scan, candidate_ids, out_dir, outfit.Usage())
-        failed = [cid for cid, r in results.items() if r["status"] != "generated"]
-        self._log("outfit_generate", image_model(), outfit.GENERATE_PROMPT, start, "error" if failed else "ok",
-                  f"failed: {failed}" if failed else None)
-        return results
+        usage = outfit.Usage()
+        try:
+            return await outfit.generate_selected(self.client, image_path, scan, candidate_ids, out_dir, usage)
+        finally:
+            self._log_usage("outfit", outfit.GENERATE_PROMPT, usage)
 
     async def generate(self, crop_path: str, facts: ItemFacts, violations: list[str] | None,
                        complete_edges: bool = False) -> str:
@@ -223,10 +253,10 @@ class GeminiProvider:
                                if p.inline_data is not None)
             with open(out_path, "wb") as f:
                 f.write(image_bytes)
-            self._log("stage4_generate", image_model(), "v5", start, "ok")
+            self._log("stage4_generate", image_model(), "v5", start, "ok", response=response)
             return out_path
         except Exception as e:
-            self._log("stage4_generate", image_model(), "v5", start, "error", str(e))
+            self._log("stage4_generate", image_model(), "v5", start, "error", e)
             raise
 
     async def generate_back(self, crop_path: str, front_image_path: str, facts: ItemFacts,
@@ -258,10 +288,10 @@ class GeminiProvider:
                                if p.inline_data is not None)
             with open(out_path, "wb") as f:
                 f.write(image_bytes)
-            self._log("stage4_generate_back", image_model(), "v2", start, "ok")
+            self._log("stage4_generate_back", image_model(), "v2", start, "ok", response=response)
             return out_path
         except Exception as e:
-            self._log("stage4_generate_back", image_model(), "v2", start, "error", str(e))
+            self._log("stage4_generate_back", image_model(), "v2", start, "error", e)
             raise
 
     async def generate_view(self, refs, view: str, anchors: dict[str, str],
@@ -290,8 +320,8 @@ class GeminiProvider:
             response = await image_content(self.client, contents)
             data = next(p.inline_data.data for p in response.candidates[0].content.parts
                         if p.inline_data is not None)
-            self._log("turn_view", image_model(), "v2", start, "ok")
+            self._log("turn_view", image_model(), "v2", start, "ok", response=response)
             return data
         except Exception as e:
-            self._log("turn_view", image_model(), "v2", start, "error", str(e))
+            self._log("turn_view", image_model(), "v2", start, "error", e)
             raise

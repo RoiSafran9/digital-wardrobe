@@ -18,6 +18,7 @@ from typing import Literal
 import cv2
 from pydantic import BaseModel
 from pipeline.providers.gemini import MODEL_IMAGE, MODEL_VISION, _read_prompt, image_content, image_model, touches_frame
+from pipeline.costs import RATES
 from pipeline.stages import cutout, stage5_verify
 from pipeline.types import BBox, FactField, ItemFacts
 
@@ -25,13 +26,11 @@ DETECT_PROMPT = "outfit_detect_v3.txt"
 GENERATE_PROMPT = "outfit_generate_v3.txt"
 REVIEW_PROMPT = "outfit_review_v1.txt"
 
-# Paid-tier list prices (ai.google.dev/gemini-api/docs/pricing, read 2026-10-19), for the PoC report only.
-VISION_USD_PER_M_IN, VISION_USD_PER_M_OUT = 0.25, 1.50
-IMAGE_USD_PER_IMAGE, IMAGE_USD_PER_M_IN = 0.039, 0.30
+# Paid-tier list prices: pipeline/costs.py (read 2026-10-19).
+VISION_USD_PER_M_IN, VISION_USD_PER_M_OUT = RATES[MODEL_VISION]["in_per_m"], RATES[MODEL_VISION]["out_per_m"]
+IMAGE_USD_PER_IMAGE, IMAGE_USD_PER_M_IN = RATES[MODEL_IMAGE]["per_image"], RATES[MODEL_IMAGE]["in_per_m"]
 # Other image models compared in the PoC (USD per 1K output image, per 1M input tokens).
-IMAGE_PRICES = {MODEL_IMAGE: (IMAGE_USD_PER_IMAGE, IMAGE_USD_PER_M_IN),
-                "gemini-3.1-flash-lite-image": (0.0336, 0.25),
-                "gemini-3.1-flash-image": (0.067, 0.50),
+IMAGE_PRICES = {**{m: (r["per_image"], r["in_per_m"]) for m, r in RATES.items() if "per_image" in r},
                 "gemini-nano-banana-2.1": (0.0336, 1.50)}
 
 # Preview crops get more context than the catalog crop: the user has to recognise the piece on the body.
@@ -187,8 +186,11 @@ class Usage:
     """Paid calls made, for the report. Costs are estimates from list prices and returned token counts."""
     calls: list[dict] = field(default_factory=list)
 
-    def add(self, kind: str, model: str, latency_s: float, usd: float, ok: bool):
-        self.calls.append({"kind": kind, "model": model, "latency_s": round(latency_s, 2), "usd": round(usd, 5), "ok": ok})
+    def add(self, kind: str, model: str, latency_s: float, usd: float, ok: bool, input_tokens: int | None = None,
+            output_tokens: int | None = None, images_out: int | None = None, error_class: str | None = None):
+        self.calls.append({"kind": kind, "model": model, "latency_s": round(latency_s, 2), "usd": round(usd, 5), "ok": ok,
+                           "input_tokens": input_tokens, "output_tokens": output_tokens, "images_out": images_out,
+                           "error_class": error_class})
 
     @property
     def usd(self) -> float:
@@ -213,7 +215,7 @@ def _first_image(response) -> bytes:
 async def detect_candidates(client, image_path: str, usage: Usage) -> OutfitScan:
     """Stage 1: one vision call (flash-lite, the model the garment flow already uses)."""
     start = time.monotonic()
-    ok, usd = False, 0.0
+    ok, usd, tin, tout, err = False, 0.0, None, None, None
     try:
         from google.genai import types
         response = await client.aio.models.generate_content(
@@ -225,8 +227,11 @@ async def detect_candidates(client, image_path: str, usage: Usage) -> OutfitScan
         scan = parse_scan(json.loads(response.text), width, height)
         ok = True
         return scan
+    except Exception as e:
+        err = type(e).__name__
+        raise
     finally:
-        usage.add("detect", MODEL_VISION, time.monotonic() - start, usd, ok)
+        usage.add("detect", MODEL_VISION, time.monotonic() - start, usd, ok, tin, tout, None, err)
 
 
 async def generate_flatlay(client, crop_path: str, context_path: str | None, candidate: OutfitCandidate,
@@ -234,7 +239,7 @@ async def generate_flatlay(client, crop_path: str, context_path: str | None, can
                            prompt_name: str = GENERATE_PROMPT, model: str | None = None) -> str:
     """Stage 2 for one selected candidate. context_path (the photo with this candidate outlined) is optional."""
     start = time.monotonic()
-    ok, usd = False, 0.0
+    ok, usd, tin, tout, images, err = False, 0.0, None, None, None, None
     try:
         violations_block = "\nPrevious attempt violations to fix:\n" + "\n".join(violations) if violations else ""
         prompt = _read_prompt(prompt_name).format(facts_block=facts_block(candidate), violations_block=violations_block,
@@ -246,16 +251,20 @@ async def generate_flatlay(client, crop_path: str, context_path: str | None, can
         response = await asyncio.wait_for(
             (image_content(client, contents + [prompt]) if model is None else
              client.aio.models.generate_content(model=model, contents=contents + [prompt])), CALL_TIMEOUT_S)
-        tin, _ = _tokens(response)
+        tin, tout = _tokens(response)
         data = _first_image(response)
+        images = 1
         per_image, per_m_in = IMAGE_PRICES[model or image_model()]  # the model that actually answered
         usd = per_image + tin / 1e6 * per_m_in
         with open(out_path, "wb") as f:
             f.write(data)
         ok = True
         return out_path
+    except Exception as e:
+        err = type(e).__name__
+        raise
     finally:
-        usage.add("generate", model, time.monotonic() - start, usd, ok)
+        usage.add("generate", model or image_model(), time.monotonic() - start, usd, ok, tin, tout, images, err)
 
 
 async def generate_selected(client, image_path: str, scan: OutfitScan, selected: list[str], out_dir: str,
@@ -310,7 +319,7 @@ class Review(BaseModel):
 async def review_flatlay(client, crop_path: str, generated_path: str, candidate: OutfitCandidate, usage: Usage) -> Review:
     """EXPERIMENTAL: flags color drift and invented details that the local color/OCR checks cannot see."""
     start = time.monotonic()
-    ok, usd = False, 0.0
+    ok, usd, tin, tout, err = False, 0.0, None, None, None
     try:
         from google.genai import types
         prompt = _read_prompt(REVIEW_PROMPT).format(category=candidate.category, description=candidate.description)
@@ -323,5 +332,8 @@ async def review_flatlay(client, crop_path: str, generated_path: str, candidate:
         review = Review.model_validate_json(response.text)
         ok = True
         return review
+    except Exception as e:
+        err = type(e).__name__
+        raise
     finally:
-        usage.add("review", MODEL_VISION, time.monotonic() - start, usd, ok)
+        usage.add("review", MODEL_VISION, time.monotonic() - start, usd, ok, tin, tout, None, err)

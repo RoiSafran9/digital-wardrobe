@@ -335,3 +335,75 @@ async def test_a_hung_detection_call_times_out(monkeypatch, tmp_path):
         MockClient.return_value.models.generate_content.side_effect = lambda **kw: _time.sleep(0.5)
         with pytest.raises(asyncio.TimeoutError):
             await gemini.GeminiProvider().detect_items_with_facts(str(img))
+
+
+def _counted_image_response(prompt_tokens=1200, output_tokens=1290):
+    part = MagicMock()
+    part.inline_data.data = b"png"
+    response = MagicMock()
+    response.candidates[0].content.parts = [part]
+    response.usage_metadata.prompt_token_count = prompt_tokens
+    response.usage_metadata.candidates_token_count = output_tokens
+    return response
+
+
+@pytest.mark.asyncio
+async def test_image_call_logs_tokens_images_and_cost(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    from pipeline import costs
+    from pipeline.providers import gemini
+    from pipeline.run_log import RunLogger
+    from pipeline.types import ItemFacts
+    monkeypatch.setattr(gemini, "_image_model_gone", False)
+    crop = tmp_path / "crop.png"
+    crop.write_bytes(b"x")
+    logger = RunLogger(str(tmp_path / "log.jsonl"))
+    facts = MagicMock(spec=ItemFacts)
+    facts.model_dump_json.return_value = "{}"
+    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
+        async def answer(**kwargs):
+            return _counted_image_response()
+        MockClient.return_value.aio.models.generate_content = answer
+        await gemini.GeminiProvider(logger).generate(str(crop), facts, None)
+    [entry] = logger.read_all()
+    assert (entry.input_tokens, entry.output_tokens, entry.images_out) == (1200, 1290, 1)
+    assert entry.fallback is False and entry.model == gemini.MODEL_IMAGE
+    assert entry.cost_usd == pytest.approx(costs.estimate_usd(gemini.MODEL_IMAGE, 1200, 1290, images_out=1))
+
+
+@pytest.mark.asyncio
+async def test_a_call_on_the_fallback_model_is_flagged(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    from pipeline.providers import gemini
+    from pipeline.run_log import RunLogger
+    monkeypatch.setattr(gemini, "_image_model_gone", True)
+    logger = RunLogger(str(tmp_path / "log.jsonl"))
+    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
+        async def answer(**kwargs):
+            return _counted_image_response()
+        MockClient.return_value.aio.models.generate_content = answer
+        refs = MagicMock()
+        refs.back = None
+        refs.front.catalog = None
+        monkeypatch.setattr(gemini, "_prints_block", lambda refs: "")
+        monkeypatch.setattr(gemini, "_view_block", lambda view, refs: "")
+        await gemini.GeminiProvider(logger).generate_view(refs, "front", {})
+    [entry] = logger.read_all()
+    assert entry.fallback is True and entry.model == gemini.MODEL_IMAGE_FALLBACK
+
+
+@pytest.mark.asyncio
+async def test_a_failed_call_keeps_the_error_class_not_the_message(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    from pipeline.providers import gemini
+    from pipeline.run_log import RunLogger
+    img = tmp_path / "photo.jpg"
+    cv2.imwrite(str(img), np.zeros((40, 30, 3), dtype=np.uint8))
+    logger = RunLogger(str(tmp_path / "log.jsonl"))
+    with patch("pipeline.providers.gemini.genai.Client") as MockClient:
+        MockClient.return_value.models.generate_content.side_effect = TimeoutError("user@example.com secret")
+        with pytest.raises(TimeoutError):
+            await gemini.GeminiProvider(logger).detect_items_with_facts(str(img))
+    [entry] = logger.read_all()
+    assert entry.status == "error" and entry.error_class == "TimeoutError"
+    assert entry.input_tokens is None and entry.cost_usd is None

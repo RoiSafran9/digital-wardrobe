@@ -1,5 +1,6 @@
+from datetime import datetime, timezone
 from typing import Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class BBox(BaseModel):
@@ -75,6 +76,12 @@ class RunLogEntry(BaseModel):
     model: str
     prompt_version: str
     latency_ms: float
-    cost_usd: float | None = None
+    cost_usd: float | None = None  # an estimate (pipeline/costs.py)
     status: Literal["ok", "error"]
-    error: str | None = None
+    error: str | None = None  # local mode only; account mode keeps error_class (never the message)
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    images_out: int | None = None
+    fallback: bool = False  # the fallback image model answered
+    error_class: str | None = None
+    ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

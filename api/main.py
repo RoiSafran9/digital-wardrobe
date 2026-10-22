@@ -27,8 +27,9 @@ def create_app(settings: Settings | None = None, start_worker: bool = True) -> F
 
     import os
     from api.logs import add_request_log, configure_logging
-    log_dir = os.environ.get("WARDROBE_LOG_DIR", "logs")
-    configure_logging(None if log_dir == "off" else log_dir)
+    log_dir = os.environ.get("WARDROBE_LOG_DIR", "logs")  # "off": leave logging as it is (tests)
+    if log_dir != "off":
+        configure_logging(log_dir)
 
     store = SupabaseStore(settings)
     # Billing is off unless WARDROBE_BILLING=on (then every action must be priced, or startup stops here).

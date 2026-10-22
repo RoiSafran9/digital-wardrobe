@@ -172,4 +172,20 @@ def test_a_piece_dated_before_sign_up_is_never_a_negative_time(rows):
 def test_timeline_marks_moved_pieces():
     rows = {"now": NOW, "signups": [{"user_id": "u1", "created_at": T0}], "removed": [], "ledger": [], "jobs": [],
             "ai_calls": [], "events": [], "items": [item("u1", -4000, migrated=True)]}
-    assert "moved from the old closet" in timeline(rows)
+    assert "moved from the old closet" in timeline(rows)  # see test_timeline_shows_moved_pieces_once
+
+
+def test_timeline_shows_moved_pieces_once():
+    rows = {"now": NOW, "signups": [{"user_id": "u1", "created_at": T0}], "removed": [], "ledger": [], "jobs": [],
+            "ai_calls": [], "events": [], "items": [item("u1", -4000 - m, migrated=True) for m in range(3)]}
+    lines = timeline(rows).splitlines()
+    moved = [line for line in lines if "moved from the old closet" in line]
+    assert len(moved) == 1 and "3 pieces" in moved[0]
+
+
+def test_timeline_labels_the_job_price_per_piece():
+    rows = {"now": NOW, "signups": [], "removed": [], "ledger": [], "items": [], "ai_calls": [], "events": [],
+            "jobs": [job("u1", "outfit_generate", 3, cost=1), job("u1", "turn", 9, cost=3)]}
+    text = timeline(rows)
+    assert "outfit_generate job started · 1 credit per piece" in text
+    assert "turn job started · 3 credits" in text and "3 credits per piece" not in text

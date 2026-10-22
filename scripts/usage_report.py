@@ -220,6 +220,17 @@ def report(m: dict) -> str:
     return "\n".join(lines)
 
 
+PER_PIECE_KINDS = {"garment", "outfit_generate"}  # cost_credits is the price of one front; the hold is × pieces
+
+
+def _price(job: dict) -> str:
+    credits = job.get("cost_credits")
+    if not credits:
+        return ""
+    unit = "credit" if credits == 1 else "credits"
+    return f" · {credits} {unit} per piece" if job["kind"] in PER_PIECE_KINDS else f" · {credits} {unit}"
+
+
 def timeline(rows: dict) -> str:
     """One account's history, oldest first: sign-up, events, jobs, credits, pieces. No piece details."""
     entries = [(s["created_at"], 0, "signed up") for s in rows["signups"]]
@@ -227,16 +238,19 @@ def timeline(rows: dict) -> str:
         props = " ".join(f"{k}={v}" for k, v in sorted((e.get("props") or {}).items()))
         entries.append((e["created_at"], 1, f"{e['source']:<6} {e['event']} {props}".rstrip()))
     for j in rows["jobs"]:
-        entries.append((j["created_at"], 1, f"server {j['kind']} job started" + (f" · {j['cost_credits']} credits" if j.get("cost_credits") else "")))
+        entries.append((j["created_at"], 1, f"server {j['kind']} job started" + _price(j)))
         if j.get("finished_at"):
             secs = round((j["finished_at"] - j["created_at"]).total_seconds())
             why = f" ({j['failure_code']})" if j.get("failure_code") else ""
             entries.append((j["finished_at"], 1, f"server {j['kind']} job {j['status']}{why} after {secs}s"))
     for e in rows["ledger"]:
         entries.append((e["created_at"], 1, f"credits {e['kind']} {e['amount']}" + (f" ({e['action']})" if e.get("action") else "")))
+    moved = sorted(i["created_at"] for i in rows["items"] if i.get("migrated"))
+    if moved:  # one line: they were moved in by scripts/migrate_runs.py, not made in the app
+        entries.append((moved[0], 1, f"server {len(moved)} pieces moved from the old closet (runs/), "
+                                     f"dated by their files {moved[0]:%Y-%m-%d} to {moved[-1]:%Y-%m-%d}"))
     for i in rows["items"]:
         if i.get("migrated"):
-            entries.append((i["created_at"], 1, "server piece moved from the old closet (runs/), dated by its file"))
             continue
         entries.append((i["created_at"], 1, f"server piece created ({i.get('origin') or 'garment_photo'}"
                                             + (f", {i['review_state']}" if i.get("review_state") else "") + ")"))

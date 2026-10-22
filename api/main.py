@@ -45,7 +45,8 @@ def create_app(settings: Settings | None = None, start_worker: bool = True) -> F
 
     app = FastAPI(lifespan=lifespan)
     add_error_handlers(app)
-    add_request_log(app)
+    from api.activity import refusal_recorder
+    add_request_log(app, refusal_recorder(store))
     app.include_router(v1_router)
     app.include_router(health_router)
     app.dependency_overrides[get_settings] = lambda: settings

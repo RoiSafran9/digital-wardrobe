@@ -2,23 +2,25 @@
 
 Anything belonging to someone else answers 404, exactly like something that doesn't exist.
 """
+import logging
 import os
 import uuid
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Response, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTTPException, Response, UploadFile
 from fastapi.responses import JSONResponse
 from api.auth import User, current_user
 from api.credits import CreditError
 from api.controls import BUDGET_USED, PAID_KINDS, WELCOME_KEY, daily_ai_jobs, start_of_day, free_scans_per_hour, generation_on, invited, require_generation, welcome_credits
 from api.credits import MAX_FRONTS, InsufficientCredits, action_for, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
-from api.activity import EVENTS_PER_HOUR, validate as validate_event
+from api.activity import EVENTS_PER_HOUR, record, validate as validate_event
 from api.schemas import (AccountDeleteIn, EventIn, GarmentGenerateIn, GarmentScanOut, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
                          TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse)
 from api.store import INTERRUPTED, get_store
 from pipeline.types import ItemFacts
 
 router = APIRouter(prefix="/v1")
+log = logging.getLogger("wardrobe.v1")
 
 PHOTO_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".heic": "image/heic",
                ".heif": "image/heif", ".webp": "image/webp"}
@@ -210,20 +212,26 @@ def get_item(item_id: str, user: User = Depends(current_user), store=Depends(get
 
 
 @router.patch("/items/{item_id}", response_model=V1ItemOut)
-def edit_item(item_id: str, patch: ItemPatch, user: User = Depends(current_user), store=Depends(get_store)):
+def edit_item(item_id: str, patch: ItemPatch, background: BackgroundTasks, user: User = Depends(current_user),
+              store=Depends(get_store)):
     item = _own_item(store, user, item_id)
     error = patch_error(patch)
     if error:
         raise HTTPException(400, error)
     facts = apply_patch(ItemFacts.model_validate(item["facts"]), patch)
     updated = store.update_item(user.id, item_id, {"facts": facts.model_dump(mode="json")})
+    first = item.get("facts_original") is None
+    for field in sorted(patch.model_dump(exclude_unset=True)):  # the field's name only, never its value
+        background.add_task(record, store, user.id, "item_edited", {"field": field, "first": first}, item_id=item_id)
     return item_out(updated, store.sign(_paths(updated)))
 
 
 @router.delete("/items/{item_id}", status_code=204)
-def delete_item(item_id: str, user: User = Depends(current_user), store=Depends(get_store)):
-    _own_item(store, user, item_id)
+def delete_item(item_id: str, background: BackgroundTasks, user: User = Depends(current_user), store=Depends(get_store)):
+    item = _own_item(store, user, item_id)
     store.update_item(user.id, item_id, {"deleted_at": datetime.now(timezone.utc).isoformat()})
+    # pending = an outfit result discarded in review; otherwise a piece removed from the closet
+    background.add_task(record, store, user.id, "item_deleted", {"review": item.get("review_state") or "none"}, item_id=item_id)
     return Response(status_code=204)
 
 
@@ -357,7 +365,8 @@ MARKED_NOTE = "Marked by you — the details come from your photo."
 
 
 @router.post("/outfit-scans/{scan_id}/regions", response_model=OutfitScanOut, dependencies=[Depends(outfit_on)])
-def mark_region(scan_id: str, body: RegionIn, user: User = Depends(current_user), store=Depends(get_store)):
+def mark_region(scan_id: str, body: RegionIn, background: BackgroundTasks, user: User = Depends(current_user),
+                store=Depends(get_store)):
     """A garment the scan missed: the user marks it on the photo. No model call (free); it becomes a candidate
     with a crop of that area, and generation works from the crop like any other pick."""
     import tempfile
@@ -398,6 +407,7 @@ def mark_region(scan_id: str, body: RegionIn, user: User = Depends(current_user)
     candidates.append({**candidate.model_dump(mode="json"), "preview_path": path})
     result["candidates"] = candidates
     store.finish_job(scan["id"], "succeeded", result)
+    background.add_task(record, store, user.id, "region_added", job_id=scan["id"])  # the type typed is not kept
     return scan_out(store.get_job(user.id, scan["id"]), store)
 
 
@@ -430,11 +440,12 @@ def regenerate_item(item_id: str, body: RegenerateIn, user: User = Depends(curre
 
 
 @router.post("/items/{item_id}/keep", response_model=V1ItemOut, dependencies=[Depends(outfit_on)])
-def keep_item(item_id: str, user: User = Depends(current_user), store=Depends(get_store)):
+def keep_item(item_id: str, background: BackgroundTasks, user: User = Depends(current_user), store=Depends(get_store)):
     """The user accepts an outfit result: it joins the closet. Discarding is DELETE /v1/items/{id} (soft delete)."""
     item = _own_item(store, user, item_id)
     if item.get("review_state") == "pending":
         item = store.update_item(user.id, item_id, {"review_state": "kept"})
+        background.add_task(record, store, user.id, "item_kept", item_id=item_id)
     return item_out(item, store.sign(_paths(item)))
 
 
@@ -445,6 +456,8 @@ def delete_account(body: AccountDeleteIn | None = None, user: User = Depends(cur
     if body is None or body.confirm != "DELETE":
         raise HTTPException(400, 'send {"confirm": "DELETE"} to delete your account')
     store.delete_account(user.id)
+    # The account's activity rows went with it; only this line (kept 14 days) says it happened.
+    log.info("account deleted")
     return Response(status_code=204)
 
 
@@ -475,15 +488,19 @@ def _push_token(body: PushTokenIn | None) -> str:
 
 
 @router.post("/push-token", status_code=204)
-def add_push_token(body: PushTokenIn | None = None, user: User = Depends(current_user), store=Depends(get_store)):
+def add_push_token(background: BackgroundTasks, body: PushTokenIn | None = None, user: User = Depends(current_user),
+                   store=Depends(get_store)):
     """'Notify when ready' on: this phone gets a push when the user's AI work finishes."""
     store.add_push_token(user.id, _push_token(body))
+    background.add_task(record, store, user.id, "push_enabled")
     return Response(status_code=204)
 
 
 @router.delete("/push-token", status_code=204)
-def remove_push_token(body: PushTokenIn | None = None, user: User = Depends(current_user), store=Depends(get_store)):
+def remove_push_token(background: BackgroundTasks, body: PushTokenIn | None = None, user: User = Depends(current_user),
+                      store=Depends(get_store)):
     store.remove_push_token(user.id, _push_token(body))
+    background.add_task(record, store, user.id, "push_disabled")
     return Response(status_code=204)
 
 
@@ -560,10 +577,27 @@ def _limit_free_scans(store, user: User):
         raise HTTPException(429, "too many photo scans in the last hour — try again in a little while")
 
 
+def _signed_in(store, user_id: str, granted: int) -> None:
+    """After the response: the sign-in (first or not) and the welcome grant, for the activity record."""
+    try:
+        first = not store.has_event(user_id, "signed_in")
+    except Exception:
+        first = False
+    record(store, user_id, "signed_in", {"first": first})
+    if granted:
+        record(store, user_id, "welcome_granted", {"credits": min(granted, 1000)})
+
+
 @router.post("/bootstrap")
-def bootstrap(user: User = Depends(current_user), store=Depends(get_store)):
+def bootstrap(background: BackgroundTasks, user: User = Depends(current_user), store=Depends(get_store)):
     """Called by the app after each sign-in. Grants the welcome credits once per invited account (a fixed
     operation key makes repeats, second devices and reinstalls no-ops). Off unless WARDROBE_WELCOME_CREDITS is set."""
+    result = _welcome(user, store)
+    background.add_task(_signed_in, store, user.id, result["welcome_granted"])
+    return result
+
+
+def _welcome(user: User, store) -> dict:
     amount = welcome_credits()
     if not amount or not invited(user.email) or store.profile_status(user.id) == "disabled":
         return {"welcome_granted": 0}

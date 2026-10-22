@@ -2,6 +2,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
 from api.auth import User, add_error_handlers, current_user
+from api.activity import refusal_recorder
 from api.logs import add_request_log
 from api.routes.v1 import router
 from api.store import MemoryStore, get_store
@@ -20,7 +21,7 @@ def fake_user(request: Request) -> User:
 def v1_client(store: MemoryStore, on_response=None) -> TestClient:
     app = FastAPI()
     add_error_handlers(app)
-    add_request_log(app, on_response)
+    add_request_log(app, on_response or refusal_recorder(store))
     app.include_router(router)
     app.dependency_overrides[current_user] = fake_user
     app.dependency_overrides[get_store] = lambda: store

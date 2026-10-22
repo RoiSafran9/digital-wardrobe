@@ -427,9 +427,34 @@ HANDLERS = {"garment": _garment, "back": _back, "turn": _turn, "outfit_scan": _o
             "outfit_generate": _outfit_generate, "outfit_regenerate": _outfit_regenerate, "garment_scan": _garment_scan}
 
 
+def _seconds_since(created) -> int:
+    if isinstance(created, str):
+        created = datetime.fromisoformat(created.replace("Z", "+00:00"))
+    return max(0, min(1000, round((datetime.now(timezone.utc) - created).total_seconds())))
+
+
+def _record_outcome(store, job, status, result=None, code=None) -> None:
+    """The activity record of a job that finished for good (never per retry). The job row stays the truth."""
+    from api.activity import record
+    try:
+        props = {"kind": job["kind"], "status": status, "seconds": _seconds_since(job["created_at"]),
+                 "attempts": min(job["attempts"], 1000)}
+        if code:
+            props["failure"] = code
+        if result and isinstance(result.get("item_ids"), list):
+            props["pieces_made"] = min(len(result["item_ids"]), 1000)
+        if result and isinstance(result.get("failed"), list):
+            props["pieces_failed"] = min(len(result["failed"]), 1000)
+    except Exception:
+        log.warning("outcome of job %s not recorded", job.get("id"), exc_info=True)
+        return
+    record(store, job["user_id"], "job_finished", props, job_id=job["id"])
+
+
 def _fail(store, gate, job, uploads, message, code="internal"):
     store.remove(uploads.paths + ([job["input_path"]] if job.get("input_path") else []))
     store.finish_job(job["id"], "failed", error=message, failure_code=code)
+    _record_outcome(store, job, "failed", code=code)
     push.notify_job(store, job, "failed", error=message)
     try:
         if job["kind"] not in FREE_KINDS:  # a free job (outfit scan) holds nothing to give back
@@ -454,6 +479,7 @@ async def run_once(store, provider_factory, lease_seconds: int = 600, gate: Cred
             finally:
                 _keep_ai_calls(store, job, tmp)  # every attempt's calls cost money, success or not
         store.finish_job(job["id"], "succeeded", result)
+        _record_outcome(store, job, "succeeded", result)
         push.notify_job(store, job, "succeeded", result)
     except JobRejected as e:
         _fail(store, gate, job, uploads, str(e), e.code)

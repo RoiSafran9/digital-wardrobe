@@ -11,7 +11,8 @@
                                A multi-photo round makes one job per photo; 2 lets them overlap. Same AI calls either way.
 """
 import os
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
+from api.auth import User, current_user
 
 WELCOME_KEY = "welcome:beta-v1"
 PAUSED = "AI generation is paused for now — your closet still works. Try again later"
@@ -21,8 +22,9 @@ def generation_on() -> bool:
     return os.environ.get("WARDROBE_GENERATION", "on").strip().lower() not in ("off", "0", "false")
 
 
-def require_generation():
-    """Dependency for every route that starts paid or costly AI work."""
+def require_generation(user: User = Depends(current_user)):
+    """Dependency for every route that starts paid or costly AI work. Signed in first, so a refusal is
+    recorded for its account (api/activity.refusal_recorder)."""
     if not generation_on():
         raise HTTPException(503, PAUSED)
 

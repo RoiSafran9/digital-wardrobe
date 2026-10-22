@@ -69,7 +69,7 @@ Shown to testers for each build (≤ 4,000 characters). For the first build:
 ## 5. App Privacy (App Store → App Privacy)
 
 Not needed for TestFlight itself, but App Store Connect may ask for it; it is required before an App Store release.
-Answers matching what the app does today (no analytics, no advertising, no tracking, no purchases):
+Answers matching what the app does today (no advertising, no tracking, no purchases; usage records for analytics — see the privacy page's "Usage records"):
 
 | Data type | Collected | Linked to the user | Used for tracking | Purpose |
 |---|---|---|---|---|
@@ -78,9 +78,12 @@ Answers matching what the app does today (no analytics, no advertising, no track
 | User Content → Photos or Videos | yes | yes | no | App Functionality |
 | User Content → Other User Content (piece details, credits activity) | yes | yes | no | App Functionality |
 | Identifiers → Device ID | no (the push token isn't a device ID) | | | |
-| Usage Data, Diagnostics, Location, Purchases, Financial Info | no | | | |
+| Usage Data → Product Interaction | yes | yes | no | Analytics, App Functionality |
+| Diagnostics → Other Diagnostic Data | yes | yes | no | App Functionality |
+| Usage Data → Advertising Data, Other Usage Data; Diagnostics → Crash Data, Performance Data; Location, Purchases, Financial Info | no | | | |
 
 - "Do you or your third-party partners use data for tracking?" → **No**.
+- Product Interaction = the steps an account takes in the app (signing in, onboarding, scans, pieces created/edited/removed, screens opened); Other Diagnostic Data = AI job outcomes and app error kinds (no messages). Both are kept by our own server, linked to the account, never shared. Crash Data stays **no**: the app collects none (TestFlight's own crash reports are Apple's).
 - Photos are sent to Google Gemini to process them; that is processing for app functionality, not tracking.
 
 ## 6. Already set in the build

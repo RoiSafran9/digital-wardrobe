@@ -7,11 +7,12 @@ import { APP_NAME } from "../src/appName";
 export const PRIVACY_SECTIONS: InfoSection[] = [
   { title: "What is stored", body: [
     "Your email and the name you chose, the photos you upload, the catalog images, cutouts, back images and 360° views made from them, the details of each piece, and your AI Credits activity.",
-    "When you add your first pieces, which onboarding steps you reached (for example, how many photos you added and pieces found) — never the photos, text or anything about your device. Kept for 180 days.",
+    "Usage records: the steps your account takes in the app (for example signing in, onboarding, scanning a photo, creating, editing or removing a piece, and errors) and how each AI job went (time, result, estimated cost), with the app version — never your photos, the details of your pieces, text you type, your email or your device's identifiers. Kept for 180 days; cost records 400 days, separated from your account if you delete it; server logs 14 days.",
     "For outfit photos, the photo of you is not added to your closet: it is kept only to make the pieces you pick and is marked for removal after 24 hours. Only crops of the garments are kept with your pieces.",
   ] },
   { title: "Who can see it", body: [
     "Only you. Every wardrobe is private to its account: the database and file storage only let your account read your rows and files, and images are shown through links that expire within an hour.",
+    "The app's developer can see the steps your account took (usage records), never your photos. Usage records aren't shared with anyone or used for advertising.",
   ] },
   { title: "AI processing", body: [
     "To find garments and make images, your photos are sent to Google's Gemini AI service. Background removal runs on the wardrobe server, not on an outside service.",
@@ -21,7 +22,7 @@ export const PRIVACY_SECTIONS: InfoSection[] = [
   ] },
   { title: "Removing and deleting", body: [
     "Removing a piece takes it out of your closet; it can still be restored by the app owner.",
-    "Delete Account (in Account) permanently removes your account, every piece, every photo and your credits.",
+    "Delete Account (in Account) permanently removes your account, every piece, every photo, your credits and your usage records.",
   ] },
 ];
 

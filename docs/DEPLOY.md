@@ -26,6 +26,8 @@ It needs ~2 GB RAM for the background-removal model; one instance is enough for 
 | `GEMINI_API_KEY` | the Gemini key |
 | `WARDROBE_BILLING`, `WARDROBE_CREDIT_PRICES` | `on`, `{"garment":1,"back":1,"turn":3}` |
 | `WARDROBE_OUTFIT` | `on` if outfit import is in the beta |
+| `WARDROBE_OUTFIT_BUILDER` | `on` if Build My Look (AI Outfit Builder) is in the beta |
+| `WARDROBE_OUTFIT_BUILDER_AI` | `on` to let Build My Look ask Gemini to relabel (not reorder) its own deterministic picks; off by default, deterministic either way |
 | `WARDROBE_WELCOME_CREDITS`, `WARDROBE_BETA_INVITES` | `40`, `*` (owner decision 2026-10-19) |
 | `WARDROBE_DAILY_AI_JOBS` | a daily cap on paid AI jobs (cost guard), e.g. `300` |
 | `WARDROBE_FREE_SCANS_PER_HOUR` | free scans per account per hour (default 30) |

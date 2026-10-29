@@ -14,8 +14,10 @@ from api.controls import BUDGET_USED, PAID_KINDS, WELCOME_KEY, daily_ai_jobs, st
 from api.credits import MAX_FRONTS, InsufficientCredits, action_for, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
 from api.activity import EVENTS_PER_HOUR, record, validate as validate_event
-from api.schemas import (AccountDeleteIn, EventBatchIn, EventBatchOut, EventIn, GarmentGenerateIn, GarmentScanOut, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
-                         TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse)
+from api.outfit_builder.engine import build_suggestions
+from api.outfit_builder.swap import StaleLook, swap_options
+from api.schemas import (AccountDeleteIn, EventBatchIn, EventBatchOut, EventIn, GarmentGenerateIn, GarmentScanOut, OutfitFiltersIn, OutfitLookOut, OutfitSuggestionsOut, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
+                         SwapAlternativeOut, SwapOptionsIn, SwapOptionsOut, TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse)
 from api.store import INTERRUPTED, get_store
 from pipeline.types import ItemFacts
 
@@ -100,7 +102,8 @@ def create_garment_job(user: User = Depends(current_user), photo: UploadFile | N
 def prices_list(user: User = Depends(current_user), prices=Depends(get_prices)):
     """The AI Price List the app can show; empty while billing is off. `outfit` says whether the
     Outfit Photo flow is switched on (WARDROBE_OUTFIT=on), so the app shows that mode only then."""
-    return PricesOut(billing=bool(prices), prices=prices, outfit=_outfit_enabled(), generation=generation_on())
+    return PricesOut(billing=bool(prices), prices=prices, outfit=_outfit_enabled(),
+                     outfit_builder=_outfit_builder_enabled(), generation=generation_on())
 
 
 CREDIT_PAGE, CREDIT_PAGE_MAX = 20, 100
@@ -447,6 +450,62 @@ def keep_item(item_id: str, background: BackgroundTasks, user: User = Depends(cu
         item = store.update_item(user.id, item_id, {"review_state": "kept"})
         background.add_task(record, store, user.id, "item_kept", item_id=item_id)
     return item_out(item, store.sign(_paths(item)))
+
+
+# --- Build My Look (AI Outfit Builder): recommendations and swapping from the user's own wardrobe --
+# Off unless the server starts with WARDROBE_OUTFIT_BUILDER=on: then the routes answer 404 like any
+# unknown path, same pattern as the Outfit Photo flow above.
+
+def _outfit_builder_enabled() -> bool:
+    return os.environ.get("WARDROBE_OUTFIT_BUILDER", "").strip().lower() == "on"
+
+
+def outfit_builder_on():
+    if not _outfit_builder_enabled():
+        raise NOT_FOUND
+
+
+def _active_wardrobe(store, user: User) -> list[dict]:
+    """The items Build My Look may use: the caller's own closet, the same renderable set GET
+    /v1/items shows (deleted, pending-review and unrenderable items are already excluded)."""
+    items = store.list_items(user.id)
+    urls = store.sign([item["display_path"] for item in items])
+    return [item for item in items if item["display_path"] in urls]
+
+
+@router.post("/outfit-suggestions", response_model=OutfitSuggestionsOut, dependencies=[Depends(outfit_builder_on)])
+def outfit_suggestions(body: OutfitFiltersIn, background: BackgroundTasks, user: User = Depends(current_user),
+                       store=Depends(get_store)):
+    """Up to three outfits built only from the signed-in user's own active, renderable wardrobe. Never
+    a job: this is a bounded, synchronous computation (deterministic, with an optional feature-flagged
+    Gemini relabeling step), so there is nothing to poll and no credits are ever touched."""
+    filters = body.model_dump()
+    result = build_suggestions(_active_wardrobe(store, user), filters)
+    background.add_task(record, store, user.id, "look_generation_requested",
+                        {**filters, "results": len(result.looks), "fallback": result.used_fallback})
+    return OutfitSuggestionsOut(
+        looks=[OutfitLookOut(look_id=l.look_id, title=l.title, reason=l.reason, item_ids=l.item_ids,
+                             slots=l.slots, completeness=l.completeness) for l in result.looks],
+        applied_filters=body, limitations=result.limitations, used_fallback=result.used_fallback)
+
+
+STALE_LOOK = "this look is out of date — refresh and try again"
+
+
+@router.post("/outfit-suggestions/swap-options", response_model=SwapOptionsOut,
+            dependencies=[Depends(outfit_builder_on)])
+def outfit_swap_options(body: SwapOptionsIn, background: BackgroundTasks, user: User = Depends(current_user),
+                        store=Depends(get_store)):
+    """Ranked, eligible owned alternatives for one slot of an ephemeral, client-held look. The look
+    itself is untrusted: every id in it (and the swap target) is revalidated against the caller's own
+    current wardrobe, never the client's say-so — a stale or foreign id answers 409, not a swap."""
+    try:
+        slot, alternatives = swap_options(_active_wardrobe(store, user), body.look.item_ids,
+                                          body.target_item_id, body.filters.model_dump())
+    except StaleLook:
+        raise HTTPException(409, STALE_LOOK)
+    background.add_task(record, store, user.id, "swap_options_requested", {"slot": slot, "alternatives": len(alternatives)})
+    return SwapOptionsOut(target_slot=slot, alternatives=[SwapAlternativeOut(item_id=i, reason=r) for i, r in alternatives])
 
 
 @router.delete("/account", status_code=204)

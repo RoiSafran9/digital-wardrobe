@@ -35,7 +35,7 @@ function routes(initial: AuthContextValue) {
     return <AuthContext.Provider value={value}><AppShell /></AuthContext.Provider>;
   }
   return {
-    _layout: Root,
+    _layout: { default: Root, unstable_settings: { anchor: "welcome" } },
     "(tabs)/_layout": () => { const { Slot } = require("expo-router"); return <Slot />; },
     "(tabs)/index": TabsStub,
     "sign-in": () => <Text>sign-in screen</Text>,

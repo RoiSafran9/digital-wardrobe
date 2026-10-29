@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, View, type TextInputInstance } from "react-native";
 import { normalizeCode } from "../auth/messages";
 import { colors, radius, type } from "../theme";
 
@@ -10,7 +10,7 @@ type Props = { value: string; onChange: (code: string) => void; disabled?: boole
 // Six boxes over one hidden field, so iOS can autofill the code from Mail and paste works.
 // The current box gets an accent border; all six turn green once complete.
 export function CodeBoxes({ value, onChange, disabled }: Props) {
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
   const complete = value.length === CODE_LENGTH;
   return (
     <Pressable onPress={() => input.current?.focus()} accessible={false}>

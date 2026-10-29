@@ -13,6 +13,11 @@ import { ErrorBoundary, reportUncaughtErrors } from "../src/ui/ErrorBoundary";
 
 reportUncaughtErrors();
 
+// Expo Router 58's Stack.Protected guards fall back to the shortest unguarded route name when a URL
+// doesn't match (see https://docs.expo.dev/router/advanced/protected/). Anchoring on "welcome" keeps
+// signed-out landings there instead of skipping ahead to "intro".
+export const unstable_settings = { anchor: "welcome" };
+
 export default function RootLayout() {
   // Instrument Serif, for the editorial headlines only. If it fails to load, iOS falls back to the
   // system font, so a font error never blocks the app.

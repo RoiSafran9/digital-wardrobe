@@ -1,6 +1,6 @@
 import { File } from "expo-file-system";
 import { API_BASE_URL, UNREACHABLE, parseJsonOrThrow } from "./http";
-import type { GarmentScan, RunResponse, ItemsResponse, ClosetItem, Credits, ItemPatch, OutfitResult, OutfitScan, Prices, Turn } from "./types";
+import type { GarmentScan, RunResponse, ItemsResponse, ClosetItem, Credits, ItemPatch, OutfitFilters, OutfitResult, OutfitScan, OutfitSuggestions, Prices, SwapOptions, Turn } from "./types";
 import * as v1 from "./v1";
 
 export { API_BASE_URL };
@@ -219,4 +219,18 @@ export async function getPendingItems(): Promise<ClosetItem[]> {
 
 export async function keepItem(item: ClosetItem): Promise<ClosetItem> {
   return v1.keepItem(signedIn(), item);
+}
+
+// Build My Look exists only in account mode (it recommends from the server-held wardrobe).
+export const BUILD_MY_LOOK_NEEDS_ACCOUNT = "Build My Look needs a signed-in account.";
+
+export async function getOutfitSuggestions(filters: OutfitFilters): Promise<OutfitSuggestions> {
+  if (!account) throw new Error(BUILD_MY_LOOK_NEEDS_ACCOUNT);
+  return v1.getOutfitSuggestions(account, filters);
+}
+
+export async function getSwapOptions(look: { slots: Record<string, string>; item_ids: string[] },
+                                     targetItemId: string, filters: OutfitFilters): Promise<SwapOptions> {
+  if (!account) throw new Error(BUILD_MY_LOOK_NEEDS_ACCOUNT);
+  return v1.getSwapOptions(account, look, targetItemId, filters);
 }

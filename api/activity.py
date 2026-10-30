@@ -20,12 +20,21 @@ MAX_COUNT = 1000
 
 PATH = {"near", "not_near"}
 SCREENS = {"home", "closet", "add", "account", "camera", "preview", "processing", "results", "outfit_detect",
-           "outfit_pick", "outfit_review", "item", "price_list", "credits_activity", "help", "global"}
+           "outfit_pick", "outfit_review", "item", "price_list", "credits_activity", "help", "global",
+           "build_my_look", "look_detail"}
 ACTIONS = {"garment", "back", "turn", "outfit", "regenerate"}
 JOB_KINDS = {"garment", "back", "turn", "outfit_scan", "outfit_generate", "outfit_regenerate", "garment_scan"}
 FAILURE_CODES = {"photo_quality", "no_garment", "item_gone", "scan_expired", "model_timeout", "model_refused",
                  "model_error", "all_pieces_failed", "internal"}
 EDIT_FIELDS = {"name", "category", "colors", "pattern", "trims", "visible_text"}  # api/schemas.ItemPatch
+
+# Build My Look (api/schemas.OutfitFiltersIn / api/outfit_builder.taxonomy's slots)
+OUTFIT_OCCASIONS = {"any", "everyday", "work", "date", "going_out", "formal"}
+OUTFIT_STYLES = {"any", "casual", "smart_casual", "elegant", "streetwear", "sporty"}
+OUTFIT_VIBES = {"any", "relaxed", "confident", "minimal", "bold"}
+OUTFIT_WEATHERS = {"any", "hot", "warm", "mild", "cold", "rainy"}
+OUTFIT_COLOR_PREFS = {"any", "neutral", "colorful", "dark", "light"}
+OUTFIT_SLOTS = {"top", "bottom", "one_piece", "outerwear", "footwear"}
 REFUSAL_ROUTES = {
     "/v1/jobs": "job",
     "/v1/garment-scans": "garment_scan",
@@ -60,6 +69,8 @@ APP_EVENTS: dict[str, dict[str, object]] = {
     "capture_source": {"flow": {"garment", "outfit"}, "from": {"camera", "library"}},
     "item_opened": {"has_back": BOOL, "has_turn": BOOL},
     "client_error": {"where": SCREENS, "kind": {"render", "unhandled", "network", "http_5xx"}},
+    "look_opened": {"position": COUNT},
+    "swap_applied": {"slot": OUTFIT_SLOTS},
 }
 SERVER_EVENTS: dict[str, dict[str, object]] = {
     "signed_in": {"first": BOOL},
@@ -73,6 +84,10 @@ SERVER_EVENTS: dict[str, dict[str, object]] = {
                      "seconds": COUNT, "pieces_made": COUNT, "pieces_failed": COUNT, "attempts": COUNT},
     "push_enabled": {},
     "push_disabled": {},
+    "look_generation_requested": {"occasion": OUTFIT_OCCASIONS, "style": OUTFIT_STYLES, "vibe": OUTFIT_VIBES,
+                                  "weather": OUTFIT_WEATHERS, "colors": OUTFIT_COLOR_PREFS,
+                                  "results": COUNT, "fallback": BOOL},
+    "swap_options_requested": {"slot": OUTFIT_SLOTS, "alternatives": COUNT},
 }
 EVENTS = {**APP_EVENTS, **SERVER_EVENTS}
 
@@ -82,7 +97,8 @@ PRIVACY_CATEGORIES = {
                                  "generation_started", "first_garment_saved", "first_3_saved", "popup_shown",
                                  "popup_add_more", "onboarding_abandoned")},
     **{e: "app use" for e in ("app_opened", "screen_viewed", "cost_sheet", "out_of_credits_shown", "permission",
-                              "capture_source", "item_opened", "push_enabled", "push_disabled")},
+                              "capture_source", "item_opened", "push_enabled", "push_disabled",
+                              "look_opened", "swap_applied", "look_generation_requested", "swap_options_requested")},
     "client_error": "errors", "refused": "errors",
     "signed_in": "signing in", "welcome_granted": "signing in",
     "item_edited": "editing", "item_deleted": "removing", "item_kept": "creating", "region_added": "scanning",

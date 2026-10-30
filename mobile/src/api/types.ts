@@ -62,8 +62,9 @@ export type Credits = {
 };
 
 // outfit: the server has the Outfit Photo flow switched on (WARDROBE_OUTFIT=on).
+// outfit_builder: the server has Build My Look switched on (WARDROBE_OUTFIT_BUILDER=on).
 // generation: false while the operator has paused new AI work (the closet still works).
-export type Prices = { billing: boolean; prices: Partial<Record<CreditAction, number>>; outfit?: boolean; generation?: boolean };
+export type Prices = { billing: boolean; prices: Partial<Record<CreditAction, number>>; outfit?: boolean; outfit_builder?: boolean; generation?: boolean };
 
 export type BackView = {
   generated_url: string;
@@ -162,3 +163,39 @@ export type GarmentScan = {
   image: { width: number; height: number } | null;
   expires_at: string | null;
 };
+
+// Build My Look (AI Outfit Builder): every field is "any" (no preference) unless the user chose one.
+export type OutfitOccasion = "any" | "everyday" | "work" | "date" | "going_out" | "formal";
+export type OutfitStyle = "any" | "casual" | "smart_casual" | "elegant" | "streetwear" | "sporty";
+export type OutfitVibe = "any" | "relaxed" | "confident" | "minimal" | "bold";
+export type OutfitWeather = "any" | "hot" | "warm" | "mild" | "cold" | "rainy";
+export type OutfitColorPref = "any" | "neutral" | "colorful" | "dark" | "light";
+export type OutfitSlot = "top" | "bottom" | "one_piece" | "outerwear" | "footwear";
+
+export type OutfitFilters = {
+  occasion: OutfitOccasion;
+  style: OutfitStyle;
+  vibe: OutfitVibe;
+  weather: OutfitWeather;
+  colors: OutfitColorPref;
+};
+
+export type OutfitLook = {
+  look_id: string;
+  title: string;
+  reason: string;
+  item_ids: string[];
+  slots: Partial<Record<OutfitSlot, string>>;
+  completeness: "core_outfit" | "partial_with_optional_slots_missing";
+};
+
+export type OutfitSuggestions = {
+  looks: OutfitLook[];
+  applied_filters: OutfitFilters;
+  limitations: string[];
+  used_fallback: boolean;
+};
+
+export type SwapAlternative = { item_id: string; reason: string };
+
+export type SwapOptions = { target_slot: OutfitSlot; alternatives: SwapAlternative[] };

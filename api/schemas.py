@@ -149,6 +149,7 @@ class PricesOut(BaseModel):
     billing: bool
     prices: dict[str, int]
     outfit: bool = False  # the Outfit Photo flow is on (WARDROBE_OUTFIT=on)
+    outfit_builder: bool = False  # Build My Look is on (WARDROBE_OUTFIT_BUILDER=on)
     generation: bool = True  # False while the operator has paused new AI work (WARDROBE_GENERATION=off)
 
 
@@ -264,3 +265,54 @@ class RegionIn(BaseModel):
 
 class RegenerateIn(BaseModel):
     expected_unit_price: int | None = None
+
+
+# --- Build My Look (AI Outfit Builder) ---------------------------------------------------------
+# docs/features/ai-outfit-builder/04-API-DATA-AND-SECURITY.md. Every field defaults to "any": the
+# user may generate with no explicit choices at all.
+
+class OutfitFiltersIn(BaseModel):
+    occasion: Literal["any", "everyday", "work", "date", "going_out", "formal"] = "any"
+    style: Literal["any", "casual", "smart_casual", "elegant", "streetwear", "sporty"] = "any"
+    vibe: Literal["any", "relaxed", "confident", "minimal", "bold"] = "any"
+    weather: Literal["any", "hot", "warm", "mild", "cold", "rainy"] = "any"
+    colors: Literal["any", "neutral", "colorful", "dark", "light"] = "any"
+
+
+class OutfitLookOut(BaseModel):
+    look_id: str
+    title: str
+    reason: str
+    item_ids: list[str]
+    slots: dict[str, str]
+    completeness: Literal["core_outfit", "partial_with_optional_slots_missing"] = "core_outfit"
+
+
+class OutfitSuggestionsOut(BaseModel):
+    looks: list[OutfitLookOut]
+    applied_filters: OutfitFiltersIn
+    limitations: list[str] = []
+    used_fallback: bool = False
+
+
+class SwapLookIn(BaseModel):
+    """The client's current look — untrusted: every id is revalidated against the caller's own
+    active wardrobe before anything is ranked."""
+    slots: dict[str, str] = {}
+    item_ids: list[str] = []
+
+
+class SwapOptionsIn(BaseModel):
+    look: SwapLookIn
+    target_item_id: str
+    filters: OutfitFiltersIn = OutfitFiltersIn()
+
+
+class SwapAlternativeOut(BaseModel):
+    item_id: str
+    reason: str
+
+
+class SwapOptionsOut(BaseModel):
+    target_slot: str
+    alternatives: list[SwapAlternativeOut]

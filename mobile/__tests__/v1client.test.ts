@@ -1,4 +1,4 @@
-import { API_BASE_URL, DELETE_NEEDS_ACCOUNT, PICKING_NEEDS_ACCOUNT, pollJob, postEvent, scanGarments, startGarmentGenerate, getProfile, setDisplayName, OUTFIT_NEEDS_ACCOUNT, addBack, configureApi, deleteAccount, deleteItem, generateOutfit, getCredits, getItems, getOutfitScan, getPendingItems, getPrices, getTurn, imageUrl, keepItem, postRun, scanOutfit, startTurn, updateItem } from "../src/api/client";
+import { API_BASE_URL, BUILD_MY_LOOK_NEEDS_ACCOUNT, DELETE_NEEDS_ACCOUNT, PICKING_NEEDS_ACCOUNT, pollJob, postEvent, scanGarments, startGarmentGenerate, getProfile, setDisplayName, getOutfitSuggestions, getSwapOptions, OUTFIT_NEEDS_ACCOUNT, addBack, configureApi, deleteAccount, deleteItem, generateOutfit, getCredits, getItems, getOutfitScan, getPendingItems, getPrices, getTurn, imageUrl, keepItem, postRun, scanOutfit, startTurn, updateItem } from "../src/api/client";
 import { NO_CREDITS, SCAN_EXPIRED } from "../src/api/v1";
 import { addedLabel } from "../src/theme";
 
@@ -338,6 +338,47 @@ test("a pre-scan can use the caller's key; starting and polling need an account"
   configureApi(null);
   await expect(startGarmentGenerate("scan-1", [0], null, "k")).rejects.toThrow(PICKING_NEEDS_ACCOUNT);
   await expect(pollJob("job-1")).rejects.toThrow(PICKING_NEEDS_ACCOUNT);
+});
+
+// --- Build My Look ---
+const ANY_FILTERS = { occasion: "any" as const, style: "any" as const, vibe: "any" as const, weather: "any" as const, colors: "any" as const };
+
+test("suggestions and swap options need a signed-in account", async () => {
+  await expect(getOutfitSuggestions(ANY_FILTERS)).rejects.toThrow(BUILD_MY_LOOK_NEEDS_ACCOUNT);
+  await expect(getSwapOptions({ slots: {}, item_ids: [] }, "i1", ANY_FILTERS)).rejects.toThrow(BUILD_MY_LOOK_NEEDS_ACCOUNT);
+});
+
+test("suggestions are posted with the chosen filters and come back with the server's looks", async () => {
+  signIn();
+  on("POST", "/v1/outfit-suggestions", reply({
+    looks: [{ look_id: "look_1", title: "Easy Workday", reason: "A clean pairing.", item_ids: ["g1", "g2"],
+             slots: { top: "g1", bottom: "g2" }, completeness: "core_outfit" }],
+    applied_filters: ANY_FILTERS, limitations: [], used_fallback: false,
+  }));
+  const result = await getOutfitSuggestions({ ...ANY_FILTERS, occasion: "work" });
+  expect(JSON.parse(calls[0].init.body as string)).toEqual({ ...ANY_FILTERS, occasion: "work" });
+  expect(auth(0)).toBe("Bearer tok-a");
+  expect(result.looks[0].title).toBe("Easy Workday");
+});
+
+test("swap options are posted with the look, target and filters, and come back ranked", async () => {
+  signIn();
+  on("POST", "/v1/outfit-suggestions/swap-options", reply({
+    target_slot: "bottom", alternatives: [{ item_id: "g7", reason: "A similarly polished option." }],
+  }));
+  const result = await getSwapOptions({ slots: { top: "g1", bottom: "g2" }, item_ids: ["g1", "g2"] }, "g2", ANY_FILTERS);
+  expect(JSON.parse(calls[0].init.body as string)).toEqual({
+    look: { slots: { top: "g1", bottom: "g2" }, item_ids: ["g1", "g2"] }, target_item_id: "g2", filters: ANY_FILTERS,
+  });
+  expect(result.target_slot).toBe("bottom");
+  expect(result.alternatives[0].item_id).toBe("g7");
+});
+
+test("a stale look answers a conflict the caller's sentence reads plainly", async () => {
+  signIn();
+  on("POST", "/v1/outfit-suggestions/swap-options", reply({ error: "this look is out of date — refresh and try again" }, 409));
+  await expect(getSwapOptions({ slots: {}, item_ids: [] }, "gone", ANY_FILTERS))
+    .rejects.toThrow("This look is out of date — refresh and try again");
 });
 
 test("activation steps go to /v1/events when signed in; local mode sends nothing", async () => {

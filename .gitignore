@@ -1,4 +1,5 @@
 .env
+.env.server
 runs/
 __pycache__/
 *.pyc

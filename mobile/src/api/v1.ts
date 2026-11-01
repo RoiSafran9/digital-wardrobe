@@ -4,7 +4,7 @@ import { randomUUID } from "expo-crypto";
 import { File } from "expo-file-system";
 import { API_BASE_URL, UNREACHABLE, sentence } from "./http";
 import { track } from "../activity/track";
-import type { BackView, ClosetItem, Credits, GarmentScan, ItemFacts, ItemPatch, ItemsResponse, OutfitResult, OutfitScan, Prices, RunItem, RunResponse, Tier, Turn } from "./types";
+import type { BackView, ClosetItem, Credits, GarmentScan, ItemFacts, ItemPatch, ItemsResponse, OutfitFilters, OutfitResult, OutfitScan, OutfitSuggestions, Prices, RunItem, RunResponse, SwapOptions, Tier, Turn } from "./types";
 
 export type Account = {
   getToken: () => Promise<string | null>;
@@ -375,4 +375,21 @@ export async function getPendingItems(account: Account): Promise<ClosetItem[]> {
 
 export async function keepItem(account: Account, item: ClosetItem): Promise<ClosetItem> {
   return toClosetItem(await call<V1Item>(account, `${itemPath(item)}/keep`, { method: "POST" }));
+}
+
+// --- Build My Look (AI Outfit Builder) -----------------------------------------------------------
+// A bounded, synchronous computation (never a job): one request, one answer, nothing to poll.
+
+export async function getOutfitSuggestions(account: Account, filters: OutfitFilters): Promise<OutfitSuggestions> {
+  return call<OutfitSuggestions>(account, "/v1/outfit-suggestions", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(filters),
+  });
+}
+
+export async function getSwapOptions(account: Account, look: { slots: Record<string, string>; item_ids: string[] },
+                                     targetItemId: string, filters: OutfitFilters): Promise<SwapOptions> {
+  return call<SwapOptions>(account, "/v1/outfit-suggestions/swap-options", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ look, target_item_id: targetItemId, filters }),
+  });
 }

@@ -8,11 +8,12 @@ export type CreditsValue = {
   prices: Partial<Record<CreditAction, number>>;
   credits: Credits | null;  // null until loaded, and in local mode
   outfit?: boolean;  // the server offers the Outfit Photo flow
+  outfitBuilder?: boolean;  // the server offers Build My Look
   generation?: boolean;  // false while the operator has paused new AI work
   refresh: () => Promise<void>;
 };
 
-const empty: CreditsValue = { billing: false, prices: {}, credits: null, outfit: false, generation: true, refresh: async () => {} };
+const empty: CreditsValue = { billing: false, prices: {}, credits: null, outfit: false, outfitBuilder: false, generation: true, refresh: async () => {} };
 export const CreditsContext = createContext<CreditsValue>(empty);
 export const useCredits = () => useContext(CreditsContext);
 
@@ -31,7 +32,7 @@ export function CreditsProvider({ children }: { children: React.ReactNode }) {
       const [credits, prices] = await Promise.all([getCredits(), getPrices()]);
       if (owner.current !== forUser) return;  // signed out or switched while loading
       setState({ credits, billing: !!prices?.billing, prices: prices?.prices ?? {}, outfit: !!prices?.outfit,
-                 generation: prices?.generation !== false });
+                 outfitBuilder: !!prices?.outfit_builder, generation: prices?.generation !== false });
     } catch {
       // Keep what we had; the next refresh tries again.
     }

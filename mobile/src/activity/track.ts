@@ -9,9 +9,11 @@ import { randomUUID } from "expo-crypto";
 import { createQueue, type EventProps, type Queue, type QueuedEvent } from "./queue";
 
 export type Screen = "home" | "closet" | "add" | "account" | "camera" | "preview" | "processing" | "results"
-  | "outfit_detect" | "outfit_pick" | "outfit_review" | "item" | "price_list" | "credits_activity" | "help";
+  | "outfit_detect" | "outfit_pick" | "outfit_review" | "item" | "price_list" | "credits_activity" | "help"
+  | "build_my_look" | "look_detail";
 export type Action = "garment" | "back" | "turn" | "outfit" | "regenerate";
 export type Path = "near" | "not_near";
+export type OutfitSlot = "top" | "bottom" | "one_piece" | "outerwear" | "footwear";
 
 export type Events = {
   // First 3 Pieces onboarding
@@ -34,6 +36,9 @@ export type Events = {
   capture_source: { flow: "garment" | "outfit"; from: "camera" | "library" };
   item_opened: { has_back: boolean; has_turn: boolean };
   client_error: { where: Screen | "global"; kind: "render" | "unhandled" | "network" | "http_5xx" };
+  // Build My Look
+  look_opened: { position: number };
+  swap_applied: { slot: OutfitSlot };
 };
 
 export const FLUSH_EVERY_MS = 30_000;

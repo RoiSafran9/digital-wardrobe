@@ -56,6 +56,16 @@ Done: hosted Supabase SMTP (Resend, `kipscloset.com`) and code templates, all mi
 - [x] Hosted migrations applied and owner phone check (2026-10-19)
 - [ ] Real worn photos from beta testers: watch fidelity on saturated colors and layered garments
 
+## AI Outfit Builder ("Build My Look") — BUILT (behind `WARDROBE_OUTFIT_BUILDER=on`)
+
+- [x] Spec package approved as the source of truth: [docs/features/ai-outfit-builder/](features/ai-outfit-builder/) (PRD, UX flows, recommendation engine, API/data/security, acceptance & tests, Claude Code handoff, manual QA playbook)
+- [x] Deterministic recommendation engine: existing-fact taxonomy (slot/formality/warmth), bounded candidate generation, context/visual/style scoring, MMR-style diversity selection, the "honest no-match" rule for a strongly chosen constraint the wardrobe can't meet
+- [x] `POST /v1/outfit-suggestions` and `/v1/outfit-suggestions/swap-options`: account-scoped, ownership-revalidated, never a job, never priced, behind the feature flag
+- [x] Optional, off-by-default `WARDROBE_OUTFIT_BUILDER_AI`: Gemini may relabel (never reorder or re-pick) the engine's own selection, with strict validation and a deterministic fallback
+- [x] iPhone: Home entry card, preferences form, results, look detail with swap, loading/empty/no-match/error states (not a new tab)
+- [x] Backend and app automated tests against the acceptance fixtures (empty/sparse/large wardrobes, dress-vs-skirt, manual weather, diversity, cross-account and stale-item swap safety)
+- [ ] Real-wardrobe beta evaluation of recommendation quality (the spec's human preference ratings); owner phone check; decide on turning `WARDROBE_OUTFIT_BUILDER=on` for the beta
+
 ## First 3 Pieces onboarding — BUILT ([plan](superpowers/plans/2026-10-20-first-3-pieces-onboarding.md))
 
 - [x] Plan approved with recommendations F1–F9 (2026-10-20)

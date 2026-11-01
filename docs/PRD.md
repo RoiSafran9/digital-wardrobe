@@ -78,13 +78,19 @@ Today: the owner, and a friends-and-family TestFlight beta being prepared (app n
 
 See [two-stage outfit import design](superpowers/specs/2026-10-19-outfit-photo-two-step-design.md) and [Claude Code task](tasks/outfit-photo-two-step-flow.md).
 
+## AI Outfit Builder, "Build My Look" — outfits from the user's own wardrobe (BUILT, behind `WARDROBE_OUTFIT_BUILDER=on`)
+
+**Owner-approved direction (2026-10-29), now built:** a `Build My Look` entry on Home (not a new tab) lets the signed-in user optionally choose occasion, style, vibe, a **manually selected** weather and a color preference, then see **up to three** coherent outfit suggestions made **only from garments already in their own closet** — real catalog photos, no generated composite image, no shopping suggestions, no auto-weather/GPS. Opening a look and tapping a piece offers `Swap This Piece`: ranked owned alternatives for that slot only, replacing exactly one item and leaving the rest of the look untouched. Nothing is saved: a look and its swaps live only in the current screen/session.
+
+The engine is a deterministic candidate builder + heuristic scorer over existing item facts (no new metadata field, no migration), with an optional, off-by-default Gemini step that may relabel — never reorder or re-pick — the engine's own selection. When a strongly chosen preference (e.g. `Formal`) truly can't be met from the wardrobe, the response says so honestly instead of relabeling a casual look as formal. Full spec: [docs/features/ai-outfit-builder/](features/ai-outfit-builder/).
+
 ## Cross-cutting
 - English-only UI. Light and dark mode follow the system. Reduce Motion is honored everywhere.
 - Paid model calls cost money: no extra calls or waiting beyond what a feature needs.
 - Photos are sent to Gemini for processing; no secret key is ever in the app.
 
 ## Non-goals (current)
-Outfit recommendations/styling, sharing/social, shopping, payments, Sign in with Apple or passwords (the only password account is the App Review demo account), brand detection, size/season tags.
+Sharing/social, shopping, payments, Sign in with Apple or passwords (the only password account is the App Review demo account), brand detection, size/season tags. Within Build My Look specifically: auto weather/GPS, cross-session preference learning, outfit calendar/diary/history, saved/bookmarked looks, virtual try-on or AI-generated look images, and a chat-based stylist.
 
 ## Acceptance
 - Automated: `pytest`, `npx jest`, `npx tsc --noEmit`, `npx supabase test db`, and the two-user suite `pytest tests/integration` on the local stack (another account can't read, change or delete your rows, files or jobs).

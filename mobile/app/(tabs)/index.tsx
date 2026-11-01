@@ -32,7 +32,7 @@ export function categoryRows(items: ClosetItem[]): CategoryRow[] {
 export default function HomeScreen() {
   useScreenViewed("home");
   const router = useRouter();
-  const { outfit: outfitOn } = useCredits();
+  const { outfit: outfitOn, outfitBuilder } = useCredits();
   const { status } = useAuth();
   const { profile } = useProfile();
   const [items, setItems] = useState<ClosetItem[]>([]);
@@ -80,6 +80,27 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 28 }}>
         <Greeting now={new Date()} name={profile?.display_name} onCredits={() => router.push("/account")} />
         <CaptureBanner />
+
+        {status === "signedIn" && outfitBuilder ? (
+          <Pressable
+            onPress={() => router.push("/build-my-look")}
+            accessibilityRole="button"
+            accessibilityLabel="Build My Look. Outfit ideas made from your own closet."
+            style={{
+              marginHorizontal: 20, marginTop: 16, padding: 16, borderRadius: radius.list, backgroundColor: colors.tintSoft,
+              flexDirection: "row", alignItems: "center", gap: 14,
+            }}
+          >
+            <View style={{ width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.tint, alignItems: "center", justifyContent: "center" }}>
+              <Icon name="sparkles" size={20} color={colors.onTint} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ ...type.headline, color: colors.label }}>Build My Look</Text>
+              <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 1 }}>Outfit ideas made from your own closet.</Text>
+            </View>
+            <Icon name="chevron" size={16} color={colors.secondaryLabel} />
+          </Pressable>
+        ) : null}
 
         {loadError ? (
           <View style={{ margin: 20, padding: 16, borderRadius: radius.list, backgroundColor: colors.destructiveBg, gap: 10 }}>

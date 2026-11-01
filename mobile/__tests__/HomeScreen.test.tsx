@@ -153,3 +153,23 @@ test("local mode's empty closet has no guided card", async () => {
   expect(await screen.findByText("Your closet starts here")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Add your first 3 pieces" })).toBeNull();
 });
+
+test("signed in with the outfit builder on: Build My Look is a prominent entry, not a new tab", async () => {
+  const { AuthContext } = require("../src/auth/AuthProvider");
+  (getItems as jest.Mock).mockResolvedValue({ items: [] });
+  const value: CreditsValue = { billing: false, prices: {}, credits: null, outfit: false, outfitBuilder: true, refresh: jest.fn(async () => {}) };
+  render(
+    <AuthContext.Provider value={{ status: "signedIn", email: "a@b.c", userId: "u1", sendCode: jest.fn(), verifyCode: jest.fn(), signInWithPassword: jest.fn(), signOut: jest.fn() }}>
+      <CreditsContext.Provider value={value}><CaptureJobsProvider><HomeScreen /></CaptureJobsProvider></CreditsContext.Provider>
+    </AuthContext.Provider>,
+  );
+  fireEvent.press(await screen.findByRole("button", { name: "Build My Look. Outfit ideas made from your own closet." }));
+  expect(mockPush).toHaveBeenCalledWith("/build-my-look");
+});
+
+test("the Build My Look entry is hidden when the server has it off, or in local mode", async () => {
+  (getItems as jest.Mock).mockResolvedValue({ items: [] });
+  renderHome({ outfitBuilder: false });
+  await screen.findByText("Your closet starts here");
+  expect(screen.queryByText("Build My Look")).toBeNull();
+});

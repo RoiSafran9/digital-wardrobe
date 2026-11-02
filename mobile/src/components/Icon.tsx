@@ -1,5 +1,5 @@
 import React from "react";
-import type { ColorValue } from "react-native";
+import type { ColorValue, OpaqueColorValue } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SymbolView } from "expo-symbols";
 import type { SFSymbol } from "sf-symbols-typescript";
@@ -43,12 +43,15 @@ export type IconName = keyof typeof ICONS;
 
 export function Icon({ name, size, color }: { name: IconName; size: number; color: ColorValue }) {
   const { sf, ion } = ICONS[name];
+  // Ionicons only accepts a resolved string or native opaque color, never the raw null/number ColorValue permits;
+  // every caller passes a theme color (hex string or DynamicColorIOS's opaque value), so this cast is safe.
+  const ionColor = color as string | OpaqueColorValue;
   return (
     <SymbolView
       name={{ ios: sf }}
       size={size}
       tintColor={color}
-      fallback={<Ionicons name={ion} size={size} color={color} />}
+      fallback={<Ionicons name={ion} size={size} color={ionColor} />}
     />
   );
 }

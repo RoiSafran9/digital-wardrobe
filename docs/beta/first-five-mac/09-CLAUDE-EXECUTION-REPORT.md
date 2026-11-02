@@ -75,6 +75,7 @@ No Sentry SDK and no OpenTelemetry were added: both need an owner-approved vendo
 | Fix `1d41c3f` (Generate Again sends the looks on screen; engine skips/penalizes them) deployed to the Mac (restart with an empty queue; `/openapi.json` shows `shown`) | on the owner's closet (28 pieces) every press gave 3 new looks, 8 presses in a row |
 | EAS build 11 from `1d41c3f`, auto-submitted | build `3c95acf9-1092-4318-a66f-23184dc20275` FINISHED 18:17 UTC; submission FINISHED 19:01 UTC (the EAS submit queue took ~45 min) |
 
+| EAS `production` iOS build 12 from `2f687de` (Build My Look icon tiles), `--auto-submit` | build `7010f3dd-ea61-4e08-a0cb-3b6b91ad3c63` FINISHED 18:46 UTC; EAS submission `e29415ec-…` waited ~40 min in the EAS queue, FINISHED 19:27 UTC (uploaded; Apple processing and tester groups remain owner steps) |
 Build 9 (`36cb7b6`) already had the Build My Look screens; they were hidden because the server flag was off. Build 10 adds the app's request ids. Builds 9 and earlier keep working against the new server.
 
 ## Owner-only steps (1 and the flag part of the server change are done; the rest remain)

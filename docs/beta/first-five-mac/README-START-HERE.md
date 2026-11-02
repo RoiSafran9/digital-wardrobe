@@ -15,7 +15,8 @@
 6. [06-MAC-OPERATIONS-RUNBOOK.md](06-MAC-OPERATIONS-RUNBOOK.md) — preflight checks, health probes, Mac power/network, launchd, restart/escalation and downtime communication.
 7. [07-OBSERVABILITY-QA-ACCEPTANCE.md](07-OBSERVABILITY-QA-ACCEPTANCE.md) — end-to-end verification matrix, privacy tests, fault drills and launch gate.
 8. [08-PILOT-TRACKING-AND-DECISIONS.md](08-PILOT-TRACKING-AND-DECISIONS.md) — private first-five tracking template (store participant info **outside Git**), success questions and initial KPI measurement.
-9. [KIPS-BETA-INSTALL-PAGE.html](KIPS-BETA-INSTALL-PAGE.html) — static RTL installation landing-page **template**; the KIPS enrollment button stays disabled until a genuine approved TestFlight URL is inserted.
+9. [09-CLAUDE-EXECUTION-REPORT.md](09-CLAUDE-EXECUTION-REPORT.md) — what the observability branch built, tests run, known limits, owner-only steps and go/no-go gates.
+10. [KIPS-BETA-INSTALL-PAGE.html](KIPS-BETA-INSTALL-PAGE.html) — static RTL installation landing-page **template**; the KIPS enrollment button stays disabled until a genuine approved TestFlight URL is inserted.
 
 ## Pilot topology (explicit)
 

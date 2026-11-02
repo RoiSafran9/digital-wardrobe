@@ -13,6 +13,45 @@
 5. Execute one authorized QA test: OTP → create item → see Closet from a **different network**. Check the report gets its user/action events.
 6. Confirm a way for testers to contact you if the Mac is offline; keep notes of planned availability windows.
 
+### Tools in the repo (read-only; added for the first five)
+
+```bash
+# Everything below in one pass: launchd state of the API agent (never its environment), the Cloudflare
+# launchd job and a cloudflared process count (never its arguments), local + public health, AC power and
+# sleep, default route, free disk, log size and today's ERROR / failed-job / 5xx counts. Exit 0/1/2.
+scripts/mac_preflight.sh
+```
+
+```bash
+# Health judged part by part; exit 0 ok, 1 warning, 2 critical.
+python -m scripts.health_check --url http://127.0.0.1:8000/healthz --url https://api.kipscloset.com/healthz
+```
+
+| health_check code | Meaning | Default threshold |
+|---|---|---|
+| `api_unreachable` / `api_http_error` / `api_bad_json` / `api_not_ok` | The URL did not give healthy JSON (a Cloudflare error page is `api_bad_json` or `api_http_error`) | — |
+| `worker_not_started` | No heartbeat yet | — |
+| `worker_stalled` | Heartbeat older than `--stale-beat` with no job running | 180 s |
+| `worker_stuck` | A job running and no heartbeat for `--stuck-job` (past the 600 s lease) | 900 s |
+| `queue_slow` / `queue_stalled` | Oldest queued job older than `--queue-warn` / `--queue-critical` | 120 s / 600 s |
+| `job_failures` | Failed jobs in the last hour ≥ `--failures-warn` / `--failures-critical` | 3 / 5 |
+| `budget_near` / `budget_used` | `WARDROBE_DAILY_AI_JOBS` 80 % used / reached (new AI work refused) | 80 % |
+| `generation_off` | `WARDROBE_GENERATION=off` (expected during an incident) | — |
+
+With both URLs, "local ok, public down" prints `→ … Cloudflare Tunnel, DNS or the Mac's network`; both down prints `→ … the API process (launchd) or the Mac itself`. Thresholds are proposals for five testers, not tuned on real traffic; `jobs_running` exists only once the server runs this branch (an older server is judged by the heartbeat alone).
+
+**Read-only audit on 2026-11-02 (this Mac):** API agent `com.kipscloset.api` running; one listener on :8000; a user launchd job `com.cloudflare.cloudflared` with one `cloudflared` process (confirm it is the `api.kipscloset.com` tunnel); local and public `/healthz` healthy; **on battery (46 %)**; idle sleep held off by an assertion while `pmset sleep` is 1 min; 604 GB free; logs 1.3 MB. Today's log had 21 ERROR lines, all the worker's Supabase calls (`httpx.RemoteProtocolError` / `ReadTimeout` in the worker loop, credit reconcile and storage sweep) — the loop recovered, but watch for it recurring.
+
+**Alerts without a vendor:** `--on-alert '<your command>'` runs only when the result is not ok and gets the JSON result on stdin; e.g. a local notification while you are at the Mac: `--on-alert "osascript -e 'display notification \"KIPS health\" with title \"KIPS\"'"`. To run it every 5 minutes you could add your own launchd agent (owner action; nothing is installed by the repo). A check on the Mac cannot report the Mac asleep, offline or without power: until an off-Mac uptime monitor is approved, open `https://api.kipscloset.com/healthz` from a phone on cellular at the start of each pilot window and once mid-day, and treat 24/7 detection as **not available**.
+
+### Following one failure (request → job → model calls)
+
+1. From the tester (with consent): approximate time. From `python -m scripts.usage_report --user <email or id>`: the `client_error … request_id=<32 hex>` line and/or the `[job <id>]` on the job lines.
+2. Server log for the request: `grep <request_id> logs/server.jsonl*` → the `request` line (route template, status, ms) and, if it queued work, `job queued` / `job reused` with `job_id`. A `request_id` from the phone that is **not** in the log means the call never reached the Mac (network, tunnel or Mac down) — record it as such.
+3. Worker for the job: `grep <job_id> logs/server.jsonl*` → `job claimed` (attempt, seconds since created), `job will retry` (failure code, ms), `job finished` (outcome, failure code, ms, `ai_calls`, `est_cost_usd`), plus any traceback (redacted).
+4. Cost per model call: the `ai_calls` rows with that `job_id` (Supabase SQL editor, or the timeline's AI cost line).
+5. Never paste raw log lines into a public issue: they carry the account id. Summarise operation, build, failure code, timings and redacted ids.
+
 ### Safe example commands on the Mac
 
 ```bash
@@ -63,7 +102,7 @@ Never paste raw `.env.server`, secret keys, bearer tokens, tunnel credentials or
 ## Logging / privacy / local data lifecycle
 
 - Existing `api/logs.py` writes JSON to stderr and to `logs/server.jsonl` with daily rotation and 14 backups. Inspect its configured actual path on Mac. Ensure file permissions and disk capacity are appropriate; never upload raw logs to public GitHub.
-- The privacy-safe correlation chain should be: `client event` → `request_id` → `job_id` (if queued) → `attempt/stage` → `ai_calls` (estimated spend) → `job_finished`. Missing correlation should be reported as a diagnosis gap, not silently guessed.
+- The privacy-safe correlation chain is built: `client event` → `request_id` → `job_id` (if queued) → `attempt/stage` → `ai_calls` (estimated spend) → `job_finished` (see "Following one failure"). Missing correlation should be reported as a diagnosis gap, not silently guessed. Log lines are redacted for bearer tokens, JWTs, signed-URL tokens, keys and email addresses before they are written.
 - Existing `scripts.usage_report --user` can show an authorized account timeline. It is sensitive because it links activity to an account: restrict to authorized operator and never commit output containing tester identifiers.
 - Raw pictures, names, auth codes, addresses, user text, AI prompts/completions and private signed image URLs must not be in logs or crash traces.
 

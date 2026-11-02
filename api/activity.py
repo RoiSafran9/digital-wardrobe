@@ -6,7 +6,8 @@ truth for credits (credit_ledger), jobs (generation_jobs) and pieces (wardrobe_i
 records.
 
 Privacy: only the account id (already the owner of every row), the event name, allow-listed counts, booleans
-and fixed choices, the account's own job/item ids, the app version and a per-session random id. No photos,
+and fixed choices, the account's own job/item ids, the app version, a per-session random id and, on an app
+error, the random request id of the call that failed. No photos,
 free text, garment details, emails, device ids or IP addresses. The server stamps the time. Rows go with the
 account and are purged after RETENTION_DAYS. Keep the privacy page's "Usage records" in step with this list.
 """
@@ -16,6 +17,7 @@ log = logging.getLogger("wardrobe.activity")
 
 COUNT = "count"  # a whole number 0..MAX_COUNT
 BOOL = "bool"
+REQUEST_ID = "request_id"  # the random X-Request-ID the app sent (32 lowercase hex): links an error to a log line
 MAX_COUNT = 1000
 
 PATH = {"near", "not_near"}
@@ -68,7 +70,7 @@ APP_EVENTS: dict[str, dict[str, object]] = {
     "permission": {"kind": {"camera", "photos", "notifications"}, "granted": BOOL},
     "capture_source": {"flow": {"garment", "outfit"}, "from": {"camera", "library"}},
     "item_opened": {"has_back": BOOL, "has_turn": BOOL},
-    "client_error": {"where": SCREENS, "kind": {"render", "unhandled", "network", "http_5xx"}},
+    "client_error": {"where": SCREENS, "kind": {"render", "unhandled", "network", "http_5xx"}, "request_id": REQUEST_ID},
     "look_opened": {"position": COUNT},
     "swap_applied": {"slot": OUTFIT_SLOTS},
 }
@@ -127,6 +129,9 @@ def validate(event: str, props: dict | None, source: str = "app") -> dict:
         elif rule == BOOL:
             if type(value) is not bool:
                 raise ValueError(f"{name} must be true or false")
+        elif rule == REQUEST_ID:
+            if not isinstance(value, str) or len(value) != 32 or not set(value) <= set("0123456789abcdef"):
+                raise ValueError(f"{name} must be 32 lowercase hex characters")
         elif not isinstance(value, str) or value not in rule:
             raise ValueError(f"{name} must be one of {', '.join(sorted(rule))}")
         clean[name] = value

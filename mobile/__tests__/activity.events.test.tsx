@@ -58,18 +58,38 @@ test("the cost sheet records confirm and cancel with the action and piece count"
   ]);
 });
 
-test("a server error answer is reported once; event sends never report themselves", async () => {
+const HEX32 = /^[0-9a-f]{32}$/;
+const sentId = (i = 0) => ((global.fetch as jest.Mock).mock.calls[i][1].headers as Record<string, string>)["X-Request-ID"];
+
+test("a server error answer is reported once, with the request id; event sends never report themselves", async () => {
   const account = { getToken: async () => "t", onUnauthorized: jest.fn() };
   global.fetch = jest.fn(async () => ({ status: 503, ok: false, json: async () => ({ error: "paused" }) })) as never;
   await expect(v1.getProfile(account)).rejects.toThrow();
   await expect(v1.postEventBatch(account, { app_version: "1", events: [] })).rejects.toThrow();
-  expect(tracked()).toEqual([["client_error", { where: "global", kind: "http_5xx" }]]);
+  expect(sentId()).toMatch(HEX32);
+  expect(tracked()).toEqual([["client_error", { where: "global", kind: "http_5xx", request_id: sentId() }]]);
 });
 
-test("an unreachable server is reported as a network error", async () => {
+test("an unreachable server is reported as a network error, with the id the request would have had", async () => {
   const account = { getToken: async () => "t", onUnauthorized: jest.fn() };
   global.fetch = jest.fn(async () => { throw new TypeError("Network request failed"); }) as never;
-  await expect(v1.getProfile(account)).rejects.toThrow();
-  expect(tracked()).toEqual([["client_error", { where: "global", kind: "network" }]]);
+  const error = await v1.getProfile(account).catch((e) => e);
+  expect(error).toBeInstanceOf(v1.ApiError);
+  expect(error).toMatchObject({ message: expect.stringContaining("Can't reach"), status: 0, operation: "GET /v1/profile" });
+  expect(error.requestId).toBe(sentId());
+  expect(tracked()).toEqual([["client_error", { where: "global", kind: "network", request_id: sentId() }]]);
+});
+
+test("an uncaught API error is reported with its request id, never its message", () => {
+  let handler: (e: unknown) => void = () => {};
+  const previous = jest.fn();
+  reportUncaughtErrors({ getGlobalHandler: () => previous, setGlobalHandler: (h) => { handler = h; } });
+  handler(new v1.ApiError("secret", "ab".repeat(16), "GET /v1/items", 500));
+  handler(Object.assign(new Error("x"), { requestId: "not-an-id" }));
+  expect(tracked()).toEqual([
+    ["client_error", { where: "global", kind: "unhandled", request_id: "ab".repeat(16) }],
+    ["client_error", { where: "global", kind: "unhandled" }],
+  ]);
+  expect(previous).toHaveBeenCalledTimes(2);
 });
 

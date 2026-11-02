@@ -59,49 +59,85 @@ export function toClosetItem(item: V1Item): ClosetItem {
   return { ...rest, item_id: item.id, photo_name: "", run_id: stamp(new Date(created_at)) };
 }
 
-async function send(account: Account, path: string, init: RequestInit = {}): Promise<Response> {
+// A random id for one call (32 lowercase hex), sent as X-Request-ID; the server's request log carries it, so a
+// failure seen on the phone can be found in the server log (docs/beta/first-five-mac/04). Not a secret, and
+// nothing about the device or the account.
+export function newRequestId(): string {
+  let id = "";
+  while (id.length < 32) id += Math.floor(Math.random() * 0x100000000).toString(16).padStart(8, "0");
+  return id.slice(0, 32);
+}
+
+// "GET /v1/items/{id}": the call without its ids or query, safe to keep with an error.
+export function operationOf(method: string | undefined, path: string): string {
+  const route = path.split("?")[0].replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "{id}");
+  return `${(method ?? "GET").toUpperCase()} ${route}`;
+}
+
+// A failed call: the friendly message the screens show, plus what diagnosis needs and nothing more — the
+// request id, the operation and the HTTP status (0: no answer). Never the body, the token or the full URL.
+export class ApiError extends Error {
+  constructor(message: string, readonly requestId: string, readonly operation: string, readonly status: number) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+const sent = new WeakMap<Response, { requestId: string; operation: string }>();
+
+async function send(account: Account, path: string, init: RequestInit = {}, requestId: string = newRequestId()): Promise<Response> {
   const token = await account.getToken();
   if (!token) {
     account.onUnauthorized();
     throw new Error(SESSION_EXPIRED);
   }
+  const operation = operationOf(init.method, path);
+  const quiet = path.startsWith("/v1/events");  // event sends never report themselves
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
-      ...init, headers: { ...(init.headers as Record<string, string>), Authorization: `Bearer ${token}` },
+      ...init,
+      headers: { ...(init.headers as Record<string, string>), Authorization: `Bearer ${token}`, "X-Request-ID": requestId },
     });
   } catch {
-    if (!path.startsWith("/v1/events")) track("client_error", { where: "global", kind: "network" });
-    throw new Error(UNREACHABLE);
+    if (!quiet) track("client_error", { where: "global", kind: "network", request_id: requestId });
+    throw new ApiError(UNREACHABLE, requestId, operation, 0);
   }
-  if (response.status >= 500 && !path.startsWith("/v1/events")) track("client_error", { where: "global", kind: "http_5xx" });
+  const echoed = response.headers?.get?.("X-Request-ID");
+  const id = echoed && /^[0-9a-f]{32}$/.test(echoed) ? echoed : requestId;
+  if (response.status >= 500 && !quiet) track("client_error", { where: "global", kind: "http_5xx", request_id: id });
   if (response.status === 401) {
     account.onUnauthorized();
-    throw new Error(SESSION_EXPIRED);
+    throw new ApiError(SESSION_EXPIRED, id, operation, 401);
   }
+  sent.set(response, { requestId: id, operation });
   return response;
 }
 
 async function read<T>(response: Response): Promise<T> {
   if (response.status === 204) return undefined as T;
-  if (response.status === 402) throw new Error(NO_CREDITS);
+  const { requestId, operation } = sent.get(response) ?? { requestId: "", operation: "" };
+  const fail = (message: string) => new ApiError(message, requestId, operation, response.status);
+  if (response.status === 402) throw fail(NO_CREDITS);
   const body = await response.json();
   if (!response.ok) {
     const error = (body as { error?: string } | null)?.error;
-    if (error) throw new Error(sentence(error));
-    if (response.status === 404) throw new Error(NOT_ACCOUNT_MODE);  // FastAPI's own 404: no /v1 routes
-    throw new Error(`Something went wrong (error ${response.status}). Try again.`);
+    if (error) throw fail(sentence(error));
+    if (response.status === 404) throw fail(NOT_ACCOUNT_MODE);  // FastAPI's own 404: no /v1 routes
+    throw fail(`Something went wrong (error ${response.status}). Try again.`);
   }
   return body as T;
 }
 
-const call = async <T>(account: Account, path: string, init?: RequestInit) => read<T>(await send(account, path, init));
+const call = async <T>(account: Account, path: string, init?: RequestInit, requestId?: string) =>
+  read<T>(await send(account, path, init, requestId));
 
 // Starts a job. A request that never got an answer is sent once more with the same key, so the
 // server returns the job it may already have made instead of starting a second one. A caller that keeps
 // the key (to send it again after an app restart) passes its own.
 async function startJob(account: Account, path: string, photoUri?: string, fields: Record<string, string> = {},
                         key: string = randomUUID()): Promise<Job> {
+  const requestId = newRequestId();  // the resend keeps it: one action, one id in the server log
   const attempt = () => {
     let body: FormData | undefined;
     if (photoUri) {
@@ -109,7 +145,7 @@ async function startJob(account: Account, path: string, photoUri?: string, field
       body.append("photo", new File(photoUri) as unknown as Blob);
       for (const [name, value] of Object.entries(fields)) body.append(name, value);
     }
-    return call<Job>(account, path, { method: "POST", body, headers: { "Idempotency-Key": key } });
+    return call<Job>(account, path, { method: "POST", body, headers: { "Idempotency-Key": key } }, requestId);
   };
   try {
     return await attempt();

@@ -49,6 +49,7 @@ def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, 
     """Create (or find) the user's job for this key; a new job answers 202, a repeat 200."""
     existing = store.job_by_key(user.id, key)
     if existing:
+        _log_job("job reused", existing)
         return JSONResponse(status_code=200, content=out(existing).model_dump())
     cap = daily_ai_jobs()
     if cap and kind in PAID_KINDS and store.count_jobs_since(PAID_KINDS, start_of_day()) >= cap:
@@ -82,7 +83,13 @@ def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, 
             gate.release(job_id)  # failed, or lost a race with the same key: one hold per job
             if uploaded:
                 store.remove([uploaded])
+    _log_job("job queued" if created else "job reused", job)
     return JSONResponse(status_code=202 if created else 200, content=out(job).model_dump())
+
+
+def _log_job(msg: str, job: dict) -> None:
+    """The link from this request (its X-Request-ID is on the line) to the job the worker will run."""
+    log.info(msg, extra={"fields": {"job_id": job["id"], "user_id": job["user_id"], "kind": job["kind"], "status": job["status"]}})
 
 
 @router.post("/jobs", response_model=JobOut, status_code=202, dependencies=[Depends(require_generation)])
@@ -333,6 +340,7 @@ def generate_from_scan(scan_id: str, body: OutfitGenerateIn, user: User = Depend
     if existing:
         if existing["kind"] != "outfit_generate":
             raise HTTPException(409, "this Idempotency-Key was already used for another request")
+        _log_job("job reused", existing)
         return JSONResponse(status_code=200, content=job_out(existing).model_dump())
     scan = _own_scan(store, user, scan_id)
     if scan["status"] != "succeeded":
@@ -424,6 +432,7 @@ def regenerate_item(item_id: str, body: RegenerateIn, user: User = Depends(curre
     if existing:
         if existing["kind"] != "outfit_regenerate":
             raise HTTPException(409, "this Idempotency-Key was already used for another request")
+        _log_job("job reused", existing)
         return JSONResponse(status_code=200, content=job_out(existing).model_dump())
     item = _own_item(store, user, item_id)
     if item.get("origin") != "outfit_photo" or item.get("review_state") != "pending":
@@ -612,6 +621,7 @@ def generate_from_garment_scan(scan_id: str, body: GarmentGenerateIn, user: User
     if existing:
         if existing["kind"] != "garment":
             raise HTTPException(409, "this Idempotency-Key was already used for another request")
+        _log_job("job reused", existing)
         return JSONResponse(status_code=200, content=job_out(existing).model_dump())
     scan = _own_garment_scan(store, user, scan_id)
     if scan["status"] != "succeeded":

@@ -1,5 +1,5 @@
 import { API_BASE_URL, BUILD_MY_LOOK_NEEDS_ACCOUNT, DELETE_NEEDS_ACCOUNT, PICKING_NEEDS_ACCOUNT, pollJob, postEvent, scanGarments, startGarmentGenerate, getProfile, setDisplayName, getOutfitSuggestions, getSwapOptions, OUTFIT_NEEDS_ACCOUNT, addBack, configureApi, deleteAccount, deleteItem, generateOutfit, getCredits, getItems, getOutfitScan, getPendingItems, getPrices, getTurn, imageUrl, keepItem, postRun, scanOutfit, startTurn, updateItem } from "../src/api/client";
-import { NO_CREDITS, SCAN_EXPIRED } from "../src/api/v1";
+import { ApiError, NO_CREDITS, SCAN_EXPIRED, operationOf } from "../src/api/v1";
 import { addedLabel } from "../src/theme";
 
 jest.mock("expo-file-system", () => ({ File: jest.fn().mockImplementation((uri: string) => ({ uri })) }));
@@ -108,6 +108,44 @@ test("a POST that never got an answer is retried once with the same key", async 
   await pending;
   const keys = calls.filter((c) => c.init.method === "POST").map((c) => (c.init.headers as Record<string, string>)["Idempotency-Key"]);
   expect(keys).toEqual(["key-1", "key-1"]);
+  // One action, one request id in the server log: the resend keeps it; the poll after it gets its own.
+  const ids = calls.map((c) => (c.init.headers as Record<string, string>)["X-Request-ID"]);
+  expect(ids[0]).toMatch(/^[0-9a-f]{32}$/);
+  expect(ids[1]).toBe(ids[0]);
+  expect(ids[2]).toMatch(/^[0-9a-f]{32}$/);
+  expect(ids[2]).not.toBe(ids[0]);
+});
+
+test("every signed-in call carries a fresh request id; failures keep it with the operation and status", async () => {
+  signIn();
+  const itemId = "11111111-2222-4333-8444-555555555555";
+  on("GET", "/v1/items", reply({ items: [] }));
+  on("PATCH", `/v1/items/${itemId}`, reply({ error: "that piece is gone" }, 404));
+  await getItems();
+  const error = await updateItem({ ...v1Item(itemId), item_id: itemId, photo_name: "", run_id: "r" } as never, { name: "x" })
+    .catch((e) => e);
+  const [first, second] = calls.map((c) => (c.init.headers as Record<string, string>)["X-Request-ID"]);
+  expect(first).toMatch(/^[0-9a-f]{32}$/);
+  expect(second).not.toBe(first);
+  expect(error).toBeInstanceOf(ApiError);
+  expect(error).toMatchObject({ message: "That piece is gone", status: 404, requestId: second,
+                                operation: "PATCH /v1/items/{id}" });
+  expect(JSON.stringify({ ...error, message: error.message })).not.toContain("tok-a");
+});
+
+test("the request id the server sends back is the one kept with an error", async () => {
+  signIn();
+  const echoed = "cd".repeat(16);
+  global.fetch = jest.fn(async () => ({ ok: false, status: 500, json: async () => ({}),
+                                        headers: { get: (h: string) => (h === "X-Request-ID" ? echoed : null) } })) as never;
+  const error = await getItems().catch((e) => e);
+  expect(error).toMatchObject({ requestId: echoed, status: 500, operation: "GET /v1/items" });
+});
+
+test("operations drop ids and queries", () => {
+  expect(operationOf("post", "/v1/jobs")).toBe("POST /v1/jobs");
+  expect(operationOf(undefined, "/v1/credits?before=12")).toBe("GET /v1/credits");
+  expect(operationOf("GET", "/v1/jobs/0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e")).toBe("GET /v1/jobs/{id}");
 });
 
 test("retake-only pieces count as pieces that couldn't be processed", async () => {

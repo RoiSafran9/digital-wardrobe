@@ -39,7 +39,9 @@ export function reportUncaughtErrors(utils: ErrorUtilsLike | undefined = (global
   if (!utils) return;
   const previous = utils.getGlobalHandler();
   utils.setGlobalHandler((error, isFatal) => {
-    track("client_error", { where: "global", kind: "unhandled" });
+    const requestId = (error as { requestId?: unknown } | null)?.requestId;  // an ApiError (src/api/v1.ts)
+    track("client_error", { where: "global", kind: "unhandled",
+                            ...(typeof requestId === "string" && /^[0-9a-f]{32}$/.test(requestId) ? { request_id: requestId } : {}) });
     previous(error, isFatal);
   });
 }

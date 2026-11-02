@@ -70,7 +70,7 @@ No Sentry SDK and no OpenTelemetry were added: both need an owner-approved vendo
 | `launchctl kickstart -k gui/$(id -u)/com.kipscloset.api` with the queue empty | restarted (pid changed); `/healthz` now has `jobs_running` |
 | `scripts/mac_preflight.sh` | WARNING only for battery power; API, tunnel, local + public health OK |
 | `POST https://api.kipscloset.com/v1/outfit-suggestions` without a token | 401 (route on; off answers 404); our `X-Request-ID` came back and is in `logs/server.jsonl` |
-| EAS `production` iOS build 10 from `5242ba1` (SDK 57), `--auto-submit` to App Store Connect | build `38285e3a-7ec6-4184-892b-55a1ed8bccb3`; see the PR/session for its final state |
+| EAS `production` iOS build 10 from `5242ba1` (SDK 57), `--auto-submit` to App Store Connect | build `38285e3a-7ec6-4184-892b-55a1ed8bccb3` FINISHED 14:15 UTC; EAS submission `b3647a56-…` FINISHED (uploaded to App Store Connect; Apple processing, internal testing, external group and Beta App Review remain owner steps) |
 
 Build 9 (`36cb7b6`) already had the Build My Look screens; they were hidden because the server flag was off. Build 10 adds the app's request ids. Builds 9 and earlier keep working against the new server.
 

@@ -16,7 +16,7 @@ from api.facts_edit import apply_patch, patch_error
 from api.activity import EVENTS_PER_HOUR, record, validate as validate_event
 from api.outfit_builder.engine import build_suggestions
 from api.outfit_builder.swap import StaleLook, swap_options
-from api.schemas import (AccountDeleteIn, EventBatchIn, EventBatchOut, EventIn, GarmentGenerateIn, GarmentScanOut, OutfitFiltersIn, OutfitLookOut, OutfitSuggestionsOut, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
+from api.schemas import (AccountDeleteIn, EventBatchIn, EventBatchOut, EventIn, GarmentGenerateIn, GarmentScanOut, OutfitFiltersIn, OutfitLookOut, OutfitSuggestionsIn, OutfitSuggestionsOut, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
                          SwapAlternativeOut, SwapOptionsIn, SwapOptionsOut, TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse)
 from api.store import INTERRUPTED, get_store
 from pipeline.types import ItemFacts
@@ -483,19 +483,19 @@ def _active_wardrobe(store, user: User) -> list[dict]:
 
 
 @router.post("/outfit-suggestions", response_model=OutfitSuggestionsOut, dependencies=[Depends(outfit_builder_on)])
-def outfit_suggestions(body: OutfitFiltersIn, background: BackgroundTasks, user: User = Depends(current_user),
+def outfit_suggestions(body: OutfitSuggestionsIn, background: BackgroundTasks, user: User = Depends(current_user),
                        store=Depends(get_store)):
     """Up to three outfits built only from the signed-in user's own active, renderable wardrobe. Never
     a job: this is a bounded, synchronous computation (deterministic, with an optional feature-flagged
     Gemini relabeling step), so there is nothing to poll and no credits are ever touched."""
-    filters = body.model_dump()
-    result = build_suggestions(_active_wardrobe(store, user), filters)
+    filters = body.model_dump(exclude={"shown"})
+    result = build_suggestions(_active_wardrobe(store, user), filters, body.shown)
     background.add_task(record, store, user.id, "look_generation_requested",
                         {**filters, "results": len(result.looks), "fallback": result.used_fallback})
     return OutfitSuggestionsOut(
         looks=[OutfitLookOut(look_id=l.look_id, title=l.title, reason=l.reason, item_ids=l.item_ids,
                              slots=l.slots, completeness=l.completeness) for l in result.looks],
-        applied_filters=body, limitations=result.limitations, used_fallback=result.used_fallback)
+        applied_filters=OutfitFiltersIn(**filters), limitations=result.limitations, used_fallback=result.used_fallback)
 
 
 STALE_LOOK = "this look is out of date — refresh and try again"

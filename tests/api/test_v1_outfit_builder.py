@@ -138,3 +138,24 @@ def test_swap_options_needs_sign_in(client):
 def test_prices_reports_whether_the_outfit_builder_is_on(store):
     client = v1_client(store)
     assert client.get("/v1/prices", headers=as_user(A)).json()["outfit_builder"] is True
+
+
+def test_generate_again_sends_the_looks_on_screen_and_gets_new_ones(client, store):
+    for c in ("shirt", "t-shirt", "blouse"):
+        add_item(store, A, c)
+    for c in ("chinos", "jeans"):
+        add_item(store, A, c)
+    first = client.post("/v1/outfit-suggestions", json={}, headers=as_user(A)).json()
+    shown = [l["item_ids"] for l in first["looks"]]
+    again = client.post("/v1/outfit-suggestions", json={"shown": shown}, headers=as_user(A))
+    assert again.status_code == 200
+    body = again.json()
+    assert body["looks"] and not {frozenset(l["item_ids"]) for l in body["looks"]} & {frozenset(s) for s in shown}
+    assert body["applied_filters"] == {"occasion": "any", "style": "any", "vibe": "any", "weather": "any", "colors": "any"}
+    events = [e for e in store.events if e["event"] == "look_generation_requested"]
+    assert len(events) == 2 and all("shown" not in e["props"] for e in events)  # still a valid, bounded event
+
+
+@pytest.mark.parametrize("shown", [[["x"]] * 31, [["x"] * 7], [["x" * 65]], "not-a-list"])
+def test_shown_is_bounded(client, store, shown):
+    assert client.post("/v1/outfit-suggestions", json={"shown": shown}, headers=as_user(A)).status_code == 422

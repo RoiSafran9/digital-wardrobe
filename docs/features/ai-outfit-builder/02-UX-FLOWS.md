@@ -74,7 +74,7 @@ Each vertically scrollable card:
 - Garment labels/categories and optionally color.
 - One-sentence rationale: e.g. `A relaxed combination for a warm workday.` only when weather `Warm` and work are really chosen.
 - Tap card or `Explore Look` opens U4.
-- Secondary action: `Generate Again` re-requests suggestions using current explicit inputs; not automatically learning from previously rejected looks.
+- Secondary action: `Generate Again` re-requests suggestions using current explicit inputs plus the looks already shown on this screen (sent with the request, never stored), so it returns different combinations; when none are left it shows the best looks again with a note. Not learning from previously rejected looks; changing a choice or tapping `Generate Looks` starts over.
 
 If only one or two valid looks, show that number and an optional explanation: `These are the combinations that match what you picked.` No duplicated filler.
 

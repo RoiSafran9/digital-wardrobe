@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 from pydantic import BaseModel, Field
 from pipeline.types import ItemFacts
@@ -277,6 +277,11 @@ class OutfitFiltersIn(BaseModel):
     vibe: Literal["any", "relaxed", "confident", "minimal", "bold"] = "any"
     weather: Literal["any", "hot", "warm", "mild", "cold", "rainy"] = "any"
     colors: Literal["any", "neutral", "colorful", "dark", "light"] = "any"
+
+
+class OutfitSuggestionsIn(OutfitFiltersIn):
+    """The filters, plus Generate Again's looks already on screen (item ids), used for this request only."""
+    shown: list[Annotated[list[Annotated[str, Field(max_length=64)]], Field(max_length=6)]] = Field(default=[], max_length=30)
 
 
 class OutfitLookOut(BaseModel):

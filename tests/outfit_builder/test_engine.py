@@ -134,3 +134,42 @@ def test_no_explicit_filters_never_triggers_the_no_good_match_state():
     items = [item("top1", "shirt"), item("coat", "wool coat"), item("bottom1", "jeans")]
     result = build_suggestions(items, ANY)
     assert result.looks  # nothing was asked for, so there is nothing to honestly fail to match
+
+
+# --- Generate Again: the looks already on screen, for this one request (nothing is stored) ----------
+
+def _sets(result):
+    return [frozenset(l.item_ids) for l in result.looks]
+
+
+def test_generate_again_skips_the_looks_already_shown():
+    items = [item(f"top{i}", "shirt") for i in range(4)] + [item(f"bottom{i}", "chinos") for i in range(3)]
+    first = build_suggestions(items, ANY)
+    again = build_suggestions(items, ANY, shown=[l.item_ids for l in first.looks])
+    assert again.looks and not set(_sets(again)) & set(_sets(first))
+    assert again.limitations == []
+    third = build_suggestions(items, ANY, shown=[l.item_ids for l in first.looks + again.looks])
+    assert not set(_sets(third)) & (set(_sets(first)) | set(_sets(again)))
+
+
+def test_generate_again_penalizes_overlap_with_the_looks_on_screen():
+    from api.outfit_builder.engine import Candidate, select_looks
+    from api.outfit_builder.taxonomy import features_for
+    f = {i["id"]: features_for(i) for i in (item("a", "shirt"), item("b", "chinos"), item("c", "blouse"), item("d", "jeans"))}
+    close = (Candidate((f["a"], f["b"]), {"top": "a", "bottom": "b"}), 0.9)   # shares a piece with the shown look
+    apart = (Candidate((f["c"], f["d"]), {"top": "c", "bottom": "d"}), 0.85)
+    assert select_looks([close, apart], limit=1)[0] is close
+    assert select_looks([close, apart], limit=1, avoid=(frozenset({"a", "e"}),))[0] is apart
+
+
+def test_when_nothing_new_is_left_the_best_looks_come_back_with_a_note():
+    items = [item("top1", "shirt"), item("bottom1", "chinos")]
+    first = build_suggestions(items, ANY)
+    again = build_suggestions(items, ANY, shown=[l.item_ids for l in first.looks])
+    assert _sets(again) == _sets(first)
+    assert again.limitations and "no other" in again.limitations[0].lower()
+
+
+def test_shown_ids_that_are_not_in_the_closet_change_nothing():
+    items = [item(f"top{i}", "shirt") for i in range(3)] + [item(f"bottom{i}", "chinos") for i in range(2)]
+    assert _sets(build_suggestions(items, ANY, shown=[["someone-else", "x"]])) == _sets(build_suggestions(items, ANY))

@@ -416,9 +416,11 @@ export async function keepItem(account: Account, item: ClosetItem): Promise<Clos
 // --- Build My Look (AI Outfit Builder) -----------------------------------------------------------
 // A bounded, synchronous computation (never a job): one request, one answer, nothing to poll.
 
-export async function getOutfitSuggestions(account: Account, filters: OutfitFilters): Promise<OutfitSuggestions> {
+// shown: Generate Again — the looks already on screen (their item ids), so the server leaves them out.
+export async function getOutfitSuggestions(account: Account, filters: OutfitFilters, shown?: string[][]): Promise<OutfitSuggestions> {
   return call<OutfitSuggestions>(account, "/v1/outfit-suggestions", {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(filters),
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(shown?.length ? { ...filters, shown } : filters),
   });
 }
 

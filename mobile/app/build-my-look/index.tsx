@@ -16,6 +16,9 @@ import { track, useScreenViewed } from "../../src/activity/track";
 import { colors, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
 import { BackButton, Button, Chip } from "../../src/ui";
 
+// The server takes at most 30 shown looks (api/schemas.OutfitSuggestionsIn); keep the latest.
+const MAX_SHOWN = 30;
+
 type Phase = "loading_closet" | "closet_empty" | "closet_error" | "form" | "generating" | "no_match" | "results" | "detail";
 
 function FilterGroup<T extends string>({ label, options, value, onChange }: {
@@ -47,6 +50,9 @@ export default function BuildMyLookScreen() {
   const [limitation, setLimitation] = useState<string | null>(null);
   const [looks, setLooks] = useState<OutfitLook[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
+  // Every look shown for the current choices (as the server made them), sent with Generate Again so it
+  // finds new ones. Kept on this screen only; a new choice or Generate Looks starts over.
+  const [shown, setShown] = useState<string[][]>([]);
 
   const [swapSlot, setSwapSlot] = useState<OutfitSlot | null>(null);
   const [swapLoading, setSwapLoading] = useState(false);
@@ -67,25 +73,29 @@ export default function BuildMyLookScreen() {
   }, []);
   useEffect(() => { loadCloset(); }, [loadCloset]);
 
-  const generate = useCallback(async () => {
+  const generate = useCallback(async (again = false) => {
     setPhase("generating");
     setGenerateError(null);
     try {
-      const result = await getOutfitSuggestions(filters);
+      const result = again ? await getOutfitSuggestions(filters, shown) : await getOutfitSuggestions(filters);
       // Request telemetry (look_generation_requested) is a server event — the route already
       // records it with the real filters, result count and fallback flag; nothing to send here.
       if (result.looks.length === 0) {
         setLimitation(result.limitations[0] ?? "We couldn't find a good match for all these choices.");
         setPhase("no_match");
       } else {
+        const made = result.looks.map((l) => l.item_ids);
+        // Nothing new left (the server says so and repeats its best): start over from these.
+        setShown((before) => (again && result.limitations.length === 0 ? [...before, ...made].slice(-MAX_SHOWN) : made));
+        setLimitation(result.limitations[0] ?? null);
         setLooks(result.looks);
         setPhase("results");
       }
     } catch (e) {
       setGenerateError(e instanceof Error ? e.message : "We couldn't make new looks right now.");
-      setPhase("form");
+      setPhase(again ? "results" : "form");
     }
-  }, [filters]);
+  }, [filters, shown]);
 
   const openLook = (index: number) => {
     track("look_opened", { position: index });
@@ -177,13 +187,16 @@ export default function BuildMyLookScreen() {
               {looks.length === 1 ? "1 idea from your closet" : `${looks.length} ideas from your closet`}
             </Text>
           </View>
-          {looks.length < 3 ? (
+          {limitation ? (
+            <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>{limitation}</Text>
+          ) : looks.length < 3 ? (
             <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>
               These are the combinations that match what you picked.
             </Text>
           ) : null}
           {looks.map((l, i) => <LookCard key={l.look_id} look={l} items={itemsById} onPress={() => openLook(i)} />)}
-          <Button title="Generate Again" variant="secondary" size="medium" onPress={generate} />
+          {generateError ? <Text style={{ ...type.subhead, color: colors.destructive }}>{generateError}</Text> : null}
+          <Button title="Generate Again" variant="secondary" size="medium" onPress={() => generate(true)} />
         </ScrollView>
       ) : phase === "detail" && look ? (
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: TAB_BAR_HEIGHT + 24, gap: 18 }}>
@@ -232,7 +245,7 @@ export default function BuildMyLookScreen() {
           <FilterGroup label="Colors" options={COLOR_PREF_OPTIONS} value={filters.colors}
             onChange={(v) => setFilters((f) => ({ ...f, colors: v }))} />
           <View style={{ gap: 8 }}>
-            <Button title="Generate Looks" onPress={generate} />
+            <Button title="Generate Looks" onPress={() => generate()} />
             <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>
               Made with clothes you already own.
             </Text>

@@ -397,6 +397,8 @@ test("suggestions are posted with the chosen filters and come back with the serv
   expect(JSON.parse(calls[0].init.body as string)).toEqual({ ...ANY_FILTERS, occasion: "work" });
   expect(auth(0)).toBe("Bearer tok-a");
   expect(result.looks[0].title).toBe("Easy Workday");
+  await getOutfitSuggestions(ANY_FILTERS, [["g1", "g2"]]);  // Generate Again: the looks on screen
+  expect(JSON.parse(calls[1].init.body as string)).toEqual({ ...ANY_FILTERS, shown: [["g1", "g2"]] });
 });
 
 test("swap options are posted with the look, target and filters, and come back ranked", async () => {

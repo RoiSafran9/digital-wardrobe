@@ -6,7 +6,7 @@
 
 Use the current backend's authenticated user context. Proposed endpoints; adjust names/shape to existing routing conventions after audit:
 
-- `POST /v1/outfit-suggestions` — receive explicit input selections, build owned-item candidate pool, return up to three validated proposals.
+- `POST /v1/outfit-suggestions` — receive explicit input selections, build owned-item candidate pool, return up to three validated proposals. Optional `shown` (Generate Again: item ids of looks on screen, bounded, used only to skip/penalize repeats, never stored or logged).
 - `POST /v1/outfit-suggestions/swap-options` — return ranked, eligible **owned alternatives** for a target item within a given ephemeral look.
 - `POST /v1/outfit-suggestions/apply-swap` — optionally perform server validation for replacement; or have client apply a server-provided verified swap token if architecture supports it. **Do not introduce both endpoints if simpler pattern suffices.**
 

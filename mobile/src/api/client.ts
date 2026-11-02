@@ -224,9 +224,9 @@ export async function keepItem(item: ClosetItem): Promise<ClosetItem> {
 // Build My Look exists only in account mode (it recommends from the server-held wardrobe).
 export const BUILD_MY_LOOK_NEEDS_ACCOUNT = "Build My Look needs a signed-in account.";
 
-export async function getOutfitSuggestions(filters: OutfitFilters): Promise<OutfitSuggestions> {
+export async function getOutfitSuggestions(filters: OutfitFilters, shown?: string[][]): Promise<OutfitSuggestions> {
   if (!account) throw new Error(BUILD_MY_LOOK_NEEDS_ACCOUNT);
-  return v1.getOutfitSuggestions(account, filters);
+  return v1.getOutfitSuggestions(account, filters, shown);
 }
 
 export async function getSwapOptions(look: { slots: Record<string, string>; item_ids: string[] },

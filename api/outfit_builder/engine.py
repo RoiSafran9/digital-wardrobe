@@ -185,17 +185,20 @@ def _jaccard(a: frozenset, b: frozenset) -> float:
     return len(a & b) / len(a | b)
 
 
-def select_looks(scored: list[tuple[Candidate, float]], limit: int = LOOK_LIMIT) -> list[tuple[Candidate, float]]:
+def select_looks(scored: list[tuple[Candidate, float]], limit: int = LOOK_LIMIT,
+                 avoid: tuple[frozenset, ...] = ()) -> list[tuple[Candidate, float]]:
     """Diversity-aware (MMR-style) greedy selection: each pick maximizes its own score minus a
     penalty for overlapping with looks already chosen, so three similar top+bottom pairs don't all
-    make the cut over one genuinely different combination (section 6, fixture N)."""
+    make the cut over one genuinely different combination (section 6, fixture N). `avoid`: looks
+    already on the user's screen (Generate Again), penalized the same way."""
     pool = list(scored)
     selected: list[tuple[Candidate, float]] = []
     while pool and len(selected) < limit:
         def adjusted(entry: tuple[Candidate, float]) -> float:
             candidate, score = entry
             ids = frozenset(candidate.item_ids)
-            overlap = max((_jaccard(ids, frozenset(s.item_ids)) for s, _ in selected), default=0.0)
+            overlap = max([_jaccard(ids, frozenset(s.item_ids)) for s, _ in selected] + [_jaccard(ids, a) for a in avoid],
+                          default=0.0)
             return score - DIVERSITY_LAMBDA * overlap
         best = max(pool, key=adjusted)
         pool.remove(best)
@@ -234,10 +237,16 @@ def _coverage_message(features: list[GarmentFeatures]) -> str | None:
     return "Add a top and a bottom, or a one-piece, to build your first look."
 
 
-def build_suggestions(wardrobe_items: list[dict], filters: dict) -> SuggestionsResult:
+NOTHING_NEW = "No other combinations match these choices yet — these are your best looks. Add pieces or change a choice for new ideas."
+
+
+def build_suggestions(wardrobe_items: list[dict], filters: dict, shown: list[list[str]] = ()) -> SuggestionsResult:
     """wardrobe_items: the caller's own active, renderable items (api/routes/v1._active_wardrobe).
     filters: an OutfitFiltersIn.model_dump() — occasion/style/vibe/weather/colors, each "any" or a
-    chosen value. Never trusts or needs a client-supplied owner or item-id allowlist."""
+    chosen value. Never trusts or needs a client-supplied owner or item-id allowlist.
+    shown: Generate Again — the item ids of looks already on screen, for this request only (never
+    stored). Those exact looks are left out and overlap with them is penalized; when nothing new is
+    left, the best looks come back with a note."""
     features = [features_for(i) for i in wardrobe_items]
     structural = [f for f in features if f.slot != "unknown"]
     missing = _coverage_message(structural)
@@ -261,7 +270,10 @@ def build_suggestions(wardrobe_items: list[dict], filters: dict) -> SuggestionsR
             return no_match
         scored = meeting
 
-    selected = select_looks(scored)
+    seen = tuple(frozenset(ids) for ids in shown)
+    fresh = [s for s in scored if frozenset(s[0].item_ids) not in seen]
+    limitations = [] if fresh or not seen else [NOTHING_NEW]
+    selected = select_looks(fresh, avoid=seen) if fresh else select_looks(scored)
     looks = [
         LookResult(look_id=f"look_{i + 1}", title=_title_for(candidate.items), reason=_reason_for(filters),
                   item_ids=list(candidate.item_ids), slots=dict(candidate.slots))
@@ -284,4 +296,4 @@ def build_suggestions(wardrobe_items: list[dict], filters: dict) -> SuggestionsR
             looks = [LookResult(l.look_id, *overrides.get(l.look_id, (l.title, l.reason)), l.item_ids, l.slots, l.completeness)
                     for l in looks]
 
-    return SuggestionsResult(looks=looks, used_fallback=used_fallback)
+    return SuggestionsResult(looks=looks, limitations=limitations, used_fallback=used_fallback)

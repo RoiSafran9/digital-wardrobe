@@ -96,3 +96,58 @@ test("opening a look, swapping a piece, and seeing only that slot change", async
   await waitFor(() => expect(screen.getAllByText("Jeans").length).toBeGreaterThan(0));
   expect(screen.getAllByText("Shirt").length).toBeGreaterThan(0);
 });
+
+const LOOK2 = { ...LOOK, look_id: "look_1", title: "Shirt & Jeans", item_ids: ["top1", "bottom2"],
+                slots: { top: "top1", bottom: "bottom2" } };
+
+test("Generate Again sends the looks already shown and shows the new ones", async () => {
+  (getItems as jest.Mock).mockResolvedValue({ items: [SHIRT, CHINOS, JEANS] });
+  (getOutfitSuggestions as jest.Mock)
+    .mockResolvedValueOnce({ looks: [LOOK], applied_filters: {}, limitations: [], used_fallback: false })
+    .mockResolvedValueOnce({ looks: [LOOK2], applied_filters: {}, limitations: [], used_fallback: false })
+    .mockResolvedValueOnce({ looks: [LOOK], applied_filters: {}, used_fallback: false,
+                             limitations: ["No other combinations match these choices yet — these are your best looks."] });
+  render(<BuildMyLookScreen />);
+  fireEvent.press(await screen.findByRole("button", { name: "Generate Looks" }));
+  fireEvent.press(await screen.findByRole("button", { name: "Generate Again" }));
+  await screen.findByText("Shirt & Jeans");
+  expect((getOutfitSuggestions as jest.Mock).mock.calls[1][1]).toEqual([["top1", "bottom1"]]);
+  fireEvent.press(screen.getByRole("button", { name: "Generate Again" }));
+  await screen.findByText(/No other combinations match/);
+  expect((getOutfitSuggestions as jest.Mock).mock.calls[2][1]).toEqual([["top1", "bottom1"], ["top1", "bottom2"]]);
+  // Nothing new was left: the next press starts over from what is on screen now.
+  fireEvent.press(screen.getByRole("button", { name: "Generate Again" }));
+  await waitFor(() => expect((getOutfitSuggestions as jest.Mock).mock.calls[3][1]).toEqual([["top1", "bottom1"]]));
+});
+
+test("changing a choice forgets the looks shown before", async () => {
+  (getItems as jest.Mock).mockResolvedValue({ items: [SHIRT, CHINOS] });
+  (getOutfitSuggestions as jest.Mock).mockResolvedValue({ looks: [LOOK], applied_filters: {}, limitations: [], used_fallback: false });
+  render(<BuildMyLookScreen />);
+  fireEvent.press(await screen.findByRole("button", { name: "Generate Looks" }));
+  await screen.findByText("Your Looks");
+  fireEvent.press(screen.getByRole("button", { name: "Back" }));
+  fireEvent.press(await screen.findByRole("button", { name: "Work" }));
+  fireEvent.press(screen.getByRole("button", { name: "Generate Looks" }));
+  await waitFor(() => expect(getOutfitSuggestions).toHaveBeenCalledTimes(2));
+  expect((getOutfitSuggestions as jest.Mock).mock.calls[1]).toEqual([expect.objectContaining({ occasion: "work" })]);
+});
+
+test("Generate Again never sends more than 30 shown looks", async () => {
+  (getItems as jest.Mock).mockResolvedValue({ items: [SHIRT, CHINOS, JEANS] });
+  let n = 0;
+  (getOutfitSuggestions as jest.Mock).mockImplementation(async () => {
+    n += 1;
+    const looks = [0, 1, 2].map((k) => ({ ...LOOK, look_id: `look_${k}`, title: `Look ${n}-${k}`, item_ids: [`t${n}-${k}`, "b"] }));
+    return { looks, applied_filters: {}, limitations: [], used_fallback: false };
+  });
+  render(<BuildMyLookScreen />);
+  fireEvent.press(await screen.findByRole("button", { name: "Generate Looks" }));
+  for (let press = 2; press <= 12; press++) {
+    fireEvent.press(await screen.findByRole("button", { name: "Generate Again" }));
+    await screen.findByText(`Look ${press}-0`);
+  }
+  const last = (getOutfitSuggestions as jest.Mock).mock.calls.at(-1)[1] as string[][];
+  expect(last).toHaveLength(30);
+  expect(last.at(-1)).toEqual(["t11-2", "b"]);  // the latest are kept
+});

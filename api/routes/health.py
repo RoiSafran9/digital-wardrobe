@@ -20,6 +20,7 @@ def healthz(store=Depends(get_store)):
         "queued": stats["queued"],
         "oldest_queued_seconds": stats["oldest_queued_seconds"],
         "worker_seconds_since_beat": None if beat is None else round(time.monotonic() - beat, 1),
+        "jobs_running": worker.running_jobs(),
         "ai_jobs_today": store.count_jobs_since(PAID_KINDS, start_of_day()),
         "daily_ai_jobs_cap": daily_ai_jobs() or None,
         "failed_jobs_last_hour": store.count_failed_jobs_since(datetime.now(timezone.utc) - timedelta(hours=1)),

@@ -35,7 +35,8 @@ export type Events = {
   permission: { kind: "camera" | "photos" | "notifications"; granted: boolean };
   capture_source: { flow: "garment" | "outfit"; from: "camera" | "library" };
   item_opened: { has_back: boolean; has_turn: boolean };
-  client_error: { where: Screen | "global"; kind: "render" | "unhandled" | "network" | "http_5xx" };
+  // request_id: the X-Request-ID of the call that failed (src/api/v1.ts), to find it in the server log.
+  client_error: { where: Screen | "global"; kind: "render" | "unhandled" | "network" | "http_5xx"; request_id?: string };
   // Build My Look
   look_opened: { position: number };
   swap_applied: { slot: OutfitSlot };

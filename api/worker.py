@@ -19,6 +19,7 @@ from pipeline.back import BackPhotoRejected, run_back
 from pipeline import outfit
 from pipeline.orchestrator import Providers, run_photo
 from api import push
+from api.logs import job_context
 from pipeline.run_log import RunLogger
 from pipeline.turn import TURN_ORDER, TurnFailed, refs_for_item, run_turn
 from pipeline.types import DetectedItemWithFacts, ItemFacts
@@ -73,11 +74,15 @@ def _ai_call_rows(job: dict, tmp: str) -> list[dict]:
     return rows
 
 
-def _keep_ai_calls(store, job, tmp) -> None:
+def _keep_ai_calls(store, job, tmp) -> list[dict]:
+    """Stores this attempt's model calls; returns them (for the job's log line), [] if they couldn't be read."""
     try:
-        store.insert_ai_calls(_ai_call_rows(job, tmp))
+        rows = _ai_call_rows(job, tmp)
+        store.insert_ai_calls(rows)
+        return rows
     except Exception:
         log.warning("model calls of job %s not kept", job["id"], exc_info=True)
+        return []
 
 
 def _sentence(message: str) -> str:
@@ -465,29 +470,68 @@ def _fail(store, gate, job, uploads, message, code="internal"):
         store.update_item(job["user_id"], job["item_id"], {"turn": {"state": "failed", "error": message}})
 
 
+_running = 0  # jobs being worked on right now, for /healthz (a long job leaves the heartbeat stale)
+
+
+def running_jobs() -> int:
+    return _running
+
+
+def _job_line(msg: str, job: dict, level: int = logging.INFO, **fields) -> None:
+    """A job lifecycle line (job and user id come from job_context): ids, kinds, numbers and codes only."""
+    log.log(level, msg, extra={"fields": {"kind": job["kind"], "attempt": job.get("attempts"),
+                                          "max_attempts": job.get("max_attempts"), **fields}})
+
+
 async def run_once(store, provider_factory, lease_seconds: int = 600, gate: CreditGate | None = None) -> bool:
     """Claim and run one job. False when the queue is empty."""
+    global _running
     gate = gate or NoCharge()
     job = store.claim_job(lease_seconds)
     if job is None:
         return False
+    _running += 1
+    try:
+        with job_context(job):
+            await _run_claimed(store, provider_factory, job, gate)
+    finally:
+        _running -= 1
+    return True
+
+
+async def _run_claimed(store, provider_factory, job: dict, gate: CreditGate) -> None:
+    started, calls = time.monotonic(), []
+    created = job["created_at"]
+    if isinstance(created, str):
+        created = datetime.fromisoformat(created.replace("Z", "+00:00"))
+    _job_line("job claimed", job, since_created_s=round((datetime.now(timezone.utc) - created).total_seconds()))
+
+    def timing() -> dict:
+        return {"ms": round((time.monotonic() - started) * 1000), "ai_calls": len(calls),
+                "est_cost_usd": round(sum(float(c.get("est_cost_usd") or 0) for c in calls), 6)}
     uploads = _Uploads(store)
     try:
         with tempfile.TemporaryDirectory() as tmp:
             try:
                 result = await HANDLERS[job["kind"]](store, job, provider_factory, tmp, uploads)
             finally:
-                _keep_ai_calls(store, job, tmp)  # every attempt's calls cost money, success or not
+                calls = _keep_ai_calls(store, job, tmp)  # every attempt's calls cost money, success or not
         store.finish_job(job["id"], "succeeded", result)
+        _job_line("job finished", job, outcome="succeeded", **timing(),
+                  pieces_made=len(result.get("item_ids") or []) if isinstance(result, dict) else None)
         _record_outcome(store, job, "succeeded", result)
         push.notify_job(store, job, "succeeded", result)
     except JobRejected as e:
+        _job_line("job finished", job, outcome="failed", failure_code=e.code, **timing())
         _fail(store, gate, job, uploads, str(e), e.code)
     except Exception as e:
-        log.exception("job %s (%s) failed on attempt %s", job["id"], job["kind"], job["attempts"])
+        log.exception("job %s (%s) failed on attempt %s", job["id"], job["kind"], job["attempts"],
+                      extra={"fields": {"failure_code": _failure_code(e), "error_class": type(e).__name__}})
         if job["attempts"] >= job["max_attempts"]:
+            _job_line("job finished", job, logging.WARNING, outcome="failed", failure_code=_failure_code(e), **timing())
             _fail(store, gate, job, uploads, GENERIC_FAILURE, _failure_code(e))
         else:
+            _job_line("job will retry", job, logging.WARNING, failure_code=_failure_code(e), **timing())
             store.retry_job(job["id"], GENERIC_FAILURE)
     else:
         # AI Credits: charge only for what the job delivered; the rest of the hold goes back.
@@ -497,7 +541,6 @@ async def run_once(store, provider_factory, lease_seconds: int = 600, gate: Cred
                 gate.settle(job["id"], charge_for(job, result))
         except Exception:
             log.exception("settle for job %s failed; reconcile will settle it", job["id"])
-    return True
 
 
 RECONCILE_EVERY_SECONDS = 60

@@ -3,7 +3,14 @@
 Each line carries the request id, user id and job id in effect (context variables), so one request or job
 can be followed. Requests are logged by their route template (/v1/items/{item_id}), never the filled-in
 path or query, and client addresses are not logged (uvicorn runs with --no-access-log).
+
+Correlation (first-five beta, docs/beta/first-five-mac/04): the app sends a random X-Request-ID on every call;
+the request that queues AI work logs "job queued" with that request id and the job id; the worker logs
+"job claimed" / "job finished" under the job id (job_context); ai_calls rows carry the same job id.
+Every line is redacted (redact) on the way out: bearer tokens, JWTs, signed-URL tokens and email addresses
+never reach stderr or the file, even from an exception message.
 """
+import re
 import json
 import logging
 import logging.handlers
@@ -11,6 +18,7 @@ import os
 import time
 import traceback
 import uuid
+from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import datetime, timezone
 
@@ -20,6 +28,33 @@ job_id: ContextVar[str | None] = ContextVar("job_id", default=None)
 
 KEEP_DAYS = 14
 log = logging.getLogger("wardrobe.request")
+
+
+_SECRETS = [
+    (re.compile(r"(?i)bearer\s+[A-Za-z0-9._~+/=-]+"), "Bearer [redacted]"),
+    (re.compile(r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*"), "[jwt]"),
+    (re.compile(r"(?i)([?&](?:token|apikey|api_key|key|sig|signature|access_token)=)[^&\s\"'\\]+"), r"\1[redacted]"),
+    (re.compile(r"(?i)\b(sb_secret_|sb_publishable_|AIza)[A-Za-z0-9_-]{8,}"), "[key]"),
+    (re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"), "[email]"),
+]
+
+
+def redact(text: str) -> str:
+    """The text without tokens, keys, signed-URL secrets or email addresses (for log lines)."""
+    for pattern, replacement in _SECRETS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
+@contextmanager
+def job_context(job: dict):
+    """Log lines inside carry this job's id and owner (the worker runs outside any request)."""
+    tokens = [(job_id, job_id.set(job.get("id"))), (user_id, user_id.set(job.get("user_id")))]
+    try:
+        yield
+    finally:
+        for var, token in reversed(tokens):
+            var.reset(token)
 
 
 class JsonFormatter(logging.Formatter):
@@ -37,7 +72,7 @@ class JsonFormatter(logging.Formatter):
         line.update(getattr(record, "fields", None) or {})
         if record.exc_info:
             line["exc"] = "".join(traceback.format_exception(*record.exc_info))
-        return json.dumps(line, default=str)
+        return redact(json.dumps(line, default=str))
 
 
 def configure_logging(directory: str | None = "logs", level: int = logging.INFO) -> None:

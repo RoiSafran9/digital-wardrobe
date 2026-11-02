@@ -40,7 +40,9 @@ It needs ~2 GB RAM for the background-removal model; one instance is enough for 
 **Emergency stop:** set `WARDROBE_GENERATION=off` and restart: new AI work is refused (the closet keeps working).
 Don't use `WARDROBE_BILLING=off` for this — that makes AI work free instead of stopping it.
 
-**Usage report** (read-only): `python -m scripts.usage_report --days 30` prints the funnel, First 3 Pieces activation, retention, feature use, reliability, estimated AI cost and credits; `--user <email or id>` prints one account's timeline; `--json` gives the numbers. (`scripts.activation_report` still prints the First 3 Pieces numbers alone.)
+**Usage report** (read-only): `python -m scripts.usage_report --days 30` prints the funnel, First 3 Pieces activation, retention, feature use, reliability, estimated AI cost and credits; `--user <email or id>` prints one account's timeline (job ids and app-error request ids included, for the server log); `--cohort <file outside the repo>` prints the beta testers' launch KPIs by alias only; `--json` gives the numbers. The Launch section's different-day second import and meaningful return are the first-five KPIs; the funnel's 30-minute `came_back_with_a_piece` and the any-activity d1/d7/w2 are kept and labelled as such.
+
+**Health:** `python -m scripts.health_check --url http://127.0.0.1:8000/healthz --url https://api.kipscloset.com/healthz` (exit 0/1/2; a stalled worker is critical even when the API answers) and `scripts/mac_preflight.sh` (read-only Mac checks). See `docs/beta/first-five-mac/06-MAC-OPERATIONS-RUNBOOK.md`. (`scripts.activation_report` still prints the First 3 Pieces numbers alone.)
 
 **Server log:** start uvicorn with `--no-access-log` (client addresses aren't logged); JSON lines go to the terminal and to `logs/server.jsonl` (one file a day, 14 kept). `WARDROBE_LOG_DIR` moves it (`off` leaves logging unconfigured).
 

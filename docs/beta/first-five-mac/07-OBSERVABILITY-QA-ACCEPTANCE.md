@@ -19,6 +19,26 @@
 | O11 | Out-of-scope user or fabricated ID | RLS and ownership protection; no leak into report or response | NOT RUN |
 | O12 | Five-account summary with empty/new cohorts | Counts and denominators correct, no fabricated percentages or hidden unknowns | NOT RUN |
 
+### Automated coverage (branch `claude/kips-testflight-observability-02b53f`)
+
+Automated tests are evidence for the code path only; each row above stays **NOT RUN** until it is executed against the real Mac, a TestFlight build and hosted Supabase.
+
+| ID | Automated test(s) | What they prove locally |
+|---|---|---|
+| O01 | `mobile/__tests__/v1client.test.ts` (fresh request id per call, echoed id kept), `tests/api/test_logs.py::test_request_id_is_returned_and_logged` | App sends a 32-hex `X-Request-ID`; server validates, echoes and logs it |
+| O02 | `tests/api/test_correlation.py::test_a_queued_job_is_linked_…`, `…::test_the_worker_logs_each_job_under_its_id…` | `job queued` carries request id + job id; worker lines and `ai_calls` carry the job id, ms and cost |
+| O03 | `tests/api/test_correlation.py::test_a_retry_and_a_final_failure_are_logged…`, `mobile/__tests__/activity.events.test.tsx` | Failure code on retry/final failure; tokens, emails and signed-URL secrets redacted; client error keeps request id, never message |
+| O04 | `tests/api/test_correlation.py::test_a_queued_job_is_linked_…` (same key → `job reused`, one job), `mobile/__tests__/v1client.test.ts` (resend keeps key and request id) | No second job on a resend; the original job stays linked |
+| O05 | existing `mobile/__tests__/activity.track.test.ts` ("signing out sends what is left … the next account starts clean"), `tests/api/test_v1_items.py` two-user tests | Queue keyed by account; rows scoped by token |
+| O06 | `tests/test_launch_metrics.py` (same day, 45 min same day, UTC boundary, >7 days) | Different-day KPI vs legacy 30-minute metric, labelled |
+| O07 | `tests/test_launch_metrics.py::test_an_app_open_or_screen_view_is_not_a_meaningful_return` | App open, screen view, sign-in, zero-result outfit request don't count |
+| O08 | `tests/test_launch_metrics.py::test_each_meaningful_action_counts_once…`, `…::test_accounts_never_mix` | Each meaningful action counts once, per account |
+| O09 | existing `mobile/__tests__/activity.*` (tracking never throws), `tests/test_health_check.py` (broken alert hook) | Telemetry failures stay non-blocking |
+| O10 | `tests/api/test_correlation.py::test_redact_*`, `tests/api/test_logs.py` | No tokens, emails, signed URLs, paths or query strings in log lines |
+| O12 | `tests/test_launch_metrics.py::test_an_empty_cohort_has_no_rates`, `…::test_open_windows_are_counted_apart…`, `…::test_cohort_report_names_aliases_only` | Denominators, open windows apart, no made-up rate, aliases only |
+| H05 | `tests/test_health_check.py` (stalled, stuck, queue, failures, budget, bad JSON, timeouts, 5xx) | A 200 with a stalled worker is critical |
+| H07 | `tests/test_launch_metrics.py::test_timeline_lines_carry_ids_for_the_server_log` | Timeline shows request ids and job ids |
+
 ## P0 Mac & TestFlight readiness tests
 
 | ID | What to do | Expected | Status |

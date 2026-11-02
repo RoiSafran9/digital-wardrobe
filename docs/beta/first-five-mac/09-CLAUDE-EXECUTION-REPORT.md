@@ -72,6 +72,10 @@ No Sentry SDK and no OpenTelemetry were added: both need an owner-approved vendo
 | `POST https://api.kipscloset.com/v1/outfit-suggestions` without a token | 401 (route on; off answers 404); our `X-Request-ID` came back and is in `logs/server.jsonl` |
 | EAS `production` iOS build 10 from `5242ba1` (SDK 57), `--auto-submit` to App Store Connect | build `38285e3a-7ec6-4184-892b-55a1ed8bccb3` FINISHED 14:15 UTC; EAS submission `b3647a56-…` FINISHED (uploaded to App Store Connect; Apple processing, internal testing, external group and Beta App Review remain owner steps) |
 
+| Owner phone test on build 10 (cellular) | sign-in, a new piece, Closet and Build My Look worked; request → job → `ai_calls` chain visible in the log. Found: Generate Again repeated the same looks |
+| Fix `1d41c3f` (Generate Again sends the looks on screen; engine skips/penalizes them) deployed to the Mac (restart with an empty queue; `/openapi.json` shows `shown`) | on the owner's closet (28 pieces) every press gave 3 new looks, 8 presses in a row |
+| EAS build 11 from `1d41c3f`, auto-submitted | build `3c95acf9-1092-4318-a66f-23184dc20275` FINISHED 18:17 UTC; submission FINISHED 19:01 UTC (the EAS submit queue took ~45 min) |
+
 Build 9 (`36cb7b6`) already had the Build My Look screens; they were hidden because the server flag was off. Build 10 adds the app's request ids. Builds 9 and earlier keep working against the new server.
 
 ## Owner-only steps (1 and the flag part of the server change are done; the rest remain)

@@ -1,6 +1,6 @@
 # First Five — Observability Execution Report (Claude Code)
 
-**Date:** 2026-11-02 · **Branch:** `claude/kips-testflight-observability-02b53f` (from `main` at `e0f0f7b`) · **Status:** code + tests on a branch, PR to `main`, **not merged, not deployed**. The Mac still runs `main`; nothing on the Mac, Cloudflare, Supabase, App Store Connect or any vendor was changed.
+**Date:** 2026-11-02 · **Branch:** `claude/kips-testflight-observability-02b53f` (from `main` at `e0f0f7b`) · **Status:** merged to `main` (PR #31, `5242ba1`) and deployed to the Mac on the owner's approval — see "Deployment" below. Nothing on Cloudflare, Supabase or any vendor was changed; no tester was invited.
 
 Hosting stays as decided: FastAPI + in-process worker on the founder's Mac behind Cloudflare Tunnel (`https://api.kipscloset.com`). No cloud host, container, tracing backend, analytics vendor or crash vendor was added.
 
@@ -60,7 +60,21 @@ No Sentry SDK and no OpenTelemetry were added: both need an owner-approved vendo
 - Meaningful return cannot tell voluntary use from a use you asked for — ask the tester (`08`).
 - `request_id` is new data in `activity_events.props` for `client_error`; it is random and not tied to the device, and the privacy page text was updated in the repo — review it and the App Privacy answers ("Other Diagnostic Data" is already declared) before release.
 
-## Owner-only steps (none done here)
+## Deployment (2026-11-02, approved by the owner)
+
+| Step | Result |
+|---|---|
+| Merge PR #31 | `main` at `5242ba1` |
+| Mac: `git pull --ff-only` in `~/Projects/digital-wardrobe` | at `5242ba1` |
+| `.env.server`: added `WARDROBE_OUTFIT_BUILDER=on` (backup `.env.server.bak-20261102`, untracked — never commit it) | Build My Look on; `WARDROBE_OUTFIT_BUILDER_AI` left off (no extra Gemini calls) |
+| `launchctl kickstart -k gui/$(id -u)/com.kipscloset.api` with the queue empty | restarted (pid changed); `/healthz` now has `jobs_running` |
+| `scripts/mac_preflight.sh` | WARNING only for battery power; API, tunnel, local + public health OK |
+| `POST https://api.kipscloset.com/v1/outfit-suggestions` without a token | 401 (route on; off answers 404); our `X-Request-ID` came back and is in `logs/server.jsonl` |
+| EAS `production` iOS build 10 from `5242ba1` (SDK 57), `--auto-submit` to App Store Connect | build `38285e3a-7ec6-4184-892b-55a1ed8bccb3`; see the PR/session for its final state |
+
+Build 9 (`36cb7b6`) already had the Build My Look screens; they were hidden because the server flag was off. Build 10 adds the app's request ids. Builds 9 and earlier keep working against the new server.
+
+## Owner-only steps (1 and the flag part of the server change are done; the rest remain)
 1. Review and merge the PR; then `git pull` on the Mac and restart the API agent in a quiet window (`launchctl kickstart -k gui/$(id -u)/com.kipscloset.api`), then `scripts/mac_preflight.sh`.
 2. **Plug the Mac into power** and decide the sleep policy for the pilot window (no setting changed here).
 3. Confirm `com.cloudflare.cloudflared` is the tunnel for `api.kipscloset.com`.

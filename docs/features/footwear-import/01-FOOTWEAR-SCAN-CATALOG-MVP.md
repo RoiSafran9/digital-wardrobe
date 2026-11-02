@@ -2,7 +2,7 @@
 
 **Status:** Implementation-ready feature specification and Claude Code handoff; no code changes in this document  
 **Prepared:** 2026-11-02  
-**Source inspected:** \`RoiSafran9/digital-wardrobe\`, \`main\` as inspected on 2026-11-02  
+**Source inspected:** `RoiSafran9/digital-wardrobe`, `main` as inspected on 2026-11-02  
 **Owner's request:** Expand existing garment scanning and catalog-image generation to **shoes/footwear**, including the ways users currently add items.
 
 ## 1. Executive conclusion
@@ -10,17 +10,17 @@
 This is an **extension of the existing pipeline**, not a separate product, new AI provider, or new database model.
 
 KIPS **already recognizes footwear downstream**:
-- \`mobile/src/categoryGroups.ts\` has a \`Shoes\` group.
-- \`api/outfit_builder/taxonomy.py\` maps sneakers, boots, sandals etc. to the \`footwear\` slot.
-- \`pipeline/prompts/outfit_detect_v3.txt\` has category \`shoes\` and states **a pair of shoes is ONE candidate**.
+- `mobile/src/categoryGroups.ts` has a `Shoes` group.
+- `api/outfit_builder/taxonomy.py` maps sneakers, boots, sandals etc. to the `footwear` slot.
+- `pipeline/prompts/outfit_detect_v3.txt` has category `shoes` and states **a pair of shoes is ONE candidate**.
 
 The missing / unreliable portions are **upstream image capture and catalog generation**:
-- \`pipeline/prompts/stage1_detect_facts_v4.txt\` says to include clothing, *not accessories*, despite a \`sandal\` category example. It does not explicitly permit footwear or require a whole pair to be one detection. The wording can lead the model to exclude shoes as "not clothing", or count two shoes separately. Actual production failure rates have **not** been measured.
-- \`pipeline/prompts/stage4_generate_v5.txt\` instructs the model to unfold, smooth, lay flat, front-up and symmetrize a *garment*. These are wrong directions for three-dimensional footwear.
-- \`pipeline/prompts/outfit_generate_v3.txt\` uses the same garment-specific directions on worn items, even though outfit detection already accepts shoes.
-- \`pipeline/stages/stage5_verify.py\` validates color and notes OCR misses, **but does not verify shoe identity, shoe count, shape or left/right consistency**. A wrong yet similarly colored product could pass.
-- \`pipeline/stages/cutout.py\` is optimized for garment outlines; a shoe pair may reveal gaps, white soles or laces that deserve regression testing.
-- \`mobile/src/components/ItemSheet.tsx\` can expose garment-style Back and AI ghost-mannequin 360 actions; current \`pipeline/prompts/stage4_generate_back_v2.txt\` and \`turn_view_v2.txt\` are **not footwear-specific**.
+- `pipeline/prompts/stage1_detect_facts_v4.txt` says to include clothing, *not accessories*, despite a `sandal` category example. It does not explicitly permit footwear or require a whole pair to be one detection. The wording can lead the model to exclude shoes as "not clothing", or count two shoes separately. Actual production failure rates have **not** been measured.
+- `pipeline/prompts/stage4_generate_v5.txt` instructs the model to unfold, smooth, lay flat, front-up and symmetrize a *garment*. These are wrong directions for three-dimensional footwear.
+- `pipeline/prompts/outfit_generate_v3.txt` uses the same garment-specific directions on worn items, even though outfit detection already accepts shoes.
+- `pipeline/stages/stage5_verify.py` validates color and notes OCR misses, **but does not verify shoe identity, shoe count, shape or left/right consistency**. A wrong yet similarly colored product could pass.
+- `pipeline/stages/cutout.py` is optimized for garment outlines; a shoe pair may reveal gaps, white soles or laces that deserve regression testing.
+- `mobile/src/components/ItemSheet.tsx` can expose garment-style Back and AI ghost-mannequin 360 actions; current `pipeline/prompts/stage4_generate_back_v2.txt` and `turn_view_v2.txt` are **not footwear-specific**.
 
 **Recommendation:** make shoe recognition explicit; route selected footwear through **versioned shoe-specific catalog prompts** in the existing image generation flow; keep one logical pair as one catalog item, one generation and one user-visible credit action; preserve existing account isolation and AI cost controls; test real shoe photographs before the TestFlight beta.
 
@@ -29,8 +29,8 @@ The missing / unreliable portions are **upstream image capture and catalog gener
 ### In scope
 1. **Garment Photo flow (laid-out items):** take or choose a photo of shoes on a bed, floor or suitable surface; free scan identifies shoes as eligible items; user can select them; one selected pair produces one catalog entry. A mixed photo of clothes and shoes must work.
 2. **First 3 Pieces onboarding:** the same normal scan/generation pipeline may count a pair of shoes as **one** of the first three pieces and **one** of the five available items in a round. No separate shoe-onboarding screen or change to the round cap.
-3. **Outfit Photo (worn flow, only when \`WARDROBE_OUTFIT=on\`):** shoes visible on the principal person's feet remain a possible **single candidate per pair**, can be selected, generated and kept/discarded in the existing review flow.
-4. Generated shoes appear under **Shoes** in Home/Closet, have an accurate category/color/name, can be viewed/edited/removed, and are eligible for the already-built \`footwear\` slot in Build My Look.
+3. **Outfit Photo (worn flow, only when `WARDROBE_OUTFIT=on`):** shoes visible on the principal person's feet remain a possible **single candidate per pair**, can be selected, generated and kept/discarded in the existing review flow.
+4. Generated shoes appear under **Shoes** in Home/Closet, have an accurate category/color/name, can be viewed/edited/removed, and are eligible for the already-built `footwear` slot in Build My Look.
 5. Existing source photo, owner-scoped storage, generation queue, idempotency, quality tiers, retry ceilings, scan expiration, pricing confirmation and private item URLs are reused unchanged.
 6. Basic English capture instructions and error/retake copy updated so people know how to photograph shoes.
 
@@ -59,24 +59,24 @@ The missing / unreliable portions are **upstream image capture and catalog gener
 
 | Area | Current path / fact | Implementation |
 |---|---|---|
-| Flat-lay scanner instructions | \`pipeline/prompts/stage1_detect_facts_v4.txt\` clothing-only semantics | Add \`stage1_detect_facts_v5.txt\` explicitly accepting footwear, with pair grouping, two-pairs rule, footwear-specific visible/occluded parts and useful exclusion reasons. Keep non-footwear accessory exclusions. |
-| Scanner model adapter | \`pipeline/providers/gemini.py\`: \`GeminiProvider.detect_items_with_facts\` reads v4; \`DetectionFields\` is generic | Switch to v5; retain existing \`DetectedItemWithFacts\`, \`BBox\`, \`ItemFacts\` if sufficient. Do not split a pair in post-processing. If real tests show grouping errors, add a narrowly scoped, reviewable solution, not a speculative global heuristic. |
-| Flat-lay generator | \`GeminiProvider.generate\` + \`stage4_generate_v5.txt\` | Add \`stage4_generate_footwear_v1.txt\`; dispatch by a **central shared footwear category predicate** to the footwear prompt. Keep v5 unchanged for apparel; use existing \`image_content\`, timeout, fallback, token/cost logging and retries. |
-| Worn photo detection | \`pipeline/prompts/outfit_detect_v3.txt\` includes shoes pair = one candidate | Verify whether v3 actually detects shoes in real fixtures; version to v4 **only if** findings justify prompt changes for visible feet, shoe crop and uncertainty. Preserve person/privacy exclusions. |
-| Worn photo generation | \`pipeline/outfit.py\` uses \`outfit_generate_v3.txt\` for every candidate | Add \`outfit_generate_footwear_v1.txt\` and dispatch on candidate category in \`generate_selected\` / \`generate_flatlay\` without changing the approved clothing path or new model calls. Use crop and existing optional outlined-context image where helpful. |
-| Output verification | \`pipeline/stages/stage5_verify.py\` color check + OCR note only | Preserve existing verifier but design a **shoe-specific QA gate**: verify shoe count against visible source, rough silhouette, color/pattern, distinct logo/text and pairing. Prefer a human-reviewed fixture set first; if adding automated checks, avoid unproven expensive image-model calls. Don't treat passing color distance as proof of correct shoes. |
-| Transparent cutouts | \`pipeline/stages/cutout.py\`, \`isnet-general-use\`, \`_solidify\` | Test paired-shoe gaps, shoe laces, light soles, transparent areas and thin straps; make conditional changes only if reproduced. Keep image fallback. |
-| Category / Closet | \`mobile/src/categoryGroups.ts\` already has Shoes; \`mobile/src/categories.ts\` stores model category | Add common missing shoe-category aliases as needed (e.g. \`mules\`, \`slides\`, \`clogs\`, \`flip-flops\`, \`pumps\`) with tests. Avoid a taxonomy migration. |
-| Outfit Builder | \`api/outfit_builder/taxonomy.py\` already maps core shoe types to \`footwear\` | Keep mapping in sync with frontend shoe aliases. Verify new footwear appears in output and swap candidates when structurally valid. |
-| Capture copy | \`mobile/app/(tabs)/add.tsx\`, \`mobile/src/components/home/AddToCloset.tsx\`, \`mobile/app/first-pieces/photos.tsx\`, camera hints | Update *existing* garment-photo CTA/copy to "Clothes & Shoes" or equivalent and say: "Place matching shoes together, fully in frame, with good light; one pair counts as one item." No extra screens. |
-| Legacy side views | \`mobile/src/components/ItemSheet.tsx\`, \`api/routes/v1.py\` Back/Turn, \`pipeline/turn.py\` | This MVP does not add shoe-specific Back/360. Hide or explain unsupported actions for footwear in UI; add backend eligibility checks **before** reserving credits for unsupported shoe Back/360 jobs, without breaking already-existing non-shoe flows. Any legacy stored back/turn should remain safely viewable. |
-| API, queue, billing | \`api/routes/v1.py\`: \`POST /v1/garment-scans\`, \`/.../generate\`; \`api/worker.py\` | Reuse endpoints and jobs. The scan already stores selected detections and generation reuses them. Ensure pair index counts once, owner isolation, accurate \`max_items\` and credits, and idempotent retry. Avoid migrations unless code inspection proves unavoidable. |
+| Flat-lay scanner instructions | `pipeline/prompts/stage1_detect_facts_v4.txt` clothing-only semantics | Add `stage1_detect_facts_v5.txt` explicitly accepting footwear, with pair grouping, two-pairs rule, footwear-specific visible/occluded parts and useful exclusion reasons. Keep non-footwear accessory exclusions. |
+| Scanner model adapter | `pipeline/providers/gemini.py`: `GeminiProvider.detect_items_with_facts` reads v4; `DetectionFields` is generic | Switch to v5; retain existing `DetectedItemWithFacts`, `BBox`, `ItemFacts` if sufficient. Do not split a pair in post-processing. If real tests show grouping errors, add a narrowly scoped, reviewable solution, not a speculative global heuristic. |
+| Flat-lay generator | `GeminiProvider.generate` + `stage4_generate_v5.txt` | Add `stage4_generate_footwear_v1.txt`; dispatch by a **central shared footwear category predicate** to the footwear prompt. Keep v5 unchanged for apparel; use existing `image_content`, timeout, fallback, token/cost logging and retries. |
+| Worn photo detection | `pipeline/prompts/outfit_detect_v3.txt` includes shoes pair = one candidate | Verify whether v3 actually detects shoes in real fixtures; version to v4 **only if** findings justify prompt changes for visible feet, shoe crop and uncertainty. Preserve person/privacy exclusions. |
+| Worn photo generation | `pipeline/outfit.py` uses `outfit_generate_v3.txt` for every candidate | Add `outfit_generate_footwear_v1.txt` and dispatch on candidate category in `generate_selected` / `generate_flatlay` without changing the approved clothing path or new model calls. Use crop and existing optional outlined-context image where helpful. |
+| Output verification | `pipeline/stages/stage5_verify.py` color check + OCR note only | Preserve existing verifier but design a **shoe-specific QA gate**: verify shoe count against visible source, rough silhouette, color/pattern, distinct logo/text and pairing. Prefer a human-reviewed fixture set first; if adding automated checks, avoid unproven expensive image-model calls. Don't treat passing color distance as proof of correct shoes. |
+| Transparent cutouts | `pipeline/stages/cutout.py`, `isnet-general-use`, `_solidify` | Test paired-shoe gaps, shoe laces, light soles, transparent areas and thin straps; make conditional changes only if reproduced. Keep image fallback. |
+| Category / Closet | `mobile/src/categoryGroups.ts` already has Shoes; `mobile/src/categories.ts` stores model category | Add common missing shoe-category aliases as needed (e.g. `mules`, `slides`, `clogs`, `flip-flops`, `pumps`) with tests. Avoid a taxonomy migration. |
+| Outfit Builder | `api/outfit_builder/taxonomy.py` already maps core shoe types to `footwear` | Keep mapping in sync with frontend shoe aliases. Verify new footwear appears in output and swap candidates when structurally valid. |
+| Capture copy | `mobile/app/(tabs)/add.tsx`, `mobile/src/components/home/AddToCloset.tsx`, `mobile/app/first-pieces/photos.tsx`, camera hints | Update *existing* garment-photo CTA/copy to "Clothes & Shoes" or equivalent and say: "Place matching shoes together, fully in frame, with good light; one pair counts as one item." No extra screens. |
+| Legacy side views | `mobile/src/components/ItemSheet.tsx`, `api/routes/v1.py` Back/Turn, `pipeline/turn.py` | This MVP does not add shoe-specific Back/360. Hide or explain unsupported actions for footwear in UI; add backend eligibility checks **before** reserving credits for unsupported shoe Back/360 jobs, without breaking already-existing non-shoe flows. Any legacy stored back/turn should remain safely viewable. |
+| API, queue, billing | `api/routes/v1.py`: `POST /v1/garment-scans`, `/.../generate`; `api/worker.py` | Reuse endpoints and jobs. The scan already stores selected detections and generation reuses them. Ensure pair index counts once, owner isolation, accurate `max_items` and credits, and idempotent retry. Avoid migrations unless code inspection proves unavoidable. |
 
 ### Suggested stable category recognition
-Use a narrow shared predicate such as \`is_footwear(category)\` with exact tokens/aliases, not substring \`"shoe" in category\` or a vague "accessory" classifier. Include common types: sneaker/trainer, boot, sandal, loafer, heel/pump, flat, slipper, mule, slide, clog, flip-flop, dress shoe, hiking shoe. Respect the actual model category vocabulary and keep mobile/backend classification aligned. \`footwear\` is a type/slot, not a new mandatory data field.
+Use a narrow shared predicate such as `is_footwear(category)` with exact tokens/aliases, not substring `"shoe" in category` or a vague "accessory" classifier. Include common types: sneaker/trainer, boot, sandal, loafer, heel/pump, flat, slipper, mule, slide, clog, flip-flop, dress shoe, hiking shoe. Respect the actual model category vocabulary and keep mobile/backend classification aligned. `footwear` is a type/slot, not a new mandatory data field.
 
 ### Note on flags and serving
-Do not require an additional beta feature flag unless strictly necessary. The owner's first-five beta uses **FastAPI and AI Worker on their Mac behind Cloudflare Tunnel**, Supabase for user data. Do not migrate the backend to cloud compute, deploy anything, restart the live Mac service, switch \`WARDROBE_BILLING\` or enable \`WARDROBE_OUTFIT\` without explicit owner approval.
+Do not require an additional beta feature flag unless strictly necessary. The owner's first-five beta uses **FastAPI and AI Worker on their Mac behind Cloudflare Tunnel**, Supabase for user data. Do not migrate the backend to cloud compute, deploy anything, restart the live Mac service, switch `WARDROBE_BILLING` or enable `WARDROBE_OUTFIT` without explicit owner approval.
 
 ## 4. Suggested footwear-aware prompt requirements
 
@@ -117,7 +117,7 @@ Use synthetic or owner-consented footwear photos, never private tester photos in
 | SH11 | Wrongly paired / mismatched shoes in same photo | Do not claim they are a matching pair or charge one pair incorrectly |
 | SH12 | Non-shoe accessories (bag/sunglasses) | Still excluded from *Garment Photo* flow |
 | SH13 | First 3 Pieces: one shoe pair + two garments | Three logical items; round cap unaffected |
-| SH14 | New shoe in Closet / Build My Look | Classified \`Shoes\`, available in footwear slot and compatible swap |
+| SH14 | New shoe in Closet / Build My Look | Classified `Shoes`, available in footwear slot and compatible swap |
 | SH15 | Authorized user A and separate user B | No cross-user access to either shoes or images |
 | SH16 | Scan → generate retry / same idempotency key | No duplicate shoe item, second image call or second credit charge |
 | SH17 | Back or 360 attempted for footwear | Clear unsupported behavior **before** any billing, while non-shoe actions continue |
@@ -130,7 +130,7 @@ Use synthetic or owner-consented footwear photos, never private tester photos in
 - First 3 Pieces React/logic regression: a shoe pair is one pick and counts once toward five.
 - Outfit photo path: one pair of worn shoes = one candidate; branch to correct footwear generation prompt; conservative result validation.
 - Non-shoe back/360 routes still function; shoe attempts cannot create unsupported paid jobs.
-- Existing automated suites: \`PYTHONPATH=$PWD .venv/bin/pytest -q\`, \`cd mobile && npx jest && npx tsc --noEmit\`, Supabase pgTAP/integration when available.
+- Existing automated suites: `PYTHONPATH=$PWD .venv/bin/pytest -q`, `cd mobile && npx jest && npx tsc --noEmit`, Supabase pgTAP/integration when available.
 - Prompt changes MUST be evaluated on **real consented example photos**, not only mocked tests. Record prompt versions, input category, whether pair count and category are right, perceived faithfulness, latency and estimated cost; do not claim visual verification from unit tests.
 
 ### Initial release gate
@@ -138,9 +138,9 @@ All ownership, pair cardinality, idempotency and billing tests **must pass**. Ma
 
 ## 6. Operational and analytics safeguards
 
-- Existing free scanning and server price confirmation apply to footwear. The front generation price is the current \`garment\` action price **per selected shoe pair or single shoe item**, not per physical left/right shoe.
-- Keep \`GARMENT_SCAN_PICKS_MAX\`, First 3 Pieces five-item cap, worker concurrency, model-call timeouts, retry ceiling, daily spend caps and bill/refund behavior unchanged.
-- Reuse \`api/activity.py\` event allow-list; a modest aggregated \`item_kind=footwear\` breakdown may be useful **only if** updated on both app and server, privacy policy and reporting. Do not add personal brand, images, free text or source photo to logs or analytics.
+- Existing free scanning and server price confirmation apply to footwear. The front generation price is the current `garment` action price **per selected shoe pair or single shoe item**, not per physical left/right shoe.
+- Keep `GARMENT_SCAN_PICKS_MAX`, First 3 Pieces five-item cap, worker concurrency, model-call timeouts, retry ceiling, daily spend caps and bill/refund behavior unchanged.
+- Reuse `api/activity.py` event allow-list; a modest aggregated `item_kind=footwear` breakdown may be useful **only if** updated on both app and server, privacy policy and reporting. Do not add personal brand, images, free text or source photo to logs or analytics.
 - Compare footwear-specific failure rate, generation duration, estimated Gemini cost per usable shoe catalog item, quality complaints, retake rate and the rate at which shoes become part of user-generated looks.
 - Note: existing color/OCR verification is insufficient as proof of shoe-fidelity. Do not label every pass "accurate" automatically.
 
@@ -148,8 +148,8 @@ All ownership, pair cardinality, idempotency and billing tests **must pass**. Ma
 
 > **START IMPLEMENTING FOOTWEAR SUPPORT IN KIPS — NOT JUST PLANNING**
 >
-> Pull and inspect the latest \`main\` of \`RoiSafran9/digital-wardrobe\`, run \`git status\` first, and read \`AGENTS.md\`, \`CLAUDE.md\`, \`README.md\`, \`PRODUCT.md\`, \`DESIGN.md\` and the current architecture/PRD. Read this full file:
-> \`docs/features/footwear-import/01-FOOTWEAR-SCAN-CATALOG-MVP.md\`.
+> Pull and inspect the latest `main` of `RoiSafran9/digital-wardrobe`, run `git status` first, and read `AGENTS.md`, `CLAUDE.md`, `README.md`, `PRODUCT.md`, `DESIGN.md` and the current architecture/PRD. Read this full file:
+> `docs/features/footwear-import/01-FOOTWEAR-SCAN-CATALOG-MVP.md`.
 >
 > **Goal:** support footwear (single shoe and matching pairs) through KIPS's existing Garment Photo, First 3 Pieces, and — when enabled — Outfit Photo import flows, all the way from scan to faithful catalog image, owned Closet entry and Build My Look footwear use. A matching pair must be ONE item, ONE selection, ONE generation and ONE user-priced front action. A single visible shoe must NOT be turned into a fabricated pair.
 >
@@ -164,7 +164,7 @@ All ownership, pair cardinality, idempotency and billing tests **must pass**. Ma
 > 7. Execute available test/type checks; document all tests you could not run and prepare **real-photo manual QA instructions**. Do not falsely claim that you inspected actual shoe photos unless you did.
 > 8. Update code-related documentation and produce an implementation summary with paths changed, prompts versioned, test results, costs and limitations.
 >
-> **Git:** Work on a dedicated branch (coordinate with ongoing beta observability work; don't overwrite it) and open a PR to \`main\`. Do not merge until reviewed.
+> **Git:** Work on a dedicated branch (coordinate with ongoing beta observability work; don't overwrite it) and open a PR to `main`. Do not merge until reviewed.
 >
 > **Infrastructure:** FastAPI and AI Worker stay on the owner's Mac behind Cloudflare Tunnel; Supabase remains as is. No cloud migration, new vendor, deployment, live server restart, production config edits, new payment behavior or activation of feature flags without explicit approval.
 >

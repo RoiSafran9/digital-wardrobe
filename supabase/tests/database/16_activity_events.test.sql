@@ -16,7 +16,8 @@ select throws_ok($$insert into public.activity_events (user_id, event) values ('
   '42501', null, 'the app cannot write events');
 reset role;
 
-select is((select source from public.activity_events limit 1), 'app', 'existing rows count as app events');
+select is((select source from public.activity_events where user_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' limit 1), 'app',
+  'existing rows count as app events');
 select throws_ok($$insert into public.activity_events (user_id, event) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'popup_shown')$$,
   '23505', null, 'a milestone is recorded once per account');
 select lives_ok($$insert into public.activity_events (user_id, event, source) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'item_edited', 'server')$$,
@@ -33,7 +34,8 @@ select throws_ok($$insert into public.activity_events (user_id, event, client_ev
 select throws_ok($$insert into public.activity_events (user_id, event, props) values
   ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'app_opened', '[1]')$$, '23514', null, 'props are an object');
 delete from auth.users where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-select is_empty($$select 1 from public.activity_events$$, 'deleting the account removes its events');
+select is_empty($$select 1 from public.activity_events where user_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'$$,
+  'deleting the account removes its events');
 
 select * from finish();
 rollback;

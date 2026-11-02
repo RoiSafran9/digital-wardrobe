@@ -188,6 +188,7 @@ Segment 8 · input/search 12 · 48pt button 14 · 54pt primary 16 · grouped lis
 - **Toast:** top-center ink pill, 14/600, 2.6s.
 - **Segmented:** fill track, card segment, haptic selection.
 - **Chip:** 34pt capsule; selected = ink fill with inverted text; `outlined` for Home's category pills.
+- **OptionTile** (`mobile/src/components/outfitBuilder/OptionTile.tsx`): Build My Look's answers, three per row, 78pt tall, radius 18, fill background; a 24pt semibold outline SF Symbol (Colors: three overlapping 20pt swatches) over a 15/500 label. Selected = ink fill with inverted content; the icon pops from 80% with a light spring (skipped under Reduce Motion).
 - **Swatch:** 28pt circle; selected = double ring (background gap + 1.5pt ink).
 - **GroupedList / Row:** eyebrow header, card with hairline-divided rows, chevron or value accessory.
 - **ProgressBar:** rounded bar on a fill track; amber when warning.

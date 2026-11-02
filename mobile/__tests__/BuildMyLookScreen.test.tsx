@@ -3,6 +3,9 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import BuildMyLookScreen from "../app/build-my-look/index";
 import { getItems, getOutfitSuggestions, getSwapOptions } from "../src/api/client";
 import type { ClosetItem } from "../src/api/types";
+import {
+  COLOR_PREF_OPTIONS, OCCASION_OPTIONS, STYLE_OPTIONS, VIBE_OPTIONS, WEATHER_OPTIONS,
+} from "../src/outfitBuilder/filters";
 
 jest.mock("../src/api/client");
 const mockPush = jest.fn();
@@ -58,6 +61,19 @@ test("choosing a filter chip sends it with the request", async () => {
   fireEvent.press(screen.getByRole("button", { name: "Generate Looks" }));
   await waitFor(() => expect(getOutfitSuggestions).toHaveBeenCalledWith(
     expect.objectContaining({ occasion: "work" })));
+});
+
+test("every answer is a tile with an icon or swatches, and tapping one selects it", async () => {
+  (getItems as jest.Mock).mockResolvedValue({ items: [SHIRT, CHINOS] });
+  render(<BuildMyLookScreen />);
+  await screen.findByText("Generate Looks");
+  for (const option of [...OCCASION_OPTIONS, ...STYLE_OPTIONS, ...VIBE_OPTIONS, ...WEATHER_OPTIONS, ...COLOR_PREF_OPTIONS]) {
+    expect("icon" in option || option.swatches.length > 0).toBe(true);
+  }
+  const cold = screen.getByRole("button", { name: "Cold" });
+  expect(cold.props.accessibilityState).toEqual({ selected: false });
+  fireEvent.press(cold);
+  expect(screen.getByRole("button", { name: "Cold" }).props.accessibilityState).toEqual({ selected: true });
 });
 
 test("no valid look shows the server's own limitation and a way back to the form", async () => {

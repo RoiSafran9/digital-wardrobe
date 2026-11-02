@@ -1,7 +1,7 @@
 import React from "react";
 import type { ColorValue } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SymbolView } from "expo-symbols";
+import { SymbolView, type SymbolWeight } from "expo-symbols";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 // SF Symbols on iOS (they match the system type and weight); Ionicons only as fallback.
@@ -37,16 +37,38 @@ const ICONS = {
   person2: { sf: "figure.stand", ion: "body-outline" },
   arrowRight: { sf: "arrow.right", ion: "arrow-forward" },
   photos: { sf: "photo.on.rectangle", ion: "images-outline" },
+  // Build My Look's question options.
+  shuffle: { sf: "shuffle", ion: "shuffle-outline" },
+  coffee: { sf: "cup.and.saucer", ion: "cafe-outline" },
+  briefcase: { sf: "briefcase", ion: "briefcase-outline" },
+  heart: { sf: "heart", ion: "heart-outline" },
+  wineglass: { sf: "wineglass", ion: "wine-outline" },
+  crown: { sf: "crown", ion: "ribbon-outline" },
+  sparkle: { sf: "sparkle", ion: "diamond-outline" },
+  sneaker: { sf: "shoe", ion: "footsteps-outline" },
+  run: { sf: "figure.run", ion: "walk-outline" },
+  leaf: { sf: "leaf", ion: "leaf-outline" },
+  star: { sf: "star", ion: "star-outline" },
+  circle: { sf: "circle", ion: "ellipse-outline" },
+  bolt: { sf: "bolt", ion: "flash-outline" },
+  hot: { sf: "thermometer.sun", ion: "sunny" },
+  sun: { sf: "sun.max", ion: "sunny-outline" },
+  cloudSun: { sf: "cloud.sun", ion: "partly-sunny-outline" },
+  snowflake: { sf: "snowflake", ion: "snow-outline" },
+  rain: { sf: "cloud.rain", ion: "rainy-outline" },
 } as const satisfies Record<string, { sf: SFSymbol; ion: keyof typeof Ionicons.glyphMap }>;
 
 export type IconName = keyof typeof ICONS;
 
-export function Icon({ name, size, color }: { name: IconName; size: number; color: ColorValue }) {
+export function Icon({ name, size, color, weight }: {
+  name: IconName; size: number; color: ColorValue; weight?: SymbolWeight;
+}) {
   const { sf, ion } = ICONS[name];
   return (
     <SymbolView
       name={{ ios: sf }}
       size={size}
+      weight={weight}
       tintColor={color}
       fallback={<Ionicons name={ion} size={size} color={color} />}
     />

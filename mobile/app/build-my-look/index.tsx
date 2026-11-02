@@ -1,37 +1,43 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { getItems, getOutfitSuggestions, getSwapOptions } from "../../src/api/client";
 import type { ClosetItem, OutfitFilters, OutfitLook, OutfitSlot, SwapAlternative } from "../../src/api/types";
 import { GarmentImage } from "../../src/components/GarmentImage";
 import { LookCard } from "../../src/components/outfitBuilder/LookCard";
+import { OptionTile } from "../../src/components/outfitBuilder/OptionTile";
 import { SwapSheet } from "../../src/components/outfitBuilder/SwapSheet";
 import { garmentName } from "../../src/garmentName";
 import {
   COLOR_PREF_OPTIONS, DEFAULT_FILTERS, OCCASION_OPTIONS, SLOT_LABELS, STYLE_OPTIONS, VIBE_OPTIONS,
-  WEATHER_OPTIONS, orderedSlots,
+  WEATHER_OPTIONS, orderedSlots, type Option,
 } from "../../src/outfitBuilder/filters";
 import { track, useScreenViewed } from "../../src/activity/track";
 import { colors, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
-import { BackButton, Button, Chip } from "../../src/ui";
+import { BackButton, Button } from "../../src/ui";
 
 // The server takes at most 30 shown looks (api/schemas.OutfitSuggestionsIn); keep the latest.
 const MAX_SHOWN = 30;
 
 type Phase = "loading_closet" | "closet_empty" | "closet_error" | "form" | "generating" | "no_match" | "results" | "detail";
 
+const TILE_GAP = 8;
+
+// A question as a three-column grid of tiles, so every answer is visible at once.
 function FilterGroup<T extends string>({ label, options, value, onChange }: {
-  label: string; options: { value: T; label: string }[]; value: T; onChange: (v: T) => void;
+  label: string; options: Option<T>[]; value: T; onChange: (v: T) => void;
 }) {
+  const { width } = useWindowDimensions();
+  const tileWidth = Math.floor((width - 40 - TILE_GAP * 2) / 3);
   return (
     <View style={{ gap: 8 }}>
       <Text style={{ ...type.eyebrow, color: colors.secondaryLabel }}>{label}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: TILE_GAP }}>
         {options.map((o) => (
-          <Chip key={o.value} label={o.label} selected={o.value === value} onPress={() => onChange(o.value)} />
+          <OptionTile key={o.value} option={o} width={tileWidth} selected={o.value === value} onPress={() => onChange(o.value)} />
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 }

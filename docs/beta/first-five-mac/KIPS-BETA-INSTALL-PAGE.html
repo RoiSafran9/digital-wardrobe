@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<title>KIPS — הצטרפות לבטא</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#1d2430;background:#f7f8fa}
+*{box-sizing:border-box} body{margin:0;padding:24px} main{max-width:570px;margin:26px auto} .brand{font-size:14px;letter-spacing:1.5px;font-weight:800;margin-bottom:28px;color:#4560a3}h1{font-size:clamp(28px,6vw,41px);line-height:1.19;letter-spacing:-.6px;margin:0 0 14px}p{line-height:1.8;color:#4c5263} .panel{border:1px solid #e2e6ed;background:white;padding:22px;border-radius:22px;margin:20px 0} .step{display:flex;gap:12px;margin:17px 0}.n{flex:0 0 30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#eaf0ff;color:#173a86;font-weight:700}.step-body{flex:1}.step strong{display:block;margin-bottom:5px}.step p{margin:0}.action{display:block;text-align:center;border-radius:12px;padding:13px 16px;text-decoration:none;font-weight:700;margin:10px 0}.primary{background:#244bd0;color:#fff}.secondary{border:1px solid #a8b9d6;color:#2547a7}.disabled{background:#dfe3eb;color:#677084;cursor:not-allowed}.small{font-size:13px;color:#6f7684}.notice{border-right:3px solid #b17924;padding-right:14px;margin-top:18px}footer{margin:30px 0;font-size:13px;color:#616a77}footer a{color:#2547a7}code{direction:ltr;unicode-bidi:embed}
+</style>
+</head>
+<body><main>
+<div class="brand">KIPS / FRIENDS & FAMILY BETA</div>
+<h1>כל הבגדים שלך.<br>בארון דיגיטלי אחד.</h1>
+<p>הופכים תמונות של בגדים לארון דיגיטלי, ומקבלים רעיונות ללוקים מהפריטים שבאמת יש לך. זו גרסת ניסוי ראשונית לחמישה חברים. השירות עלול להיות לא זמין לפרקי זמן קצרים — אם זה קורה, אפשר פשוט לדווח לנו.</p>
+<div class="panel">
+<h2>הורדה לאייפון — פשוט ב־2 צעדים</h2>
+<div class="step"><div class="n">1</div><div class="step-body"><strong>מתקינים TestFlight של Apple</strong><p>אפליקציית הבדיקות הרשמית והחינמית של Apple.</p><a class="action secondary" href="https://apps.apple.com/us/app/testflight/id899247664">הורדת TestFlight מה־App Store</a></div></div>
+<div class="step"><div class="n">2</div><div class="step-body"><strong>מצטרפים ל־KIPS</strong><p>פותחים באייפון את ההזמנה, לוחצים Accept ואז Install.</p><a id="join" class="action disabled" aria-disabled="true">קישור ההזמנה עדיין לא הוגדר</a></div></div>
+<p class="small notice">מפעיל הבטא: יש להציב את קישור ההזמנה האמיתי מ־App Store Connect ב־<code>KIPS_BETA_URL</code> בתחתית הקובץ לפני פרסום הדף. אל תשלח את הדף הזה עד שהקישור והבילד נבדקו.</p>
+</div>
+<div class="panel">
+<h2>מה עושים אחרי ההתקנה?</h2>
+<p>נכנסים עם כתובת מייל ומזינים את הקוד שמגיע למייל. מצלמים <strong>רק שלושה פריטים</strong> באור טוב — אפשר כמה יחד — ורואים איך הם הופכים לארון דיגיטלי. לא צריך לצלם את כל הארון.</p>
+<p>אם משהו נתקע או שהשרת לא זמין כרגע, לא צריך לנסות שוב ושוב. אפשר לענות להודעה שקיבלת או לפנות לתמיכה. אין לשלוח קוד התחברות או פרטים רגישים.</p>
+</div>
+<footer><a href="https://kipscloset.com/privacy/">פרטיות</a> · <a href="mailto:support@kipscloset.com">תמיכה</a> · זוהי גרסת בטא מוגבלת; יתכנו תקלות וזמני השבתה</footer>
+</main>
+<script>
+// Replace this empty string with the real URL from the KIPS external TestFlight group only after approval.
+const KIPS_BETA_URL = "";
+if (/^https:\/\/testflight\.apple\.com\/join\/[A-Za-z0-9_-]+$/.test(KIPS_BETA_URL)) {
+  const a = document.getElementById("join");
+  a.href = KIPS_BETA_URL; a.className = "action primary"; a.textContent = "התקנת KIPS דרך TestFlight"; a.removeAttribute("aria-disabled");
+}
+</script>
+</body></html>

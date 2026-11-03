@@ -103,7 +103,8 @@ SH13–SH17 are app and server flows (First 3 Pieces, Closet/Build My Look, two 
   - **Inconclusive**, tested on SH01, SH02, SH03 and SH06 only. SH01 came out closer to the photo. SH02 still had invented stripes and a logo. SH03 still had Chelsea panels, plus an invented zip.
   - Prompt wording alone doesn't stop the model drawing sides it never saw. The next thing to try is rendering top-down photos from directly above (no unseen sides), then a check for side marks.
 - **`outfit_detect_v4.txt`** asks for honest shoe visibility ("one shoe", `low`, or leave out a sliver), aimed at SH10. **Not run**: the API key ran out of credit (below).
-- **Neither draft is active.** The code still uses `stage4_generate_footwear_v1` and `outfit_detect_v3`, which is what this branch's tests and the results above cover.
+- **`stage4_generate_footwear_v3.txt`** is v2 with the pose rule replaced: keep the photo's camera angle, so a photo from above becomes a catalog shot from directly above and no unseen side is in view; a side or three-quarter photo keeps that angle; never turn the shoes to show a side the photo doesn't. **Not run yet** (API key out of credit). Planned run: SH01, SH02, SH03, SH06 and SH07 (SH07 as the side-view check).
+- **No draft is active.** The code still uses `stage4_generate_footwear_v1` and `outfit_detect_v3`, which is what this branch's tests and the results above cover.
 
 **API key out of credit:** during the v2 rerun Gemini answered `402 RESOURCE_EXHAUSTED` ("prepayment credits are depleted"). The server reads its key from the same `.env`, so live generation stops until the AI Studio prepayment is topped up.
 
@@ -111,5 +112,5 @@ SH13–SH17 are app and server flows (First 3 Pieces, Closet/Build My Look, two 
 
 **Not ready for testers.** Counting (one pair = one item, singles stay single, two pairs, mismatched shoes, mixed photos, accessories) passed on every stand-in. Fidelity failed in 2 of 12 shoe images: invented side branding (SH02) and invented boot construction (SH03). Honesty failed in 1 of 2 worn photos (SH10). Next steps:
 1. Top up the Gemini prepayment.
-2. Try the next fix: top-down rendering for top-down photos, and `outfit_detect_v4` for SH10.
+2. Run the next fix: `stage4_generate_footwear_v3` (keep the photo's camera angle) and `outfit_detect_v4` for SH10.
 3. Rerun this matrix on the owner's **real** shoe photos.

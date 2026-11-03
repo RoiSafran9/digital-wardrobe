@@ -64,3 +64,17 @@ Also try a few shoe types the predicate covers (loafers, heels/pumps, slippers, 
 - Pair/single comes from the detection's own `visible_parts` words. If the model omits them the count is "unknown": the prompt then asks for only the shoes visible and the pick screen shows no pair/single label.
 - The cutout (`isnet-general-use`) was not tuned for shoes; gaps between a pair, laces and white soles are untested on real photos.
 - Back and 360 are refused for shoes (409, before any hold). Shoes saved before this change with a back or 360 keep showing them.
+
+## Results
+
+### 2026-11-03 — SH18 detection regression, v4 vs v5 (clothes only)
+
+- **Input:** the 10 front crops in the owner's local `runs/` (5 t-shirts, 2 shorts, jeans, pants, a jacket; some crops show the edge of a neighbouring piece). Local mode keeps only crops, not the original photos, so these are a stand-in for the original garment photos. There are no shoes in `runs/`.
+- **Method:** the same crop through `stage1_detect_facts_v4.txt` and then `v5`, vision calls only (`gemini-3.1-flash-lite`), no image generation. Script and raw output stayed in the session scratchpad, not in Git.
+- **Result:** 9/10 crops gave the same included pieces and categories under v4 and v5. The tenth (a shorts crop with a cut-off t-shirt and trousers at its edges) changed between runs **under v4 alone** too: over 4 repeats, v4 gave 1 or 3 pieces and called the trousers "jeans" or "pants", and v5 did the same. That is model variance on edge-cut neighbours, not a v5 change.
+- **Cost / latency:** v5 sends about 400 more input tokens per scan (2,033 vs 1,634 on average; about $0.00004 per scan) and took the same time (3.5 s vs 3.9 s on average). 26 calls in total, about $0.037.
+- **Not covered:** full multi-piece original photos and generation quality (v5 changes detection only; the clothing image prompt is the same file as before).
+
+### Still open
+
+SH01–SH17 need real shoe photos; none have been run yet.

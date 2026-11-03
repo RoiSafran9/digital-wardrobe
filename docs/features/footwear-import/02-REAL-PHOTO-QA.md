@@ -75,6 +75,41 @@ Also try a few shoe types the predicate covers (loafers, heels/pumps, slippers, 
 - **Cost / latency:** v5 sends about 400 more input tokens per scan (2,033 vs 1,634 on average; about $0.00004 per scan) and took the same time (3.5 s vs 3.9 s on average). 26 calls in total, about $0.037.
 - **Not covered:** full multi-piece original photos and generation quality (v5 changes detection only; the clothing image prompt is the same file as before).
 
-### Still open
+### 2026-11-03 — AI-made stand-in photos (not real shoes)
 
-SH01–SH17 need real shoe photos; none have been run yet.
+**What this is and isn't:** 12 photo-like images made with `gemini-2.5-flash-image` from text descriptions (10 laid out, 2 worn). They test counting, prompt routing and obvious invention. They **cannot** show that a real owned shoe comes out faithfully, so the release gate still needs real photos. Images, scripts and outputs stayed in the session scratchpad, not in Git. Flat photos ran through `cli.py` (detection v5 → `stage4_generate_footwear_v1` / `stage4_generate_v5`); worn photos through `pipeline/outfit.py` (`outfit_detect_v3` → `outfit_generate_footwear_v1`), with only the shoe candidates generated.
+
+| ID | Pieces found | Count in image | Verdict |
+|---|---|---|---|
+| SH01 pair of white sneakers | 1, `pair (both shoes)` | 2 | **Pass.** Same canvas sneakers, white sole, laces |
+| SH02 one navy sneaker (top-down) | 1, `single shoe` | 1 | **Fail (fidelity).** No invented partner, but brand-like crossing **side stripes and a logo were invented** on sides the photo never showed. White-background image small (35% of a tall canvas); the cutout is fine |
+| SH03 black ankle boots + tan loafers | 2 pairs (not 4) | 2 + 2 | Count **pass**. Loafers **pass**. Boots **fail (fidelity)**: drawn as Chelsea boots with **elastic side panels** the top-down photo doesn't show |
+| SH04 t-shirt + jeans + sneakers | 3 (t-shirt, jeans, sneakers pair) | 2 shoes | **Pass**, red/blue sole stripes kept. Clothes still on the v5 garment prompt |
+| SH05 green sneakers "cut by edge" | 1 pair | 2 | **Pass**, but the stand-in didn't actually cut the shoe at the edge, so the edge case is **not tested** |
+| SH06 black derby shoes | 1 pair | 2 | **Pass** |
+| SH07 work boots, one on its side | 1 pair | 2 | **Pass**: lug sole, laces, creases kept; both drawn standing |
+| SH08 strappy sandals | 1 pair | 2 | **Pass**: crossed straps and buckles kept; slightly lighter tan |
+| SH09 worn, full length | hoodie, trousers, **shoes** (`both shoes`) | 2 | **Pass**: same white leather sneakers, no feet, socks or trouser hems |
+| SH10 worn, shoes cut off (only the top of one shoe shows) | **shoes**, visibility `full`, `both shoes` | 2 | **Fail (honesty).** Detection overclaimed; a whole pair of brown derbies was invented |
+| SH11 red high-top + brown loafer | 2 single shoes (not a pair) | 1 + 1 | **Pass**: no partner invented for either |
+| SH12 shirt + bag + sunglasses | 1 (shirt) | — | **Pass**: bag and sunglasses excluded |
+
+SH13–SH17 are app and server flows (First 3 Pieces, Closet/Build My Look, two accounts, retries, Back/360). The automated tests on this branch cover them; they still need a quick look on the phone.
+
+**Cost and latency:** 10 detections ($0.013, about 3.4 s each); 12 shoe images ($0.47) and 3 clothes images ($0.12), about 11–12 s each, all passing on the first or second attempt; 2 outfit scans and 2 worn shoe images (about $0.08). Including the stand-ins themselves and SH18, this QA spent about **$1.40**.
+
+**Prompt fix attempted:** two draft prompts, both now in the repo.
+- **`stage4_generate_footwear_v2.txt`** picks a high camera angle from above for top-down photos, and keeps unseen sides plain with no stripes, logos or panels.
+  - **Inconclusive**, tested on SH01, SH02, SH03 and SH06 only. SH01 came out closer to the photo. SH02 still had invented stripes and a logo. SH03 still had Chelsea panels, plus an invented zip.
+  - Prompt wording alone doesn't stop the model drawing sides it never saw. The next thing to try is rendering top-down photos from directly above (no unseen sides), then a check for side marks.
+- **`outfit_detect_v4.txt`** asks for honest shoe visibility ("one shoe", `low`, or leave out a sliver), aimed at SH10. **Not run**: the API key ran out of credit (below).
+- **Neither draft is active.** The code still uses `stage4_generate_footwear_v1` and `outfit_detect_v3`, which is what this branch's tests and the results above cover.
+
+**API key out of credit:** during the v2 rerun Gemini answered `402 RESOURCE_EXHAUSTED` ("prepayment credits are depleted"). The server reads its key from the same `.env`, so live generation stops until the AI Studio prepayment is topped up.
+
+### Gate status
+
+**Not ready for testers.** Counting (one pair = one item, singles stay single, two pairs, mismatched shoes, mixed photos, accessories) passed on every stand-in. Fidelity failed in 2 of 12 shoe images: invented side branding (SH02) and invented boot construction (SH03). Honesty failed in 1 of 2 worn photos (SH10). Next steps:
+1. Top up the Gemini prepayment.
+2. Try the next fix: top-down rendering for top-down photos, and `outfit_detect_v4` for SH10.
+3. Rerun this matrix on the owner's **real** shoe photos.

@@ -22,34 +22,34 @@ function renderScreen(value: Partial<CreditsValue>) {
 
 beforeEach(async () => { await AsyncStorage.clear(); mockReplace.mockClear(); });
 
-test("shows the server's available balance, never a fixed number", () => {
-  renderScreen({ credits: credits(37) });
+test("shows the server's available balance, never a fixed number", async () => {
+  await renderScreen({ credits: credits(37) });
   expect(screen.getByText("37")).toBeTruthy();
   expect(screen.queryByText("25")).toBeNull();
   expect(screen.getByText("A welcome gift")).toBeTruthy();
   expect(screen.getByText(/covers about 37 garments/)).toBeTruthy();
 });
 
-test("price chips come from the server prices", () => {
-  renderScreen({ prices: { garment: 2, turn: 5 } });
+test("price chips come from the server prices", async () => {
+  await renderScreen({ prices: { garment: 2, turn: 5 } });
   expect(screen.getByText("Front · 2")).toBeTruthy();
   expect(screen.getByText("360° · 5")).toBeTruthy();
   expect(screen.queryByText(/Back ·/)).toBeNull();
 });
 
 test("a new closet continues into First 3 Pieces; Explore first opens Home", async () => {
-  renderScreen({});
+  await renderScreen({});
   await act(async () => {});
-  fireEvent.press(screen.getByRole("button", { name: "Add Your First 3 Pieces" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Add Your First 3 Pieces" }));
   expect(mockReplace).toHaveBeenCalledWith({ pathname: "/first-pieces", params: { entry: "starter" } });
-  fireEvent.press(screen.getByRole("button", { name: "Explore first" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Explore first" }));
   expect(mockReplace).toHaveBeenCalledWith("/");
 });
 
 test("an account that already has pieces (a new device) goes to Add instead", async () => {
   mockGetItems.mockResolvedValueOnce({ items: [{ item_id: "i1" }] });
-  renderScreen({});
-  fireEvent.press(await screen.findByRole("button", { name: "Add Clothes" }));
+  await renderScreen({});
+  await fireEvent.press(await screen.findByRole("button", { name: "Add Clothes" }));
   expect(mockReplace).toHaveBeenCalledWith("/add");
   expect(screen.queryByRole("button", { name: "Add Your First 3 Pieces" })).toBeNull();
 });
@@ -71,35 +71,35 @@ function Harness({ billing, value, show, fresh = true }: { billing: boolean; val
 
 test("First 3 Pieces waits until the starter decision is made", async () => {
   const show = jest.fn();
-  const { rerender } = render(<OnboardingProvider><Harness billing value={null} show={show} /></OnboardingProvider>);
+  const { rerender } = await render(<OnboardingProvider><Harness billing value={null} show={show} /></OnboardingProvider>);
   await act(async () => {});
   expect(screen.getByText("deciding")).toBeTruthy();  // a fresh sign-in, credits not in yet
-  rerender(<OnboardingProvider><Harness billing={false} value={credits(37)} show={show} /></OnboardingProvider>);
+  await rerender(<OnboardingProvider><Harness billing={false} value={credits(37)} show={show} /></OnboardingProvider>);
   await waitFor(() => expect(screen.getByText("decided")).toBeTruthy());
-  screen.unmount();
-  render(<OnboardingProvider><Harness billing value={null} show={show} fresh={false} /></OnboardingProvider>);
+  await screen.unmount();
+  await render(<OnboardingProvider><Harness billing value={null} show={show} fresh={false} /></OnboardingProvider>);
   await act(async () => {});
   expect(screen.getByText("decided")).toBeTruthy();  // no fresh sign-in: nothing to decide
 });
 
 test("after a fresh sign-in the starter screen is shown once per account", async () => {
   const show = jest.fn();
-  const { rerender } = render(<OnboardingProvider><Harness billing value={null} show={show} /></OnboardingProvider>);
+  const { rerender } = await render(<OnboardingProvider><Harness billing value={null} show={show} /></OnboardingProvider>);
   expect(show).not.toHaveBeenCalled();  // waits for credits
-  rerender(<OnboardingProvider><Harness billing value={credits(37)} show={show} /></OnboardingProvider>);
+  await rerender(<OnboardingProvider><Harness billing value={credits(37)} show={show} /></OnboardingProvider>);
   await waitFor(() => expect(show).toHaveBeenCalledTimes(1));
   expect(await AsyncStorage.getItem(starterKey("u1"))).toBe("1");
 
-  screen.unmount();
+  await screen.unmount();
   const again = jest.fn();
-  render(<OnboardingProvider><Harness billing value={credits(37)} show={again} /></OnboardingProvider>);
+  await render(<OnboardingProvider><Harness billing value={credits(37)} show={again} /></OnboardingProvider>);
   await act(async () => {});
   expect(again).not.toHaveBeenCalled();
 });
 
 test("billing off: no starter screen", async () => {
   const show = jest.fn();
-  render(<OnboardingProvider><Harness billing={false} value={credits(37)} show={show} /></OnboardingProvider>);
+  await render(<OnboardingProvider><Harness billing={false} value={credits(37)} show={show} /></OnboardingProvider>);
   await act(async () => {});
   expect(show).not.toHaveBeenCalled();
   expect(await AsyncStorage.getItem(starterKey("u1"))).toBeNull();

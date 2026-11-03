@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { FlatList, RefreshControl, ScrollView, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { FlatList, RefreshControl, ScrollView, Text, TextInput, View, useWindowDimensions, type TextInputInstance } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getItems } from "../../src/api/client";
 import { Icon } from "../../src/components/Icon";
@@ -39,7 +39,7 @@ export default function ClosetScreen() {
   const [color, setColor] = useState<string>(ALL);
   const [query, setQuery] = useState("");
   const params = useLocalSearchParams<{ group?: string; category?: string; search?: string; at?: string; celebrate?: string; ids?: string; path?: string }>();
-  const searchField = useRef<TextInput>(null);
+  const searchField = useRef<TextInputInstance>(null);
   const wantsSearch = useRef(false);
   // Home's search field opens the closet ready to type (once the field is there).
   useEffect(() => { if (params.search) wantsSearch.current = true; }, [params.search, params.at]);
@@ -211,7 +211,7 @@ export default function ClosetScreen() {
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: TAB_BAR_HEIGHT + 24 }}
         columnWrapperStyle={{ gap: GAP }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.secondaryLabel} />}
-        ListEmptyComponent={emptyState}
+        ListEmptyComponent={emptyState ?? undefined}
         renderItem={({ item, index }) => {
           const name = garmentName(item);
           const firstColor = asList(item.facts.colors.value)[0];

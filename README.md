@@ -24,7 +24,7 @@ GitHub is the authoritative source for **code and project decisions**. Clothing 
 
 ## Stack
 
-- **App:** Expo SDK 57 (React Native + TypeScript, Expo Router), run in Expo Go; tests with Jest.
+- **App:** Expo SDK 58 (React Native 0.88 + TypeScript, Expo Router), run in Expo Go; tests with Jest and Testing Library 14.
 - **Accounts and data:** Supabase Auth (6-digit email code), Postgres with row level security, a private Storage bucket (`supabase/` holds migrations, pgTAP tests and the local CLI config).
 - **AI backend:** FastAPI + the Python pipeline (Gemini vision/image models, OpenCV, local rembg cutouts), with a Postgres-backed job queue and an in-process worker. Hosted on the owner's Mac for now.
 - **Distribution:** EAS Build → App Store Connect → TestFlight (bundle ID `com.roisafran.kips`). A Docker image for a cloud host is prepared, not deployed.

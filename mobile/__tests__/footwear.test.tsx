@@ -1,5 +1,4 @@
 import React from "react";
-import { Image } from "react-native";
 import { render, screen, fireEvent } from "@testing-library/react-native";
 import { ItemSheet } from "../src/components/ItemSheet";
 import { API_BASE_URL } from "../src/api/client";
@@ -70,9 +69,9 @@ const shoe: ClosetItem = {
   crop_url: "/shoe/crop.png", generated_url: "/shoe/generated.png", cutout_url: "/shoe/cutout.png", back: null,
 };
 
-test("a shoe offers no Back or 360 action and says why", () => {
+test("a shoe offers no Back or 360 action and says why", async () => {
   expect(isFootwearItem(shoe)).toBe(true);
-  render(<ItemSheet items={[shoe]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
+  await render(<ItemSheet items={[shoe]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
   expect(screen.queryByRole("button", { name: "Add Back Image" })).toBeNull();
   expect(screen.queryByRole("button", { name: /Generate 360/ })).toBeNull();
   expect(screen.queryByRole("tab", { name: "Back" })).toBeNull();
@@ -81,17 +80,17 @@ test("a shoe offers no Back or 360 action and says why", () => {
   expect(screen.getByText(/Shoes · Sneakers/)).toBeTruthy();
 });
 
-test("a back made before stays viewable on a shoe", () => {
+test("a back made before stays viewable on a shoe", async () => {
   const legacy: ClosetItem = { ...shoe, back: { generated_url: "/shoe/back.png", cutout_url: null, visible_text: "" } };
-  render(<ItemSheet items={[legacy]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
-  fireEvent.press(screen.getByRole("tab", { name: "Back" }));
-  expect(screen.UNSAFE_getAllByType(Image)[0].props.source.uri).toBe(`${API_BASE_URL}/shoe/back.png`);
+  await render(<ItemSheet items={[legacy]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
+  await fireEvent.press(screen.getByRole("tab", { name: "Back" }));
+  expect(screen.container.queryAll((n) => n.type === "Image")[0].props.source.uri).toBe(`${API_BASE_URL}/shoe/back.png`);
 });
 
-test("garments keep Back and 360", () => {
+test("garments keep Back and 360", async () => {
   const hoodie: ClosetItem = { ...shoe, facts: facts("hoodie", ["front"]) };
   expect(groupOf(hoodie)).toBe("Tops");
-  render(<ItemSheet items={[hoodie]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
+  await render(<ItemSheet items={[hoodie]} index={0} onClose={() => {}} onUpdated={() => {}} onDeleted={() => {}} />);
   expect(screen.getByRole("button", { name: "Add Back Image" })).toBeTruthy();
   expect(screen.getByRole("tab", { name: "360°" })).toBeTruthy();
   expect(screen.queryByText(NO_SIDE_VIEWS)).toBeNull();

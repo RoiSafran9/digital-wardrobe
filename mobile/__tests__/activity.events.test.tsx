@@ -15,9 +15,9 @@ function Boom(): React.ReactElement {
   throw new Error("secret text the user typed");
 }
 
-test("the error boundary reports the kind of error, never its message, and shows a way back", () => {
+test("the error boundary reports the kind of error, never its message, and shows a way back", async () => {
   jest.spyOn(console, "error").mockImplementation(() => {});
-  render(<ErrorBoundary><Boom /></ErrorBoundary>);
+  await render(<ErrorBoundary><Boom /></ErrorBoundary>);
   expect(tracked()).toEqual([["client_error", { where: "global", kind: "render" }]]);
   expect(JSON.stringify(tracked())).not.toContain("secret");
   expect(screen.getByText("Something went wrong")).toBeTruthy();
@@ -44,14 +44,14 @@ function Sheet({ onConfirm = jest.fn(), onClose = jest.fn(), action }: { onConfi
   );
 }
 
-test("the cost sheet records confirm and cancel with the action and piece count", () => {
+test("the cost sheet records confirm and cancel with the action and piece count", async () => {
   const onConfirm = jest.fn();
-  const { unmount } = render(<Sheet onConfirm={onConfirm} />);
-  fireEvent.press(screen.getByRole("button", { name: "Generate" }));
+  const { unmount } = await render(<Sheet onConfirm={onConfirm} />);
+  await fireEvent.press(screen.getByRole("button", { name: "Generate" }));
   expect(onConfirm).toHaveBeenCalled();
-  unmount();
-  render(<Sheet action="outfit" />);
-  fireEvent.press(screen.getByRole("button", { name: "Cancel" }));
+  await unmount();
+  await render(<Sheet action="outfit" />);
+  await fireEvent.press(screen.getByRole("button", { name: "Cancel" }));
   expect(tracked()).toEqual([
     ["cost_sheet", { action: "garment", choice: "confirmed", pieces: 3 }],
     ["cost_sheet", { action: "outfit", choice: "cancelled", pieces: 3 }],

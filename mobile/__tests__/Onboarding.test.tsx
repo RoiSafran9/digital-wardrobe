@@ -11,8 +11,8 @@ beforeEach(async () => { await AsyncStorage.clear(); mockReplace.mockClear(); })
 
 const renderIntro = () => render(<OnboardingProvider><IntroScreen /></OnboardingProvider>);
 
-test("the intro has three pages with the handoff titles", () => {
-  renderIntro();
+test("the intro has three pages with the handoff titles", async () => {
+  await renderIntro();
   expect(screen.getByText("Snap any garment")).toBeTruthy();
   expect(screen.getByText("Or import an outfit")).toBeTruthy();
   expect(screen.getByText("Browse what you own")).toBeTruthy();
@@ -20,17 +20,17 @@ test("the intro has three pages with the handoff titles", () => {
 });
 
 test("Skip remembers onboarding and opens Sign In", async () => {
-  renderIntro();
+  await renderIntro();
   await act(async () => fireEvent.press(screen.getByRole("button", { name: "Skip" })));
   expect(mockReplace).toHaveBeenCalledWith("/sign-in");
   expect(await AsyncStorage.getItem(SEEN_KEY)).toBe("1");
 });
 
 test("Next walks the pages and the last one continues to Sign In", async () => {
-  renderIntro();
-  fireEvent.press(screen.getByRole("button", { name: "Next" }));
+  await renderIntro();
+  await fireEvent.press(screen.getByRole("button", { name: "Next" }));
   expect(screen.getByLabelText("Page 2 of 3")).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "Next" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Next" }));
   expect(screen.getByLabelText("Page 3 of 3")).toBeTruthy();
   await act(async () => fireEvent.press(screen.getByRole("button", { name: "Continue" })));
   expect(mockReplace).toHaveBeenCalledWith("/sign-in");

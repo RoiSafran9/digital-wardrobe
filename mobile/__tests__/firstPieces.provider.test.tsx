@@ -36,10 +36,10 @@ beforeEach(async () => {
 });
 
 async function scannedRound(sizesByPhoto: number[][]) {
-  mount();
+  await mount();
   await flush();
   sizesByPhoto.forEach((sizes, i) => scanMock.mockResolvedValueOnce(scan(`s${i}`, sizes)));
-  act(() => fp.addPhotos(sizesByPhoto.map((_, i) => `file:///p${i}.jpg`)));
+  await act(() => fp.addPhotos(sizesByPhoto.map((_, i) => `file:///p${i}.jpg`)));
   await act(() => fp.scanAll());
 }
 
@@ -50,15 +50,15 @@ test("photos are scanned for free and their pieces listed, at most five picked b
   expect(fp.pieces).toHaveLength(6);
   expect(fp.selected).toEqual(["ph1:1", "ph1:2", "ph2:0", "ph2:1", "ph2:2"]);
   let allowed = true;
-  act(() => { allowed = fp.togglePiece("ph1:0"); });
+  await act(() => { allowed = fp.togglePiece("ph1:0"); });
   expect(allowed).toBe(false);
 });
 
 test("a scan refused for the hourly limit marks that photo and the rest as not checked yet", async () => {
-  mount();
+  await mount();
   await flush();
   scanMock.mockRejectedValue(new Error("Too many photo scans in the last hour — try again in a little while"));
-  act(() => fp.addPhotos(["file:///a.jpg", "file:///b.jpg", "file:///c.jpg"]));
+  await act(() => fp.addPhotos(["file:///a.jpg", "file:///b.jpg", "file:///c.jpg"]));
   await act(() => fp.scanAll());
   expect(fp.photos.every((p) => p.state === "limited")).toBe(true);
   expect(scanMock.mock.calls.length).toBeLessThanOrEqual(2);
@@ -125,7 +125,7 @@ test("after a restart, sent jobs are followed again and unsent ones sent under t
   ] }));
   pollMock.mockReturnValue(new Promise(() => {}));
   startMock.mockResolvedValue(job("job-b"));
-  mount();
+  await mount();
   await flush();
   expect(pollMock).toHaveBeenCalledWith("job-a", expect.any(Function));
   expect(startMock).toHaveBeenCalledTimes(1);
@@ -135,7 +135,7 @@ test("after a restart, sent jobs are followed again and unsent ones sent under t
 
 test("another account never sees this account's round", async () => {
   await AsyncStorage.setItem(inflightKey("u1"), JSON.stringify({ id: "r9", startedAt: 1, jobs: [] }));
-  render(<FirstPiecesProvider userId="u2"><Probe /></FirstPiecesProvider>);
+  await render(<FirstPiecesProvider userId="u2"><Probe /></FirstPiecesProvider>);
   await flush();
   expect(fp.round).toBeNull();
 });

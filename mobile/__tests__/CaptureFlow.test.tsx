@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { StyleSheet } from "react-native";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import CameraScreen from "../app/capture/camera";
 import PreviewScreen from "../app/capture/preview";
@@ -51,28 +52,28 @@ function renderWith(ui: React.ReactElement, credits: Partial<CreditsValue> = {})
 beforeEach(() => { jest.clearAllMocks(); mockParams = {}; (global as any).__cameraPermission = undefined; });
 
 describe("camera", () => {
-  test("the close button sits below the status bar and closes the camera", () => {
-    renderWith(<CameraScreen />);
-    fireEvent.press(screen.getByRole("button", { name: "Close camera" }));
+  test("the close button sits below the status bar and closes the camera", async () => {
+    await renderWith(<CameraScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Close camera" }));
     expect(mockBack).toHaveBeenCalled();
     // Even when the modal reports no safe-area inset, the controls start below the status bar.
-    const padded = screen.UNSAFE_root.findAll((n: { props: { style?: { paddingTop?: unknown } } }) => typeof n.props.style?.paddingTop === "number" && n.props.style.paddingTop >= 60);
+    const padded = screen.container.queryAll((n) => { const top = StyleSheet.flatten(n.props.style)?.paddingTop; return typeof top === "number" && top >= 60; });
     expect(padded.length).toBeGreaterThan(0);
   });
 
   test("the shutter takes the photo and opens its preview", async () => {
-    renderWith(<CameraScreen />);
+    await renderWith(<CameraScreen />);
     expect(screen.getByText("Lay pieces flat · keep pairs of shoes together")).toBeTruthy();
     await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take garment photo" })));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///camera.jpg" } });
   });
 
   test("outfit mode sends the photo to the free scan; the switch shows only when outfits are on", async () => {
-    renderWith(<CameraScreen />);
+    await renderWith(<CameraScreen />);
     expect(screen.queryByRole("tab", { name: "Outfit" })).toBeNull();
-    screen.unmount();
-    renderWith(<CameraScreen />, { outfit: true });
-    fireEvent.press(screen.getByRole("tab", { name: "Outfit" }));
+    await screen.unmount();
+    await renderWith(<CameraScreen />, { outfit: true });
+    await fireEvent.press(screen.getByRole("tab", { name: "Outfit" }));
     await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take outfit photo" })));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///camera.jpg" } });
   });
@@ -80,7 +81,7 @@ describe("camera", () => {
   test("with the camera refused it offers the photo library", async () => {
     (global as any).__cameraPermission = [{ granted: false, canAskAgain: false }, jest.fn()];
     (pickPhoto as jest.Mock).mockResolvedValue("file:///lib.jpg");
-    renderWith(<CameraScreen />);
+    await renderWith(<CameraScreen />);
     expect(screen.getByText("Camera access is off")).toBeTruthy();
     await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose Garment Photo" })));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///lib.jpg" } });
@@ -91,10 +92,10 @@ describe("preview", () => {
   test("billing off: no quote, and creating starts the job", async () => {
     mockParams = { uri: "file:///photo.jpg" };
     (postRun as jest.Mock).mockReturnValue(new Promise(() => {}));
-    renderWith(<PreviewScreen />);
+    await renderWith(<PreviewScreen />);
     await screen.findByText("Ready to create");
     expect(screen.queryByText(/credit/)).toBeNull();
-    fireEvent.press(screen.getByRole("button", { name: "Create Catalog Images" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Create Catalog Images" }));
     expect(postRun).toHaveBeenCalledWith("file:///photo.jpg", undefined, expect.any(Function));
     expect(mockReplace).toHaveBeenCalledWith("/capture/processing");
   });
@@ -102,20 +103,20 @@ describe("preview", () => {
   test("billing on: the quote follows the pieces stepper, within what the user can afford", async () => {
     mockParams = { uri: "file:///photo.jpg" };
     (postRun as jest.Mock).mockReturnValue(new Promise(() => {}));
-    renderWith(<PreviewScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(2) });
+    await renderWith(<PreviewScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(2) });
     await screen.findByText("Ready to create");
-    fireEvent.press(screen.getByRole("button", { name: "More pieces" }));
+    await fireEvent.press(screen.getByRole("button", { name: "More pieces" }));
     expect(screen.getByText("Front catalog image × 2")).toBeTruthy();
     expect(screen.getByRole("button", { name: "More pieces" })).toBeDisabled();
-    fireEvent.press(screen.getByRole("button", { name: "Generate up to 2 Items · 2 credits" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Generate up to 2 Items · 2 credits" }));
     expect(postRun).toHaveBeenCalledWith("file:///photo.jpg", 2, expect.any(Function));
   });
 
   test("without credits for even one piece it explains instead of starting", async () => {
     mockParams = { uri: "file:///photo.jpg" };
-    renderWith(<PreviewScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(0) });
+    await renderWith(<PreviewScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(0) });
     await screen.findByText("Ready to create");
-    fireEvent.press(screen.getByRole("button", { name: /Generate up to 1 Item/ }));
+    await fireEvent.press(screen.getByRole("button", { name: /Generate up to 1 Item/ }));
     expect(postRun).not.toHaveBeenCalled();
     expect(screen.getByText("Not enough credits")).toBeTruthy();
   });
@@ -123,22 +124,22 @@ describe("preview", () => {
 
 describe("processing", () => {
   test("moves to the results when the job is done", async () => {
-    renderWith(<Started result={RUN}><ProcessingScreen /></Started>);
+    await renderWith(<Started result={RUN}><ProcessingScreen /></Started>);
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/capture/results"));
   });
 
   test("a failed job pauses with Try Again, and says credits came back when billing is on", async () => {
-    renderWith(<Started error={new Error("Can't reach your wardrobe server.")}><ProcessingScreen /></Started>, { billing: true, prices: { garment: 1 }, credits: wallet(3) });
+    await renderWith(<Started error={new Error("Can't reach your wardrobe server.")}><ProcessingScreen /></Started>, { billing: true, prices: { garment: 1 }, credits: wallet(3) });
     expect(await screen.findByText("Generation paused")).toBeTruthy();
     expect(screen.getByText(/Credits for unfinished items were returned/)).toBeTruthy();
     (postRun as jest.Mock).mockReturnValue(new Promise(() => {}));
-    fireEvent.press(screen.getByRole("button", { name: "Try Again" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Try Again" }));
     expect(postRun).toHaveBeenLastCalledWith("file:///photo.jpg", 2, expect.any(Function));
   });
 
   test("a photo refused as worn offers the outfit flow with the same photo", async () => {
-    renderWith(<Started error={new Error("No garment to add: worn on body")}><ProcessingScreen /></Started>, { outfit: true });
-    fireEvent.press(await screen.findByRole("button", { name: "Try it as an outfit photo" }));
+    await renderWith(<Started error={new Error("No garment to add: worn on body")}><ProcessingScreen /></Started>, { outfit: true });
+    await fireEvent.press(await screen.findByRole("button", { name: "Try it as an outfit photo" }));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///photo.jpg" } });
   });
 });
@@ -146,9 +147,9 @@ describe("processing", () => {
 describe("results and saved", () => {
   test("deselecting a piece removes it on Add, and Saved counts what stayed", async () => {
     (deleteItem as jest.Mock).mockResolvedValue(undefined);
-    renderWith(<Started result={RUN}><ResultsScreen /><SavedScreen /></Started>, { billing: true, prices: { garment: 1 }, credits: wallet(5) });
+    await renderWith(<Started result={RUN}><ResultsScreen /><SavedScreen /></Started>, { billing: true, prices: { garment: 1 }, credits: wallet(5) });
     expect(await screen.findByText("2 pieces created")).toBeTruthy();
-    fireEvent.press(screen.getByRole("checkbox", { name: "Navy jeans" }));
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Navy jeans" }));
     expect(screen.getByText("Credits for removed pieces are not returned.")).toBeTruthy();
     await act(async () => fireEvent.press(screen.getByRole("button", { name: "Add 1 to Closet" })));
     expect(deleteItem).toHaveBeenCalledTimes(1);
@@ -158,30 +159,30 @@ describe("results and saved", () => {
   });
 
   test("Add is off when nothing is selected", async () => {
-    renderWith(<Started result={RUN}><ResultsScreen /></Started>);
+    await renderWith(<Started result={RUN}><ResultsScreen /></Started>);
     await screen.findByText("2 pieces created");
-    fireEvent.press(screen.getByRole("checkbox", { name: "Navy shirt" }));
-    fireEvent.press(screen.getByRole("checkbox", { name: "Navy jeans" }));
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Navy shirt" }));
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Navy jeans" }));
     expect(screen.getByRole("button", { name: "Add 0 to Closet" })).toBeDisabled();
   });
 
   test("a photo with nothing in it says so and offers another photo", async () => {
-    renderWith(<Started result={{ ...RUN, items: [] }}><ResultsScreen /></Started>);
+    await renderWith(<Started result={{ ...RUN, items: [] }}><ResultsScreen /></Started>);
     expect(await screen.findByText("No pieces found")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Take Another Garment Photo" })).toBeTruthy();
   });
 
   test("billing off: Saved shows no credits", async () => {
-    renderWith(<Started result={RUN}><ResultsScreen /><SavedScreen /></Started>);
+    await renderWith(<Started result={RUN}><ResultsScreen /><SavedScreen /></Started>);
     const add = await screen.findByRole("button", { name: "Add 2 to Closet" });
     await act(async () => fireEvent.press(add));
     expect(screen.getByText("2 new pieces")).toBeTruthy();
   });
 });
 
-test("the processing card shows the server's piece count when it has one", () => {
+test("the processing card shows the server's piece count when it has one", async () => {
   const { ProcessingCard, GARMENT_STAGES } = require("../src/components/capture/ProcessingCard");
-  render(<ProcessingCard photoUri="file:///p.jpg" stages={GARMENT_STAGES} startedAt={Date.now()} title="t" note="n" count={{ done: 1, total: 3 }} />);
+  await render(<ProcessingCard photoUri="file:///p.jpg" stages={GARMENT_STAGES} startedAt={Date.now()} title="t" note="n" count={{ done: 1, total: 3 }} />);
   expect(screen.getByText("2 of 3")).toBeTruthy();
 });
 
@@ -199,12 +200,12 @@ describe("preview with the free pre-scan", () => {
     mockParams = { uri: "file:///photo.jpg" };
     (scanGarments as jest.Mock).mockResolvedValueOnce(SCAN);
     (generateFromGarmentScan as jest.Mock).mockReturnValue(new Promise(() => {}));
-    renderWith(<PreviewScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(5) });
+    await renderWith(<PreviewScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(5) });
     expect(await screen.findByText("2 garments found")).toBeTruthy();
     expect(screen.getByText("Front catalog image × 2")).toBeTruthy();
-    fireEvent.press(screen.getByRole("checkbox", { name: "1, White shirt" }));
+    await fireEvent.press(screen.getByRole("checkbox", { name: "1, White shirt" }));
     expect(screen.getByText("Front catalog image × 1")).toBeTruthy();
-    fireEvent.press(screen.getByRole("button", { name: "Generate 1 Item · 1 credit" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Generate 1 Item · 1 credit" }));
     expect(generateFromGarmentScan).toHaveBeenCalledWith("gs-1", [1], 1, expect.any(Function));
     expect(mockReplace).toHaveBeenCalledWith("/capture/processing");
   });
@@ -212,8 +213,8 @@ describe("preview with the free pre-scan", () => {
   test("short of credits it says how many to leave out", async () => {
     mockParams = { uri: "file:///photo.jpg" };
     (scanGarments as jest.Mock).mockResolvedValueOnce(SCAN);
-    renderWith(<PreviewScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(1) });
-    fireEvent.press(await screen.findByRole("button", { name: "Generate 2 Items · 2 credits" }));
+    await renderWith(<PreviewScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(1) });
+    await fireEvent.press(await screen.findByRole("button", { name: "Generate 2 Items · 2 credits" }));
     expect(screen.getByText(/Leave out 1 piece/)).toBeTruthy();
     expect(generateFromGarmentScan).not.toHaveBeenCalled();
   });
@@ -221,16 +222,16 @@ describe("preview with the free pre-scan", () => {
   test("a worn photo found nothing to add and offers the outfit flow", async () => {
     mockParams = { uri: "file:///photo.jpg" };
     (scanGarments as jest.Mock).mockResolvedValueOnce({ ...SCAN, pieces: [], reason: "No garment to add: worn on body." });
-    renderWith(<PreviewScreen />, { outfit: true });
+    await renderWith(<PreviewScreen />, { outfit: true });
     expect(await screen.findByText("No pieces found")).toBeTruthy();
-    fireEvent.press(screen.getByRole("button", { name: "Try it as an outfit photo" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Try it as an outfit photo" }));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///photo.jpg", flow: "outfit" } });
   });
 
   test("if the pre-scan fails it falls back to choosing how many to create", async () => {
     mockParams = { uri: "file:///photo.jpg" };
     (scanGarments as jest.Mock).mockRejectedValueOnce(new Error("not found"));
-    renderWith(<PreviewScreen />);
+    await renderWith(<PreviewScreen />);
     expect(await screen.findByText(/choose how many to create instead/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create Catalog Images" })).toBeTruthy();
   });

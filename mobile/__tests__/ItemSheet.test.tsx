@@ -21,8 +21,8 @@ const item: ClosetItem = {
   generated_url: "/images/r/p/item_0/generated.png",
 };
 
-test("shows the item's title, tier, date, and facts", () => {
-  render(<ItemSheet items={[item]} index={0} onClose={() => {}} />);
+test("shows the item's title, tier, date, and facts", async () => {
+  await render(<ItemSheet items={[item]} index={0} onClose={() => {}} />);
   expect(screen.getByRole("header", { name: "Gray t-shirt" })).toBeTruthy();
   expect(screen.getByText("Great")).toBeTruthy();
   expect(screen.getByText("Tops · T-shirt · Added Oct 15")).toBeTruthy();
@@ -32,20 +32,20 @@ test("shows the item's title, tier, date, and facts", () => {
   expect(screen.getByText("Ribbed collar")).toBeTruthy();
 });
 
-test("hides the printed-text row when the item has no text", () => {
-  render(<ItemSheet items={[item]} index={0} onClose={() => {}} />);
+test("hides the printed-text row when the item has no text", async () => {
+  await render(<ItemSheet items={[item]} index={0} onClose={() => {}} />);
   expect(screen.queryByText("Text")).toBeNull();
 });
 
-test("the close button closes the sheet", () => {
+test("the close button closes the sheet", async () => {
   const onClose = jest.fn();
-  render(<ItemSheet items={[item]} index={0} onClose={onClose} />);
-  fireEvent.press(screen.getByLabelText("Close"));
+  await render(<ItemSheet items={[item]} index={0} onClose={onClose} />);
+  await fireEvent.press(screen.getByLabelText("Close"));
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
-test("renders nothing visible when there is no item", () => {
-  render(<ItemSheet items={[item]} index={null} onClose={() => {}} />);
+test("renders nothing visible when there is no item", async () => {
+  await render(<ItemSheet items={[item]} index={null} onClose={() => {}} />);
   expect(screen.queryByLabelText("Close")).toBeNull();
 });
 
@@ -60,39 +60,39 @@ const jacket: ClosetItem = {
   facts: { ...item.facts, category: { value: "jacket", confidence: 0.9, basis: "observed" } },
 };
 
-function swipeTo(page: number) {
+async function swipeTo(page: number) {
   const width = 400;
-  fireEvent(screen.getByTestId("item-pager"), "momentumScrollEnd", {
+  await fireEvent(screen.getByTestId("item-pager"), "momentumScrollEnd", {
     nativeEvent: { contentOffset: { x: page * width, y: 0 }, layoutMeasurement: { width, height: 800 } },
   });
 }
 
-test("opens on the tapped item and shows its position", () => {
-  render(<ItemSheet items={[item, shorts, jacket]} index={1} onClose={() => {}} />);
+test("opens on the tapped item and shows its position", async () => {
+  await render(<ItemSheet items={[item, shorts, jacket]} index={1} onClose={() => {}} />);
   expect(screen.getByText("2 / 3")).toBeTruthy();
 });
 
-test("swiping to another page updates the counter", () => {
-  render(<ItemSheet items={[item, shorts, jacket]} index={0} onClose={() => {}} />);
+test("swiping to another page updates the counter", async () => {
+  await render(<ItemSheet items={[item, shorts, jacket]} index={0} onClose={() => {}} />);
   expect(screen.getByText("1 / 3")).toBeTruthy();
-  act(() => swipeTo(2));
+  await act(() => swipeTo(2));
   expect(screen.getByText("3 / 3")).toBeTruthy();
 });
 
-test("every item in the list is a swipeable page", () => {
-  render(<ItemSheet items={[item, shorts, jacket]} index={0} onClose={() => {}} />);
+test("every item in the list is a swipeable page", async () => {
+  await render(<ItemSheet items={[item, shorts, jacket]} index={0} onClose={() => {}} />);
   expect(screen.getByText("Gray t-shirt")).toBeTruthy();
   expect(screen.getByText("Gray shorts")).toBeTruthy();
   expect(screen.getByText("Gray jacket")).toBeTruthy();
 });
 
-test("hides the counter for a single item", () => {
-  render(<ItemSheet items={[item]} index={0} onClose={() => {}} />);
+test("hides the counter for a single item", async () => {
+  await render(<ItemSheet items={[item]} index={0} onClose={() => {}} />);
   expect(screen.queryByText("1 / 1")).toBeNull();
 });
 
-test("facts sit in one grouped card with the title as a header", () => {
-  render(<ItemSheet items={[item]} index={0} onClose={() => {}} />);
+test("facts sit in one grouped card with the title as a header", async () => {
+  await render(<ItemSheet items={[item]} index={0} onClose={() => {}} />);
   expect(screen.getByRole("header", { name: "Gray t-shirt" })).toBeTruthy();
   expect(screen.getByTestId("facts-card")).toBeTruthy();
   expect(screen.queryByText("Material")).toBeNull();  // never guessed (spec D5)

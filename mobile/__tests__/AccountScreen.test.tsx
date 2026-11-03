@@ -24,14 +24,14 @@ const CREDITS: Credits = {
   ],
 };
 
-function renderAccount(overrides: Partial<AuthContextValue>, credits: Partial<CreditsValue> = {}) {
+async function renderAccount(overrides: Partial<AuthContextValue>, credits: Partial<CreditsValue> = {}) {
   const value: AuthContextValue = {
     status: "signedIn", email: "me@example.com", userId: "u1",
     sendCode: jest.fn(), verifyCode: jest.fn(), signInWithPassword: jest.fn(), signOut: jest.fn(async () => {}),
     ...overrides,
   };
   const creditsValue: CreditsValue = { billing: false, prices: {}, credits: null, refresh: jest.fn(async () => {}), ...credits };
-  render(
+  await render(
     <AuthContext.Provider value={value}>
       <CreditsContext.Provider value={creditsValue}><AccountScreen /></CreditsContext.Provider>
     </AuthContext.Provider>,
@@ -42,28 +42,28 @@ function renderAccount(overrides: Partial<AuthContextValue>, credits: Partial<Cr
 beforeEach(() => jest.spyOn(Alert, "alert").mockImplementation(() => {}));
 afterEach(() => jest.restoreAllMocks());
 
-test("signed in: shows the email with initials and signs out after confirming", () => {
-  const auth = renderAccount({});
+test("signed in: shows the email with initials and signs out after confirming", async () => {
+  const auth = await renderAccount({});
   expect(screen.getByText("Account")).toBeTruthy();
   expect(screen.getByText("me@example.com")).toBeTruthy();
   expect(screen.getByText("M")).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "Sign Out" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Sign Out" }));
   expect(screen.getByText("You'll need a new email code to sign back in.")).toBeTruthy();
   expect(auth.signOut).not.toHaveBeenCalled();
   const buttons = screen.getAllByRole("button", { name: "Sign Out" });
-  fireEvent.press(buttons[buttons.length - 1]);
+  await fireEvent.press(buttons[buttons.length - 1]);
   expect(auth.signOut).toHaveBeenCalled();
 });
 
-test("cancelling keeps you signed in", () => {
-  const auth = renderAccount({});
-  fireEvent.press(screen.getByRole("button", { name: "Sign Out" }));
-  fireEvent.press(screen.getByRole("button", { name: "Cancel" }));
+test("cancelling keeps you signed in", async () => {
+  const auth = await renderAccount({});
+  await fireEvent.press(screen.getByRole("button", { name: "Sign Out" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Cancel" }));
   expect(auth.signOut).not.toHaveBeenCalled();
 });
 
-test("local mode: explains it, offers appearance, no sign out and no credits", () => {
-  renderAccount({ status: "local", email: null, userId: null }, { credits: CREDITS, billing: true });
+test("local mode: explains it, offers appearance, no sign out and no credits", async () => {
+  await renderAccount({ status: "local", email: null, userId: null }, { credits: CREDITS, billing: true });
   expect(screen.getByText("Local mode")).toBeTruthy();
   expect(screen.getByText("Not signed in. Your items live on your computer's wardrobe server.")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Sign Out" })).toBeNull();
@@ -71,8 +71,8 @@ test("local mode: explains it, offers appearance, no sign out and no credits", (
   expect(screen.getByRole("tab", { name: "System" })).toBeTruthy();
 });
 
-test("the balance is out of what the server granted, never a fixed number", () => {
-  const { refreshCredits } = renderAccount({}, { credits: CREDITS, billing: true, prices: { garment: 1, back: 1, turn: 3 } });
+test("the balance is out of what the server granted, never a fixed number", async () => {
+  const { refreshCredits } = await renderAccount({}, { credits: CREDITS, billing: true, prices: { garment: 1, back: 1, turn: 3 } });
   expect(refreshCredits).toHaveBeenCalled();  // refreshed when Account comes into view
   expect(screen.getByLabelText("196 AI credits available")).toBeTruthy();
   expect(screen.getByText("of 200 granted")).toBeTruthy();
@@ -81,20 +81,20 @@ test("the balance is out of what the server granted, never a fixed number", () =
   expect(screen.getByLabelText("Credits left").props.accessibilityValue).toEqual({ min: 0, max: 100, now: 98 });
 });
 
-test("three credits or fewer turns the meter amber and says so", () => {
-  renderAccount({}, { credits: { ...CREDITS, available: 3, balance: 3, held: 0 }, billing: true, prices: { garment: 1 } });
+test("three credits or fewer turns the meter amber and says so", async () => {
+  await renderAccount({}, { credits: { ...CREDITS, available: 3, balance: 3, held: 0 }, billing: true, prices: { garment: 1 } });
   expect(screen.getByText("Running low. Ask the app owner for more credits.")).toBeTruthy();
 });
 
-test("billing off: the balance shows, with no price list and a plain note", () => {
-  renderAccount({}, { credits: { ...CREDITS, held: 0 }, billing: false });
+test("billing off: the balance shows, with no price list and a plain note", async () => {
+  await renderAccount({}, { credits: { ...CREDITS, held: 0 }, billing: false });
   expect(screen.getByLabelText("196 AI credits available")).toBeTruthy();
   expect(screen.getByText("Billing is off — AI actions don't use credits yet.")).toBeTruthy();
   expect(screen.queryByText("Price list")).toBeNull();
 });
 
-test("the price list comes from the server", () => {
-  renderAccount({}, { credits: CREDITS, billing: true, prices: { garment: 1, back: 2, turn: 5 }, outfit: true });
+test("the price list comes from the server", async () => {
+  await renderAccount({}, { credits: CREDITS, billing: true, prices: { garment: 1, back: 2, turn: 5 }, outfit: true });
   expect(screen.getByText("Garment detection")).toBeTruthy();
   expect(screen.getByText("Free")).toBeTruthy();
   expect(screen.getByText("Front image")).toBeTruthy();
@@ -102,8 +102,8 @@ test("the price list comes from the server", () => {
   expect(screen.getByText("5 credits")).toBeTruthy();
 });
 
-test("activity lists grants and charges, not internal holds and releases", () => {
-  renderAccount({}, { credits: CREDITS });
+test("activity lists grants and charges, not internal holds and releases", async () => {
+  await renderAccount({}, { credits: CREDITS });
   expect(screen.getByText("F&F pilot")).toBeTruthy();
   expect(screen.getByText("+200")).toBeTruthy();
   expect(screen.getByText("360 view")).toBeTruthy();
@@ -111,15 +111,15 @@ test("activity lists grants and charges, not internal holds and releases", () =>
   expect(screen.queryByText("−1")).toBeNull();
 });
 
-test("How it works explains the three rules", () => {
-  renderAccount({}, { credits: CREDITS, billing: true, prices: { garment: 1 } });
-  fireEvent.press(screen.getByRole("button", { name: "How it works" }));
+test("How it works explains the three rules", async () => {
+  await renderAccount({}, { credits: CREDITS, billing: true, prices: { garment: 1 } });
+  await fireEvent.press(screen.getByRole("button", { name: "How it works" }));
   expect(screen.getByText("Finding garments is free")).toBeTruthy();
   expect(screen.getByText("You always see the cost first")).toBeTruthy();
 });
 
-test("no credits card before credits load", () => {
-  renderAccount({});
+test("no credits card before credits load", async () => {
+  await renderAccount({});
   expect(screen.queryByText("AI Credits")).toBeNull();
 });
 
@@ -132,8 +132,8 @@ test("initials come from the email's name part", () => {
 
 test("Delete Account asks first, deletes, then signs out", async () => {
   (deleteAccount as jest.Mock).mockResolvedValue(undefined);
-  const auth = renderAccount({}, { credits: CREDITS });
-  fireEvent.press(screen.getByRole("button", { name: "Delete Account" }));
+  const auth = await renderAccount({}, { credits: CREDITS });
+  await fireEvent.press(screen.getByRole("button", { name: "Delete Account" }));
   expect(screen.getByText(/removed for good/)).toBeTruthy();
   expect(deleteAccount).not.toHaveBeenCalled();
   const buttons = screen.getAllByRole("button", { name: "Delete Account" });
@@ -144,16 +144,16 @@ test("Delete Account asks first, deletes, then signs out", async () => {
 
 test("a failed delete says so and keeps you signed in", async () => {
   (deleteAccount as jest.Mock).mockRejectedValue(new Error("Can't reach your wardrobe server."));
-  const auth = renderAccount({}, { credits: CREDITS });
-  fireEvent.press(screen.getByRole("button", { name: "Delete Account" }));
+  const auth = await renderAccount({}, { credits: CREDITS });
+  await fireEvent.press(screen.getByRole("button", { name: "Delete Account" }));
   const buttons = screen.getAllByRole("button", { name: "Delete Account" });
   await act(async () => fireEvent.press(buttons[buttons.length - 1]));
   expect(screen.getByText("Can't reach your wardrobe server.")).toBeTruthy();
   expect(auth.signOut).not.toHaveBeenCalled();
 });
 
-test("local mode offers no Delete Account", () => {
-  renderAccount({ status: "local", email: null, userId: null });
+test("local mode offers no Delete Account", async () => {
+  await renderAccount({ status: "local", email: null, userId: null });
   expect(screen.queryByRole("button", { name: "Delete Account" })).toBeNull();
 });
 
@@ -163,10 +163,10 @@ test("initials prefer the chosen name", () => {
   expect(initials("x@y.com", "רועי")).toBe("ר");
 });
 
-test("Help and Privacy open from Settings", () => {
-  renderAccount({}, { credits: CREDITS });
-  fireEvent.press(screen.getByRole("button", { name: "Help & Support" }));
+test("Help and Privacy open from Settings", async () => {
+  await renderAccount({}, { credits: CREDITS });
+  await fireEvent.press(screen.getByRole("button", { name: "Help & Support" }));
   expect(mockPush).toHaveBeenCalledWith("/help");
-  fireEvent.press(screen.getByRole("button", { name: "Privacy" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Privacy" }));
   expect(mockPush).toHaveBeenCalledWith("/privacy");
 });

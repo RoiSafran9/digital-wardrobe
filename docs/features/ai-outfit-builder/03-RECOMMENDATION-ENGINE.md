@@ -75,7 +75,7 @@ Base slot templates (choose among supported types):
 - `top + bottom + outerwear`
 - `one_piece`
 - `one_piece + outerwear`
-- Optionally append `footwear` to any of the above if footwear exists in the user's wardrobe.
+- Append `footwear` to any of the above when the user owns shoes. **As built (2026-11-03):** every pair in a bounded shoe pool (4) is tried with each look; a pair that doesn't fit the choices (formality or warmth clash, style mismatch, or outside a dark/light/neutral palette choice) is left out, and when a fitting pair exists for the same clothes the shoe-less version of that look is dropped. With no fitting shoes the look stays clothes-only.
 
 No shoes, jewelry, bags, coats, etc. may be invented when not present. If only tops exist, no `top + top` fabricated as a complete look. Treat outfits with a one-piece garment structurally differently from top+bottom. Exclude same item repeated in two slots.
 

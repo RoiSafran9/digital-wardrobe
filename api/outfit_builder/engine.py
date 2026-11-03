@@ -17,6 +17,7 @@ from api.outfit_builder.taxonomy import DARK_COLORS, LIGHT_COLORS, NEUTRAL_COLOR
 # cap on how many clothes a user may store (section 4).
 TOP_K_PER_SLOT = 8
 TOP_K_LAYER = 2
+TOP_K_SHOES = 4
 LOOK_LIMIT = 3
 # Below this, an explicitly chosen preference (anything other than "any") isn't honestly met —
 # the honest answer is "no good match", never a low-quality look mislabeled as a fit (section 5).
@@ -92,7 +93,7 @@ def _raw_candidates(features: list[GarmentFeatures]) -> list[Candidate]:
     bottoms = _pool(features, "bottom", TOP_K_PER_SLOT)
     one_pieces = _pool(features, "one_piece", TOP_K_PER_SLOT)
     outerwear = _pool(features, "outerwear", TOP_K_LAYER)
-    footwear = _pool(features, "footwear", TOP_K_LAYER)
+    footwear = _pool(features, "footwear", TOP_K_SHOES)
 
     cores: list[dict] = [{"top": t, "bottom": b} for t, b in product(tops, bottoms)]
     cores += [{"one_piece": o} for o in one_pieces]
@@ -100,16 +101,11 @@ def _raw_candidates(features: list[GarmentFeatures]) -> list[Candidate]:
     candidates: list[Candidate] = []
     seen: set[frozenset] = set()
     for core in cores:
-        # Bare core, plus one variant per optional layer the wardrobe actually has, plus both
-        # together — never a cross product of every outerwear with every footwear (section 4's
-        # "bounded top-K... diverse candidate pool", not an exhaustive enumeration).
-        variants = [dict(core)]
-        if outerwear:
-            variants.append({**core, "outerwear": outerwear[0]})
-        if footwear:
-            variants.append({**core, "footwear": footwear[0]})
-        if outerwear and footwear:
-            variants.append({**core, "outerwear": outerwear[0], "footwear": footwear[0]})
+        # Bare core and the core with the top outerwear, each also with every pair of shoes in the
+        # bounded shoe pool, so scoring can pick the pair that fits (section 4's "bounded top-K...
+        # diverse candidate pool", not an exhaustive enumeration).
+        layers = [dict(core)] + ([{**core, "outerwear": outerwear[0]}] if outerwear else [])
+        variants = layers + [{**layer, "footwear": shoe} for layer in layers for shoe in footwear]
         for variant in variants:
             ids = frozenset(g.item_id for g in variant.values())
             if ids in seen:
@@ -177,6 +173,32 @@ def score_candidate(items: tuple[GarmentFeatures, ...], filters: dict) -> float:
     diversity (the remaining 10%) is a property of a *set* of looks, applied in select_looks, not of
     one candidate alone."""
     return 0.39 * _context_fit(items, filters) + 0.39 * _visual_compat(items, filters) + 0.22 * _style_vibe_fit(items, filters)
+
+
+def _shoe_fits(shoe: GarmentFeatures, filters: dict) -> bool:
+    """The pair suits what the user chose: no formality or warmth clash (sneakers for Formal, boots
+    for Hot), no style mismatch, and when a dark/light/neutral palette was asked for, the shoes share
+    it. Unknown signals never count against a pair."""
+    if _context_fit((shoe,), filters) < 0.5 or _style_vibe_fit((shoe,), filters) < 0.5:
+        return False
+    pref = filters["colors"]
+    wanted = {"neutral": NEUTRAL_COLORS, "dark": DARK_COLORS, "light": LIGHT_COLORS}.get(pref)
+    return not (wanted and shoe.colors and not set(shoe.colors) & wanted)
+
+
+def _prefer_shoes(scored: list[tuple[Candidate, float]], filters: dict) -> list[tuple[Candidate, float]]:
+    """Owned shoes complete a look when they fit the choices: shoes that don't fit are left out, and
+    where a fitting pair exists for the same clothes, the shoe-less version of that look is dropped.
+    Without fitting shoes the clothes-only look stays — shoes are never invented."""
+    def shoe(c: Candidate) -> GarmentFeatures | None:
+        return next((g for g in c.items if g.item_id == c.slots.get("footwear")), None)
+
+    def clothes(c: Candidate) -> frozenset:
+        return frozenset(i for slot, i in c.slots.items() if slot != "footwear")
+
+    fitting = [(c, s) for c, s in scored if shoe(c) is None or _shoe_fits(shoe(c), filters)]
+    shod = {clothes(c) for c, _ in fitting if shoe(c) is not None}
+    return [(c, s) for c, s in fitting if shoe(c) is not None or clothes(c) not in shod]
 
 
 def _jaccard(a: frozenset, b: frozenset) -> float:
@@ -269,6 +291,7 @@ def build_suggestions(wardrobe_items: list[dict], filters: dict, shown: list[lis
         if not meeting:
             return no_match
         scored = meeting
+    scored = _prefer_shoes(scored, filters)
 
     seen = tuple(frozenset(ids) for ids in shown)
     fresh = [s for s in scored if frozenset(s[0].item_ids) not in seen]

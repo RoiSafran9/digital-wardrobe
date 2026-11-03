@@ -1,3 +1,4 @@
+from pipeline import footwear as shoes
 from pipeline.types import VerificationResult, ItemResult
 
 VISIBLE_FRACTION_MEDIUM_THRESHOLD = 0.6
@@ -6,12 +7,13 @@ CUT_OFF_TIP = "For a cleaner result, step back so the whole piece fits in the fr
 
 
 def run(verification: VerificationResult | None, visible_fraction: float,
-        max_attempts: int, cut_off: bool = False) -> ItemResult:
+        max_attempts: int, cut_off: bool = False, footwear: bool = False) -> ItemResult:
+    """footwear: the retake and cut-off tips speak of shoes; the tiers are the same."""
     if verification is None or (verification.status == "fail" and verification.attempt >= max_attempts + 1):
         return ItemResult(
             tier="low",
             reason="verification failed after all retries" if verification else "generation never succeeded",
-            retake_instruction="Shoot it alone in better light, spread out flat",
+            retake_instruction=shoes.RETAKE_TIP if footwear else "Shoot it alone in better light, spread out flat",
             visible_fraction=visible_fraction,
         )
     if visible_fraction < VISIBLE_FRACTION_MEDIUM_THRESHOLD:
@@ -23,6 +25,6 @@ def run(verification: VerificationResult | None, visible_fraction: float,
         )
     if cut_off:
         return ItemResult(tier="medium", reason="ran past the photo edge; completed by the model",
-                           retake_instruction=CUT_OFF_TIP, visible_fraction=visible_fraction)
+                           retake_instruction=shoes.CUT_OFF_TIP if footwear else CUT_OFF_TIP, visible_fraction=visible_fraction)
     return ItemResult(tier="high", reason="verification passed, fully visible",
                        retake_instruction=None, visible_fraction=visible_fraction)

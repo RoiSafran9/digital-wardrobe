@@ -3,9 +3,10 @@
 import type { OutfitCandidate, OutfitScan } from "../api/types";
 import { creditsLabel } from "../credits/credits";
 
-// v1 scope (owner decision D2, proposed): no shoes yet.
+// Every candidate can be picked. Shoes were held back in v1 (owner decision D2); the footwear MVP offers
+// them: a worn pair is one candidate and gets the footwear prompt on the server.
 export function pickable(scan: OutfitScan): OutfitCandidate[] {
-  return scan.candidates.filter((c) => c.category !== "shoes");
+  return scan.candidates;
 }
 
 // Mostly hidden garments start unselected: their image would be mostly guessed (D3, proposed).

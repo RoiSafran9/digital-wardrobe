@@ -13,7 +13,7 @@ import type { GarmentScan } from "../../src/api/types";
 import { PhotoWithBoxes } from "../../src/components/outfit/PhotoWithBoxes";
 import { ScanBand } from "../../src/components/outfit/ScanBand";
 import { useCredits } from "../../src/credits/CreditsProvider";
-import { garmentName } from "../../src/garmentName";
+import { pieceLabel } from "../../src/footwear";
 import { haptics } from "../../src/haptics";
 import { TRY_AS_OUTFIT, isWornRejection } from "../../src/outfit/outfit";
 import { useScreenViewed } from "../../src/activity/track";
@@ -132,8 +132,7 @@ export default function PreviewScreen() {
   const total = (price ?? 0) * picked.length;
   const available = credits?.available ?? 0;
   const boxes = useMemo(() => pieces.map((p) => ({ id: `p${p.index}`, box: p.box })), [pieces]);
-  const label = (p: (typeof pieces)[number]) =>
-    garmentName({ facts: { category: { value: p.category }, colors: { value: p.colors } } } as never);
+  const label = pieceLabel;
 
   if (mode === "fallback") return <MaxFrontsPreview uri={uri} note={note} />;
 

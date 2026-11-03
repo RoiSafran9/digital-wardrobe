@@ -12,7 +12,7 @@ import { colors, hitSlopFor, radius, TAB_BAR_HEIGHT, type } from "../../src/them
 import { useScreenViewed } from "../../src/activity/track";
 
 const FIRST_PIECE = [
-  "Lay one garment flat on a bed or the floor.",
+  "Lay one garment flat, or set a pair of shoes together, on a bed or the floor.",
   "Take the photo from above, in daylight.",
   "Check the preview, then create its catalog image.",
 ];
@@ -97,9 +97,9 @@ export default function AddScreen() {
         ) : null}
 
         <MethodCard
-          title="Photograph Garments"
-          body="Lay one or more pieces on a flat surface. Each becomes its own item."
-          price={front !== undefined ? `${creditsLabel(front)} per garment` : null}
+          title="Photograph Clothes & Shoes"
+          body="Lay pieces flat, or set shoes together. Each piece becomes its own item; a pair of shoes counts as one."
+          price={front !== undefined ? `${creditsLabel(front)} per piece` : null}
           onPress={() => router.push({ pathname: "/capture/camera", params: { mode: "garments" } })}
           art={<View style={{ flexDirection: "row", gap: 10 }}>{ROW.map((icon, i) => <GlyphTile key={i} icon={icon} size={{ width: 74, height: 92 }} style={{ transform: [{ rotate: `${(i - 1) * 5}deg` }] }} />)}</View>}
         />

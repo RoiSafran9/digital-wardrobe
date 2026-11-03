@@ -83,7 +83,7 @@ test("an empty closet shows the frames, two labelled rows and the tips", async (
   (getItems as jest.Mock).mockResolvedValue({ items: [] });
   renderHome({ outfit: true });
   expect(await screen.findByText("Your closet starts here")).toBeTruthy();
-  expect(screen.getByText("Laid flat or on a hanger")).toBeTruthy();
+  expect(screen.getByText("Clothes laid flat or hung, and shoes")).toBeTruthy();
   expect(screen.getByText("You wearing it")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Garment photo, Camera" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Garment photo, Library" })).toBeTruthy();

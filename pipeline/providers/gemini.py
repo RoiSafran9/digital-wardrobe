@@ -5,7 +5,7 @@ import time
 import cv2
 from google import genai
 from google.genai import types
-from pipeline import costs
+from pipeline import costs, footwear
 from pipeline.config import require_env
 from pipeline.types import BBox, DetectedItemWithFacts, DetectionFields, ItemFacts
 from pipeline.run_log import RunLogger
@@ -75,6 +75,10 @@ async def image_content(client, contents):
 
 
 PROMPTS_DIR = __file__.rsplit("/providers/", 1)[0] + "/prompts"
+
+DETECT_PROMPT, DETECT_VERSION = "stage1_detect_facts_v5.txt", "v5"
+GENERATE_PROMPT, GENERATE_VERSION = "stage4_generate_v5.txt", "v5"
+FOOTWEAR_GENERATE_PROMPT, FOOTWEAR_GENERATE_VERSION = "stage4_generate_footwear_v1.txt", "footwear_v1"
 
 
 # Extra margin around each detected box so garment edges aren't clipped.
@@ -192,7 +196,7 @@ class GeminiProvider:
         if not self.logger:
             return
         for call in usage.calls:
-            self.logger.log(stage=f"{stage}_{call['kind']}", model=call["model"], prompt_version=prompt_version,
+            self.logger.log(stage=f"{stage}_{call['kind']}", model=call["model"], prompt_version=call.get("prompt", prompt_version),
                              latency_ms=call["latency_s"] * 1000, status="ok" if call["ok"] else "error",
                              error_class=call.get("error_class"), cost_usd=call["usd"] if call["ok"] else None,
                              input_tokens=call.get("input_tokens"), output_tokens=call.get("output_tokens"),
@@ -203,7 +207,7 @@ class GeminiProvider:
         try:
             with open(image_path, "rb") as f:
                 image_bytes = f.read()
-            prompt = _read_prompt("stage1_detect_facts_v4.txt")
+            prompt = _read_prompt(DETECT_PROMPT)
             # The sync client in a thread, so the server keeps answering while detection runs.
             response = await asyncio.wait_for(asyncio.to_thread(
                 self.client.models.generate_content,
@@ -220,10 +224,10 @@ class GeminiProvider:
                 fields = detection.model_dump(exclude={"box_2d"})
                 fields["cut_off_by_frame"] = detection.cut_off_by_frame or touches_frame(detection.box_2d)
                 items.append(DetectedItemWithFacts(**fields, box=box_2d_to_bbox(detection.box_2d, width, height)))
-            self._log("stage1_detect_facts", MODEL_VISION, "v4", start, "ok", response=response)
+            self._log("stage1_detect_facts", MODEL_VISION, DETECT_VERSION, start, "ok", response=response)
             return items
         except Exception as e:
-            self._log("stage1_detect_facts", MODEL_VISION, "v4", start, "error", e)
+            self._log("stage1_detect_facts", MODEL_VISION, DETECT_VERSION, start, "error", e)
             raise
 
     async def detect_outfit(self, image_path: str):
@@ -246,16 +250,21 @@ class GeminiProvider:
 
     async def generate(self, crop_path: str, facts: ItemFacts, violations: list[str] | None,
                        complete_edges: bool = False) -> str:
+        # Shoes get their own prompt: the garment one unfolds, flattens and symmetrizes, which is wrong
+        # for a three-dimensional shoe and invites a mirrored second shoe.
+        shoe = footwear.facts_are_footwear(facts)
+        name, version = (FOOTWEAR_GENERATE_PROMPT, FOOTWEAR_GENERATE_VERSION) if shoe else (GENERATE_PROMPT, GENERATE_VERSION)
         start = time.monotonic()
         try:
             with open(crop_path, "rb") as f:
                 crop_bytes = f.read()
-            template = _read_prompt("stage4_generate_v5.txt")
+            template = _read_prompt(name)
             violations_block = ("\nPrevious attempt violations to fix:\n" + "\n".join(violations)
                                  if violations else "")
+            edges = (footwear.EDGES_BLOCK if shoe else EDGES_BLOCK) if complete_edges else ""
+            blocks = {"count_block": footwear.count_block(facts.visible_parts.value)} if shoe else {}
             prompt = template.format(facts_block=facts.model_dump_json(indent=2),
-                                      violations_block=violations_block,
-                                      edges_block=EDGES_BLOCK if complete_edges else "")
+                                      violations_block=violations_block, edges_block=edges, **blocks)
             response = await image_content(
                 self.client, [{"inline_data": {"mime_type": "image/png", "data": crop_bytes}}, prompt])
             out_path = crop_path.rsplit(".", 1)[0] + "_generated.png"
@@ -263,10 +272,10 @@ class GeminiProvider:
             image_bytes = _first_image(response)
             with open(out_path, "wb") as f:
                 f.write(image_bytes)
-            self._log("stage4_generate", image_model(), "v5", start, "ok", response=response)
+            self._log("stage4_generate", image_model(), version, start, "ok", response=response)
             return out_path
         except Exception as e:
-            self._log("stage4_generate", image_model(), "v5", start, "error", e)
+            self._log("stage4_generate", image_model(), version, start, "error", e)
             raise
 
     async def generate_back(self, crop_path: str, front_image_path: str, facts: ItemFacts,

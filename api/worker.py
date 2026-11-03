@@ -16,7 +16,7 @@ import cv2
 from api.credits import FREE_KINDS, CreditGate, NoCharge, charge_for
 from api.item_loader import load_item
 from pipeline.back import BackPhotoRejected, run_back
-from pipeline import outfit
+from pipeline import footwear, outfit
 from pipeline.orchestrator import Providers, run_photo
 from api import push
 from api.logs import job_context
@@ -149,6 +149,15 @@ def _item_id(job_id: str, piece_index: int) -> str:
 GARMENT_SCAN_TTL = timedelta(hours=24)
 
 
+def _shoes(detected) -> str | None:
+    """For footwear, whether the scan saw a pair or one shoe, so the pick screen can say so before anything
+    is charged (one pair is one piece). None for garments, and when the detection didn't say."""
+    if not footwear.facts_are_footwear(detected):
+        return None
+    count = footwear.shoe_count(detected.visible_parts.value)
+    return None if count == "unknown" else count
+
+
 async def _garment_scan(store, job, providers, tmp, uploads):
     """Free pre-scan (spec D6 b): the quality check and the usual detection call; nothing is generated.
     The photo stays for the generate step; the detection is kept so that step makes no second call."""
@@ -168,7 +177,7 @@ async def _garment_scan(store, job, providers, tmp, uploads):
         raise JobRejected(_sentence(str(e)), "photo_quality") from e
     included = [d for d in found if d.included]
     pieces = [{"index": i, "category": str(d.category.value), "colors": list(d.colors.value) if isinstance(d.colors.value, list) else [d.colors.value],
-               "box": d.box.model_dump()} for i, d in enumerate(included)]
+               "box": d.box.model_dump(), "shoes": _shoes(d)} for i, d in enumerate(included)]
     return {**base, "pieces": pieces, "detected": [d.model_dump(mode="json") for d in included],
             "reason": None if included else _sentence(_nothing_found(found))}
 

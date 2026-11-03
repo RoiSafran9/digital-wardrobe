@@ -117,7 +117,7 @@ function LabelledRow({ title, caption, children }: { title: string; caption: str
 export function AddRows({ onGarmentCamera, onGarmentLibrary, onOutfitPhoto }: PhotoActions) {
   return (
     <View style={{ gap: 10 }}>
-      <LabelledRow title="Garment photo" caption="Laid flat or on a hanger">
+      <LabelledRow title="Garment photo" caption="Clothes laid flat or hung, and shoes">
         <Pill title="Camera" primary onPress={onGarmentCamera} label="Garment photo, Camera" />
         <Pill title="Library" onPress={onGarmentLibrary} label="Garment photo, Library" />
       </LabelledRow>

@@ -4,29 +4,29 @@ docs/features/ai-outfit-builder/03-RECOMMENDATION-ENGINE.md section 2).
 
 The slot word lists mirror mobile/src/categoryGroups.ts's groups (checked in the same order, so
 "t-shirt dress" sorts as a dress and "shirt jacket" as outerwear), split further where an outfit
-needs more than a broad group: a skirt is a `bottom`, a dress is a `one_piece`.
+needs more than a broad group: a skirt is a `bottom`, a dress is a `one_piece`. Footwear comes first
+and uses the pipeline's own word list (pipeline/footwear.py), so "dress shoes" and "fleece slippers"
+are footwear and the closet's Shoes group, this slot and the footwear prompts always agree.
 """
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
+
+from pipeline import footwear
 
 Slot = str  # "top" | "bottom" | "one_piece" | "outerwear" | "footwear" | "unknown"
 STRUCTURAL_SLOTS = ("top", "bottom", "one_piece", "outerwear", "footwear")
 
-_WORD_RE = re.compile(r"[a-z]+")
-
 
 def _tokens(text: str) -> set[str]:
-    return set(_WORD_RE.findall(text.lower()))
+    return set(footwear.tokens(text))
 
 
 _SLOT_WORDS: list[tuple[Slot, set[str]]] = [
+    ("footwear", set(footwear.FOOTWEAR_WORDS)),
     ("one_piece", {"dress", "jumpsuit", "romper", "gown"}),
     ("outerwear", {"jacket", "coat", "blazer", "cardigan", "vest", "parka", "gilet", "trench", "anorak",
                    "windbreaker", "puffer", "fleece"}),
-    ("footwear", {"sneakers", "sneaker", "boots", "boot", "shoes", "shoe", "sandals", "sandal",
-                  "loafers", "loafer", "heels", "flats", "slippers", "trainers"}),
     ("bottom", {"jeans", "pants", "trousers", "shorts", "skirt", "leggings", "chinos", "joggers", "sweatpants"}),
     ("top", {"shirt", "t", "tee", "blouse", "sweater", "hoodie", "tank", "top", "polo", "sweatshirt",
              "jumper", "pullover", "camisole", "overshirt", "turtleneck", "crop", "bodysuit"}),
@@ -44,11 +44,12 @@ def slot_for(category: str) -> Slot:
 # Formality and warmth have no dedicated field yet (section 2's `formality`/`warmth` are "proposed").
 # These are simple, conservative word mappings, not a learned or validated taxonomy: anything not
 # recognized stays "unknown" and is never treated as a hard exclusion, only a soft scoring penalty.
-_FORMAL_WORDS = {"gown", "tuxedo", "suit", "heels"}
-_SMART_WORDS = {"shirt", "blouse", "chinos", "trousers", "loafers", "flats", "cardigan", "sweater",
-                "skirt", "blazer", "polo", "oxford"}
+_FORMAL_WORDS = {"gown", "tuxedo", "suit", "heels", "pumps", "pump"}
+_SMART_WORDS = {"shirt", "blouse", "chinos", "trousers", "loafers", "loafer", "flats", "cardigan", "sweater",
+                "skirt", "blazer", "polo", "oxford", "brogues", "brogue", "moccasins", "moccasin", "mules", "mule"}
 _CASUAL_WORDS = {"t", "tee", "hoodie", "sweatshirt", "joggers", "sweatpants", "sneakers", "sneaker",
-                 "trainers", "tank", "shorts", "flip", "flops", "slippers"}
+                 "trainers", "trainer", "tank", "shorts", "flip", "flops", "slippers", "slipper", "slides",
+                 "clogs", "clog", "espadrilles", "espadrille"}
 
 
 def formality_for(category: str) -> str:
@@ -66,7 +67,8 @@ def formality_for(category: str) -> str:
 
 _HEAVY_WORDS = {"coat", "puffer", "parka", "trench", "overcoat", "wool"}
 _MID_WORDS = {"sweater", "hoodie", "cardigan", "jacket", "sweatshirt", "jumper", "pullover", "turtleneck", "fleece"}
-_LIGHT_WORDS = {"t", "tee", "tank", "shorts", "linen", "camisole", "sandals", "sandal"}
+_LIGHT_WORDS = {"t", "tee", "tank", "shorts", "linen", "camisole", "sandals", "sandal", "flip", "flops", "slides",
+                "espadrilles", "espadrille"}
 
 
 def warmth_for(category: str) -> str:

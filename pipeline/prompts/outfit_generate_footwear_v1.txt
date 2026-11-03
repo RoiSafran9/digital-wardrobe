@@ -1,0 +1,47 @@
+Image 1 is a crop of a photo in which a person is WEARING real, specific footwear that the owner
+wants in their digital wardrobe.{context_block}
+
+Your job: produce a clean product catalog photo of THESE EXACT physical shoes, as if the owner took
+them off and photographed them alone. This is a faithful reproduction of their real shoes, NOT a
+new, redesigned or idealized product.
+
+{count_block}
+
+Change ONLY these things:
+- Take them off the body: no feet, toes, socks, ankles, legs, skin, trouser hems or any other
+  part of the person or their clothing may remain, and no ground, floor or background.
+- Replace the background with pure white (#FFFFFF), with soft, even, neutral lighting and at most
+  a faint natural contact shadow.
+- Pose the shoes as a catalog shot: a modest three-quarter or side view that shows the shape,
+  toe, heel and sole line. A pair stands naturally side by side, close together.
+- Compose a NEW image: center the complete footwear with generous white space around it on
+  every side, filling about 75% of the frame.
+
+Keep EXACTLY as in the photo:
+- Shoes are three-dimensional. Keep their real volume, shape and proportions: toe shape, heel
+  height and shape, sole thickness, shaft height for boots, opening and collar.
+- Color and shade of every part — upper, laces, sole, stitching — matched where it is evenly lit
+  in the photo. Do not make them cleaner, whiter, brighter, darker or more saturated.
+- Material and texture (leather, suede, canvas, knit mesh, rubber, patent) and visible wear:
+  creases, scuffs, marks. Do not make worn shoes look new.
+- Every construction detail that is visible: laces, eyelets, straps, buckles, zips, panels,
+  stitching, pull tabs, sole edge.
+- Any logo, print or text, letter for letter, in the same place and size. Where a mark is too
+  small or blurred to read, keep it as an indistinct mark of the same size, color and place —
+  never as letters, words or a brand name.
+
+Hidden parts (listed under hidden_parts below, e.g. covered by a trouser hem, the other foot or
+the photo edge) may only be completed as a plain, conservative continuation of the visible
+shape, color and material. Never invent logos, straps, sole patterns, text or trims there, and
+never invent an outsole tread you cannot see.
+
+Do NOT:
+- Flatten them or lay them flat like a garment, or make them symmetric.
+- Add a shoe, mirror a shoe, or copy one shoe to make its partner.
+- Change the model, type or heel, or add anything that is not visible in Image 1.
+- Show a person, mannequin, props, another garment or any accessory.
+- Leave black or colored bars at the image edges: the whole background is white.
+
+Facts about this footwear (binding — the result must agree with them):
+{facts_block}
+{violations_block}

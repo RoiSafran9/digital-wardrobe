@@ -6,7 +6,7 @@ test.each([
   ["high", "Great"],
   ["medium", "OK"],
   ["low", "Retake"],
-] as const)("renders label %s -> %s", (tier, label) => {
-  render(<TierBadge tier={tier} />);
+] as const)("renders label %s -> %s", async (tier, label) => {
+  await render(<TierBadge tier={tier} />);
   expect(screen.getByText(label)).toBeTruthy();
 });

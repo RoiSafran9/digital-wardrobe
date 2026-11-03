@@ -32,40 +32,40 @@ afterEach(() => jest.useRealTimers());
 const settle = () => act(async () => { jest.runOnlyPendingTimers(); await Promise.resolve(); await Promise.resolve(); });
 
 test("loads the signed-in account's credits and forgets them on sign-out", async () => {
-  const { rerender } = render(tree(auth("signedIn", "u1")));
+  const { rerender } = await render(tree(auth("signedIn", "u1")));
   await settle();
   expect(screen.getByText("7 billing")).toBeTruthy();
-  rerender(tree(auth("signedOut", null)));
+  await rerender(tree(auth("signedOut", null)));
   await settle();
   expect(screen.getByText("none")).toBeTruthy();
 });
 
 test("local mode loads nothing", async () => {
-  render(tree(auth("local", null)));
+  await render(tree(auth("local", null)));
   await settle();
   expect(mockedCredits).not.toHaveBeenCalled();
   expect(screen.getByText("none")).toBeTruthy();
 });
 
 test("another account never sees the previous account's balance", async () => {
-  const { rerender } = render(tree(auth("signedIn", "u1")));
+  const { rerender } = await render(tree(auth("signedIn", "u1")));
   await settle();
   mockedCredits.mockResolvedValue({ available: 2 });
-  rerender(tree(auth("signedIn", "u2")));
+  await rerender(tree(auth("signedIn", "u2")));
   expect(screen.getByText("none")).toBeTruthy();  // cleared at once, before u2's answer
   await settle();
   expect(screen.getByText("2 billing")).toBeTruthy();
 });
 
 test("signing in asks the server for the welcome credits before loading the balance", async () => {
-  render(tree(auth("signedIn", "u1")));
+  await render(tree(auth("signedIn", "u1")));
   await act(async () => { jest.runAllTimers(); });
   expect(bootstrap).toHaveBeenCalledTimes(1);
   expect(await screen.findByText("7 billing")).toBeTruthy();
 });
 
 test("local mode never asks for welcome credits", async () => {
-  render(tree(auth("local", null)));
+  await render(tree(auth("local", null)));
   await act(async () => { jest.runAllTimers(); });
   expect(bootstrap).not.toHaveBeenCalled();
 });

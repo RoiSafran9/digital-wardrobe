@@ -19,7 +19,7 @@ beforeEach(async () => { await AsyncStorage.clear(); jest.restoreAllMocks(); });
 
 test("defaults to the system appearance", async () => {
   const spy = jest.spyOn(Appearance, "setColorScheme").mockImplementation(() => {});
-  render(<AppearanceProvider><Probe /></AppearanceProvider>);
+  await render(<AppearanceProvider><Probe /></AppearanceProvider>);
   await act(async () => {});
   expect(screen.getByText("mode system")).toBeTruthy();
   expect(spy).not.toHaveBeenCalledWith("dark");
@@ -27,7 +27,7 @@ test("defaults to the system appearance", async () => {
 
 test("a chosen appearance applies at once, persists, and System hands back to iOS", async () => {
   const spy = jest.spyOn(Appearance, "setColorScheme").mockImplementation(() => {});
-  render(<AppearanceProvider><Probe /></AppearanceProvider>);
+  await render(<AppearanceProvider><Probe /></AppearanceProvider>);
   await act(async () => fireEvent.press(screen.getByText("dark")));
   expect(spy).toHaveBeenLastCalledWith("dark");
   expect(await AsyncStorage.getItem(APPEARANCE_KEY)).toBe("dark");
@@ -38,7 +38,7 @@ test("a chosen appearance applies at once, persists, and System hands back to iO
 test("a saved choice is restored at launch", async () => {
   await AsyncStorage.setItem(APPEARANCE_KEY, "light");
   const spy = jest.spyOn(Appearance, "setColorScheme").mockImplementation(() => {});
-  render(<AppearanceProvider><Probe /></AppearanceProvider>);
+  await render(<AppearanceProvider><Probe /></AppearanceProvider>);
   expect(await screen.findByText("mode light")).toBeTruthy();
   expect(spy).toHaveBeenCalledWith("light");
 });

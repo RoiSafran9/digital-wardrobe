@@ -44,31 +44,37 @@ function renderWith(props: Partial<React.ComponentProps<typeof AuthProvider>>) {
 
 test("local mode never touches Supabase", async () => {
   const client = fakeClient();
-  renderWith({ config: { mode: "local" }, client: client as never });
+  await renderWith({ config: { mode: "local" }, client: client as never });
   expect(screen.getByText("local|-|-")).toBeTruthy();
   expect(client.auth.getSession).not.toHaveBeenCalled();
 });
 
-test("unconfigured builds report it", () => {
-  renderWith({ config: { mode: "unconfigured", reason: "missing" } });
+test("unconfigured builds report it", async () => {
+  await renderWith({ config: { mode: "unconfigured", reason: "missing" } });
   expect(screen.getByText("unconfigured|-|-")).toBeTruthy();
   expect(api.reason).toBe("missing");
 });
 
 test("no stored session → signed out", async () => {
-  renderWith({ config: URL_CONFIG, client: fakeClient() as never });
+  // Hold the stored-session lookup open so the loading state can be seen before it resolves.
+  const client = fakeClient();
+  let release: () => void = () => {};
+  const pending = new Promise<void>((resolve) => { release = resolve; });
+  client.auth.getSession.mockImplementationOnce(async () => { await pending; return { data: { session: null }, error: null }; });
+  await renderWith({ config: URL_CONFIG, client: client as never });
   expect(screen.getByText("loading|-|-")).toBeTruthy();
+  await act(async () => release());
   expect(await screen.findByText("signedOut|-|-")).toBeTruthy();
 });
 
 test("a stored session survives a restart → signed in", async () => {
-  renderWith({ config: URL_CONFIG, client: fakeClient(session("a@b.com")) as never });
+  await renderWith({ config: URL_CONFIG, client: fakeClient(session("a@b.com")) as never });
   expect(await screen.findByText("signedIn|a@b.com|id-a@b.com")).toBeTruthy();
 });
 
 test("sendCode normalizes the email and asks Supabase for a code", async () => {
   const client = fakeClient();
-  renderWith({ config: URL_CONFIG, client: client as never });
+  await renderWith({ config: URL_CONFIG, client: client as never });
   await screen.findByText("signedOut|-|-");
   await act(() => api.sendCode(" A@B.com "));
   expect(client.auth.signInWithOtp).toHaveBeenCalledWith({ email: "a@b.com" });
@@ -77,14 +83,14 @@ test("sendCode normalizes the email and asks Supabase for a code", async () => {
 test("sendCode failures reject with a readable message", async () => {
   const client = fakeClient();
   client.auth.signInWithOtp.mockResolvedValueOnce({ data: { user: null, session: null }, error: Object.assign(new Error("x"), { status: 429 }) });
-  renderWith({ config: URL_CONFIG, client: client as never });
+  await renderWith({ config: URL_CONFIG, client: client as never });
   await screen.findByText("signedOut|-|-");
   await expect(api.sendCode("a@b.com")).rejects.toThrow("Too many codes requested. Wait a minute and try again.");
 });
 
 test("verifyCode signs in", async () => {
   const client = fakeClient();
-  renderWith({ config: URL_CONFIG, client: client as never });
+  await renderWith({ config: URL_CONFIG, client: client as never });
   await screen.findByText("signedOut|-|-");
   await act(() => api.verifyCode("A@b.com", "123456"));
   expect(client.auth.verifyOtp).toHaveBeenCalledWith({ email: "a@b.com", token: "123456", type: "email" });
@@ -94,7 +100,7 @@ test("verifyCode signs in", async () => {
 test("a wrong code rejects and stays signed out", async () => {
   const client = fakeClient();
   client.auth.verifyOtp.mockResolvedValueOnce({ data: { session: null, user: null } as never, error: Object.assign(new Error("x"), { status: 403, code: "otp_expired" }) });
-  renderWith({ config: URL_CONFIG, client: client as never });
+  await renderWith({ config: URL_CONFIG, client: client as never });
   await screen.findByText("signedOut|-|-");
   await expect(api.verifyCode("a@b.com", "000000")).rejects.toThrow("That code is wrong or has expired. Check the email or send a new code.");
   expect(screen.getByText("signedOut|-|-")).toBeTruthy();
@@ -102,7 +108,7 @@ test("a wrong code rejects and stays signed out", async () => {
 
 test("signInWithPassword signs in with the normalized email", async () => {
   const client = fakeClient();
-  renderWith({ config: URL_CONFIG, client: client as never });
+  await renderWith({ config: URL_CONFIG, client: client as never });
   await screen.findByText("signedOut|-|-");
   await act(() => api.signInWithPassword(" Review@B.com ", "pw"));
   expect(client.auth.signInWithPassword).toHaveBeenCalledWith({ email: "review@b.com", password: "pw" });
@@ -112,7 +118,7 @@ test("signInWithPassword signs in with the normalized email", async () => {
 test("a wrong password rejects and stays signed out", async () => {
   const client = fakeClient();
   client.auth.signInWithPassword.mockResolvedValueOnce({ data: { session: null, user: null } as never, error: Object.assign(new Error("x"), { status: 400, code: "invalid_credentials" }) });
-  renderWith({ config: URL_CONFIG, client: client as never });
+  await renderWith({ config: URL_CONFIG, client: client as never });
   await screen.findByText("signedOut|-|-");
   await expect(api.signInWithPassword("a@b.com", "nope")).rejects.toThrow("That email and password don't match.");
   expect(screen.getByText("signedOut|-|-")).toBeTruthy();
@@ -120,7 +126,7 @@ test("a wrong password rejects and stays signed out", async () => {
 
 test("signOut signs out", async () => {
   const client = fakeClient(session("a@b.com"));
-  renderWith({ config: URL_CONFIG, client: client as never });
+  await renderWith({ config: URL_CONFIG, client: client as never });
   await screen.findByText("signedIn|a@b.com|id-a@b.com");
   await act(() => api.signOut());
   expect(screen.getByText("signedOut|-|-")).toBeTruthy();
@@ -131,7 +137,7 @@ test("signOut while offline still signs out on this device", async () => {
   client.auth.signOut
     .mockResolvedValueOnce({ error: Object.assign(new Error("offline"), { name: "AuthRetryableFetchError", status: 0 }) })
     .mockResolvedValueOnce({ error: null });
-  renderWith({ config: URL_CONFIG, client: client as never });
+  await renderWith({ config: URL_CONFIG, client: client as never });
   await screen.findByText("signedIn|a@b.com|id-a@b.com");
   await act(() => api.signOut());
   expect(client.auth.signOut).toHaveBeenLastCalledWith({ scope: "local" });
@@ -140,17 +146,17 @@ test("signOut while offline still signs out on this device", async () => {
 
 test("a session ended elsewhere (refresh failed) signs the app out", async () => {
   const client = fakeClient(session("a@b.com"));
-  renderWith({ config: URL_CONFIG, client: client as never });
+  await renderWith({ config: URL_CONFIG, client: client as never });
   await screen.findByText("signedIn|a@b.com|id-a@b.com");
-  act(() => client.emit("SIGNED_OUT", null));
+  await act(() => client.emit("SIGNED_OUT", null));
   expect(screen.getByText("signedOut|-|-")).toBeTruthy();
 });
 
 test("unmounting unsubscribes", async () => {
   const client = fakeClient();
-  const view = renderWith({ config: URL_CONFIG, client: client as never });
+  const view = await renderWith({ config: URL_CONFIG, client: client as never });
   await waitFor(() => expect(client.auth.onAuthStateChange).toHaveBeenCalled());
-  view.unmount();
+  await view.unmount();
   expect(client.unsubscribe).toHaveBeenCalled();
 });
 
@@ -160,7 +166,7 @@ describe("account API wiring", () => {
 
   test("signed in: the API gets the session's current token", async () => {
     const client = fakeClient(session("a@b.com"));
-    renderWith({ config: URL_CONFIG, client: client as never });
+    await renderWith({ config: URL_CONFIG, client: client as never });
     await screen.findByText("signedIn|a@b.com|id-a@b.com");
     const config = (configureApi as jest.Mock).mock.calls.at(-1)[0];
     client.auth.getSession.mockResolvedValueOnce({ data: { session: { ...session("a@b.com"), access_token: "fresh" } }, error: null } as never);
@@ -169,7 +175,7 @@ describe("account API wiring", () => {
 
   test("an expired session reported by the API signs out", async () => {
     const client = fakeClient(session("a@b.com"));
-    renderWith({ config: URL_CONFIG, client: client as never });
+    await renderWith({ config: URL_CONFIG, client: client as never });
     await screen.findByText("signedIn|a@b.com|id-a@b.com");
     await act(async () => (configureApi as jest.Mock).mock.calls.at(-1)[0].onUnauthorized());
     expect(screen.getByText("signedOut|-|-")).toBeTruthy();
@@ -177,14 +183,14 @@ describe("account API wiring", () => {
 
   test("signing out disconnects the API", async () => {
     const client = fakeClient(session("a@b.com"));
-    renderWith({ config: URL_CONFIG, client: client as never });
+    await renderWith({ config: URL_CONFIG, client: client as never });
     await screen.findByText("signedIn|a@b.com|id-a@b.com");
     await act(() => api.signOut());
     expect((configureApi as jest.Mock).mock.calls.at(-1)[0]).toBeNull();
   });
 
-  test("local mode never configures the account API", () => {
-    renderWith({ config: { mode: "local" } });
+  test("local mode never configures the account API", async () => {
+    await renderWith({ config: { mode: "local" } });
     expect((configureApi as jest.Mock).mock.calls.every(([c]) => c === null)).toBe(true);
   });
 });

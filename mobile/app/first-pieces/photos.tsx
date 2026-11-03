@@ -12,7 +12,7 @@ import { colors, hitSlopFor, radius, type } from "../../src/theme";
 import { BackButton, Button } from "../../src/ui";
 
 const TIPS = [
-  "Lay pieces flat on a bed or the floor, or hang them up. Set matching shoes together, fully in frame.",
+  "Lay pieces flat on a bed or the floor, or hang them up. Set matching shoes side by side and shoot them from a low side angle, fully in frame.",
   "Several pieces in one photo is fine. Each becomes its own item; a pair of shoes counts as one.",
   "Daylight works best. Photograph each piece once.",
 ];

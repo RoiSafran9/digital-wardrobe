@@ -90,5 +90,5 @@ shoe that is not in the photo.
 NO_SIDE_VIEWS = "Back and 360° views aren't available for shoes yet"
 
 # Retake copy for shoes: the garment wording ("spread out flat") is wrong for a three-dimensional shoe.
-RETAKE_TIP = "Place both shoes together, fully in frame, in good light"
+RETAKE_TIP = "Set both shoes side by side and shoot from a low side angle, fully in frame, in good light"
 CUT_OFF_TIP = "For a cleaner result, step back so the whole shoe fits in the frame"

@@ -18,7 +18,7 @@ const INK = "#FFFFFF";
 const MODE_ON = "#FFD60A";  // the system camera's selected-mode yellow
 
 export const HINTS: Record<Mode, string> = {
-  garments: "Lay pieces flat · keep pairs of shoes together",
+  garments: "Lay clothes flat · shoot shoes from a low side angle",
   outfit: "Full body in view · good light",
 };
 

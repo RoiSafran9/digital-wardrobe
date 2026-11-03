@@ -12,7 +12,7 @@ export function helpSections(outfit: boolean, billing: boolean): InfoSection[] {
     { title: "Garment photos", body: [
       "Lay one or more pieces flat on a bed or the floor, or hang them, and photograph them from above in good light.",
       "Each piece becomes its own item: a clean catalog image of that exact garment, with its colors, prints and text kept as they are.",
-      "Shoes work too: place a matching pair together, fully in frame, in good light. One pair is one item, and its image shows the shoes you photographed. A single shoe stays a single shoe.",
+      "Shoes work too: set a matching pair side by side and photograph them from the side at a low angle, fully in frame, in good light. The catalog image shows the shoes from that angle, so a photo from above leaves their sides to guesswork. One pair is one item, and its image shows the shoes you photographed. A single shoe stays a single shoe.",
       "A blurry, dark or very small photo is refused before any image is made, with a hint for the retake.",
     ] },
     ...(outfit ? [{ title: "Outfit photos", body: [

@@ -12,8 +12,8 @@ import { colors, hitSlopFor, radius, TAB_BAR_HEIGHT, type } from "../../src/them
 import { useScreenViewed } from "../../src/activity/track";
 
 const FIRST_PIECE = [
-  "Lay one garment flat, or set a pair of shoes together, on a bed or the floor.",
-  "Take the photo from above, in daylight.",
+  "Lay one garment flat on a bed or the floor, or set a pair of shoes side by side.",
+  "Shoot clothes from above and shoes from a low side angle, in daylight.",
   "Check the preview, then create its catalog image.",
 ];
 

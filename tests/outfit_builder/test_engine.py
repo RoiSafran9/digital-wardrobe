@@ -173,3 +173,40 @@ def test_when_nothing_new_is_left_the_best_looks_come_back_with_a_note():
 def test_shown_ids_that_are_not_in_the_closet_change_nothing():
     items = [item(f"top{i}", "shirt") for i in range(3)] + [item(f"bottom{i}", "chinos") for i in range(2)]
     assert _sets(build_suggestions(items, ANY, shown=[["someone-else", "x"]])) == _sets(build_suggestions(items, ANY))
+
+
+# --- Shoes the user owns complete a look when they fit the choices ---------------------------------
+
+def test_owned_shoes_that_fit_join_every_look():
+    items = [item("shirt", "shirt"), item("tee", "t-shirt"), item("chinos", "chinos"), item("loafers", "loafers")]
+    result = build_suggestions(items, ANY)
+    assert result.looks
+    assert all(look.slots.get("footwear") == "loafers" for look in result.looks)
+
+
+def test_the_pair_that_fits_the_style_is_chosen_and_a_clashing_pair_is_left_out():
+    items = [item("tee", "t-shirt"), item("joggers", "joggers"), item("sneakers", "sneakers"), item("loafers", "loafers")]
+    result = build_suggestions(items, filters(style="sporty"))
+    assert result.looks and all(look.slots.get("footwear") == "sneakers" for look in result.looks)
+
+    only_loafers = [i for i in items if i["id"] != "sneakers"]
+    result = build_suggestions(only_loafers, filters(style="sporty"))
+    assert result.looks and all("footwear" not in look.slots for look in result.looks)
+
+
+def test_shoes_follow_a_dark_palette_choice():
+    items = [item("shirt", "shirt", ["black"]), item("trousers", "trousers", ["black"]),
+             item("white", "sneakers", ["white"]), item("black", "sneakers", ["black"])]
+    result = build_suggestions(items, filters(colors="dark"))
+    assert result.looks and all(look.slots.get("footwear") == "black" for look in result.looks)
+
+
+def test_formal_looks_take_formal_shoes_never_sneakers():
+    items = [item("gown", "gown"), item("heels", "heels"), item("sneakers", "sneakers")]
+    result = build_suggestions(items, filters(occasion="formal"))
+    assert [look.slots for look in result.looks] == [{"one_piece": "gown", "footwear": "heels"}]
+
+
+def test_without_shoes_looks_stay_clothes_only():
+    result = build_suggestions([item("shirt", "shirt"), item("chinos", "chinos")], ANY)
+    assert [look.slots for look in result.looks] == [{"top": "shirt", "bottom": "chinos"}]

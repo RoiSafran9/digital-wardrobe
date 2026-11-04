@@ -6,9 +6,10 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends
 from api.config import runs_dir
 from api.item_loader import load_turn, turn_job, write_turn_status
-from api.routes.items import TRASH_DIR, _error, _item_dir
+from api.routes.items import TRASH_DIR, _error, _is_footwear, _item_dir
 from api.routes.runs import ProviderFactory, get_provider_factory
 from api.schemas import TurnOut
+from pipeline import footwear
 from pipeline.run_log import RunLogger
 from pipeline.turn import TurnFailed, TurnRefs, refs_for_item, run_turn
 
@@ -45,6 +46,8 @@ async def start_turn(
     front = os.path.join(item_dir, "generated.png") if item_dir else None
     if not front or not os.path.exists(front):
         return _error(404, "item not found")
+    if _is_footwear(item_dir):
+        return _error(409, footwear.NO_SIDE_VIEWS)
     current = load_turn(item_dir, run_id, photo_name, item_id)
     if current is not None and current.state == "running":
         return _error(409, "the 360 view is already being made")

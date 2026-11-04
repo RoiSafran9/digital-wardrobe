@@ -6,7 +6,7 @@ An iPhone closet. Photograph clothes laid on a bed or floor — or a photo of yo
 
 ## What it does
 - Sign in with a 6-digit email code (account mode) or run without an account (local mode, development only).
-- **Garment photo:** capture one or several pieces laid flat (camera or library); a free pre-scan shows the pieces found, the user picks which to create, and each becomes its own item.
+- **Garment photo:** capture one or several pieces laid flat (camera or library); a free pre-scan shows the pieces found, the user picks which to create, and each becomes its own item. Shoes count too: a matching pair is one item (one front image), a single shoe stays one shoe ([footwear spec](docs/features/footwear-import/01-FOOTWEAR-SCAN-CATALOG-MVP.md)).
 - **Outfit photo** (behind `WARDROBE_OUTFIT=on`): a photo of someone wearing clothes; a free scan finds the garments, the user picks, corrects or adds missed ones, the picks are generated as catalog images and reviewed (keep, discard, regenerate) before entering the closet.
 - Pipeline: quality check, detection with facts, catalog image generation with a color/text check and retries, local background removal (rembg). Pieces touching the photo edge are completed with a tip; real failures ask for a retake.
 - Onboarding and sign-in (name at sign-up), then tabs: Home · Closet · Add · Account ([SCREENS.md](docs/SCREENS.md)).

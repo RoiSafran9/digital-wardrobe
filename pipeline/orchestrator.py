@@ -4,6 +4,7 @@ from typing import Callable
 import shutil
 from dataclasses import dataclass
 from pipeline.providers.base import VisionProvider, ImageGenProvider
+from pipeline import footwear
 from pipeline.run_log import RunLogger
 from pipeline.stages import (
     stage0_quality, stage1_detect_facts, crop_item, cutout, stage4_generate, stage5_verify, stage6_score,
@@ -56,7 +57,8 @@ async def _run_item(image_path: str, item, item_dir: str, providers: Providers,
             f.write(verification.model_dump_json(indent=2))
 
     visible_fraction = stage1_detect_facts.visible_fraction(item)
-    result = stage6_score.run(verification, visible_fraction, max_attempts, cut_off=item.cut_off_by_frame)
+    result = stage6_score.run(verification, visible_fraction, max_attempts, cut_off=item.cut_off_by_frame,
+                              footwear=footwear.facts_are_footwear(facts))
     with open(os.path.join(item_dir, "result.json"), "w") as f:
         f.write(result.model_dump_json(indent=2))
 

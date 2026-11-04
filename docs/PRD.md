@@ -1,5 +1,5 @@
 # Product Requirements — Digital Wardrobe
-Status: **Describes the app as built** · Updated: 2026-10-20
+Status: **Describes the app as built** · Updated: 2026-11-03
 
 `PRODUCT.md` holds users, purpose and principles; this document holds the concrete requirements. Ideas from earlier planning that are not built are listed under "Later" in [ROADMAP.md](ROADMAP.md).
 
@@ -20,7 +20,8 @@ Today: the owner, and a friends-and-family TestFlight beta being prepared (app n
 
 ### Capture
 6. Take a photo with the in-app camera or choose one from the library (Add tab or Home). In account mode a **free pre-scan** shows the pieces found with numbered boxes; the user leaves out any piece and sees the cost ("Generate N Items · N credits"). Processing runs on the server (the user can leave the screen, optionally get a push when ready), then a Results screen shows the pieces made. If the pre-scan fails, the approved max-fronts quote is used.
-7. One photo may hold one piece or several side by side; each included piece becomes its own item. Clothes being worn, accessories (sunglasses, jewelry) and non-clothing objects are skipped.
+7. One photo may hold one piece or several side by side; each included piece becomes its own item. Clothes being worn, accessories (sunglasses, jewelry, bags) and non-clothing objects are skipped.
+7a. **Shoes** (footwear MVP, 2026-11-03): shoes, sneakers, boots, sandals, loafers, heels, flats, slippers, mules, slides and clogs are pieces too, in a garment photo (also mixed with clothes), First 3 Pieces and the outfit photo. A matching pair is **one** piece, one item and one front-image action; two pairs are two. A single shoe stays one shoe — its image never invents a partner. The pick screen says "pair" or "single shoe" before anything is charged. The catalog image is a three-dimensional product shot of the same shoes (shape, sole, laces, logos, wear), not a flattened garment. Shoes sort under **Shoes** and fill Build My Look's footwear slot. Back images and 360° views are not offered for shoes (refused by the server before credits are held). See [footwear spec](features/footwear-import/01-FOOTWEAR-SCAN-CATALOG-MVP.md); image quality awaits the [real-photo QA](features/footwear-import/02-REAL-PHOTO-QA.md).
 8. The user waits in the app (roughly 15–60 s) with a staged status ("Finding your pieces" → "Smoothing them out" → "Cutting them out") that never claims to be done early.
 9. A photo that is blurry, too dark or too small is rejected before any model call; the app asks to try again laid flat in good light (for a back photo it names the exact problem).
 10. Processed items are saved when made; the Results screen lets the user deselect pieces before "Add N to Closet" (deselected pieces are soft-deleted; credits for made pieces are not returned). The owner corrects or removes later too.

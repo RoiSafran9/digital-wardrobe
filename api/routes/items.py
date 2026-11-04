@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse, Response
 from api.config import runs_dir
 from api.item_loader import load_back, load_item, load_turn, image_urls, cutout_url
 from api.routes.runs import ProviderFactory, get_provider_factory
+from pipeline import footwear
 from pipeline.back import BackPhotoRejected, run_back
 from pipeline.run_log import RunLogger
 from api.facts_edit import apply_patch, patch_error
@@ -67,6 +68,11 @@ def _item_dir(run_id: str, photo_name: str, item_id: str) -> str | None:
     return path
 
 
+def _is_footwear(item_dir: str) -> bool:
+    loaded = load_item(item_dir)
+    return loaded is not None and footwear.facts_are_footwear(loaded[2])
+
+
 def _error(status: int, message: str) -> JSONResponse:
     return JSONResponse(status_code=status, content={"error": message})
 
@@ -117,6 +123,8 @@ async def add_back(
     front = os.path.join(item_dir, "generated.png") if item_dir else None
     if not front or not os.path.exists(front):
         return _error(404, "item not found")
+    if _is_footwear(item_dir):
+        return _error(409, footwear.NO_SIDE_VIEWS)
     if photo is None or not photo.filename:
         return _error(400, "no photo provided")
 

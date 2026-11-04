@@ -19,12 +19,15 @@ import cv2
 from pydantic import BaseModel
 from pipeline.providers.gemini import _first_image as gemini_first_image
 from pipeline.providers.gemini import MODEL_IMAGE, MODEL_VISION, _read_prompt, image_content, image_model, touches_frame
+from pipeline import footwear
 from pipeline.costs import RATES
 from pipeline.stages import cutout, stage5_verify
 from pipeline.types import BBox, FactField, ItemFacts
 
 DETECT_PROMPT = "outfit_detect_v3.txt"
 GENERATE_PROMPT = "outfit_generate_v3.txt"
+# Worn shoes: the garment prompt above lays pieces flat and symmetric, wrong for three-dimensional footwear.
+FOOTWEAR_GENERATE_PROMPT = "outfit_generate_footwear_v1.txt"
 REVIEW_PROMPT = "outfit_review_v1.txt"
 
 # Paid-tier list prices: pipeline/costs.py (read 2026-10-19).
@@ -188,10 +191,11 @@ class Usage:
     calls: list[dict] = field(default_factory=list)
 
     def add(self, kind: str, model: str, latency_s: float, usd: float, ok: bool, input_tokens: int | None = None,
-            output_tokens: int | None = None, images_out: int | None = None, error_class: str | None = None):
+            output_tokens: int | None = None, images_out: int | None = None, error_class: str | None = None,
+            prompt: str | None = None):
         self.calls.append({"kind": kind, "model": model, "latency_s": round(latency_s, 2), "usd": round(usd, 5), "ok": ok,
                            "input_tokens": input_tokens, "output_tokens": output_tokens, "images_out": images_out,
-                           "error_class": error_class})
+                           "error_class": error_class, **({"prompt": prompt} if prompt else {})})
 
     @property
     def usd(self) -> float:
@@ -238,13 +242,18 @@ async def detect_candidates(client, image_path: str, usage: Usage) -> OutfitScan
 async def generate_flatlay(client, crop_path: str, context_path: str | None, candidate: OutfitCandidate,
                            violations: list[str] | None, out_path: str, usage: Usage,
                            prompt_name: str = GENERATE_PROMPT, model: str | None = None) -> str:
-    """Stage 2 for one selected candidate. context_path (the photo with this candidate outlined) is optional."""
+    """Stage 2 for one selected candidate. context_path (the photo with this candidate outlined) is optional.
+    Footwear (its category, after any correction by the user) gets the footwear prompt unless a caller chose
+    another prompt on purpose (the PoC script)."""
+    if prompt_name == GENERATE_PROMPT and footwear.is_footwear(candidate.category):
+        prompt_name = FOOTWEAR_GENERATE_PROMPT
     start = time.monotonic()
     ok, usd, tin, tout, images, err = False, 0.0, None, None, None, None
     try:
         violations_block = "\nPrevious attempt violations to fix:\n" + "\n".join(violations) if violations else ""
         prompt = _read_prompt(prompt_name).format(facts_block=facts_block(candidate), violations_block=violations_block,
-                                                      context_block=CONTEXT_BLOCK if context_path else "")
+                                                      context_block=CONTEXT_BLOCK if context_path else "",
+                                                      count_block=footwear.count_block(candidate.visible_parts))
         contents = ["Image 1:", _image_part(crop_path)]
         if context_path:
             contents += ["Image 2:", _image_part(context_path)]
@@ -265,7 +274,8 @@ async def generate_flatlay(client, crop_path: str, context_path: str | None, can
         err = type(e).__name__
         raise
     finally:
-        usage.add("generate", model or image_model(), time.monotonic() - start, usd, ok, tin, tout, images, err)
+        usage.add("generate", model or image_model(), time.monotonic() - start, usd, ok, tin, tout, images, err,
+                  prompt=prompt_name)
 
 
 async def generate_selected(client, image_path: str, scan: OutfitScan, selected: list[str], out_dir: str,

@@ -26,8 +26,9 @@ const cand = (id: string, category: string, visibility: OutfitCandidate["visibil
 });
 const SCAN: OutfitScan = {
   id: "scan-1", status: "succeeded", error: null, scene_kind: "worn", person_count: 1, expires_at: null,
-  candidates: [cand("c1", "blazer"), cand("c2", "shirt", "low"), cand("c3", "trousers"), cand("c4", "shoes")],
+  candidates: [cand("c1", "blazer"), cand("c2", "shirt", "low"), cand("c3", "trousers")],
 };
+const WITH_SHOES: OutfitScan = { ...SCAN, candidates: [...SCAN.candidates, cand("c4", "shoes")] };
 const f = (v: string) => ({ value: v, confidence: 1, basis: "observed" as const });
 const item = (id: string, category: string): ClosetItem => ({
   id, item_id: id, run_id: "20261019-100000", photo_name: "", tier: "high",
@@ -47,22 +48,22 @@ beforeEach(() => {
   (getPendingItems as jest.Mock).mockResolvedValue([]);
 });
 
-test("the pick screen hides shoes, leaves mostly hidden pieces unselected and shows the server's price", async () => {
+test("the pick screen offers a worn pair of shoes as one piece, leaves mostly hidden pieces unselected and shows the server's price", async () => {
   mockParams = { scanId: "scan-1" };
-  (getOutfitScan as jest.Mock).mockResolvedValue(SCAN);
+  (getOutfitScan as jest.Mock).mockResolvedValue(WITH_SHOES);
   await withCredits(<PickScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(5) });
   await screen.findByText("Blazer");
-  expect(screen.queryByText("Shoes")).toBeNull();
-  expect(screen.getByText("We found 3 garments")).toBeTruthy();
+  expect(screen.getAllByText("Shoes")).toHaveLength(1);
+  expect(screen.getByText("We found 4 garments")).toBeTruthy();
   expect(screen.getByText(/mostly guessed/)).toBeTruthy();
   expect(screen.getByText("Tops · Not sure — please check")).toBeTruthy();
   expect(screen.getByText("Outerwear · Clear match")).toBeTruthy();
   const checked = screen.getAllByRole("checkbox").map((c) => c.props.accessibilityState.checked);
-  expect(checked).toEqual([true, false, true]);
-  expect(screen.getByText("2 selected")).toBeTruthy();
-  expect(screen.getByText("2 credits · 5 available")).toBeTruthy();
-  await fireEvent.press(screen.getByLabelText(/^Shirt\./));
+  expect(checked).toEqual([true, false, true, true]);
+  expect(screen.getByText("3 selected")).toBeTruthy();
   expect(screen.getByText("3 credits · 5 available")).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText(/^Shirt\./));
+  expect(screen.getByText("4 credits · 5 available")).toBeTruthy();
 });
 
 test("Not a garment takes a detection off the list", async () => {

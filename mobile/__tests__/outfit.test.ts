@@ -9,10 +9,10 @@ const scan = (candidates: OutfitCandidate[], extra: Partial<OutfitScan> = {}): O
   id: "s1", status: "succeeded", error: null, scene_kind: "worn", person_count: 1, candidates, expires_at: null, ...extra,
 });
 
-test("shoes are not offered and mostly hidden garments start unselected", () => {
+test("a worn pair of shoes is offered as one candidate and mostly hidden garments start unselected", () => {
   const list = pickable(scan([cand("c1", "blazer"), cand("c2", "shirt", "low"), cand("c3", "trousers"), cand("c4", "shoes")]));
-  expect(list.map((c) => c.id)).toEqual(["c1", "c2", "c3"]);
-  expect(defaultPicks(list)).toEqual(["c1", "c3"]);
+  expect(list.map((c) => c.id)).toEqual(["c1", "c2", "c3", "c4"]);
+  expect(defaultPicks(list)).toEqual(["c1", "c3", "c4"]);
 });
 
 test("notes are plain language", () => {

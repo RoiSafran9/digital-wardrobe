@@ -19,6 +19,7 @@ from api.outfit_builder.swap import StaleLook, swap_options
 from api.schemas import (AccountDeleteIn, EventBatchIn, EventBatchOut, EventIn, GarmentGenerateIn, GarmentScanOut, OutfitFiltersIn, OutfitLookOut, OutfitSuggestionsIn, OutfitSuggestionsOut, ProfileIn, ProfileOut, PushTokenIn, RegenerateIn, RegionIn, BackOut, CreditEntryOut, CreditsOut, ItemPatch, JobOut, OutfitCandidateOut, OutfitGenerateIn, OutfitScanOut, PricesOut,
                          SwapAlternativeOut, SwapOptionsIn, SwapOptionsOut, TurnOut, TurnViewOut, V1ItemOut, V1ItemsResponse)
 from api.store import INTERRUPTED, get_store
+from pipeline import footwear
 from pipeline.types import ItemFacts
 
 router = APIRouter(prefix="/v1")
@@ -245,11 +246,18 @@ def delete_item(item_id: str, background: BackgroundTasks, user: User = Depends(
     return Response(status_code=204)
 
 
+def _no_shoe_side_views(store, user: User, item: dict, key: str) -> None:
+    """Back and 360 are garment-only for now: refuse shoes before anything is held or uploaded.
+    A retry of a job that already exists under this key still gets that job back."""
+    if footwear.facts_are_footwear(item.get("facts") or {}) and store.job_by_key(user.id, key) is None:
+        raise HTTPException(409, footwear.NO_SIDE_VIEWS)
+
+
 @router.post("/items/{item_id}/back", response_model=JobOut, status_code=202, dependencies=[Depends(require_generation)])
 def add_back(item_id: str, user: User = Depends(current_user), photo: UploadFile | None = File(None),
              key: str = Depends(idempotency_key), store=Depends(get_store),
              gate=Depends(get_gate), prices=Depends(get_prices)):
-    _own_item(store, user, item_id)
+    _no_shoe_side_views(store, user, _own_item(store, user, item_id), key)
     if photo is None:
         raise HTTPException(400, "no photo provided")
     return queue_job(store, user, "back", key, photo, gate, prices, item_id=item_id)
@@ -258,7 +266,7 @@ def add_back(item_id: str, user: User = Depends(current_user), photo: UploadFile
 @router.post("/items/{item_id}/turn", response_model=JobOut, status_code=202, dependencies=[Depends(require_generation)])
 def start_turn(item_id: str, user: User = Depends(current_user), key: str = Depends(idempotency_key),
                store=Depends(get_store), gate=Depends(get_gate), prices=Depends(get_prices)):
-    _own_item(store, user, item_id)
+    _no_shoe_side_views(store, user, _own_item(store, user, item_id), key)
     if store.job_by_key(user.id, key) is None and store.active_job(user.id, item_id, "turn"):
         raise HTTPException(409, "the 360 view is already being made")
     response = queue_job(store, user, "turn", key, None, gate, prices, item_id=item_id)

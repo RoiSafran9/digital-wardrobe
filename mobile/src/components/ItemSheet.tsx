@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, FlatList, Modal, Pressable, ScrollView, Style
 import { Icon } from "./Icon";
 import { deleteItem } from "../api/client";
 import { useAddBack } from "../useAddBack";
+import { NO_SIDE_VIEWS, isFootwearItem } from "../footwear";
 import { TurnView } from "./TurnView";
 import { TURN_LABELS, useTurn } from "../useTurn";
 import type { BackView, ClosetItem, RunItem } from "../api/types";
@@ -245,6 +246,9 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
   const back = isClosetItem(item) ? item.back ?? null : null;
   const closetItem = isClosetItem(item) ? item : null;
   const actions = !!(closetItem && onUpdated);
+  // Back and 360 are garment features: shoes don't offer them (a back or 360 made before stays viewable).
+  const shoe = isFootwearItem(item);
+  const sideViews = actions && !shoe;
   const turnState = useTurn(closetItem, onUpdated);
   const { turn, error: turnError } = turnState;
   const turnViews = turn?.state === "done" && turn.views.length > 0
@@ -294,8 +298,8 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
 
   const segments = [
     { value: "front" as Side, label: "Front" },
-    ...(back || actions ? [{ value: "back" as Side, label: "Back" }] : []),
-    ...(turnViews || actions ? [{ value: "360" as Side, label: "360°" }] : []),
+    ...(back || sideViews ? [{ value: "back" as Side, label: "Back" }] : []),
+    ...(turnViews || sideViews ? [{ value: "360" as Side, label: "360°" }] : []),
   ];
 
   let stage: React.ReactNode;
@@ -319,7 +323,7 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
             </Text>
             {turn?.state === "failed" && turn.error ? <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center" }}>{turn.error}</Text> : null}
             {turnError ? <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center" }}>{turnError}</Text> : null}
-            {actions ? (
+            {sideViews ? (
               <Button
                 title={withPrice(turn?.state === "failed" ? "Try Again" : "Generate 360°", turnState.price)}
                 size="medium" icon="turn" onPress={requestTurn}
@@ -340,7 +344,7 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
               Take a photo of the back and we'll create a matching catalog image.
             </Text>
             {backError ? <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center" }}>{backError}</Text> : null}
-            {actions ? <Button title={withPrice("Add Back Image", backState.price)} size="medium" onPress={requestBack} /> : null}
+            {sideViews ? <Button title={withPrice("Add Back Image", backState.price)} size="medium" onPress={requestBack} /> : null}
           </View>
         )}
       </Stage>
@@ -417,14 +421,17 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
         {actions || onRemove ? (
           <View style={{ marginTop: 24 }}>
             <GroupedList>
-              {actions && !back && !uploading ? (
+              {sideViews && !back && !uploading ? (
                 <Row label="Add Back Image" value={backState.price ? creditsLabel(backState.price) : undefined} onPress={() => { setSide("back"); requestBack(); }} />
               ) : null}
-              {actions && !turnViews && turn?.state !== "running" ? (
+              {sideViews && !turnViews && turn?.state !== "running" ? (
                 <Row label="Generate 360° View" value={turnState.price ? creditsLabel(turnState.price) : undefined} onPress={() => { setSide("360"); requestTurn(); }} />
               ) : null}
               {onRemove ? <Row label="Remove from closet" destructive onPress={onRemove} /> : null}
             </GroupedList>
+            {actions && shoe ? (
+              <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 8, marginHorizontal: 16 }}>{NO_SIDE_VIEWS}</Text>
+            ) : null}
           </View>
         ) : null}
       </ScrollView>

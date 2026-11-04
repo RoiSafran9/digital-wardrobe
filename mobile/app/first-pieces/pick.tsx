@@ -9,7 +9,7 @@ import { useCredits } from "../../src/credits/CreditsProvider";
 import { useFirstPieces } from "../../src/firstPieces/FirstPiecesProvider";
 import { track } from "../../src/firstPieces/analytics";
 import { CAP_TOAST, FIRST_GOAL, ROUND_CAP, roundQuote, type RoundPhoto, type RoundPiece } from "../../src/firstPieces/round";
-import { garmentName } from "../../src/garmentName";
+import { pieceLabel as scanPieceLabel } from "../../src/footwear";
 import { haptics } from "../../src/haptics";
 import { isWornRejection, TRY_AS_OUTFIT } from "../../src/outfit/outfit";
 import { colors, radius, type } from "../../src/theme";
@@ -19,7 +19,7 @@ export { CAP_TOAST };
 
 const pieceLabel = (photo: RoundPhoto, index: number) => {
   const p = photo.scan?.pieces.find((x) => x.index === index);
-  return p ? garmentName({ facts: { category: { value: p.category }, colors: { value: p.colors } } } as never) : "Piece";
+  return p ? scanPieceLabel(p) : "Piece";
 };
 
 // Why a photo has nothing to pick, in plain words.

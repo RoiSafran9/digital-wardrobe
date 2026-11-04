@@ -29,7 +29,7 @@ export const OUTFIT_STAGES: Stage[] = [
 ];
 
 // Quick types for correcting or marking a garment; the free text takes anything else.
-const TYPE_SHORTCUTS = ["shirt", "t-shirt", "sweater", "jacket", "coat", "jeans", "pants", "skirt", "dress", "shorts", "belt", "bag"];
+const TYPE_SHORTCUTS = ["shirt", "t-shirt", "sweater", "jacket", "coat", "jeans", "pants", "skirt", "dress", "shorts", "shoes", "belt", "bag"];
 
 // "Not sure — please check" when the garment is partly hidden or the model said it was unsure.
 export function unsure(c: OutfitCandidate): boolean {

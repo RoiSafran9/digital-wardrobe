@@ -25,7 +25,7 @@ test("garment card opens the camera; no prices while billing is off", async () =
   await renderAdd();
   expect(screen.getByText("Choose how to start. Finding garments is always free.")).toBeTruthy();
   expect(screen.queryByText(/credit/)).toBeNull();
-  await fireEvent.press(screen.getByRole("button", { name: "Photograph Garments" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Photograph Clothes & Shoes" }));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/capture/camera", params: { mode: "garments" } });
 });
 
@@ -40,7 +40,7 @@ test("the outfit card appears only when the server offers outfits", async () => 
 
 test("billing on: per-garment price and the balance with a price-list link", async () => {
   await renderAdd({ billing: true, prices: { garment: 1 }, credits: wallet(18), outfit: true });
-  expect(screen.getByText("1 credit per garment")).toBeTruthy();
+  expect(screen.getByText("1 credit per piece")).toBeTruthy();
   expect(screen.getByText("Free detection · 1 credit per piece")).toBeTruthy();
   await fireEvent.press(screen.getByText(/Balance: 18 credits/));
   expect(mockPush).toHaveBeenCalledWith("/account");

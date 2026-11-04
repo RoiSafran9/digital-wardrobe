@@ -231,6 +231,7 @@ class GarmentPieceOut(BaseModel):
     category: str
     colors: list[str] = []
     box: dict[str, float]  # pixels on the uploaded photo
+    shoes: Literal["pair", "single"] | None = None  # footwear only: one pair (or one shoe) is one piece
 
 
 class GarmentScanOut(BaseModel):

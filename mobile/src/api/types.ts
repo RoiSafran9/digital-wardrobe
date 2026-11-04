@@ -151,7 +151,11 @@ export type ItemPatch = {
 };
 
 // Garment pre-scan (free): the pieces found in a garment photo, before anything is made.
-export type GarmentPiece = { index: number; category: string; colors: string[]; box: { x: number; y: number; width: number; height: number } };
+// shoes: footwear only, whether the scan saw a pair or a single shoe (one pair is one piece).
+export type GarmentPiece = {
+  index: number; category: string; colors: string[]; box: { x: number; y: number; width: number; height: number };
+  shoes?: "pair" | "single" | null;
+};
 
 export type GarmentScan = {
   id: string;

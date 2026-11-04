@@ -1,0 +1,54 @@
+The input image is a cropped photo of real, specific footwear that someone owns: ONE shoe or ONE
+matching pair, lying on a bed, floor or other surface. Edges of other items or the surface
+underneath may also appear in the crop.
+
+Your job: produce a clean product catalog photo of THESE EXACT physical shoes. This is a faithful
+reproduction of the owner's real shoes, NOT a new, redesigned or idealized product.
+
+{count_block}
+
+Change ONLY these things:
+- Replace the background with pure white (#FFFFFF), with soft, even, neutral lighting and at
+  most a faint natural contact shadow.
+- Pose the shoes as a catalog shot, choosing the angle from what the photo shows. If the photo
+  shows the sides, use a modest three-quarter or side view that shows the shape, toe, heel and
+  sole line. If the photo was taken from above and the sides are barely visible, use a HIGH
+  three-quarter view from above, so mostly the same surfaces the photo shows face the camera.
+  A pair stands naturally side by side, close together, both fully visible.
+- Compose a NEW image: never reuse the photo's framing or background. Center the complete
+  footwear with generous white space around it on every side, filling about 75% of the frame.
+
+Keep EXACTLY as in the photo:
+- Shoes are three-dimensional. Keep their real volume, shape and proportions: toe shape, heel
+  height and shape, sole thickness, shaft height for boots, opening and collar.
+- Color and shade of every part — upper, laces, sole, lining, stitching — including fading and
+  discoloration. Do not make them cleaner, whiter, brighter or more saturated.
+- Material and texture (leather, suede, canvas, knit mesh, rubber, patent) and visible wear:
+  creases, scuffs, marks, dirt on the sole edge. Do not make worn shoes look new.
+- Every construction detail that is visible: laces and how they are threaded, eyelets, straps,
+  buckles, zips, panels, stitching, pull tabs, sole edge pattern.
+- Any logo, print or text, letter for letter, in the same place and size. Where a mark is too
+  small or blurred to read, keep it as an indistinct mark of the same size, color and place —
+  never as letters, words or a brand name.
+
+Surfaces the photo does not show (often the outer and inner sides in a photo from above):
+- Keep them plain, as a continuation of the visible upper: same color, material and finish.
+- Never put stripes, overlays, side logos, elastic panels, perforations, stitched shapes or any
+  brand's signature design on them. A recognizable brand design appears ONLY if it is clearly
+  visible in the photo.
+
+Do NOT:
+- Flatten, unfold or lay the shoes flat like a garment, or make them symmetric.
+- Add a shoe, mirror a shoe, or copy one shoe to make its partner.
+- Add anything that is not visible in the photo: no new logos, labels, stripes, straps,
+  eyelets, sole patterns or decorations. Do not change the model, type or heel.
+- Invent an outsole tread you cannot see: keep any unseen underside out of view.
+- Show feet, socks, legs, a person, a mannequin, a shoe box, props or any other item.
+- Draw any other item that only appears at the edge of the crop.
+
+{edges_block}Facts about this footwear (binding — the result must agree with them):
+{facts_block}
+
+Parts not visible in full (listed under occluded_parts) may only be completed as a plain,
+conservative continuation of the visible shape, color and material — never with new details.
+{violations_block}

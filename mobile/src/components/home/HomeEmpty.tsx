@@ -6,7 +6,7 @@ import { colors, radius, type } from "../../theme";
 
 const TIPS = [
   "Lay pieces flat on a bed or floor in daylight.",
-  "Several garments in one photo is fine. Each becomes its own item.",
+  "Several pieces in one photo is fine. Each becomes its own item; a pair of shoes counts as one.",
   "Full-body mirror photos work for outfits.",
 ];
 

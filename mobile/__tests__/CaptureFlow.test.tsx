@@ -63,7 +63,7 @@ describe("camera", () => {
 
   test("the shutter takes the photo and opens its preview", async () => {
     await renderWith(<CameraScreen />);
-    expect(screen.getByText("Lay pieces flat · daylight works best")).toBeTruthy();
+    expect(screen.getByText("Lay clothes flat · shoot shoes from a low side angle")).toBeTruthy();
     await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take garment photo" })));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///camera.jpg" } });
   });

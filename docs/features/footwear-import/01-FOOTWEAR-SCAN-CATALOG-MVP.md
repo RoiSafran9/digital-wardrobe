@@ -1,6 +1,6 @@
 # KIPS — Footwear Scanning & Catalog Generation MVP
 
-**Status:** Implementation-ready feature specification and Claude Code handoff; no code changes in this document  
+**Status:** Implementation-ready feature specification and Claude Code handoff. **Implemented on branch `claude/footwear-scanning-catalog-gen-d2cdcf` (2026-11-03), pending review and the [real-photo QA](02-REAL-PHOTO-QA.md).**  
 **Prepared:** 2026-11-02  
 **Source inspected:** `RoiSafran9/digital-wardrobe`, `main` as inspected on 2026-11-02  
 **Owner's request:** Expand existing garment scanning and catalog-image generation to **shoes/footwear**, including the ways users currently add items.

@@ -12,14 +12,14 @@ test("help covers outfits and credits only when they exist", () => {
   expect(titles(true, true)).toContain("AI Credits");
 });
 
-test("help shows no contact row without a support email", () => {
-  render(<HelpScreen />);
+test("help shows no contact row without a support email", async () => {
+  await render(<HelpScreen />);
   expect(screen.getByText("Help")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Contact Support" })).toBeNull();
 });
 
-test("privacy says it's a summary and explains who can see your data", () => {
-  render(<PrivacyScreen />);
+test("privacy says it's a summary and explains who can see your data", async () => {
+  await render(<PrivacyScreen />);
   expect(screen.getByText("Who can see it")).toBeTruthy();
   expect(screen.getByText(/not a legal privacy policy/)).toBeTruthy();
   expect(screen.getByText(/Delete Account/)).toBeTruthy();

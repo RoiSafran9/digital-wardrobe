@@ -34,7 +34,7 @@ beforeEach(async () => {
 
 test("after a First 3 Pieces round the popup shows the new pieces over the closet, once", async () => {
   mockParams = { celebrate: "1", ids: "n1,n2" };
-  renderCloset();
+  await renderCloset();
   expect(await screen.findByText(POPUP_TITLE)).toBeTruthy();
   expect(screen.getByText(POPUP_BODY)).toBeTruthy();
   expect(screen.getByTestId("popup-n1", { includeHiddenElements: true })).toBeTruthy();
@@ -43,23 +43,23 @@ test("after a First 3 Pieces round the popup shows the new pieces over the close
   await act(async () => fireEvent.press(screen.getByRole("button", { name: "Explore My Closet" })));
   expect(await AsyncStorage.getItem(celebratedKey("u1"))).toBe("1");
 
-  screen.unmount();
-  renderCloset();
+  await screen.unmount();
+  await renderCloset();
   await act(async () => {});
   expect(screen.queryByText(POPUP_TITLE)).toBeNull();
 });
 
 test("Add More goes back to the start of the flow", async () => {
   mockParams = { celebrate: "1", ids: "n1" };
-  renderCloset();
-  fireEvent.press(await screen.findByRole("button", { name: "Add More" }));
+  await renderCloset();
+  await fireEvent.press(await screen.findByRole("button", { name: "Add More" }));
   await act(async () => {});
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/first-pieces", params: { entry: "home" } });
 });
 
 test("no popup for an ordinary visit", async () => {
   mockParams = {};
-  renderCloset();
+  await renderCloset();
   await act(async () => {});
   expect(screen.queryByText(POPUP_TITLE)).toBeNull();
 });

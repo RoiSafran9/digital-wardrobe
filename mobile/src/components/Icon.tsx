@@ -64,13 +64,15 @@ export function Icon({ name, size, color, weight }: {
   name: IconName; size: number; color: ColorValue; weight?: SymbolWeight;
 }) {
   const { sf, ion } = ICONS[name];
+  // React Native 0.88 widened ColorValue to null and numbers; both icon libraries take only strings and native colors.
+  const tint = color == null || typeof color === "number" ? undefined : color;
   return (
     <SymbolView
       name={{ ios: sf }}
       size={size}
       weight={weight}
-      tintColor={color}
-      fallback={<Ionicons name={ion} size={size} color={color} />}
+      tintColor={tint}
+      fallback={<Ionicons name={ion} size={size} color={tint} />}
     />
   );
 }

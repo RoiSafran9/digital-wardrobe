@@ -36,7 +36,7 @@ beforeEach(() => jest.clearAllMocks());
 
 test("shows the greeting, a search field, the two labelled add tiles and the closet by category", async () => {
   (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "t-shirt", ["gray"]), item("item_1", "shorts", ["navy"]), item("item_2", "T-shirt", ["navy"])] });
-  renderHome({ outfit: true });
+  await renderHome({ outfit: true });
   expect(screen.getByText("FRIDAY, OCTOBER 16")).toBeTruthy();
   expect(screen.getByRole("header", { name: "Good evening" })).toBeTruthy();  // midnight
   expect(await screen.findByText("Search 3 pieces")).toBeTruthy();
@@ -53,35 +53,35 @@ test("shows the greeting, a search field, the two labelled add tiles and the clo
 
 test("a category row opens the closet filtered to it; search opens the closet ready to type", async () => {
   (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "shorts", ["navy"])] });
-  renderHome();
-  fireEvent.press(await screen.findByRole("button", { name: "Bottoms, 1" }));
+  await renderHome();
+  await fireEvent.press(await screen.findByRole("button", { name: "Bottoms, 1" }));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/closet", params: expect.objectContaining({ group: "Bottoms", at: expect.any(String) }) });
-  fireEvent.press(screen.getByRole("search", { name: "Search 1 pieces" }));
+  await fireEvent.press(screen.getByRole("search", { name: "Search 1 pieces" }));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/closet", params: expect.objectContaining({ search: "1" }) });
 });
 
 test("garment buttons feed the garment flow; the outfit button feeds the outfit flow", async () => {
   (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "shirt", [])] });
   (pickPhoto as jest.Mock).mockResolvedValue("file:///p.jpg");
-  renderHome({ outfit: true });
-  fireEvent.press(await screen.findByRole("button", { name: "Add garments, flat lay photo, Camera" }));
+  await renderHome({ outfit: true });
+  await fireEvent.press(await screen.findByRole("button", { name: "Add garments, flat lay photo, Camera" }));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/capture/camera", params: { mode: "garments" } });
-  fireEvent.press(screen.getByRole("button", { name: "Add garments, flat lay photo, Library" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Add garments, flat lay photo, Library" }));
   await waitFor(() => expect(mockPush).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///p.jpg", flow: "garment" } }));
-  fireEvent.press(screen.getByRole("button", { name: "Add from outfit photo, Choose photo" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Add from outfit photo, Choose photo" }));
   await waitFor(() => expect(mockPush).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///p.jpg", flow: "outfit" } }));
 });
 
 test("without outfit import only the garment tile shows", async () => {
   (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "shirt", [])] });
-  renderHome();
+  await renderHome();
   await screen.findByText("FLAT LAY");
   expect(screen.queryByText("WORN")).toBeNull();
 });
 
 test("an empty closet shows the frames, two labelled rows and the tips", async () => {
   (getItems as jest.Mock).mockResolvedValue({ items: [] });
-  renderHome({ outfit: true });
+  await renderHome({ outfit: true });
   expect(await screen.findByText("Your closet starts here")).toBeTruthy();
   expect(screen.getByText("Laid flat or on a hanger")).toBeTruthy();
   expect(screen.getByText("You wearing it")).toBeTruthy();
@@ -94,21 +94,21 @@ test("an empty closet shows the frames, two labelled rows and the tips", async (
 
 test("the credit pill shows only while billing is on", async () => {
   (getItems as jest.Mock).mockResolvedValue({ items: [] });
-  renderHome();
+  await renderHome();
   await screen.findByText("Your closet starts here");
   expect(screen.queryByRole("button", { name: /AI credits/ })).toBeNull();
-  screen.unmount();
-  renderHome({ billing: true, prices: { garment: 1 }, credits: { balance: 9, held: 0, available: 9, granted: 10, used: 1, entries: [], next_before: null } });
-  fireEvent.press(await screen.findByRole("button", { name: "9 AI credits" }));
+  await screen.unmount();
+  await renderHome({ billing: true, prices: { garment: 1 }, credits: { balance: 9, held: 0, available: 9, granted: 10, used: 1, entries: [], next_before: null } });
+  await fireEvent.press(await screen.findByRole("button", { name: "9 AI credits" }));
   expect(mockPush).toHaveBeenCalledWith("/account");
 });
 
 test("when the server can't be reached it says so and offers a retry", async () => {
   (getItems as jest.Mock).mockRejectedValueOnce(new Error("Can't reach your wardrobe server."))
     .mockResolvedValueOnce({ items: [item("item_0", "shorts", ["navy"])] });
-  renderHome();
+  await renderHome();
   expect(await screen.findByText(/Can't reach your wardrobe server/)).toBeTruthy();
-  fireEvent.press(screen.getByRole("button", { name: "Try again" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
   expect(await screen.findByText("Search 1 piece")).toBeTruthy();
 });
 
@@ -122,9 +122,9 @@ test("a capture in progress shows on Home and opens the processing screen", asyn
     return <Pressable onPress={() => start("file:///p.jpg", 1)}><Text>start</Text></Pressable>;
   }
   const value: CreditsValue = { billing: false, prices: {}, credits: null, outfit: false, refresh: jest.fn(async () => {}) };
-  render(<CreditsContext.Provider value={value}><CaptureJobsProvider><Starter /><HomeScreen /></CaptureJobsProvider></CreditsContext.Provider>);
-  fireEvent.press(await screen.findByText("start"));
-  fireEvent.press(await screen.findByRole("button", { name: "Creating your pieces…" }));
+  await render(<CreditsContext.Provider value={value}><CaptureJobsProvider><Starter /><HomeScreen /></CaptureJobsProvider></CreditsContext.Provider>);
+  await fireEvent.press(await screen.findByText("start"));
+  await fireEvent.press(await screen.findByRole("button", { name: "Creating your pieces…" }));
   expect(mockPush).toHaveBeenCalledWith("/capture/processing");
 });
 
@@ -138,18 +138,18 @@ test("signed in with an empty closet: the guided First 3 Pieces card leads the a
   const { AuthContext } = require("../src/auth/AuthProvider");
   (getItems as jest.Mock).mockResolvedValue({ items: [] });
   const value: CreditsValue = { billing: false, prices: {}, credits: null, outfit: false, refresh: jest.fn(async () => {}) };
-  render(
+  await render(
     <AuthContext.Provider value={{ status: "signedIn", email: "a@b.c", userId: "u1", sendCode: jest.fn(), verifyCode: jest.fn(), signInWithPassword: jest.fn(), signOut: jest.fn() }}>
       <CreditsContext.Provider value={value}><CaptureJobsProvider><HomeScreen /></CaptureJobsProvider></CreditsContext.Provider>
     </AuthContext.Provider>,
   );
-  fireEvent.press(await screen.findByRole("button", { name: "Add your first 3 pieces" }));
+  await fireEvent.press(await screen.findByRole("button", { name: "Add your first 3 pieces" }));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/first-pieces", params: { entry: "home" } });
 });
 
 test("local mode's empty closet has no guided card", async () => {
   (getItems as jest.Mock).mockResolvedValue({ items: [] });
-  renderHome();
+  await renderHome();
   expect(await screen.findByText("Your closet starts here")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Add your first 3 pieces" })).toBeNull();
 });
@@ -158,18 +158,18 @@ test("signed in with the outfit builder on: Build My Look is a prominent entry, 
   const { AuthContext } = require("../src/auth/AuthProvider");
   (getItems as jest.Mock).mockResolvedValue({ items: [] });
   const value: CreditsValue = { billing: false, prices: {}, credits: null, outfit: false, outfitBuilder: true, refresh: jest.fn(async () => {}) };
-  render(
+  await render(
     <AuthContext.Provider value={{ status: "signedIn", email: "a@b.c", userId: "u1", sendCode: jest.fn(), verifyCode: jest.fn(), signInWithPassword: jest.fn(), signOut: jest.fn() }}>
       <CreditsContext.Provider value={value}><CaptureJobsProvider><HomeScreen /></CaptureJobsProvider></CreditsContext.Provider>
     </AuthContext.Provider>,
   );
-  fireEvent.press(await screen.findByRole("button", { name: "Build My Look. Outfit ideas made from your own closet." }));
+  await fireEvent.press(await screen.findByRole("button", { name: "Build My Look. Outfit ideas made from your own closet." }));
   expect(mockPush).toHaveBeenCalledWith("/build-my-look");
 });
 
 test("the Build My Look entry is hidden when the server has it off, or in local mode", async () => {
   (getItems as jest.Mock).mockResolvedValue({ items: [] });
-  renderHome({ outfitBuilder: false });
+  await renderHome({ outfitBuilder: false });
   await screen.findByText("Your closet starts here");
   expect(screen.queryByText("Build My Look")).toBeNull();
 });

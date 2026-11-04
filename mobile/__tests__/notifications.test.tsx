@@ -33,7 +33,7 @@ beforeEach(async () => {
 });
 
 test("turning it on asks permission, registers this phone's token and remembers it", async () => {
-  renderProbe();
+  await renderProbe();
   await act(async () => fireEvent.press(screen.getByText("enable")));
   expect(Notifications.getExpoPushTokenAsync).toHaveBeenCalledWith({ projectId: "proj-1" });
   expect(registerPushToken).toHaveBeenCalledWith("ExponentPushToken[test]");
@@ -45,7 +45,7 @@ test("turning it on asks permission, registers this phone's token and remembers 
 
 test("refused permission explains how to turn it on and registers nothing", async () => {
   (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValueOnce({ granted: false });
-  renderProbe();
+  await renderProbe();
   await act(async () => fireEvent.press(screen.getByText("enable")));
   expect(screen.getByText(DENIED)).toBeTruthy();
   expect(registerPushToken).not.toHaveBeenCalled();
@@ -53,7 +53,7 @@ test("refused permission explains how to turn it on and registers nothing", asyn
 
 test("without an Expo project id it says notifications aren't set up", async () => {
   mockProjectId = undefined;
-  renderProbe();
+  await renderProbe();
   await act(async () => fireEvent.press(screen.getByText("enable")));
   expect(screen.getByText(NOT_SET_UP)).toBeTruthy();
 });

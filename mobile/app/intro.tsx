@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, Text, View, useWindowDimensions, type ScrollViewInstance } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Icon } from "../src/components/Icon";
@@ -19,7 +19,7 @@ export default function IntroScreen() {
   const router = useRouter();
   const { markSeen } = useOnboarding();
   const { width } = useWindowDimensions();
-  const scroller = useRef<ScrollView>(null);
+  const scroller = useRef<ScrollViewInstance>(null);
   const [page, setPage] = useState(0);
   const last = page === PAGES.length - 1;
 

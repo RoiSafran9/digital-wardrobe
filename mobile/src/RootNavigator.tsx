@@ -16,7 +16,9 @@ export function RootNavigator() {
   const inApp = status === "signedIn" || status === "local";
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={inApp}>
+      {/* A blocked route goes to Welcome (signed out) or the tabs (signed in); expo-router 58 would otherwise
+          pick the first accessible route, which is no longer the first declared one. */}
+      <Stack.Protected guard={inApp} redirectTo="/welcome">
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="capture/camera" options={{ presentation: "fullScreenModal", animation: "fade" }} />
         <Stack.Screen name="capture/preview" />
@@ -36,7 +38,7 @@ export function RootNavigator() {
         <Stack.Screen name="welcome-credits" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
       </Stack.Protected>
       {/* Signed out: Welcome comes first; it forwards to Sign In once onboarding was seen. */}
-      <Stack.Protected guard={!inApp}>
+      <Stack.Protected guard={!inApp} redirectTo="/">
         <Stack.Screen name="welcome" />
         <Stack.Screen name="intro" />
         <Stack.Screen name="sign-in" />

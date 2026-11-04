@@ -26,8 +26,8 @@ beforeEach(() => jest.clearAllMocks());
 test("start → running → done with the result, sent with the approved fronts", async () => {
   let finish: (v: unknown) => void = () => {};
   mockedPost.mockReturnValue(new Promise((r) => { finish = r; }));
-  render(<CaptureJobsProvider><Probe /></CaptureJobsProvider>);
-  fireEvent.press(screen.getByText("start"));
+  await render(<CaptureJobsProvider><Probe /></CaptureJobsProvider>);
+  await fireEvent.press(screen.getByText("start"));
   expect(screen.getByText("running")).toBeTruthy();
   expect(mockedPost).toHaveBeenCalledWith("file:///a.jpg", 2, expect.any(Function));
   await act(async () => finish(ok));
@@ -36,14 +36,14 @@ test("start → running → done with the result, sent with the approved fronts"
 
 test("a server 'not enough credits' marks the job as insufficient", async () => {
   mockedPost.mockRejectedValue(new Error(NO_CREDITS));
-  render(<CaptureJobsProvider><Probe /></CaptureJobsProvider>);
+  await render(<CaptureJobsProvider><Probe /></CaptureJobsProvider>);
   await act(async () => fireEvent.press(screen.getByText("start")));
   expect(screen.getByText(/failed insufficient/)).toBeTruthy();
 });
 
 test("retry posts the same photo again", async () => {
   mockedPost.mockRejectedValueOnce(new Error("Can't reach your wardrobe server.")).mockResolvedValueOnce(ok);
-  render(<CaptureJobsProvider><Probe /></CaptureJobsProvider>);
+  await render(<CaptureJobsProvider><Probe /></CaptureJobsProvider>);
   await act(async () => fireEvent.press(screen.getByText("start")));
   expect(screen.getByText("failed Can't reach your wardrobe server.")).toBeTruthy();
   await act(async () => fireEvent.press(screen.getByText("retry")));
@@ -54,9 +54,9 @@ test("retry posts the same photo again", async () => {
 test("a cleared job ignores a late answer", async () => {
   let finish: (v: unknown) => void = () => {};
   mockedPost.mockReturnValue(new Promise((r) => { finish = r; }));
-  render(<CaptureJobsProvider><Probe /></CaptureJobsProvider>);
-  fireEvent.press(screen.getByText("start"));
-  fireEvent.press(screen.getByText("clear"));
+  await render(<CaptureJobsProvider><Probe /></CaptureJobsProvider>);
+  await fireEvent.press(screen.getByText("start"));
+  await fireEvent.press(screen.getByText("clear"));
   await act(async () => finish(ok));
   expect(screen.getByText("idle")).toBeTruthy();
 });

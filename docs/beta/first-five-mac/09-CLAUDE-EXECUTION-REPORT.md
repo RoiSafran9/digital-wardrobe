@@ -76,6 +76,8 @@ No Sentry SDK and no OpenTelemetry were added: both need an owner-approved vendo
 | EAS build 11 from `1d41c3f`, auto-submitted | build `3c95acf9-1092-4318-a66f-23184dc20275` FINISHED 18:17 UTC; submission FINISHED 19:01 UTC (the EAS submit queue took ~45 min) |
 
 | EAS `production` iOS build 12 from `2f687de` (Build My Look icon tiles), `--auto-submit` | build `7010f3dd-ea61-4e08-a0cb-3b6b91ad3c63` FINISHED 18:46 UTC; EAS submission `e29415ec-…` waited ~40 min in the EAS queue, FINISHED 19:27 UTC (uploaded; Apple processing and tester groups remain owner steps) |
+| PRs #33 (Expo SDK 58) and #32 (footwear scan + catalog images, Build My Look shoes) merged to `main` as `279857b`; Mac server pulled and restarted 2026-11-04 11:48 UTC with an empty queue | public `/healthz` ok after restart; no database migrations in the change |
+| EAS `production` iOS build 13 from `279857b` (SDK 58 + footwear), submitted with `eas submit --id` | build `fcadf033-f102-441e-878c-7ef52bdddd34` FINISHED 11:52 UTC; EAS submission `9a4f15a9-3164-4291-8747-ff79edcdbc00` scheduled (status only on expo.dev; Apple processing and tester groups remain owner steps) |
 Build 9 (`36cb7b6`) already had the Build My Look screens; they were hidden because the server flag was off. Build 10 adds the app's request ids. Builds 9 and earlier keep working against the new server.
 
 ## Owner-only steps (1 and the flag part of the server change are done; the rest remain)

@@ -2,7 +2,7 @@ import React from "react";
 import { Text } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import FirstPiecesStart, { NEAR_QUESTION, START_TITLE } from "../app/first-pieces";
+import FirstPiecesStart, { START_TITLE, TYPE_QUESTION } from "../app/first-pieces";
 import { getItems, getPendingItems } from "../src/api/client";
 import { CreditsContext, type CreditsValue } from "../src/credits/CreditsProvider";
 import { offeredKey, useFirstPiecesOffer } from "../src/firstPieces/offer";
@@ -24,29 +24,46 @@ function renderStart(value: Partial<CreditsValue> = {}) {
 
 beforeEach(async () => { jest.clearAllMocks(); await AsyncStorage.clear(); });
 
-test("asks whether you're near your wardrobe; near goes to the photo tray", async () => {
+const LAID_OUT = "Clothes by themselves. Laid out, hanging, or shoes together.";
+const WORN = "Someone wearing them. A person wearing the clothes or shoes.";
+
+test("asks what the photos show, in the Add tab's words; clothes by themselves go to the photo tray", async () => {
   await renderStart();
   expect(screen.getByRole("header", { name: START_TITLE })).toBeTruthy();
-  expect(screen.getByText(NEAR_QUESTION)).toBeTruthy();
-  await fireEvent.press(screen.getByRole("button", { name: "Yes, I'm near it" }));
+  expect(screen.getByRole("header", { name: TYPE_QUESTION })).toBeTruthy();
+  expect(screen.queryByText(/near your wardrobe/)).toBeNull();
+  await fireEvent.press(screen.getByRole("button", { name: LAID_OUT }));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/first-pieces/photos", params: { entry: "auto" } });
 });
 
-test("not near: an outfit photo from the camera or the library, in onboarding mode", async () => {
+test("someone wearing them: Take Photo or Choose from Library, in onboarding mode, never the laid-out tray", async () => {
   (pickPhoto as jest.Mock).mockResolvedValue("file:///outfit.jpg");
   await renderStart();
-  expect(screen.queryByRole("button", { name: "Take Outfit Photo" })).toBeNull();
-  await fireEvent.press(screen.getByRole("button", { name: "Not right now" }));
-  await fireEvent.press(screen.getByRole("button", { name: "Take Outfit Photo" }));
+  expect(screen.queryByRole("button", { name: "Take Photo" })).toBeNull();
+  await fireEvent.press(screen.getByRole("button", { name: WORN }));
+  await fireEvent.press(screen.getByRole("button", { name: "Take Photo" }));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/capture/camera", params: { mode: "outfit", onboarding: "1" } });
-  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose Outfit Photo" })));
-  expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///outfit.jpg", flow: "outfit", onboarding: "1" } });
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose from Library" })));
+  expect(pickPhoto).toHaveBeenCalledWith(false);
+  expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///outfit.jpg", onboarding: "1" } });
+  expect(mockPush).not.toHaveBeenCalledWith(expect.objectContaining({ pathname: "/first-pieces/photos" }));
 });
 
-test("without the outfit feature there is no question, only the garment path", async () => {
+test("a cancelled library stays put; refused access says why", async () => {
+  (pickPhoto as jest.Mock).mockResolvedValueOnce(null).mockRejectedValueOnce(new Error("permission denied — enable camera/photos access in Settings"));
+  await renderStart();
+  await fireEvent.press(screen.getByRole("button", { name: WORN }));
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose from Library" })));
+  expect(mockPush).not.toHaveBeenCalled();
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose from Library" })));
+  expect(screen.getByText(/permission denied/)).toBeTruthy();
+});
+
+test("without the outfit feature only clothes by themselves is offered", async () => {
   await renderStart({ outfit: false });
-  expect(screen.queryByText(NEAR_QUESTION)).toBeNull();
-  await fireEvent.press(screen.getByRole("button", { name: "Get Started" }));
+  expect(screen.queryByText(TYPE_QUESTION)).toBeNull();
+  expect(screen.queryByRole("button", { name: WORN })).toBeNull();
+  await fireEvent.press(screen.getByRole("button", { name: LAID_OUT }));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/first-pieces/photos", params: { entry: "auto" } });
 });
 

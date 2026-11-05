@@ -29,7 +29,7 @@ test("an empty tray can't look for pieces yet; library photos join it", async ()
   await inFlow(<FirstPiecesPhotos />);
   expect(screen.getByText("No photos yet")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Find My Pieces" })).toBeDisabled();
-  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose Garment Photos" })));
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose from Library" })));
   expect(screen.getByLabelText("Photo 2")).toBeTruthy();
   await fireEvent.press(screen.getByRole("button", { name: "Find My Pieces" }));
   expect(mockPush).toHaveBeenCalledWith("/first-pieces/pick");
@@ -38,7 +38,7 @@ test("an empty tray can't look for pieces yet; library photos join it", async ()
 test("a photo can be removed; leaving with photos asks first and forgets them", async () => {
   (pickPhotos as jest.Mock).mockResolvedValue(["file:///a.jpg", "file:///b.jpg"]);
   await inFlow(<FirstPiecesPhotos />);
-  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose Garment Photos" })));
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose from Library" })));
   await fireEvent.press(screen.getByRole("button", { name: "Remove photo 1" }));
   expect(fp.photos.map((p) => p.uri)).toEqual(["file:///b.jpg"]);
   await fireEvent.press(screen.getByRole("button", { name: "Back" }));
@@ -51,7 +51,7 @@ test("a photo can be removed; leaving with photos asks first and forgets them", 
 test("refused photo access says how to fix it", async () => {
   (pickPhotos as jest.Mock).mockRejectedValue(new Error("permission denied — enable camera/photos access in Settings"));
   await inFlow(<FirstPiecesPhotos />);
-  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose Garment Photos" })));
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose from Library" })));
   expect(screen.getByText(/enable camera\/photos access/)).toBeTruthy();
 });
 
@@ -59,8 +59,8 @@ test("the camera in collect mode adds each shot to the tray and stays open until
   mockParams = { mode: "garments", collect: "1" };
   await inFlow(<CameraScreen />);
   expect(screen.getByText("Take as many photos as you like")).toBeTruthy();
-  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take garment photo" })));
-  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take garment photo" })));
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take Photo" })));
+  await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take Photo" })));
   expect(fp.photos).toHaveLength(2);
   expect(screen.getByText("2 photos added · keep going or tap Done")).toBeTruthy();
   expect(mockBack).not.toHaveBeenCalled();
@@ -74,7 +74,7 @@ test("with the camera refused, collect mode still adds library photos", async ()
   (pickPhotos as jest.Mock).mockResolvedValue(["file:///a.jpg"]);
   try {
     await inFlow(<CameraScreen />);
-    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose Garment Photos" })));
+    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose from Library" })));
     expect(fp.photos).toHaveLength(1);
     expect(mockBack).toHaveBeenCalled();
   } finally {

@@ -21,6 +21,9 @@ import { BackButton, Button, Chip, CostSheet, InsufficientCreditsSheet, Sheet, u
 import { CAP_TOAST, ROUND_CAP } from "../../src/firstPieces/round";
 import { track } from "../../src/firstPieces/analytics";
 import { useScreenViewed } from "../../src/activity/track";
+import { TRY_AS_LAID_OUT } from "../../src/addPhoto";
+import { ChangePhotoType } from "../../src/components/add/PhotoTypeChooser";
+import { useChangePhotoType } from "../../src/useChangePhotoType";
 
 export const OUTFIT_STAGES: Stage[] = [
   { label: "Taking them off the photo", at: 0 },
@@ -61,6 +64,9 @@ export default function PickScreen() {
   const [markType, setMarkType] = useState("");
   const [markBusy, setMarkBusy] = useState(false);
   const [markError, setMarkError] = useState<string | null>(null);
+  const changeType = useChangePhotoType();
+  // Wrong type? The same photo goes to the laid-out scan (free) — only before anything is generated.
+  const toLaidOut = uri && busy === null && !confirming ? () => changeType("worn", uri, "outfit_pick", !!cap) : undefined;
 
   async function addMarked() {
     if (!scan || !markBox || !markType.trim()) return;
@@ -164,6 +170,7 @@ export default function PickScreen() {
           </View>
         ) : null}
         {note ? <Note text={note} /> : null}
+        {toLaidOut && scan?.scene_kind === "flat" ? <Button title={TRY_AS_LAID_OUT} variant="secondary" size="medium" onPress={toLaidOut} /> : null}
         {!scan && !error ? <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Loading…</Text> : null}
         {scan && candidates.length === 0 ? <Note text="No pieces to add were found. Try a photo where the clothes are clearly in view." /> : null}
         <View style={{ gap: 10 }}>
@@ -179,6 +186,7 @@ export default function PickScreen() {
           </Pressable>
         ) : null}
         {error ? <Note text={error} destructive /> : null}
+        {toLaidOut && scan && scan.scene_kind !== "flat" ? <ChangePhotoType to="laid_out" onPress={toLaidOut} /> : null}
       </ScrollView>
 
       <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 8, gap: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator }}>

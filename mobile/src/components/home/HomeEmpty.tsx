@@ -5,14 +5,14 @@ import { PressScale } from "../../motion/PressScale";
 import { colors, radius, type } from "../../theme";
 
 const TIPS = [
-  "Lay pieces flat on a bed or floor in daylight.",
+  "Lay clothes out on a bed or floor, or hang them up, in daylight.",
   "Several pieces in one photo is fine. Each becomes its own item; a pair of shoes counts as one.",
-  "Full-body mirror photos work for outfits.",
+  "A full-body photo of someone wearing them works too.",
 ];
 
-// Three dashed frames waiting to be filled, then the labelled add rows (from the caller) and the tips.
-// onFirstPieces (account mode): the guided First 3 Pieces flow, offered above the plain add rows.
-export function HomeEmpty({ children, outfit, onFirstPieces }: { children: React.ReactNode; outfit: boolean; onFirstPieces?: () => void }) {
+// Three dashed frames waiting to be filled, one way to start, and the tips. onFirstPieces (account mode):
+// the guided First 3 Pieces flow is that one way; otherwise the caller's Add Clothes entry (children).
+export function HomeEmpty({ children, outfit, onFirstPieces }: { children?: React.ReactNode; outfit: boolean; onFirstPieces?: () => void }) {
   const tips = outfit ? TIPS : TIPS.slice(0, 2);
   return (
     <View style={{ paddingHorizontal: 20, gap: 22 }}>
@@ -33,7 +33,7 @@ export function HomeEmpty({ children, outfit, onFirstPieces }: { children: React
       <View style={{ gap: 6, alignItems: "center" }}>
         <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>Your closet starts here</Text>
         <Text style={{ ...type.subhead, color: colors.secondaryLabel, textAlign: "center" }}>
-          {outfit ? "Photograph a garment or import an outfit photo. Your first pieces take under a minute." : "Photograph a garment. Your first pieces take under a minute."}
+          {outfit ? "Use a photo of clothes by themselves, or of someone wearing them. Your first pieces take under a minute." : "Use a photo of clothes by themselves. Your first pieces take under a minute."}
         </Text>
       </View>
       {onFirstPieces ? (
@@ -45,8 +45,7 @@ export function HomeEmpty({ children, outfit, onFirstPieces }: { children: React
           </View>
           <Icon name="chevron" size={15} color={colors.onTint} />
         </PressScale>
-      ) : null}
-      {children}
+      ) : children}
       <View style={{ gap: 12 }}>
         <Text style={{ ...type.eyebrow, color: colors.secondaryLabel }}>Tips for great results</Text>
         {tips.map((tip, i) => (

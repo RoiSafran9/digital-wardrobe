@@ -153,10 +153,10 @@ test("detecting shows the photo, says detection is free, then opens the pick scr
   let finishScan: (scan: typeof SCAN) => void = () => {};
   (scanOutfit as jest.Mock).mockReturnValue(new Promise((resolve) => { finishScan = resolve; }));
   await withCredits(<DetectScreen />);
-  expect(screen.getByText("Finding garments…")).toBeTruthy();
+  expect(screen.getByText("Finding the pieces…")).toBeTruthy();
   expect(screen.getByText("Detection is free")).toBeTruthy();
   await act(async () => finishScan(SCAN));
-  expect(await screen.findByText("3 garments found")).toBeTruthy();
+  expect(await screen.findByText("3 pieces found")).toBeTruthy();
   await act(async () => { jest.advanceTimersByTime(1500); });
   expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/pick", params: { scanId: "scan-1", uri: "file:///outfit.jpg" } });
   jest.useRealTimers();
@@ -167,7 +167,7 @@ test("a failed scan offers another photo", async () => {
   (scanOutfit as jest.Mock).mockRejectedValue(new Error("Can't reach your wardrobe server."));
   await withCredits(<DetectScreen />);
   expect(await screen.findByText("Can't reach your wardrobe server.")).toBeTruthy();
-  await fireEvent.press(screen.getByRole("button", { name: "Try Another Outfit Photo" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Try Another Photo" }));
   expect(mockReplace).toHaveBeenCalledWith({ pathname: "/capture/camera", params: { mode: "outfit" } });
 });
 
@@ -227,7 +227,7 @@ test("onboarding mode: the detect step carries the mode to the pick screen", asy
   mockParams = { uri: "file:///outfit.jpg", onboarding: "1" };
   (scanOutfit as jest.Mock).mockResolvedValue(SCAN);
   await withCredits(<DetectScreen />);
-  await screen.findByText("3 garments found");
+  await screen.findByText("3 pieces found");
   await act(async () => { jest.advanceTimersByTime(1500); });
   expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/pick", params: { scanId: "scan-1", uri: "file:///outfit.jpg", onboarding: "1" } });
   jest.useRealTimers();
@@ -264,4 +264,80 @@ test("onboarding mode: saving kept pieces opens the closet with the first-succes
   await fireEvent.press(screen.getByRole("button", { name: "Next" }));
   await fireEvent.press(screen.getByRole("button", { name: "Save 2 to Closet" }));
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: "/closet", params: expect.objectContaining({ celebrate: "1", ids: "i1,i2" }) }));
+});
+
+// --- Changing the photo type before anything is generated (docs/features/unified-add-clothes) ---------
+
+test("a failed scan can send the same photo to the laid-out scan; onboarding keeps its mode on retry", async () => {
+  mockParams = { uri: "file:///outfit.jpg", onboarding: "1" };
+  (scanOutfit as jest.Mock).mockRejectedValue(new Error("Can't reach your wardrobe server."));
+  await withCredits(<DetectScreen />);
+  await fireEvent.press(await screen.findByRole("button", { name: "Try Another Photo" }));
+  expect(mockReplace).toHaveBeenLastCalledWith({ pathname: "/capture/camera", params: { mode: "outfit", onboarding: "1" } });
+  mockParams = { uri: "file:///outfit.jpg" };
+  await screen.unmount();
+  await withCredits(<DetectScreen />);
+  await fireEvent.press(await screen.findByRole("button", { name: "Change Photo Type" }));
+  expect(mockReplace).toHaveBeenLastCalledWith({ pathname: "/capture/preview", params: { uri: "file:///outfit.jpg" } });
+});
+
+test("leaving the detect screen before the boxes land never opens the pick screen afterwards", async () => {
+  jest.useFakeTimers();
+  mockParams = { uri: "file:///outfit.jpg" };
+  (scanOutfit as jest.Mock).mockResolvedValue(SCAN);
+  await withCredits(<DetectScreen />);
+  await screen.findByText("3 pieces found");
+  await screen.unmount();
+  await act(async () => { jest.advanceTimersByTime(5000); });
+  expect(mockReplace).not.toHaveBeenCalled();
+  jest.useRealTimers();
+});
+
+test("a laid-out photo on the pick screen says so and goes to the laid-out scan with the same photo, unpaid", async () => {
+  mockParams = { scanId: "scan-f", uri: "file:///flat.jpg" };
+  (getOutfitScan as jest.Mock).mockResolvedValue({ ...SCAN, id: "scan-f", scene_kind: "flat" });
+  await withCredits(<PickScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(5) });
+  expect(await screen.findByText("These clothes look laid out. Try as clothes by themselves.")).toBeTruthy();
+  await fireEvent.press(screen.getByRole("button", { name: "Try as Clothes by Themselves" }));
+  expect(mockReplace).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///flat.jpg" } });
+  expect(generateOutfit).not.toHaveBeenCalled();
+});
+
+test("Change Photo Type is there before generating, gone once images are being made, and needs the photo", async () => {
+  mockParams = { scanId: "scan-1", uri: "file:///outfit.jpg" };
+  (getOutfitScan as jest.Mock).mockResolvedValue(SCAN);
+  (generateOutfit as jest.Mock).mockReturnValue(new Promise(() => {}));
+  await withCredits(<PickScreen />);
+  await screen.findByText("Blazer");
+  expect(screen.getByText("Try as clothes by themselves. We'll scan this photo again for free.")).toBeTruthy();
+  await fireEvent.press(screen.getByRole("button", { name: "Generate" }));
+  expect(screen.queryByRole("button", { name: "Change Photo Type" })).toBeNull();
+  await screen.unmount();
+  mockParams = { scanId: "scan-1" };  // no photo to send along
+  await withCredits(<PickScreen />);
+  await screen.findByText("Blazer");
+  expect(screen.queryByRole("button", { name: "Change Photo Type" })).toBeNull();
+});
+
+test("Change Photo Type on the pick screen keeps nothing from the outfit scan", async () => {
+  mockParams = { scanId: "scan-1", uri: "file:///outfit.jpg" };
+  (getOutfitScan as jest.Mock).mockResolvedValue(SCAN);
+  await withCredits(<PickScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(5) });
+  await fireEvent.press(await screen.findByRole("checkbox", { name: /Blazer/ }));
+  await fireEvent.press(screen.getByRole("button", { name: "Change Photo Type" }));
+  expect(mockReplace).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///outfit.jpg" } });
+  expect(generateOutfit).not.toHaveBeenCalled();
+});
+
+test("First 3 Pieces: a laid-out photo changed from the worn path joins the photo tray", async () => {
+  const { FirstPiecesProvider, useFirstPieces } = require("../src/firstPieces/FirstPiecesProvider");
+  let fp: { photos: { uri: string }[] } | null = null;
+  function Probe() { fp = useFirstPieces(); return null; }
+  mockParams = { scanId: "scan-fp", uri: "file:///outfit.jpg", onboarding: "1" };
+  (getOutfitScan as jest.Mock).mockResolvedValue({ ...SCAN, id: "scan-fp", scene_kind: "flat" });
+  await withCredits(<FirstPiecesProvider userId="u1"><PickScreen /><Probe /></FirstPiecesProvider>);
+  await fireEvent.press(await screen.findByRole("button", { name: "Try as Clothes by Themselves" }));
+  expect(mockReplace).toHaveBeenCalledWith("/first-pieces/photos");
+  expect(fp!.photos.map((p) => p.uri)).toEqual(["file:///outfit.jpg"]);
+  expect(generateOutfit).not.toHaveBeenCalled();
 });

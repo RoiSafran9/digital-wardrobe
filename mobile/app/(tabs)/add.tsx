@@ -3,49 +3,40 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getPendingItems } from "../../src/api/client";
-import { Icon, type IconName } from "../../src/components/Icon";
-import { GlyphTile } from "../../src/components/onboarding/GlyphTile";
+import { availableTypes, cameraRoute, photoRoute, type AddPhotoType, type PhotoSource } from "../../src/addPhoto";
+import { PhotoTypeChooser } from "../../src/components/add/PhotoTypeChooser";
+import { Icon } from "../../src/components/Icon";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { creditsLabel } from "../../src/credits/credits";
-import { PressScale } from "../../src/motion/PressScale";
+import { haptics } from "../../src/haptics";
+import { pickPhoto } from "../../src/photoPicker";
 import { colors, hitSlopFor, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
-import { useScreenViewed } from "../../src/activity/track";
+import { track, useScreenViewed } from "../../src/activity/track";
 
 const FIRST_PIECE = [
-  "Lay one garment flat on a bed or the floor, or set a pair of shoes side by side.",
-  "Shoot clothes from above and shoes from a low side angle, in daylight.",
+  "Lay one piece out on a bed or the floor, hang it up, or set a pair of shoes side by side.",
+  "Shoot clothes straight on and shoes from a low side angle, in daylight.",
   "Check the preview, then create its catalog image.",
 ];
 
-function MethodCard({ title, body, price, art, onPress }: { title: string; body: string; price: string | null; art: React.ReactNode; onPress: () => void }) {
-  return (
-    <PressScale onPress={onPress} accessibilityRole="button" accessibilityLabel={title} scaleTo={0.98}
-      style={{ borderRadius: radius.feature, backgroundColor: colors.grouped, overflow: "hidden" }}>
-      <View style={{ height: 176, alignItems: "center", justifyContent: "center", backgroundColor: colors.tile }}>{art}</View>
-      <View style={{ padding: 18, gap: 6 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Text style={{ ...type.cardTitle, color: colors.label }}>{title}</Text>
-          <Icon name="chevron" size={15} color={colors.secondaryLabel} />
-        </View>
-        <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>{body}</Text>
-        {price ? <Text style={{ ...type.footnote, fontWeight: "600", color: colors.tint, marginTop: 2 }}>{price}</Text> : null}
-      </View>
-    </PressScale>
-  );
-}
-
-const ROW: IconName[] = ["garment", "jacket", "shoe"];
-
+// The Add hub (docs/features/unified-add-clothes): what the photo shows (clothes by themselves, or
+// someone wearing them), then Take Photo or Choose from Library — the same two for either type. The
+// library opens straight away; only Take Photo opens the camera. `mode` (old links) preselects a type.
 export default function AddScreen() {
   useScreenViewed("add");
   const router = useRouter();
   const { outfit: outfitOn, billing, prices, credits, generation } = useCredits();
   const { mode, firstPiece, at } = useLocalSearchParams<{ mode?: string; firstPiece?: string; at?: string }>();
   const [pending, setPending] = useState(0);
+  const [chosen, setChosen] = useState<AddPhotoType | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const types = availableTypes(!!outfitOn);
+  const selected = chosen && types.includes(chosen) ? chosen : null;
 
-  // Home's outfit link and a worn-photo rejection used to land here in outfit mode; go straight to it.
+  // A link that names a type selects it and waits for the source; it never opens the camera by itself.
   useEffect(() => {
-    if (mode === "outfit" && outfitOn) router.push({ pathname: "/capture/camera", params: { mode: "outfit" } });
+    if (mode === "outfit" && outfitOn) setChosen("worn");
+    else if (mode === "garments") setChosen("laid_out");
   }, [mode, at, outfitOn]);
 
   // Outfit results the user hasn't kept or discarded yet (also after an app restart).
@@ -56,13 +47,33 @@ export default function AddScreen() {
     return () => { live = false; };
   }, [outfitOn]));
 
+  const select = (t: AddPhotoType) => {
+    haptics.selection();
+    setError(null);
+    if (selected === t) return setChosen(null);  // tap again to put the sources away
+    track("add_photo_type_selected", { type: t, entry: "add" });
+    setChosen(t);
+  };
+  const source = async (t: AddPhotoType, from: PhotoSource) => {
+    setError(null);
+    if (from === "camera") return router.push(cameraRoute(t));
+    try {
+      const uri = await pickPhoto(false);
+      if (!uri) return;  // cancelled: the type stays selected
+      track("capture_source", { flow: t === "worn" ? "outfit" : "garment", from: "library" });
+      router.push(photoRoute(t, uri));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't open your photos.");
+    }
+  };
+
   const front = billing ? prices.garment : undefined;
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: TAB_BAR_HEIGHT + 24, gap: 16 }}>
         <View style={{ gap: 4 }}>
           <Text accessibilityRole="header" style={{ ...type.largeTitle, color: colors.label }}>Add Clothes</Text>
-          <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Choose how to start. Finding garments is always free.</Text>
+          <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Choose what your photo shows.</Text>
         </View>
 
         {generation === false ? (
@@ -96,28 +107,14 @@ export default function AddScreen() {
           </Pressable>
         ) : null}
 
-        <MethodCard
-          title="Photograph Clothes & Shoes"
-          body="Lay pieces flat, or set shoes together. Each piece becomes its own item; a pair of shoes counts as one."
-          price={front !== undefined ? `${creditsLabel(front)} per piece` : null}
-          onPress={() => router.push({ pathname: "/capture/camera", params: { mode: "garments" } })}
-          art={<View style={{ flexDirection: "row", gap: 10 }}>{ROW.map((icon, i) => <GlyphTile key={i} icon={icon} size={{ width: 74, height: 92 }} style={{ transform: [{ rotate: `${(i - 1) * 5}deg` }] }} />)}</View>}
-        />
-        {outfitOn ? (
-          <MethodCard
-            title="Import from Outfit Photo"
-            body="Use a photo of you wearing an outfit, then pick the pieces to keep."
-            price={front !== undefined ? `Free detection · ${creditsLabel(front)} per piece` : "Free detection"}
-            onPress={() => router.push({ pathname: "/capture/camera", params: { mode: "outfit" } })}
-            art={
-              <View style={{ width: 110, height: 150, borderRadius: radius.tile, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
-                <Icon name="person2" size={120} color={colors.separatorStrong} />
-                <View style={{ position: "absolute", top: 32, left: 28, width: 54, height: 46, borderRadius: 8, borderWidth: 2, borderColor: colors.tint, backgroundColor: colors.tintSoft }} />
-                <View style={{ position: "absolute", top: 82, left: 32, width: 46, height: 56, borderRadius: 8, borderWidth: 2, borderColor: colors.tint, backgroundColor: colors.tintSoft }} />
-              </View>
-            }
-          />
-        ) : null}
+        <PhotoTypeChooser types={types} selected={selected} onSelect={select} onSource={source} />
+        {error ? <Text accessibilityLiveRegion="polite" style={{ ...type.footnote, color: colors.destructive }}>{error}</Text> : null}
+
+        <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>
+          {front !== undefined
+            ? `Finding the pieces is free · ${creditsLabel(front)} per piece you create`
+            : "Finding the pieces is free. Each piece becomes its own item; a pair of shoes counts as one."}
+        </Text>
 
         {billing && credits ? (
           <Pressable accessibilityRole="button" hitSlop={hitSlopFor(24)} onPress={() => router.push("/account")} style={{ alignSelf: "center" }}>

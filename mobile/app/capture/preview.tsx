@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -15,13 +15,16 @@ import { ScanBand } from "../../src/components/outfit/ScanBand";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { pieceLabel } from "../../src/footwear";
 import { haptics } from "../../src/haptics";
-import { TRY_AS_OUTFIT, isWornRejection } from "../../src/outfit/outfit";
+import { isWornRejection } from "../../src/outfit/outfit";
+import { LOOKS_WORN, TRY_AS_WORN } from "../../src/addPhoto";
+import { ChangePhotoType } from "../../src/components/add/PhotoTypeChooser";
+import { useChangePhotoType } from "../../src/useChangePhotoType";
 import { useScreenViewed } from "../../src/activity/track";
 
 // The fallback quote (local mode, or when the free pre-scan isn't available): following the approved
 // rule (CREDITS §6), the user approves the most front images they'll pay for; the server makes at most
 // that many and charges only what it made.
-function MaxFrontsPreview({ uri, note }: { uri: string; note?: string | null }) {
+function MaxFrontsPreview({ uri, note, onChangeType }: { uri: string; note?: string | null; onChangeType?: () => void }) {
   const router = useRouter();
   const { start } = useCaptureJobs();
   const fronts = useFrontsChoice();
@@ -90,6 +93,7 @@ function MaxFrontsPreview({ uri, note }: { uri: string; note?: string | null }) 
         <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>
           You can review every piece once it's ready.
         </Text>
+        {onChangeType ? <ChangePhotoType to="worn" onPress={onChangeType} /> : null}
       </ScrollView>
       <View style={{ paddingHorizontal: 20, paddingBottom: 8, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator }}>
         <Button
@@ -112,6 +116,8 @@ export default function PreviewScreen() {
   const { uri } = useLocalSearchParams<{ uri: string }>();
   const { startFromScan } = useCaptureJobs();
   const { billing, prices, credits, outfit } = useCredits();
+  const changeType = useChangePhotoType();
+  const generating = useRef(false);  // once a paid job is asked for, the photo type is settled
   const [scan, setScan] = useState<GarmentScan | null>(null);
   const [mode, setMode] = useState<"scanning" | "scanned" | "fallback">("scanning");
   const [note, setNote] = useState<string | null>(null);
@@ -134,7 +140,10 @@ export default function PreviewScreen() {
   const boxes = useMemo(() => pieces.map((p) => ({ id: `p${p.index}`, box: p.box })), [pieces]);
   const label = pieceLabel;
 
-  if (mode === "fallback") return <MaxFrontsPreview uri={uri} note={note} />;
+  // Wrong type? Same photo, the worn scan (free). Only before generating, and only when outfits are on.
+  const toWorn = outfit ? () => { if (!generating.current) changeType("laid_out", uri, "garment_preview"); } : undefined;
+
+  if (mode === "fallback") return <MaxFrontsPreview uri={uri} note={note} onChangeType={toWorn} />;
 
   const toggle = (index: number) => {
     haptics.selection();
@@ -143,12 +152,14 @@ export default function PreviewScreen() {
   const generate = () => {
     if (!scan || picked.length === 0) return;
     if (price !== undefined && total > available) return setShort(true);
+    generating.current = true;
     startFromScan(uri, scan.id, picked.map((p) => p.index), price ?? null);
     router.replace("/capture/processing");
   };
   const retake = scan?.quality?.status === "retake";
   const nothing = mode === "scanned" && !retake && pieces.length === 0;
   const deselect = price ? Math.max(0, picked.length - Math.floor(available / price)) : 0;
+  const looksWorn = nothing && isWornRejection(scan?.reason);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -169,21 +180,24 @@ export default function PreviewScreen() {
         ) : retake ? (
           <View style={{ gap: 6 }}>
             <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>This photo can't be used</Text>
-            <Text style={{ ...type.body, color: colors.secondaryLabel }}>{`${scan?.quality?.reason ?? "Try again"}. Lay each piece flat, in good light.`}</Text>
+            <Text style={{ ...type.body, color: colors.secondaryLabel }}>{`${scan?.quality?.reason ?? "Try again"}. Lay each piece out or hang it up, in good light.`}</Text>
           </View>
         ) : nothing ? (
           <View style={{ gap: 10 }}>
             <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>No pieces found</Text>
-            <Text style={{ ...type.body, color: colors.secondaryLabel }}>{scan?.reason ?? "Try again with each piece laid flat, in good light."}</Text>
-            {outfit && isWornRejection(scan?.reason) ? (
-              <Button title={TRY_AS_OUTFIT} variant="secondary" onPress={() => router.replace({ pathname: "/outfit/detect", params: { uri, flow: "outfit" } })} />
+            <Text style={{ ...type.body, color: colors.secondaryLabel }}>{scan?.reason ?? "Try again with each piece laid out or hung up, in good light."}</Text>
+            {toWorn && looksWorn ? (
+              <>
+                <Text style={{ ...type.subhead, color: colors.label }}>{LOOKS_WORN}</Text>
+                <Button title={TRY_AS_WORN} variant="secondary" onPress={toWorn} />
+              </>
             ) : null}
           </View>
         ) : (
           <>
             <View style={{ gap: 4 }}>
               <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>
-                {pieces.length === 1 ? "1 garment found" : `${pieces.length} garments found`}
+                {pieces.length === 1 ? "1 piece found" : `${pieces.length} pieces found`}
               </Text>
               <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Tap a piece to leave it out. You pay only for the ones you create.</Text>
             </View>
@@ -216,6 +230,7 @@ export default function PreviewScreen() {
             <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>You'll review every piece once it's ready.</Text>
           </>
         )}
+        {toWorn && mode === "scanned" && !looksWorn ? <ChangePhotoType to="worn" onPress={toWorn} /> : null}
       </ScrollView>
       <View style={{ paddingHorizontal: 20, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator }}>
         {retake || nothing ? (

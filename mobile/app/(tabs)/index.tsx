@@ -6,7 +6,7 @@ import { getItems } from "../../src/api/client";
 import type { ClosetItem } from "../../src/api/types";
 import { CATEGORY_GROUPS, groupOf } from "../../src/categoryGroups";
 import { Icon } from "../../src/components/Icon";
-import { AddRows, AddToCloset, type PhotoActions } from "../../src/components/home/AddToCloset";
+import { AddClothesButton } from "../../src/components/home/AddToCloset";
 import { CaptureBanner } from "../../src/components/home/CaptureBanner";
 import { CategoryRows, type CategoryRow } from "../../src/components/home/CategoryRows";
 import { Greeting } from "../../src/components/home/Greeting";
@@ -14,10 +14,9 @@ import { HomeEmpty } from "../../src/components/home/HomeEmpty";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { useProfile } from "../../src/profile";
 import { useAuth } from "../../src/auth/AuthProvider";
-import { pickPhoto } from "../../src/photoPicker";
 import { colors, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
 import { Button } from "../../src/ui";
-import { track, useScreenViewed } from "../../src/activity/track";
+import { useScreenViewed } from "../../src/activity/track";
 
 // One row per category group with pieces, in the groups' fixed order, with the group's first piece.
 export function categoryRows(items: ClosetItem[]): CategoryRow[] {
@@ -38,7 +37,6 @@ export default function HomeScreen() {
   const [items, setItems] = useState<ClosetItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [pickError, setPickError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -55,25 +53,8 @@ export default function HomeScreen() {
   const rows = useMemo(() => categoryRows(items), [items]);
   const empty = loaded && items.length === 0;
 
-  // Both pickers open the same system library, but each knows which flow it feeds (garment or outfit).
-  const pickInto = (flow: "garment" | "outfit") => async () => {
-    setPickError(null);
-    try {
-      const uri = await pickPhoto(false);
-      if (!uri) return;
-      track("capture_source", { flow, from: "library" });
-      router.push(flow === "garment"
-        ? { pathname: "/capture/preview", params: { uri, flow } }
-        : { pathname: "/outfit/detect", params: { uri, flow } });
-    } catch (e) {
-      setPickError(e instanceof Error ? e.message : "Couldn't open your photos.");
-    }
-  };
-  const actions: PhotoActions = {
-    onGarmentCamera: () => router.push({ pathname: "/capture/camera", params: { mode: "garments" } }),
-    onGarmentLibrary: pickInto("garment"),
-    onOutfitPhoto: outfitOn ? pickInto("outfit") : undefined,
-  };
+  // One way in: the Add tab asks what the photo shows and where it comes from.
+  const add = () => router.push("/add");
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
@@ -111,8 +92,12 @@ export default function HomeScreen() {
 
         {empty ? (
           <View style={{ marginTop: 20 }}>
-            <HomeEmpty outfit={!!outfitOn}
-              onFirstPieces={status === "signedIn" ? () => router.push({ pathname: "/first-pieces", params: { entry: "home" } }) : undefined}><AddRows {...actions} /></HomeEmpty>
+            {/* Signed in: the guided First 3 Pieces start is the one entry. Local mode: plain Add Clothes. */}
+            {status === "signedIn" ? (
+              <HomeEmpty outfit={!!outfitOn} onFirstPieces={() => router.push({ pathname: "/first-pieces", params: { entry: "home" } })} />
+            ) : (
+              <HomeEmpty outfit={!!outfitOn}><AddClothesButton onPress={add} /></HomeEmpty>
+            )}
           </View>
         ) : (
           <View style={{ paddingHorizontal: 20 }}>
@@ -125,8 +110,9 @@ export default function HomeScreen() {
               <Text style={{ ...type.callout, color: colors.secondaryLabel }}>{`Search ${items.length} ${items.length === 1 ? "piece" : "pieces"}`}</Text>
             </Pressable>
 
-            <Text accessibilityRole="header" style={{ ...type.eyebrow, color: colors.secondaryLabel, paddingTop: 26, paddingBottom: 10 }}>Add to closet</Text>
-            <AddToCloset {...actions} />
+            <View style={{ marginTop: 16 }}>
+              <AddClothesButton onPress={add} />
+            </View>
 
             {rows.length ? (
               <>
@@ -136,7 +122,6 @@ export default function HomeScreen() {
             ) : null}
           </View>
         )}
-        {pickError ? <Text style={{ ...type.footnote, color: colors.destructive, paddingHorizontal: 20, marginTop: 10 }}>{pickError}</Text> : null}
       </ScrollView>
 
     </SafeAreaView>

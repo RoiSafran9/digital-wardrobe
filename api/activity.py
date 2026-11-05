@@ -37,6 +37,7 @@ OUTFIT_VIBES = {"any", "relaxed", "confident", "minimal", "bold"}
 OUTFIT_WEATHERS = {"any", "hot", "warm", "mild", "cold", "rainy"}
 OUTFIT_COLOR_PREFS = {"any", "neutral", "colorful", "dark", "light"}
 OUTFIT_SLOTS = {"top", "bottom", "one_piece", "outerwear", "footwear"}
+PHOTO_TYPES = {"laid_out", "worn"}  # mobile/src/addPhoto.ts
 REFUSAL_ROUTES = {
     "/v1/jobs": "job",
     "/v1/garment-scans": "garment_scan",
@@ -69,6 +70,10 @@ APP_EVENTS: dict[str, dict[str, object]] = {
     "out_of_credits_shown": {"action": ACTIONS},
     "permission": {"kind": {"camera", "photos", "notifications"}, "granted": BOOL},
     "capture_source": {"flow": {"garment", "outfit"}, "from": {"camera", "library"}},
+    # Add Clothes (docs/features/unified-add-clothes): the photo type chosen, and a change of it before generating
+    "add_photo_type_selected": {"type": PHOTO_TYPES, "entry": {"add", "first_pieces"}},
+    "add_photo_type_corrected": {"from": PHOTO_TYPES, "to": PHOTO_TYPES,
+                                 "stage": {"garment_preview", "outfit_detect", "outfit_pick"}},
     "item_opened": {"has_back": BOOL, "has_turn": BOOL},
     "client_error": {"where": SCREENS, "kind": {"render", "unhandled", "network", "http_5xx"}, "request_id": REQUEST_ID},
     "look_opened": {"position": COUNT},
@@ -99,7 +104,8 @@ PRIVACY_CATEGORIES = {
                                  "generation_started", "first_garment_saved", "first_3_saved", "popup_shown",
                                  "popup_add_more", "onboarding_abandoned")},
     **{e: "app use" for e in ("app_opened", "screen_viewed", "cost_sheet", "out_of_credits_shown", "permission",
-                              "capture_source", "item_opened", "push_enabled", "push_disabled",
+                              "capture_source", "add_photo_type_selected", "add_photo_type_corrected",
+                              "item_opened", "push_enabled", "push_disabled",
                               "look_opened", "swap_applied", "look_generation_requested", "swap_options_requested")},
     "client_error": "errors", "refused": "errors",
     "signed_in": "signing in", "welcome_granted": "signing in",

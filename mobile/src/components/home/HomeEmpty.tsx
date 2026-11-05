@@ -2,7 +2,11 @@ import React from "react";
 import { Text, View } from "react-native";
 import { Icon } from "../Icon";
 import { PressScale } from "../../motion/PressScale";
-import { colors, radius, type } from "../../theme";
+import { colors, radius, type, weight } from "../../theme";
+import { Glass } from "../../ui";
+import type { IconName } from "../Icon";
+
+const FRAMES: IconName[] = ["garment", "jacket", "shoe"];
 
 const TIPS = [
   "Lay pieces flat on a bed or floor in daylight.",
@@ -15,44 +19,46 @@ const TIPS = [
 export function HomeEmpty({ children, outfit, onFirstPieces }: { children: React.ReactNode; outfit: boolean; onFirstPieces?: () => void }) {
   const tips = outfit ? TIPS : TIPS.slice(0, 2);
   return (
-    <View style={{ paddingHorizontal: 20, gap: 22 }}>
-      <View style={{ flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 8 }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-        {[0, 1, 2].map((i) => (
-          <View
-            key={i}
-            style={{
-              width: 78, height: 98, borderRadius: 18, borderWidth: 1.5, borderStyle: "dashed",
-              borderColor: i === 1 ? colors.tint : colors.separatorStrong, backgroundColor: i === 1 ? colors.tintSoft : "transparent",
-              alignItems: "center", justifyContent: "center", transform: [{ rotate: `${(i - 1) * 6}deg` }, { translateY: i === 1 ? -6 : 0 }],
-            }}
-          >
-            {i === 1 ? <Icon name="add" size={26} color={colors.tint} /> : null}
-          </View>
-        ))}
-      </View>
-      <View style={{ gap: 6, alignItems: "center" }}>
-        <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>Your closet starts here</Text>
-        <Text style={{ ...type.subhead, color: colors.secondaryLabel, textAlign: "center" }}>
+    <View style={{ gap: 22 }}>
+      <View style={{ gap: 8, paddingHorizontal: 4 }}>
+        <Text accessibilityRole="header" style={{ ...type.display(40), color: colors.label }}>Your closet starts here</Text>
+        <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>
           {outfit ? "Photograph a garment or import an outfit photo. Your first pieces take under a minute." : "Photograph a garment. Your first pieces take under a minute."}
         </Text>
       </View>
-      {onFirstPieces ? (
-        <PressScale onPress={onFirstPieces} accessibilityRole="button" accessibilityLabel="Add your first 3 pieces" scaleTo={0.98}
-          style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderRadius: radius.list, backgroundColor: colors.tint }}>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ ...type.headline, color: colors.onTint }}>Add your first 3 pieces</Text>
-            <Text style={{ ...type.subhead, color: colors.onTint }}>A guided start. Finding your clothes is free.</Text>
+      <View style={{ flexDirection: "row", justifyContent: "center", gap: 12 }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+        {FRAMES.map((icon, i) => (
+          <View
+            key={icon}
+            style={{
+              width: 86, height: 106, borderRadius: 20, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.separatorStrong,
+              alignItems: "center", justifyContent: "center", transform: [{ rotate: `${(i - 1) * 6}deg` }, { translateY: i === 1 ? -6 : 0 }],
+            }}
+          >
+            <Icon name={icon} size={32} color={colors.secondaryLabel} />
           </View>
-          <Icon name="chevron" size={15} color={colors.onTint} />
-        </PressScale>
+        ))}
+      </View>
+      {onFirstPieces ? (
+        <Glass blue radius={radius.hero} style={{ padding: 18, gap: 14 }}
+          decor={<View style={{ position: "absolute", right: -30, top: -30, width: 140, height: 140, borderRadius: 70, backgroundColor: "rgba(255,255,255,0.14)" }} />}>
+          <View style={{ gap: 4 }}>
+            <Text style={{ ...type.title2, color: "#FFFFFF" }}>Add your first 3 pieces</Text>
+            <Text style={{ ...type.subhead, color: "rgba(255,255,255,0.88)" }}>A guided start. Finding your clothes is free.</Text>
+          </View>
+          <PressScale onPress={onFirstPieces} accessibilityRole="button" accessibilityLabel="Add your first 3 pieces" scaleTo={0.98}
+            style={{ height: 50, borderRadius: radius.primary, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ ...type.headline, color: colors.tint }}>Get Started</Text>
+          </PressScale>
+        </Glass>
       ) : null}
       {children}
       <View style={{ gap: 12 }}>
-        <Text style={{ ...type.eyebrow, color: colors.secondaryLabel }}>Tips for great results</Text>
+        <Text style={{ ...type.eyebrow, color: colors.secondaryLabel, paddingHorizontal: 4 }}>Tips for great results</Text>
         {tips.map((tip, i) => (
           <View key={tip} style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-            <View style={{ width: 26, height: 26, borderRadius: radius.pill, backgroundColor: colors.grouped, alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ ...type.footnote, fontWeight: "600", color: colors.label }}>{i + 1}</Text>
+            <View style={{ width: 26, height: 26, borderRadius: radius.pill, backgroundColor: colors.tintSoft, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ ...type.footnote, ...weight(700), color: colors.tint }}>{i + 1}</Text>
             </View>
             <Text style={{ ...type.subhead, color: colors.label, flex: 1 }}>{tip}</Text>
           </View>

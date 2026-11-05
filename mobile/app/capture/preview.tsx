@@ -6,7 +6,7 @@ import { Icon } from "../../src/components/Icon";
 import { creditsLabel } from "../../src/credits/credits";
 import { useFrontsChoice } from "../../src/credits/useFrontsChoice";
 import { useCaptureJobs } from "../../src/store/captureJobs";
-import { colors, hitSlopFor, radius, type } from "../../src/theme";
+import { colors, hitSlopFor, radius, type, weight } from "../../src/theme";
 import { BackButton, Button, InsufficientCreditsSheet } from "../../src/ui";
 import { scanGarments } from "../../src/api/client";
 import type { GarmentScan } from "../../src/api/types";
@@ -164,7 +164,7 @@ export default function PreviewScreen() {
         {mode === "scanning" ? (
           <View style={{ alignItems: "center", gap: 8 }}>
             <Text accessibilityLiveRegion="polite" style={{ ...type.section, color: colors.label }}>Finding the pieces…</Text>
-            <Text style={{ ...type.footnote, fontWeight: "600", color: colors.successText }}>Finding them is free</Text>
+            <Text style={{ ...type.footnote, ...weight(600), color: colors.successText }}>Finding them is free</Text>
           </View>
         ) : retake ? (
           <View style={{ gap: 6 }}>
@@ -195,7 +195,7 @@ export default function PreviewScreen() {
                     accessibilityLabel={`${i + 1}, ${label(p)}`}
                     style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 34, paddingHorizontal: 12, borderRadius: radius.pill,
                       backgroundColor: on ? colors.tintSoft : colors.fill, borderWidth: 1.5, borderColor: on ? colors.tint : "transparent" }}>
-                    <Text style={{ ...type.footnote, fontWeight: "700", color: on ? colors.tint : colors.secondaryLabel }}>{i + 1}</Text>
+                    <Text style={{ ...type.footnote, ...weight(700), color: on ? colors.tint : colors.secondaryLabel }}>{i + 1}</Text>
                     <Text style={{ ...type.subhead, color: on ? colors.label : colors.secondaryLabel }}>{label(p)}</Text>
                   </Pressable>
                 );

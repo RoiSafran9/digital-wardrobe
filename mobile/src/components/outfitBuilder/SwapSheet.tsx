@@ -4,7 +4,7 @@ import type { ClosetItem, OutfitSlot, SwapAlternative } from "../../api/types";
 import { SLOT_LABELS } from "../../outfitBuilder/filters";
 import { garmentName } from "../../garmentName";
 import { PressScale } from "../../motion/PressScale";
-import { colors, radius, type } from "../../theme";
+import { colors, radius, type, weight } from "../../theme";
 import { Button, Sheet } from "../../ui";
 import { GarmentImage } from "../GarmentImage";
 
@@ -36,7 +36,7 @@ export function SwapSheet({ visible, onClose, slot, current, loading, error, alt
           </View>
           <View>
             <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>Currently in this look</Text>
-            <Text style={{ ...type.subhead, fontWeight: "600", color: colors.label }}>{garmentName(current)}</Text>
+            <Text style={{ ...type.subhead, ...weight(600), color: colors.label }}>{garmentName(current)}</Text>
           </View>
         </View>
       ) : null}
@@ -75,7 +75,7 @@ export function SwapSheet({ visible, onClose, slot, current, loading, error, alt
                         tile={colors.tile} style={{ width: TILE, height: TILE, borderRadius: radius.tile }} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ ...type.subhead, fontWeight: "600", color: colors.label }}>{garmentName(item)}</Text>
+                      <Text style={{ ...type.subhead, ...weight(600), color: colors.label }}>{garmentName(item)}</Text>
                       <Text numberOfLines={2} style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 1 }}>{reason}</Text>
                     </View>
                   </PressScale>

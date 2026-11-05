@@ -13,7 +13,7 @@ import { useCredits } from "../../src/credits/CreditsProvider";
 import { garmentName } from "../../src/garmentName";
 import { haptics } from "../../src/haptics";
 import { useCaptureJobs } from "../../src/store/captureJobs";
-import { asList, capitalize, colors, radius, type } from "../../src/theme";
+import { asList, capitalize, colors, radius, type, weight } from "../../src/theme";
 import { Button } from "../../src/ui";
 import { useScreenViewed } from "../../src/activity/track";
 
@@ -97,7 +97,7 @@ export default function ResultsScreen() {
                   </View>
                 </Pressable>
                 <View style={{ gap: 4 }}>
-                  <Text numberOfLines={1} style={{ ...type.subhead, fontWeight: "600", color: colors.label }}>{garmentName(i)}</Text>
+                  <Text numberOfLines={1} style={{ ...type.subhead, ...weight(600), color: colors.label }}>{garmentName(i)}</Text>
                   <Text numberOfLines={1} style={{ ...type.footnote, color: colors.secondaryLabel }}>
                     {[groupOf(i), capitalize(asList(i.facts.colors.value)[0] ?? "")].filter(Boolean).join(" · ")}
                   </Text>

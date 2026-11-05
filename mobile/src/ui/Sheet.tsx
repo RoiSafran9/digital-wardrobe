@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, KeyboardAvoidingView, Modal, Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
 import { colors, radius, shadow, type } from "../theme";
 import { useReducedMotion } from "../useReducedMotion";
 
@@ -17,7 +18,7 @@ type Props = {
   testID?: string;
 };
 
-// A bottom sheet over a dimmed backdrop; tap outside to dismiss. Slides up, and back down before it
+// A glass bottom sheet over a dimmed backdrop; tap outside to dismiss. Slides up, and back down before it
 // unmounts. Under Reduce Motion it fades instead of sliding.
 export function Sheet({ visible, onClose, title, floating = false, children, testID }: Props) {
   const { height } = useWindowDimensions();
@@ -45,9 +46,8 @@ export function Sheet({ visible, onClose, title, floating = false, children, tes
           testID={testID}
           accessibilityViewIsModal
           style={{
-            backgroundColor: colors.card,
-            borderTopLeftRadius: floating ? radius.sheet : radius.stage,
-            borderTopRightRadius: floating ? radius.sheet : radius.stage,
+            borderTopLeftRadius: radius.sheet,
+            borderTopRightRadius: radius.sheet,
             borderBottomLeftRadius: floating ? radius.sheet : 0,
             borderBottomRightRadius: floating ? radius.sheet : 0,
             marginHorizontal: floating ? 10 : 0,
@@ -60,8 +60,17 @@ export function Sheet({ visible, onClose, title, floating = false, children, tes
             ...shadow.sheet,
           }}
         >
-          <View style={{ alignItems: "center", paddingTop: 8, paddingBottom: 10 }}>
-            <View style={{ width: 36, height: 5, borderRadius: 3, backgroundColor: colors.fill }} />
+          <View pointerEvents="none" style={{
+            position: "absolute", top: 0, left: 0, right: 0, bottom: 0, overflow: "hidden",
+            borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
+            borderBottomLeftRadius: floating ? radius.sheet : 0, borderBottomRightRadius: floating ? radius.sheet : 0,
+            borderWidth: 0.5, borderColor: colors.glassBorder,
+          }}>
+            <BlurView intensity={40} tint="systemChromeMaterial" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.glassSheet }} />
+          </View>
+          <View style={{ alignItems: "center", paddingTop: 8, paddingBottom: 14 }}>
+            <View style={{ width: 36, height: 5, borderRadius: 3, backgroundColor: colors.separatorStrong }} />
           </View>
           {title ? (
             <Text accessibilityRole="header" style={{ ...type.section, color: colors.label, marginBottom: 12 }}>{title}</Text>

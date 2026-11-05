@@ -8,7 +8,7 @@ import { ROUND_CAP } from "../../src/firstPieces/round";
 import { haptics } from "../../src/haptics";
 import { pickPhotos } from "../../src/photoPicker";
 import { track } from "../../src/firstPieces/analytics";
-import { colors, hitSlopFor, radius, type } from "../../src/theme";
+import { colors, hitSlopFor, radius, type, weight } from "../../src/theme";
 import { BackButton, Button } from "../../src/ui";
 
 const TIPS = [
@@ -92,7 +92,7 @@ export default function FirstPiecesPhotos() {
           {TIPS.map((tip, i) => (
             <View key={tip} style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
               <View style={{ width: 26, height: 26, borderRadius: radius.pill, backgroundColor: colors.grouped, alignItems: "center", justifyContent: "center" }}>
-                <Text style={{ ...type.footnote, fontWeight: "600", color: colors.label }}>{i + 1}</Text>
+                <Text style={{ ...type.footnote, ...weight(600), color: colors.label }}>{i + 1}</Text>
               </View>
               <Text style={{ ...type.subhead, color: colors.label, flex: 1 }}>{tip}</Text>
             </View>
@@ -105,7 +105,7 @@ export default function FirstPiecesPhotos() {
                                       library: photos.filter((p) => p.source === "library").length });
           router.push("/first-pieces/pick");
         }} />
-        <Text style={{ ...type.footnote, fontWeight: "600", color: colors.successText, textAlign: "center" }}>Finding them is free</Text>
+        <Text style={{ ...type.footnote, ...weight(600), color: colors.successText, textAlign: "center" }}>Finding them is free</Text>
       </View>
     </SafeAreaView>
   );

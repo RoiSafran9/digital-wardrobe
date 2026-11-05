@@ -5,7 +5,7 @@ import { PressScale } from "../../motion/PressScale";
 import { haptics } from "../../haptics";
 import type { Option } from "../../outfitBuilder/filters";
 import { useReducedMotion } from "../../useReducedMotion";
-import { colors, radius, type } from "../../theme";
+import { colors, radius, type, weight } from "../../theme";
 
 const SWATCH = 20;
 const SWATCH_STEP = 14;
@@ -53,7 +53,7 @@ export function OptionTile<T extends string>({ option, selected, width, onPress 
         )}
       </Animated.View>
       <Text numberOfLines={1} adjustsFontSizeToFit
-        style={{ ...type.subhead, fontWeight: "500", color: fg, paddingHorizontal: 6 }}>{option.label}</Text>
+        style={{ ...type.subhead, ...weight(500), color: fg, paddingHorizontal: 6 }}>{option.label}</Text>
     </PressScale>
   );
 }

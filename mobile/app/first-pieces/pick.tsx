@@ -12,7 +12,7 @@ import { CAP_TOAST, FIRST_GOAL, ROUND_CAP, roundQuote, type RoundPhoto, type Rou
 import { pieceLabel as scanPieceLabel } from "../../src/footwear";
 import { haptics } from "../../src/haptics";
 import { isWornRejection, TRY_AS_OUTFIT } from "../../src/outfit/outfit";
-import { colors, radius, type } from "../../src/theme";
+import { colors, radius, type, weight } from "../../src/theme";
 import { BackButton, Button, CostSheet, InsufficientCreditsSheet, useToast } from "../../src/ui";
 
 export { CAP_TOAST };
@@ -101,7 +101,7 @@ export default function FirstPiecesPick() {
       <View style={{ height: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20 }}>
         <BackButton label="Photos" onPress={() => router.back()} />
         {pieces.length ? (
-          <Text accessibilityLiveRegion="polite" style={{ ...type.subhead, fontWeight: "600", color: selected.length >= ROUND_CAP ? colors.tint : colors.secondaryLabel }}>
+          <Text accessibilityLiveRegion="polite" style={{ ...type.subhead, ...weight(600), color: selected.length >= ROUND_CAP ? colors.tint : colors.secondaryLabel }}>
             {`${selected.length} of ${Math.min(ROUND_CAP, pieces.length)} selected`}
           </Text>
         ) : null}

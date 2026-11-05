@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image, Pressable, Text, View, type LayoutChangeEvent } from "react-native";
 type Boxed = { id: string; box: { x: number; y: number; width: number; height: number } };
-import { colors, radius, type } from "../../theme";
+import { colors, radius, type, weight } from "../../theme";
 import { useReducedMotion } from "../../useReducedMotion";
 
 type Props = {
@@ -64,7 +64,7 @@ function Box({ candidate, index, scale, selected, onPress }: { candidate: Boxed;
   };
   const badge = (
     <View style={{ position: "absolute", top: -10, left: -10, width: 22, height: 22, borderRadius: 11, backgroundColor: selected ? colors.tint : "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ ...type.caption, fontWeight: "700", color: "#FFFFFF" }}>{index + 1}</Text>
+      <Text style={{ ...type.caption, ...weight(700), color: "#FFFFFF" }}>{index + 1}</Text>
     </View>
   );
   if (!onPress) return <Animated.View pointerEvents="none" style={style}>{badge}</Animated.View>;

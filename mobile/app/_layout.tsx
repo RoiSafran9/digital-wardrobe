@@ -1,6 +1,9 @@
 import { View } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { useFonts, InstrumentSerif_400Regular } from "@expo-google-fonts/instrument-serif";
+import {
+  useFonts, BricolageGrotesque_400Regular, BricolageGrotesque_500Medium, BricolageGrotesque_600SemiBold,
+  BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold,
+} from "@expo-google-fonts/bricolage-grotesque";
 import { AuthProvider } from "../src/auth/AuthProvider";
 import { CreditsProvider } from "../src/credits/CreditsProvider";
 import { AppShell } from "../src/RootNavigator";
@@ -14,9 +17,12 @@ import { ErrorBoundary, reportUncaughtErrors } from "../src/ui/ErrorBoundary";
 reportUncaughtErrors();
 
 export default function RootLayout() {
-  // Instrument Serif, for the editorial headlines only. If it fails to load, iOS falls back to the
-  // system font, so a font error never blocks the app.
-  const [fontsLoaded, fontError] = useFonts({ InstrumentSerif_400Regular });
+  // Bricolage Grotesque, the app's one family. If it fails to load, iOS falls back to the system font,
+  // so a font error never blocks the app.
+  const [fontsLoaded, fontError] = useFonts({
+    BricolageGrotesque_400Regular, BricolageGrotesque_500Medium, BricolageGrotesque_600SemiBold,
+    BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold,
+  });
   if (!fontsLoaded && !fontError) return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   return (
     <AppearanceProvider>

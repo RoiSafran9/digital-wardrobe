@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Text, View } from "react-native";
 import { Icon } from "../Icon";
-import { colors, radius, shadow, type } from "../../theme";
+import { colors, radius, shadow, type, weight } from "../../theme";
 import { ProgressBar, Shimmer } from "../../ui";
 import { useReducedMotion } from "../../useReducedMotion";
 
@@ -40,7 +40,7 @@ export function ProcessingCard({ photoUri, stages, title, estimateSeconds = 45, 
         <Shimmer />
         {count && count.total > 0 ? (
           <View testID="piece-count" style={{ position: "absolute", top: 12, right: 12, paddingHorizontal: 10, height: 26, borderRadius: radius.pill, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center" }}>
-            <Text style={{ ...type.footnote, fontWeight: "600", color: "#FFFFFF" }}>{`${Math.min(count.done + 1, count.total)} of ${count.total}`}</Text>
+            <Text style={{ ...type.footnote, ...weight(600), color: "#FFFFFF" }}>{`${Math.min(count.done + 1, count.total)} of ${count.total}`}</Text>
           </View>
         ) : null}
       </View>

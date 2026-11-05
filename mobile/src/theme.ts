@@ -9,25 +9,28 @@ type Palette = {
   success: string; successText: string;
   destructive: string; destructiveBg: string;
   warning: string; warningText: string;
-  tabBar: string;
+  tabBar: string; tabInactive: string;
+  glass: string; glassCard: string; glassSheet: string; glassBorder: string; glassHighlight: string; glassTint: string;
 };
 
-// The design handoff's system (docs/design/design_handoff_digital_wardrobe): white screens, warm-grey
-// grouped cards, one blue accent. Every text pair is held to 4.5:1 in both appearances (see
+// The KIPS Glass handoff (docs/design/design_handoff_glass_redesign): a cool grey screen with two soft
+// color blobs, frosted-glass cards over it, one blue accent. Every text pair is held to 4.5:1 in both appearances (see
 // __tests__/theme.test.ts). Where a handoff value failed that as text on the grey cards, the shipped
 // value is the nearest darker one that passes: accent #1F6BFF → #0B5EFF, danger #E5484D → #D61E24,
 // success text #23A55A → #1B7F45, warning text #C27C12 → #98610E. tertiaryLabel (#A1A1A6) fails, so it
 // is only for glyphs, placeholders and disabled states — never text.
 export const palettes: { light: Palette; dark: Palette } = {
   light: {
-    background: "#FFFFFF", grouped: "#F4F4F2", card: "#FFFFFF", tile: "#F3F2EF",
+    background: "#F2F2F6", grouped: "#F4F4F2", card: "#FFFFFF", tile: "#F3F2EF",
     label: "#131315", secondaryLabel: "#6E6E73", tertiaryLabel: "#A1A1A6",
     separator: "rgba(20,20,25,0.08)", separatorStrong: "#C7C7CC", fill: "rgba(120,120,128,0.12)",
     tint: "#0B5EFF", tintSoft: "rgba(31,107,255,0.10)", onTint: "#FFFFFF",
     success: "#23A55A", successText: "#1B7F45",
     destructive: "#D61E24", destructiveBg: "#FFECEC",
     warning: "#E8A33D", warningText: "#98610E",
-    tabBar: "rgba(250,250,250,0.94)",
+    tabBar: "rgba(250,250,250,0.94)", tabInactive: "#3A3A3F",
+    glass: "rgba(255,255,255,0.58)", glassCard: "rgba(255,255,255,0.68)", glassSheet: "rgba(255,255,255,0.9)",
+    glassBorder: "rgba(255,255,255,0.8)", glassHighlight: "rgba(255,255,255,0.9)", glassTint: "rgba(11,94,255,0.9)",
   },
   dark: {
     background: "#000000", grouped: "#1C1C1E", card: "#1C1C1E", tile: "#1B1B1D",
@@ -37,7 +40,9 @@ export const palettes: { light: Palette; dark: Palette } = {
     success: "#30C26A", successText: "#30C26A",
     destructive: "#FF5A5F", destructiveBg: "#3A1D1F",
     warning: "#E8A33D", warningText: "#E8A33D",
-    tabBar: "rgba(28,28,30,0.94)",
+    tabBar: "rgba(28,28,30,0.94)", tabInactive: "#C7C7CC",
+    glass: "rgba(44,44,46,0.55)", glassCard: "rgba(44,44,46,0.62)", glassSheet: "rgba(36,36,38,0.92)",
+    glassBorder: "rgba(255,255,255,0.12)", glassHighlight: "rgba(255,255,255,0.10)", glassTint: "rgba(61,134,255,0.9)",
   },
 };
 
@@ -50,39 +55,57 @@ export const colors = Object.fromEntries(
   (Object.keys(palettes.light) as (keyof Palette)[]).map((k) => [k, adaptive(palettes.light[k], palettes.dark[k])]),
 ) as Record<keyof Palette, ColorValue>;
 
-// Instrument Serif, only for the four editorial headlines (welcome, Home greeting, starter credits,
-// saved). Loaded in app/_layout.tsx; everything else is the system font (SF Pro).
-export const DISPLAY_FONT = "InstrumentSerif_400Regular";
+// Bricolage Grotesque, one family for everything (loaded in app/_layout.tsx). React Native picks a
+// custom face by name, not by weight, so every weight is its own family: use weight(n), never a bare
+// fontWeight.
+export const FONT = {
+  400: "BricolageGrotesque_400Regular",
+  500: "BricolageGrotesque_500Medium",
+  600: "BricolageGrotesque_600SemiBold",
+  700: "BricolageGrotesque_700Bold",
+  800: "BricolageGrotesque_800ExtraBold",
+} as const;
+export type Weight = keyof typeof FONT;
+
+export function weight(w: Weight): TextStyle {
+  return { fontFamily: FONT[w], fontWeight: String(w) as TextStyle["fontWeight"] };
+}
 
 const TABULAR: TextStyle["fontVariant"] = ["tabular-nums"];
 
-// Text styles on the system font, sized per the handoff.
+// Titles: 800, tracked −0.03em, tight leading (a touch looser than the handoff's 1.04 so iOS never clips
+// the tall ascenders).
+function display(size: number): TextStyle {
+  return { ...weight(800), fontSize: size, letterSpacing: Math.round(-0.03 * size * 100) / 100, lineHeight: Math.round(size * 1.1) };
+}
+
+// Text styles, sized per the handoff.
 export const type = {
-  largeTitle: { fontSize: 34, fontWeight: "700", letterSpacing: -0.68 },
-  screenTitle: { fontSize: 32, fontWeight: "700", letterSpacing: -0.64 },
-  pageTitle: { fontSize: 28, fontWeight: "700" },
-  section: { fontSize: 22, fontWeight: "700" },
-  title2: { fontSize: 22, fontWeight: "700" },
-  headline: { fontSize: 17, fontWeight: "600" },
-  cardTitle: { fontSize: 19, fontWeight: "600" },
-  body: { fontSize: 17 },
-  callout: { fontSize: 16 },
-  subhead: { fontSize: 15 },
-  footnote: { fontSize: 13 },
-  caption: { fontSize: 12 },
-  toast: { fontSize: 14, fontWeight: "600" },
+  hero: { ...display(64), fontVariant: TABULAR },
+  largeTitle: display(34),
+  screenTitle: display(32),
+  pageTitle: display(28),
+  title2: display(24),
+  title3: display(21),
+  section: { ...weight(700), fontSize: 22 },
+  headline: { ...weight(600), fontSize: 17 },
+  cardTitle: { ...weight(700), fontSize: 19 },
+  body: { ...weight(400), fontSize: 17 },
+  callout: { ...weight(400), fontSize: 16 },
+  subhead: { ...weight(400), fontSize: 15 },
+  footnote: { ...weight(400), fontSize: 13 },
+  caption: { ...weight(400), fontSize: 12 },
+  toast: { ...weight(600), fontSize: 14 },
   tag: { fontSize: 10, fontWeight: "600", letterSpacing: 0.6, fontFamily: "Menlo" },
-  tabLabel: { fontSize: 10.5, fontWeight: "500" },
-  eyebrow: { fontSize: 13, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.65 },
-  hero: { fontSize: 64, fontWeight: "700", fontVariant: TABULAR },
-  balance: { fontSize: 54, fontWeight: "700", fontVariant: TABULAR },
-  stat: { fontSize: 26, fontWeight: "600", fontVariant: TABULAR },
-  // Instrument Serif's ascenders and descenders reach past the font size: give the line room, or iOS clips them.
-  display: (size: 46 | 42 | 40) => ({ fontFamily: DISPLAY_FONT, fontSize: size, lineHeight: Math.round(size * 1.18) }),
-} as const;
+  tabLabel: { ...weight(600), fontSize: 10.5 },
+  eyebrow: { ...weight(600), fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6 },
+  balance: { ...display(54), fontVariant: TABULAR },
+  stat: { ...weight(700), fontSize: 26, fontVariant: TABULAR },
+  display,
+} as const satisfies Record<string, TextStyle | ((size: number) => TextStyle)>;
 
 export const radius = {
-  segment: 8, input: 12, button: 14, primary: 16, list: 18, tile: 22, feature: 26, stage: 28, hero: 30, sheet: 34, pill: 999,
+  segment: 8, input: 14, button: 14, primary: 16, image: 14, garment: 20, list: 22, tile: 24, feature: 26, hero: 28, stage: 28, sheet: 34, pill: 999,
   card: 16,  // legacy name, same as primary
 };
 
@@ -91,10 +114,14 @@ export const shadow = {
   tile: { shadowColor: "#000", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.08, shadowRadius: 15 },
   sheet: { shadowColor: "#000", shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.12, shadowRadius: 20 },
   cutout: { shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.13, shadowRadius: 5 },
+  glass: { shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 15 },
+  lift: { shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.13, shadowRadius: 8 },
+  camera: { shadowColor: "#0B5EFF", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 13 },
 } as const;
 
-// The tab bar floats over content; scroll views end this far above the bottom edge.
-export const TAB_BAR_HEIGHT = 84;
+// The tab bar is a glass capsule floating 26pt above the bottom edge, its camera raised above it. Tab
+// screens end their scroll this far above the bottom edge (add ~28 for breathing room).
+export const TAB_BAR_HEIGHT = 122;
 
 // Apple's minimum touch target. Small controls keep their look and get invisible slop.
 export const MIN_TOUCH = 44;

@@ -1,6 +1,6 @@
 import React from "react";
 import { Text, View } from "react-native";
-import { asList, capitalize, colors, swatchFor } from "../theme";
+import { asList, capitalize, colors, swatchFor, type } from "../theme";
 
 export function ColorSwatches({ value, size = 12 }: { value: string | string[]; size?: number }) {
   return (
@@ -13,7 +13,7 @@ export function ColorSwatches({ value, size = 12 }: { value: string | string[]; 
               backgroundColor: swatchFor(name), borderWidth: 1, borderColor: colors.separatorStrong,
             }}
           />
-          <Text style={{ color: colors.label, fontSize: 13 }}>{capitalize(name)}</Text>
+          <Text style={{ ...type.footnote, color: colors.label }}>{capitalize(name)}</Text>
         </View>
       ))}
     </View>

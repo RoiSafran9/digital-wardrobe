@@ -12,7 +12,7 @@ import { useCredits } from "../../src/credits/CreditsProvider";
 import { NAME_MAX, useProfile, validName } from "../../src/profile";
 import { useNotify } from "../../src/notifications";
 import { BILLING_OFF, creditsLabel, entryLabel, entrySign, visibleEntries } from "../../src/credits/credits";
-import { colors, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
+import { colors, radius, TAB_BAR_HEIGHT, type, weight } from "../../src/theme";
 import { Button, GroupedList, ProgressBar, Row, Segmented, Sheet } from "../../src/ui";
 import { useScreenViewed } from "../../src/activity/track";
 
@@ -194,7 +194,7 @@ export default function AccountScreen() {
                   <Text style={{ ...type.body, color: colors.label }}>{entryLabel(e)}</Text>
                   <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>{dateLabel(e.created_at)}</Text>
                 </View>
-                <Text style={{ ...type.body, fontWeight: "600", color: e.kind === "grant" ? colors.successText : colors.label, fontVariant: ["tabular-nums"] }}>{entrySign(e)}</Text>
+                <Text style={{ ...type.body, ...weight(600), color: e.kind === "grant" ? colors.successText : colors.label, fontVariant: ["tabular-nums"] }}>{entrySign(e)}</Text>
               </View>
             )) : <View style={{ padding: 16 }}><Text style={{ ...type.subhead, color: colors.secondaryLabel }}>No credit activity yet.</Text></View>}
             {cursor ? <Row label="Show more" tint onPress={more} /> : null}
@@ -216,7 +216,7 @@ export default function AccountScreen() {
           {HOW_IT_WORKS.map(([title, body], i) => (
             <View key={title} style={{ flexDirection: "row", gap: 12 }}>
               <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: colors.tintSoft, alignItems: "center", justifyContent: "center" }}>
-                <Text style={{ ...type.footnote, fontWeight: "700", color: colors.tint }}>{i + 1}</Text>
+                <Text style={{ ...type.footnote, ...weight(700), color: colors.tint }}>{i + 1}</Text>
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={{ ...type.headline, color: colors.label }}>{title}</Text>

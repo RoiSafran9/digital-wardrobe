@@ -16,7 +16,7 @@ import { haptics } from "../../src/haptics";
 import { AI_NOTE } from "../../src/outfit/outfit";
 import { useCaptureJobs } from "../../src/store/captureJobs";
 import { idsParam } from "../../src/firstPieces/celebrate";
-import { colors, hitSlopFor, radius, type } from "../../src/theme";
+import { colors, hitSlopFor, radius, type, weight } from "../../src/theme";
 import { Button, CostSheet, InsufficientCreditsSheet } from "../../src/ui";
 import { useScreenViewed } from "../../src/activity/track";
 
@@ -139,7 +139,7 @@ export default function ReviewScreen() {
                   {regenerating === item.item_id ? (
                     <View accessibilityLiveRegion="polite" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.6)", gap: 8 }}>
                       <ActivityIndicator color={colors.tint} />
-                      <Text style={{ ...type.footnote, fontWeight: "600", color: "#131315" }}>Making a new image…</Text>
+                      <Text style={{ ...type.footnote, ...weight(600), color: "#131315" }}>Making a new image…</Text>
                     </View>
                   ) : null}
                 </View>

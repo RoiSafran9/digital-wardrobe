@@ -2,7 +2,7 @@ import React from "react";
 import { Text, View } from "react-native";
 import type { ClosetItem } from "../api/types";
 import { PressScale } from "../motion/PressScale";
-import { colors, radius, shadow, type } from "../theme";
+import { colors, radius, shadow, type, weight } from "../theme";
 import { GarmentImage } from "./GarmentImage";
 
 type Props = {
@@ -27,7 +27,7 @@ export function GarmentTile({ item, width, height, onPress, label, rounded = rad
       />
       {badge ? (
         <View style={{ position: "absolute", top: 10, right: 10, paddingHorizontal: 8, height: 22, borderRadius: radius.pill, backgroundColor: colors.card, justifyContent: "center" }}>
-          <Text style={{ ...type.caption, fontWeight: "600", color: colors.label }}>{badge}</Text>
+          <Text style={{ ...type.caption, ...weight(600), color: colors.label }}>{badge}</Text>
         </View>
       ) : null}
     </View>

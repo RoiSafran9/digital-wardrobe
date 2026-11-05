@@ -1,36 +1,21 @@
 import { useCallback } from "react";
 import { Tabs, useRouter } from "expo-router";
-import { BlurView } from "expo-blur";
-import { StyleSheet, View, type ColorValue } from "react-native";
-import { Icon, type IconName } from "../../src/components/Icon";
+import { TabBar } from "../../src/components/TabBar";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { useNameStep, useStarterCredits } from "../../src/onboarding";
 import { useFirstPiecesMaybe } from "../../src/firstPieces/FirstPiecesProvider";
 import { markOffered, useFirstPiecesOffer } from "../../src/firstPieces/offer";
 import { useProfile } from "../../src/profile";
-import { colors, TAB_BAR_HEIGHT, type } from "../../src/theme";
 
-function tabIcon(name: IconName) {
-  return ({ color, size }: { color: ColorValue; size: number }) => <Icon name={name} size={size} color={color} />;
-}
-
-// The handoff's tab bar: 84pt, translucent blur, hairline top, floating over content (every tab screen
-// ends its scroll TAB_BAR_HEIGHT above the bottom). Inactive tabs use the secondary label color (the
-// handoff's lighter grey fails 4.5:1 for the labels).
-function TabBarBackground() {
-  return (
-    <View style={StyleSheet.absoluteFill}>
-      <BlurView intensity={20} tint="systemChromeMaterial" style={StyleSheet.absoluteFill} />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.tabBar }]} />
-    </View>
-  );
-}
+// Home · Closet · [camera] · Looks · Me as a floating glass capsule (src/components/TabBar.tsx); every tab
+// screen ends its scroll TAB_BAR_HEIGHT above the bottom. Add is no longer a tab: the center camera and
+// Home's Add card replace it, and the route stays for the flows that link to it.
 
 export default function TabsLayout() {
   const router = useRouter();
   const { userId, status } = useAuth();
-  const { billing, credits, generation } = useCredits();
+  const { billing, credits, generation, outfitBuilder } = useCredits();
   const firstPieces = useFirstPiecesMaybe();
   const { profile, loaded } = useProfile();
   const askName = useCallback(() => router.push("/your-name"), [router]);
@@ -45,19 +30,19 @@ export default function TabsLayout() {
                         loaded: !!credits, inflight: !!firstPieces?.round, open: openFirstPieces });
   return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.tint,
-        tabBarInactiveTintColor: colors.secondaryLabel,
-        tabBarStyle: { position: "absolute", height: TAB_BAR_HEIGHT, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator, backgroundColor: "transparent" },
-        tabBarBackground: TabBarBackground,
-        tabBarLabelStyle: type.tabLabel,
-      }}
+      screenOptions={{ headerShown: false }}
+      tabBar={(props) => (
+        <TabBar
+          {...props}
+          onCamera={() => router.push({ pathname: "/capture/camera", params: { mode: "garments" } })}
+          onLooks={status === "signedIn" && outfitBuilder ? () => router.push("/build-my-look") : undefined}
+        />
+      )}
     >
-      <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: tabIcon("home") }} />
-      <Tabs.Screen name="closet" options={{ title: "Closet", tabBarIcon: tabIcon("closet") }} />
-      <Tabs.Screen name="add" options={{ title: "Add", tabBarIcon: tabIcon("plusCircle") }} />
-      <Tabs.Screen name="account" options={{ title: "Account", tabBarIcon: tabIcon("account") }} />
+      <Tabs.Screen name="index" options={{ title: "Home" }} />
+      <Tabs.Screen name="closet" options={{ title: "Closet" }} />
+      <Tabs.Screen name="add" options={{ title: "Add", href: null }} />
+      <Tabs.Screen name="account" options={{ title: "Me" }} />
     </Tabs>
   );
 }

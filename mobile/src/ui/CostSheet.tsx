@@ -32,7 +32,7 @@ export function CostSheet({ visible, title, subtitle, lines, note, confirmLabel,
   return (
     <Sheet visible={visible} onClose={choose("cancelled", onClose)} title={title} floating>
       {subtitle ? <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginBottom: 16 }}>{subtitle}</Text> : null}
-      <View style={{ backgroundColor: colors.grouped, borderRadius: radius.list, paddingHorizontal: 16 }}>
+      <View style={{ backgroundColor: colors.fill, borderRadius: 18, paddingHorizontal: 16 }}>
         {q.lines.map((l) => (
           <View key={l.label} style={styles.row}>
             <Text style={{ ...type.body, color: colors.label }}>{l.label}</Text>

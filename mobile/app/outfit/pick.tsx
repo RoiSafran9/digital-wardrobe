@@ -15,7 +15,7 @@ import { haptics } from "../../src/haptics";
 import { cappedPicks, candidateTitle, defaultPicks, pickable, sceneNote, visibilityNote } from "../../src/outfit/outfit";
 import { cachedScan, rememberScan } from "../../src/outfit/scanCache";
 import { MarkRegion, type PhotoBox } from "../../src/components/outfit/MarkRegion";
-import { colors, hitSlopFor, radius, type } from "../../src/theme";
+import { colors, hitSlopFor, radius, type, weight } from "../../src/theme";
 import { TextInput } from "react-native";
 import { BackButton, Button, Chip, CostSheet, InsufficientCreditsSheet, Sheet, useToast } from "../../src/ui";
 import { CAP_TOAST, ROUND_CAP } from "../../src/firstPieces/round";
@@ -175,7 +175,7 @@ export default function PickScreen() {
         {uri && scan && scan.candidates.length < 8 ? (
           <Pressable onPress={() => { setMarkBox(null); setMarkType(""); setMarkError(null); setMarking(true); }} accessibilityRole="button"
             style={{ height: 48, borderRadius: radius.list, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.separatorStrong, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ ...type.subhead, fontWeight: "600", color: colors.tint }}>+ Mark a missed garment</Text>
+            <Text style={{ ...type.subhead, ...weight(600), color: colors.tint }}>+ Mark a missed garment</Text>
           </Pressable>
         ) : null}
         {error ? <Note text={error} destructive /> : null}
@@ -267,7 +267,7 @@ function CandidateRow({ candidate, index, selected, onPress, onEdit }: {
         <View style={{ width: 62, height: 62, borderRadius: radius.button, overflow: "hidden", backgroundColor: colors.tile }}>
           {candidate.preview_url ? <Image source={{ uri: candidate.preview_url }} style={{ width: "100%", height: "100%" }} resizeMode="cover" /> : null}
           <View style={{ position: "absolute", top: 4, left: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: colors.tint, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ ...type.caption, fontWeight: "700", color: colors.onTint }}>{index + 1}</Text>
+            <Text style={{ ...type.caption, ...weight(700), color: colors.onTint }}>{index + 1}</Text>
           </View>
         </View>
         <View style={{ flex: 1 }}>
@@ -283,7 +283,7 @@ function CandidateRow({ candidate, index, selected, onPress, onEdit }: {
         </View>
       </Pressable>
       <Pressable onPress={onEdit} accessibilityRole="button" accessibilityLabel={`Edit ${title}`} hitSlop={hitSlopFor(22)} style={{ alignSelf: "flex-end" }}>
-        <Text style={{ ...type.footnote, fontWeight: "600", color: colors.tint }}>Edit</Text>
+        <Text style={{ ...type.footnote, ...weight(600), color: colors.tint }}>Edit</Text>
       </Pressable>
     </View>
   );

@@ -41,6 +41,7 @@ const PAIRS = [
   ["successText", "card"], ["successText", "grouped"],
   ["warningText", "card"], ["warningText", "grouped"],
   ["onTint", "tint"],
+  ["tabInactive", "background"],
 ] as const;
 
 describe.each(["light", "dark"] as const)("%s palette", (mode) => {
@@ -64,27 +65,44 @@ test("hitSlopFor grows small controls to Apple's 44pt minimum without resizing t
   expect(hitSlopFor(50)).toEqual({ top: 0, bottom: 0, left: 0, right: 0 });
 });
 
-test("type scale follows the handoff on the system font", () => {
+test("type scale follows the Glass handoff in Bricolage Grotesque", () => {
   const { type } = require("../src/theme");
-  expect(type.largeTitle).toEqual({ fontSize: 34, fontWeight: "700", letterSpacing: -0.68 });
-  expect(type.screenTitle).toEqual({ fontSize: 32, fontWeight: "700", letterSpacing: -0.64 });
-  expect(type.section).toEqual({ fontSize: 22, fontWeight: "700" });
-  expect(type.eyebrow).toEqual({ fontSize: 13, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.65 });
-  expect(type.stat).toEqual({ fontSize: 26, fontWeight: "600", fontVariant: ["tabular-nums"] });
-  expect(type.body).toEqual({ fontSize: 17 });
-  expect(type.footnote).toEqual({ fontSize: 13 });
+  expect(type.largeTitle).toEqual({ fontFamily: "BricolageGrotesque_800ExtraBold", fontWeight: "800", fontSize: 34, letterSpacing: -1.02, lineHeight: 37 });
+  expect(type.hero).toMatchObject({ fontFamily: "BricolageGrotesque_800ExtraBold", fontSize: 64, fontVariant: ["tabular-nums"] });
+  expect(type.section).toEqual({ fontFamily: "BricolageGrotesque_700Bold", fontWeight: "700", fontSize: 22 });
+  expect(type.headline).toEqual({ fontFamily: "BricolageGrotesque_600SemiBold", fontWeight: "600", fontSize: 17 });
+  expect(type.eyebrow).toEqual({ fontFamily: "BricolageGrotesque_600SemiBold", fontWeight: "600", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6 });
+  expect(type.body).toEqual({ fontFamily: "BricolageGrotesque_400Regular", fontWeight: "400", fontSize: 17 });
+  expect(type.footnote).toEqual({ fontFamily: "BricolageGrotesque_400Regular", fontWeight: "400", fontSize: 13 });
+  expect(type.display(42)).toMatchObject({ fontFamily: "BricolageGrotesque_800ExtraBold", fontSize: 42, letterSpacing: -1.26 });
 });
 
-test("editorial display type uses Instrument Serif at the handoff sizes", () => {
-  const { type, DISPLAY_FONT } = require("../src/theme");
-  expect(DISPLAY_FONT).toBe("InstrumentSerif_400Regular");
-  expect(type.display(46)).toEqual({ fontFamily: "InstrumentSerif_400Regular", fontSize: 46, lineHeight: 54 });
-  expect(type.display(40).fontSize).toBe(40);
+test("weight() picks the Bricolage face for each weight", () => {
+  const { weight } = require("../src/theme");
+  expect(weight(600)).toEqual({ fontFamily: "BricolageGrotesque_600SemiBold", fontWeight: "600" });
+  expect(weight(800)).toEqual({ fontFamily: "BricolageGrotesque_800ExtraBold", fontWeight: "800" });
+});
+
+test("no raw fontWeight outside the theme: a custom face is chosen by family, so use weight()", () => {
+  const fs = require("fs");
+  const path = require("path");
+  const hits: string[] = [];
+  const walk = (dir: string) => {
+    for (const name of fs.readdirSync(dir)) {
+      const file = path.join(dir, name);
+      if (fs.statSync(file).isDirectory()) walk(file);
+      else if (/\.tsx?$/.test(name) && name !== "theme.ts" && /fontWeight:/.test(fs.readFileSync(file, "utf8"))) hits.push(file);
+    }
+  };
+  walk(path.join(__dirname, "../app"));
+  walk(path.join(__dirname, "../src"));
+  expect(hits).toEqual([]);
 });
 
 test("radii and shadows follow the handoff", () => {
   const { radius, shadow } = require("../src/theme");
-  expect(radius).toMatchObject({ segment: 8, input: 12, button: 14, primary: 16, list: 18, tile: 22, feature: 26, stage: 28, sheet: 34, pill: 999 });
+  expect(radius).toMatchObject({ button: 14, primary: 16, input: 14, image: 14, garment: 20, list: 22, tile: 24, hero: 28, sheet: 34, pill: 999 });
+  expect(shadow.glass).toMatchObject({ shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 15 });
   expect(shadow.tile).toMatchObject({ shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.08, shadowRadius: 15 });
   expect(shadow.sheet).toMatchObject({ shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.12, shadowRadius: 20 });
   expect(shadow.cutout).toMatchObject({ shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.13, shadowRadius: 5 });

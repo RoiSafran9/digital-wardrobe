@@ -8,7 +8,7 @@ import { useCredits } from "../../src/credits/CreditsProvider";
 import { haptics } from "../../src/haptics";
 import { useFirstPiecesMaybe } from "../../src/firstPieces/FirstPiecesProvider";
 import { pickPhoto, pickPhotos } from "../../src/photoPicker";
-import { hitSlopFor, radius, type } from "../../src/theme";
+import { hitSlopFor, radius, type, weight } from "../../src/theme";
 import { Button } from "../../src/ui";
 import { track, trackPermission, useScreenViewed } from "../../src/activity/track";
 
@@ -123,11 +123,11 @@ export default function CameraScreen() {
       <View style={{ flex: 1, justifyContent: "space-between", paddingTop: top, paddingBottom: bottom }}>
         <View style={{ paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           {close}
-          <Text style={{ ...type.subhead, fontWeight: "600", color: INK }}>{mode === "outfit" ? "Outfit" : "Garments"}</Text>
+          <Text style={{ ...type.subhead, ...weight(600), color: INK }}>{mode === "outfit" ? "Outfit" : "Garments"}</Text>
           {collecting ? (
             <Pressable onPress={done} accessibilityRole="button" accessibilityLabel={`Done, ${taken.length} ${taken.length === 1 ? "photo" : "photos"}`} hitSlop={hitSlopFor(40, 60)}
               style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: MODE_ON, justifyContent: "center" }}>
-              <Text style={{ ...type.subhead, fontWeight: "700", color: "#000" }}>Done</Text>
+              <Text style={{ ...type.subhead, ...weight(700), color: "#000" }}>Done</Text>
             </Pressable>
           ) : <View style={{ width: 40 }} />}
         </View>
@@ -146,14 +146,14 @@ export default function CameraScreen() {
             }} />
           ))}
           <View style={{ position: "absolute", top: 14, alignSelf: "center", paddingHorizontal: 12, height: 30, borderRadius: radius.pill, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center" }}>
-            <Text style={{ ...type.footnote, fontWeight: "600", color: INK }}>{HINTS[mode]}</Text>
+            <Text style={{ ...type.footnote, ...weight(600), color: INK }}>{HINTS[mode]}</Text>
           </View>
         </View>
 
         <View style={{ paddingBottom: 12, gap: 18 }}>
           {error ? <Text style={{ ...type.footnote, color: "#FF8A8A", textAlign: "center" }}>{error}</Text> : null}
           {collecting ? (
-            <Text accessibilityLiveRegion="polite" style={{ ...type.footnote, fontWeight: "600", color: INK, textAlign: "center" }}>
+            <Text accessibilityLiveRegion="polite" style={{ ...type.footnote, ...weight(600), color: INK, textAlign: "center" }}>
               {taken.length ? `${taken.length} ${taken.length === 1 ? "photo" : "photos"} added · keep going or tap Done` : "Take as many photos as you like"}
             </Text>
           ) : outfitOn ? (
@@ -161,7 +161,7 @@ export default function CameraScreen() {
               {(["garments", "outfit"] as const).map((m) => (
                 <Pressable key={m} onPress={() => { haptics.selection(); setMode(m); }} accessibilityRole="tab"
                   accessibilityLabel={m === "garments" ? "Garments" : "Outfit"} accessibilityState={{ selected: mode === m }} hitSlop={hitSlopFor(24, 80)}>
-                  <Text style={{ ...type.footnote, fontWeight: "700", letterSpacing: 1, color: mode === m ? MODE_ON : INK }}>
+                  <Text style={{ ...type.footnote, ...weight(700), letterSpacing: 1, color: mode === m ? MODE_ON : INK }}>
                     {m === "garments" ? "GARMENTS" : "OUTFIT"}
                   </Text>
                 </Pressable>

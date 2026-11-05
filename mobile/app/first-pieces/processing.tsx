@@ -9,7 +9,7 @@ import { useCredits } from "../../src/credits/CreditsProvider";
 import { useFirstPieces, type Round } from "../../src/firstPieces/FirstPiecesProvider";
 import { idsParam } from "../../src/firstPieces/celebrate";
 import { useNotify } from "../../src/notifications";
-import { colors, hitSlopFor, radius, type } from "../../src/theme";
+import { colors, hitSlopFor, radius, type, weight } from "../../src/theme";
 import { Button, CostSheet, InsufficientCreditsSheet } from "../../src/ui";
 import { LEAVE_NOTE, LEAVE_NOTE_NOTIFY } from "../capture/processing";
 
@@ -68,7 +68,7 @@ export default function FirstPiecesProcessing() {
             style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: radius.list, backgroundColor: colors.grouped }}>
             <Image source={{ uri: j.photoUri }} style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: colors.tile }} />
             <Text style={{ ...type.subhead, color: colors.label, flex: 1 }}>{`${n} ${n === 1 ? "piece" : "pieces"}`}</Text>
-            <Text style={{ ...type.footnote, fontWeight: "600", color: j.status === "failed" ? colors.destructive : colors.secondaryLabel }}>{status}</Text>
+            <Text style={{ ...type.footnote, ...weight(600), color: j.status === "failed" ? colors.destructive : colors.secondaryLabel }}>{status}</Text>
           </View>
         );
       })}

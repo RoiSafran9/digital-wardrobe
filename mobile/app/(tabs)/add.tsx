@@ -8,7 +8,7 @@ import { GlyphTile } from "../../src/components/onboarding/GlyphTile";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { creditsLabel } from "../../src/credits/credits";
 import { PressScale } from "../../src/motion/PressScale";
-import { colors, hitSlopFor, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
+import { colors, hitSlopFor, radius, TAB_BAR_HEIGHT, type, weight } from "../../src/theme";
 import { useScreenViewed } from "../../src/activity/track";
 
 const FIRST_PIECE = [
@@ -28,7 +28,7 @@ function MethodCard({ title, body, price, art, onPress }: { title: string; body:
           <Icon name="chevron" size={15} color={colors.secondaryLabel} />
         </View>
         <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>{body}</Text>
-        {price ? <Text style={{ ...type.footnote, fontWeight: "600", color: colors.tint, marginTop: 2 }}>{price}</Text> : null}
+        {price ? <Text style={{ ...type.footnote, ...weight(600), color: colors.tint, marginTop: 2 }}>{price}</Text> : null}
       </View>
     </PressScale>
   );
@@ -78,7 +78,7 @@ export default function AddScreen() {
             {FIRST_PIECE.map((tip, i) => (
               <View key={tip} style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
                 <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: colors.tint, alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ ...type.caption, fontWeight: "700", color: colors.onTint }}>{i + 1}</Text>
+                  <Text style={{ ...type.caption, ...weight(700), color: colors.onTint }}>{i + 1}</Text>
                 </View>
                 <Text style={{ ...type.subhead, color: colors.label, flex: 1 }}>{tip}</Text>
               </View>

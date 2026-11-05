@@ -9,7 +9,7 @@ import { ScanBand } from "../../src/components/outfit/ScanBand";
 import { haptics } from "../../src/haptics";
 import { pickable } from "../../src/outfit/outfit";
 import { rememberScan } from "../../src/outfit/scanCache";
-import { colors, radius, type } from "../../src/theme";
+import { colors, radius, type, weight } from "../../src/theme";
 import { BackButton, Button } from "../../src/ui";
 import { useScreenViewed } from "../../src/activity/track";
 
@@ -64,7 +64,7 @@ export default function DetectScreen() {
               {scan ? (found.length === 1 ? "1 garment found" : `${found.length} garments found`) : "Finding garments…"}
             </Text>
             <View style={{ paddingHorizontal: 12, height: 28, borderRadius: radius.pill, backgroundColor: colors.grouped, justifyContent: "center" }}>
-              <Text style={{ ...type.footnote, fontWeight: "600", color: colors.successText }}>Detection is free</Text>
+              <Text style={{ ...type.footnote, ...weight(600), color: colors.successText }}>Detection is free</Text>
             </View>
           </View>
         )}

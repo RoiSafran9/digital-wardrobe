@@ -7,7 +7,7 @@ import { NO_SIDE_VIEWS, isFootwearItem } from "../footwear";
 import { TurnView } from "./TurnView";
 import { TURN_LABELS, useTurn } from "../useTurn";
 import type { BackView, ClosetItem, RunItem } from "../api/types";
-import { addedLabel, asList, capitalize, colors, hitSlopFor, radius, type } from "../theme";
+import { addedLabel, asList, capitalize, colors, hitSlopFor, radius, type, weight } from "../theme";
 import { haptics } from "../haptics";
 import { ColorSwatches } from "./ColorSwatches";
 import { Rise } from "../motion/Rise";
@@ -144,7 +144,7 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
         </Text>
         {canEdit && !editing ? (
           <Pressable accessibilityRole="button" accessibilityLabel="Edit" onPress={() => setEditing(true)} hitSlop={hitSlopFor(28, 44)}>
-            <Text style={{ ...type.body, fontWeight: "600", color: colors.tint }}>Edit</Text>
+            <Text style={{ ...type.body, ...weight(600), color: colors.tint }}>Edit</Text>
           </Pressable>
         ) : <View style={{ width: 32 }} />}
       </View>
@@ -223,7 +223,7 @@ function Working({ label }: { label: string }) {
     <View accessibilityLiveRegion="polite" style={{ alignItems: "center", gap: 12 }}>
       <Shimmer />
       <ActivityIndicator color={colors.secondaryLabel} />
-      <Text style={{ ...type.subhead, fontWeight: "600", color: colors.label }}>{label}</Text>
+      <Text style={{ ...type.subhead, ...weight(600), color: colors.label }}>{label}</Text>
     </View>
   );
 }

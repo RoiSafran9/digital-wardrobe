@@ -11,7 +11,7 @@ import type { ClosetItem } from "../../src/api/types";
 import { CATEGORY_GROUPS, groupFor, groupOf } from "../../src/categoryGroups";
 import { ALL, colorsPresent, filterCloset } from "../../src/closetFilter";
 import { garmentName } from "../../src/garmentName";
-import { asList, capitalize, colors, radius, swatchFor, TAB_BAR_HEIGHT, type } from "../../src/theme";
+import { asList, capitalize, colors, radius, swatchFor, TAB_BAR_HEIGHT, type, weight } from "../../src/theme";
 import { Button, Chip, Swatch } from "../../src/ui";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { FirstPiecesPopup } from "../../src/components/firstPieces/FirstPiecesPopup";
@@ -227,7 +227,7 @@ export default function ClosetScreen() {
                 />
               </View>
               {item.turn?.state === "done" ? <View testID={`badge-360-${item.run_id}-${item.item_id}`} accessibilityLabel="Has a 360 view" /> : null}
-              <Text numberOfLines={1} style={{ ...type.subhead, fontWeight: "600", color: colors.label, marginTop: 10 }}>{name}</Text>
+              <Text numberOfLines={1} style={{ ...type.subhead, ...weight(600), color: colors.label, marginTop: 10 }}>{name}</Text>
               <Text numberOfLines={1} style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 1 }}>
                 {[groupOf(item), firstColor ? capitalize(firstColor) : null].filter(Boolean).join(" · ")}
               </Text>

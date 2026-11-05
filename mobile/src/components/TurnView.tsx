@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, PanResponder, Pressable, Text, View } from "react-native";
 import { GarmentImage } from "./GarmentImage";
-import { colors, hitSlopFor, radius, type } from "../theme";
+import { colors, hitSlopFor, radius, type, weight } from "../theme";
 import { Icon, type IconName } from "./Icon";
 import { useReducedMotion } from "../useReducedMotion";
 import { Rise } from "../motion/Rise";
@@ -128,7 +128,7 @@ export function TurnView({ views, label, onDragActive }: Props) {
       <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 14, marginTop: 10 }}>
         <StepButton icon="chevronLeft" label="Turn left" onPress={() => go(index - 1)} />
         <View testID="turn-angle" style={{ minWidth: 92, height: 30, paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: colors.card, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ ...type.footnote, fontWeight: "600", color: colors.label }}>{views[index].label}</Text>
+          <Text style={{ ...type.footnote, ...weight(600), color: colors.label }}>{views[index].label}</Text>
         </View>
         <StepButton icon="chevron" label="Turn right" onPress={() => go(index + 1)} />
       </View>

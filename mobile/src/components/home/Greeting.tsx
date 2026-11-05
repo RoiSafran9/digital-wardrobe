@@ -9,19 +9,22 @@ export function greetingFor(hour: number): string {
   return "Good evening";
 }
 
-export function dateEyebrow(now: Date): string {
-  return now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase();
-}
-
-// Date eyebrow, an editorial greeting with the name chosen at sign-up, and the balance pill.
-export function Greeting({ now, onCredits, name }: { now: Date; onCredits: () => void; name?: string | null }) {
+// Home's header: the greeting (with the name chosen at sign-up) as an eyebrow, the piece count as the
+// headline, and the glass balance pill.
+export function Greeting({ now, onCredits, name, count = null }: { now: Date; onCredits: () => void; name?: string | null; count?: number | null }) {
+  const greeting = name ? `${greetingFor(now.getHours())}, ${name}` : greetingFor(now.getHours());
   return (
-    <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 8 }}>
-      <View style={{ flex: 1, gap: 6 }}>
-        <Text style={{ ...type.eyebrow, color: colors.secondaryLabel }}>{dateEyebrow(now)}</Text>
-        <Text accessibilityRole="header" style={{ ...type.display(42), color: colors.label }}>{name ? `${greetingFor(now.getHours())},\n${name}` : greetingFor(now.getHours())}</Text>
+    <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 4 }}>
+      <View style={{ flex: 1 }}>
+        <Text accessibilityRole="header" style={{ ...type.eyebrow, color: colors.secondaryLabel }}>{greeting}</Text>
+        {count !== null ? (
+          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 10, marginTop: 4 }} accessible accessibilityLabel={`${count} ${count === 1 ? "piece" : "pieces"}`}>
+            <Text style={{ ...type.hero, color: colors.label }}>{count}</Text>
+            <Text style={{ ...type.title2, color: colors.secondaryLabel }}>{count === 1 ? "piece" : "pieces"}</Text>
+          </View>
+        ) : null}
       </View>
-      <View style={{ paddingTop: 2 }}><CreditPill onPress={onCredits} /></View>
+      <View style={{ marginBottom: 10 }}><CreditPill onPress={onCredits} /></View>
     </View>
   );
 }

@@ -8,6 +8,10 @@ import type { SFSymbol } from "sf-symbols-typescript";
 // Before adding an icon, follow docs/design/ICONS.md (style, reserved symbols, preview script).
 const ICONS = {
   home: { sf: "house", ion: "home-outline" },
+  // Filled twins, only for the selected tab (iOS convention; see docs/design/ICONS.md rule 2).
+  homeFill: { sf: "house.fill", ion: "home" },
+  closetFill: { sf: "square.grid.2x2.fill", ion: "grid" },
+  accountFill: { sf: "person.crop.circle.fill", ion: "person-circle" },
   camera: { sf: "camera", ion: "camera-outline" },
   cameraBack: { sf: "camera.rotate", ion: "camera-reverse-outline" },
   pencil: { sf: "pencil", ion: "pencil" },
@@ -29,6 +33,7 @@ const ICONS = {
   sparkles: { sf: "sparkles", ion: "sparkles-outline" },
   search: { sf: "magnifyingglass", ion: "search" },
   chevronLeft: { sf: "chevron.left", ion: "chevron-back" },
+  chevronDown: { sf: "chevron.down", ion: "chevron-down" },
   person: { sf: "person.fill", ion: "person" },
   gear: { sf: "gearshape", ion: "settings-outline" },
   jacket: { sf: "jacket", ion: "shirt-outline" },

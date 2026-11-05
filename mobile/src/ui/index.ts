@@ -1,4 +1,6 @@
 export { Button } from "./Button";
+export { Glass, Backdrop, GlassScreen } from "./Glass";
+export { IconButton } from "./IconButton";
 export { Sheet, SHEET_EASE } from "./Sheet";
 export { ToastProvider, useToast, TOAST_MS } from "./Toast";
 export { Segmented } from "./Segmented";

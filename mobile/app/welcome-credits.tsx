@@ -6,7 +6,7 @@ import { getItems } from "../src/api/client";
 import { useCredits } from "../src/credits/CreditsProvider";
 import { PopIn } from "../src/motion/PopIn";
 import { priceChips } from "../src/onboarding";
-import { colors, radius, type } from "../src/theme";
+import { colors, radius, type, weight } from "../src/theme";
 import { Button } from "../src/ui";
 
 // Shown once after a fresh sign-in when the server has granted this account credits (spec D7).
@@ -35,7 +35,7 @@ export default function WelcomeCreditsScreen() {
               style={{ width: 168, height: 168, borderRadius: 84, backgroundColor: colors.tintSoft, alignItems: "center", justifyContent: "center" }}
             >
               <Text style={{ ...type.hero, color: colors.tint }}>{available}</Text>
-              <Text style={{ ...type.subhead, fontWeight: "600", color: colors.tint }}>AI credits</Text>
+              <Text style={{ ...type.subhead, ...weight(600), color: colors.tint }}>AI credits</Text>
             </View>
           </PopIn>
           <Text accessibilityRole="header" style={{ ...type.display(40), color: colors.label, textAlign: "center", marginTop: 8 }}>A welcome gift</Text>
@@ -45,7 +45,7 @@ export default function WelcomeCreditsScreen() {
           <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
             {priceChips(prices).map((chip) => (
               <View key={chip} style={{ paddingHorizontal: 12, height: 30, borderRadius: radius.pill, backgroundColor: colors.grouped, justifyContent: "center" }}>
-                <Text style={{ ...type.footnote, fontWeight: "600", color: colors.label }}>{chip}</Text>
+                <Text style={{ ...type.footnote, ...weight(600), color: colors.label }}>{chip}</Text>
               </View>
             ))}
           </View>

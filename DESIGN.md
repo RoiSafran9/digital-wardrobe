@@ -118,7 +118,7 @@ Still a well-made iOS app — native sheets, SF Symbols, one blue accent — but
 
 Light and dark are one system: every color is a `DynamicColorIOS` pair, and every text pair holds 4.5:1 in both appearances (`mobile/__tests__/theme.test.ts`). The Glass handoff designed light mode only; dark mode keeps the earlier dark tokens with a dark glass fill and no blobs, until the owner designs it.
 
-**Built against the handoff:** colors that failed 4.5:1 as text keep the shipped darker values (accent `#0B5EFF`, danger `#D61E24`, success text `#1B7F45`, warning text `#98610E`). `#A1A1A6` (`tertiaryLabel`) fails as text, so it is for glyphs, placeholders and disabled states only (a test fails if it colors text). The "AI stylist" tag on Home's Build My Look card waits for the owner's approval of the copy; the card shows "Outfit ideas" instead.
+**Built against the handoff:** colors that failed 4.5:1 as text keep the shipped darker values (accent `#0B5EFF`, danger `#D61E24`, success text `#1B7F45`, warning text `#98610E`). `#A1A1A6` (`tertiaryLabel`) fails as text, so it is for glyphs, placeholders and disabled states only (a test fails if it colors text). The "AI stylist" tag on Home's Build My Look card is the owner's copy (approved with the design, 2026-11-06).
 
 ## Colors
 
@@ -181,7 +181,7 @@ SF Symbols through `Icon` (`mobile/src/components/Icon.tsx`), Ionicons only as f
 ## Components (`mobile/src/ui/`)
 
 - **Glass / Backdrop / GlassScreen:** the surface and the blobs (above).
-- **Tab bar** (`mobile/src/components/TabBar.tsx`): Home · Closet · [camera] · Looks · Me. A 62pt glass capsule 16pt from the sides and 26pt above the bottom; 23pt icons over 10.5/600 labels, active = tint with the filled icon, inactive = `tabInactive`. The camera is a 72pt tint circle raised 26pt with a 5pt white ring and a blue shadow; it breathes and opens the camera in garment mode. Looks (only when the server offers Build My Look) opens Build My Look. Me is the old Account tab; Add is no longer a tab (its route stays for flows that link to it).
+- **Tab bar** (`mobile/src/components/TabBar.tsx`): Home · Closet · [camera] · Looks · Me. A 62pt glass capsule 16pt from the sides and 26pt above the bottom; 23pt icons over 10.5/600 labels, active = tint with the filled icon, inactive = `tabInactive`. The camera is a 72pt tint circle raised 26pt with a 5pt white ring and a blue shadow; it breathes and opens the camera in garment mode. Looks is always there: it opens Build My Look, or says why it can't (local mode, server flag off). Me is the old Account tab; Add is no longer a tab (its route stays for flows that link to it).
 - **Button:** `primary` (54pt, accent), `glass`, `soft` (fill), `ink`, `secondary` (white), `text`, `destructive`; `medium` is 44pt. Disabled = 40% opacity; press scales to 0.98.
 - **IconButton:** a 40pt round glass button for close / back; `dark` over the camera and photos.
 - **Sheet:** glass (90% fill) over `rgba(0,0,0,.32)`, radius 34, grabber, tap outside to dismiss; `floating` sits 10pt from the edges. Slides up 380ms; fades under Reduce Motion.

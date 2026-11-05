@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { Tabs, useRouter } from "expo-router";
 import { TabBar } from "../../src/components/TabBar";
+import { useToast } from "../../src/ui";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { useNameStep, useStarterCredits } from "../../src/onboarding";
@@ -10,10 +11,12 @@ import { useProfile } from "../../src/profile";
 
 // Home · Closet · [camera] · Looks · Me as a floating glass capsule (src/components/TabBar.tsx); every tab
 // screen ends its scroll TAB_BAR_HEIGHT above the bottom. Add is no longer a tab: the center camera and
-// Home's Add card replace it, and the route stays for the flows that link to it.
+// Home's Add card replace it, and the route stays for the flows that link to it. Looks is always in the
+// bar; where Build My Look isn't offered (local mode, server flag off) it says so instead of opening.
 
 export default function TabsLayout() {
   const router = useRouter();
+  const toast = useToast();
   const { userId, status } = useAuth();
   const { billing, credits, generation, outfitBuilder } = useCredits();
   const firstPieces = useFirstPiecesMaybe();
@@ -35,7 +38,9 @@ export default function TabsLayout() {
         <TabBar
           {...props}
           onCamera={() => router.push({ pathname: "/capture/camera", params: { mode: "garments" } })}
-          onLooks={status === "signedIn" && outfitBuilder ? () => router.push("/build-my-look") : undefined}
+          onLooks={() => (status === "signedIn" && outfitBuilder
+            ? router.push("/build-my-look")
+            : toast.show(status === "signedIn" ? "Build My Look isn't available yet." : "Build My Look needs a signed-in account."))}
         />
       )}
     >

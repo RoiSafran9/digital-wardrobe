@@ -13,9 +13,9 @@ const TABS: Record<string, { label: string; icon: IconName; active: IconName }> 
   account: { label: "Me", icon: "account", active: "accountFill" },
 };
 
-type Extra = { onCamera: () => void; onLooks?: () => void };  // Looks only when Build My Look is on
+type Extra = { onCamera: () => void; onLooks: () => void };
 
-function Item({ label, icon, selected, onPress, testID, wide }: { label: string; icon: IconName; selected: boolean; onPress: () => void; testID?: string; wide?: boolean }) {
+function Item({ label, icon, selected, onPress, testID }: { label: string; icon: IconName; selected: boolean; onPress: () => void; testID?: string }) {
   const color = selected ? colors.tint : colors.tabInactive;
   return (
     <Pressable
@@ -24,7 +24,7 @@ function Item({ label, icon, selected, onPress, testID, wide }: { label: string;
       accessibilityRole="tab"
       accessibilityLabel={label}
       accessibilityState={{ selected }}
-      style={{ flex: wide ? 2 : 1, height: "100%", alignItems: "center", justifyContent: "center", gap: 2 }}
+      style={{ flex: 1, height: "100%", alignItems: "center", justifyContent: "center", gap: 2 }}
     >
       <Icon name={icon} size={23} color={color} />
       <Text style={{ ...type.tabLabel, color }}>{label}</Text>
@@ -33,7 +33,7 @@ function Item({ label, icon, selected, onPress, testID, wide }: { label: string;
 }
 
 // The floating glass capsule: Home · Closet · [camera] · Looks · Me. The raised center camera is not a
-// tab: it opens the camera in garment mode. Looks opens Build My Look.
+// tab: it opens the camera in garment mode. Looks opens Build My Look (always shown).
 export function TabBar({ state, emitter, navigateToTab, onCamera, onLooks }: BottomTabBarProps & Extra) {
   const go = (focused: boolean, key: string) => () => {
     const event = emitter.emit({ type: "tabPress", target: key, canPreventDefault: true });
@@ -42,14 +42,13 @@ export function TabBar({ state, emitter, navigateToTab, onCamera, onLooks }: Bot
       navigateToTab(key);
     }
   };
-  // Without Looks, Me takes both right-hand slots so the camera stays centered.
-  const route = (name: string, wide = false) => {
+  const route = (name: string) => {
     const i = state.routes.findIndex((r) => r.name === name);
     const r = state.routes[i];
     if (!r) return null;
     const tab = TABS[name];
     const focused = state.index === i;
-    return <Item key={name} testID={`tab-${name}`} label={tab.label} icon={focused ? tab.active : tab.icon} selected={focused} onPress={go(focused, r.key)} wide={wide} />;
+    return <Item key={name} testID={`tab-${name}`} label={tab.label} icon={focused ? tab.active : tab.icon} selected={focused} onPress={go(focused, r.key)} />;
   };
   return (
     <View pointerEvents="box-none" style={{ position: "absolute", left: 16, right: 16, bottom: 26 }}>
@@ -63,8 +62,8 @@ export function TabBar({ state, emitter, navigateToTab, onCamera, onLooks }: Bot
             </Breathe>
           </Pressable>
         </View>
-        {onLooks ? <Item testID="tab-looks" label="Looks" icon="sparkles" selected={false} onPress={() => { haptics.selection(); onLooks(); }} /> : null}
-        {route("account", !onLooks)}
+        <Item testID="tab-looks" label="Looks" icon="sparkles" selected={false} onPress={() => { haptics.selection(); onLooks(); }} />
+        {route("account")}
       </Glass>
     </View>
   );

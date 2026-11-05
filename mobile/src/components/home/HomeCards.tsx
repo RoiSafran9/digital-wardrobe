@@ -69,7 +69,7 @@ export function LookHero({ count, pieces, onPress }: { count: number; pieces: Cl
         <View style={{ flex: 1, paddingLeft: 4, paddingTop: 2, justifyContent: "center" }}>
           <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 4, paddingHorizontal: 9, borderRadius: radius.pill, backgroundColor: colors.tintSoft }}>
             <Icon name="sparkles" size={12} color={colors.tint} />
-            <Text style={{ ...type.caption, ...weight(700), color: colors.tint }}>Outfit ideas</Text>
+            <Text style={{ ...type.caption, ...weight(700), color: colors.tint }}>AI stylist</Text>
           </View>
           <Text style={{ ...type.title2, color: colors.label, marginTop: 8 }}>Build My Look</Text>
           <Text style={{ ...type.footnote, color: colors.tabInactive, marginTop: 2 }}>{`Outfits from your ${count} ${count === 1 ? "piece" : "pieces"}`}</Text>

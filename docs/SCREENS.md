@@ -5,7 +5,7 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (KIPS Glass: B
 
 ## Navigation
 - Signed out (account mode): **Welcome** (first launch) → **Intro** → **Sign in** → **Code**. Local mode skips them. A release build without Supabase settings shows a blocking "not configured" screen.
-- Signed in: a floating glass tab bar **Home** (default) · **Closet** · [**camera**] · **Looks** · **Me** (`mobile/app/(tabs)/`, `src/components/TabBar.tsx`). The raised camera opens the camera in garment mode; Looks (only when the server offers Build My Look) opens Build My Look; Me is the old Account tab. Add is no longer a tab (its route stays). The item sheet opens over Home or Closet; it is not a tab.
+- Signed in: a floating glass tab bar **Home** (default) · **Closet** · [**camera**] · **Looks** · **Me** (`mobile/app/(tabs)/`, `src/components/TabBar.tsx`). The raised camera opens the camera in garment mode; Looks opens Build My Look (where it isn't offered — local mode or the server flag off — a toast says so); Me is the old Account tab. Add is no longer a tab (its route stays). The item sheet opens over Home or Closet; it is not a tab.
 
 ## 0. Onboarding and sign-in (account mode only; local mode skips all of it)
 - **Welcome** (`app/welcome.tsx`, first launch on this device): collage of glass garment tiles popping in, "Your closet, beautifully digital.", **Get Started** → Intro, **I already have an account** → Sign in. After onboarding is seen it forwards straight to Sign in.

@@ -1,56 +1,61 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Icon, type IconName } from "../../src/components/Icon";
+import { availableTypes, cameraRoute, photoRoute, type AddPhotoType, type PhotoSource } from "../../src/addPhoto";
+import { PhotoTypeChooser } from "../../src/components/add/PhotoTypeChooser";
+import { Icon } from "../../src/components/Icon";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { haptics } from "../../src/haptics";
-import { PressScale } from "../../src/motion/PressScale";
 import { pickPhoto } from "../../src/photoPicker";
 import { entryOf, track } from "../../src/firstPieces/analytics";
 import { colors, hitSlopFor, radius, type } from "../../src/theme";
-import { Button } from "../../src/ui";
 
 export const START_TITLE = "Let's add your first 3 pieces";
-export const NEAR_QUESTION = "Are you near your wardrobe?";
+export const TYPE_QUESTION = "What will your photos show?";
 
-function Choice({ icon, title, body, selected, onPress }: { icon: IconName; title: string; body: string; selected?: boolean; onPress: () => void }) {
-  return (
-    <PressScale onPress={onPress} accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ selected: !!selected }} scaleTo={0.98}
-      style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderRadius: radius.list,
-               backgroundColor: selected ? colors.tintSoft : colors.grouped, borderWidth: 1.5, borderColor: selected ? colors.tint : "transparent" }}>
-      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
-        <Icon name={icon} size={22} color={colors.tint} />
-      </View>
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={{ ...type.headline, color: colors.label }}>{title}</Text>
-        <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>{body}</Text>
-      </View>
-      <Icon name="chevron" size={15} color={colors.secondaryLabel} />
-    </PressScale>
-  );
-}
-
-// First 3 Pieces, step one: what we're about to do, and where the clothes are. Near the wardrobe →
-// photograph garments (Path A); not near it → an outfit photo (Path B, only when the server offers it).
+// First 3 Pieces, step one: what we're about to do, and what the photos show — the same two types as
+// the Add tab. Clothes by themselves → the multi-photo tray (Path A, reported as path "near"); someone
+// wearing them → Take Photo / Choose from Library into the outfit scan in onboarding mode (Path B,
+// "not_near", only when the server offers it).
 export default function FirstPiecesStart() {
   const router = useRouter();
   const { entry } = useLocalSearchParams<{ entry?: string }>();
   const { outfit, generation } = useCredits();
-  const [away, setAway] = useState(false);
+  const [worn, setWorn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const wornReported = useRef(false);  // path_selected "not_near" once, as before
+  const types = availableTypes(!!outfit);
 
   useEffect(() => { track("onboarding_started", { entry: entryOf(entry) }); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
   const close = () => {
     track("onboarding_abandoned", { step: "start" });
     if (router.canGoBack()) router.back(); else router.replace("/");
   };
-  const near = () => { haptics.selection(); track("path_selected", { path: "near" }); router.push({ pathname: "/first-pieces/photos", params: entry ? { entry } : {} }); };
-  const outfitPhoto = async () => {
+  const select = (t: AddPhotoType) => {
+    haptics.selection();
     setError(null);
+    if (t === "laid_out") {
+      track("path_selected", { path: "near" });
+      track("add_photo_type_selected", { type: t, entry: "first_pieces" });
+      return router.push({ pathname: "/first-pieces/photos", params: entry ? { entry } : {} });
+    }
+    if (worn) return setWorn(false);  // tap again to put the sources away
+    if (!wornReported.current) {
+      wornReported.current = true;
+      track("path_selected", { path: "not_near" });
+      track("add_photo_type_selected", { type: t, entry: "first_pieces" });
+    }
+    setWorn(true);
+  };
+  const source = async (t: AddPhotoType, from: PhotoSource) => {
+    setError(null);
+    if (from === "camera") return router.push(cameraRoute(t, true));
     try {
       const uri = await pickPhoto(false);
-      if (uri) router.push({ pathname: "/outfit/detect", params: { uri, flow: "outfit", onboarding: "1" } });
+      if (!uri) return;
+      track("capture_source", { flow: "outfit", from: "library" });
+      router.push(photoRoute(t, uri, true));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't open your photos.");
     }
@@ -85,23 +90,10 @@ export default function FirstPiecesStart() {
           </View>
         ) : null}
 
-        {outfit ? (
-          <View style={{ gap: 12 }}>
-            <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>{NEAR_QUESTION}</Text>
-            <Choice icon="hanger" title="Yes, I'm near it" body="Photograph a few pieces. Several in one photo is fine." onPress={near} />
-            <Choice icon="person2" title="Not right now" body="Use what you're wearing, or an outfit photo you have." selected={away}
-              onPress={() => { haptics.selection(); if (!away) track("path_selected", { path: "not_near" }); setAway(true); }} />
-            {away ? (
-              <View style={{ gap: 8, marginTop: 4 }}>
-                <Button title="Take Outfit Photo" onPress={() => router.push({ pathname: "/capture/camera", params: { mode: "outfit", onboarding: "1" } })} />
-                <Button title="Choose Outfit Photo" variant="secondary" onPress={outfitPhoto} />
-                <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>A photo of someone wearing the clothes, full body in view.</Text>
-              </View>
-            ) : null}
-          </View>
-        ) : (
-          <Button title="Get Started" onPress={near} />
-        )}
+        <View style={{ gap: 12 }}>
+          {types.length > 1 ? <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>{TYPE_QUESTION}</Text> : null}
+          <PhotoTypeChooser types={types} selected={worn ? "worn" : null} onSelect={select} onSource={source} />
+        </View>
         {error ? <Text style={{ ...type.footnote, color: colors.destructive }}>{error}</Text> : null}
       </ScrollView>
     </SafeAreaView>

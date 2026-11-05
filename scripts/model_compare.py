@@ -1,4 +1,4 @@
-"""Compare Gemini image models on the EXISTING garment flow (front, prompt stage4_generate_v5), offline.
+"""Compare Gemini image models on the EXISTING garment flow (front, gemini.GENERATE_PROMPT), offline.
 
 Why: gemini-2.5-flash-image is marked deprecated on Google's pricing page. This reruns the
 unchanged front generation on real crops from runs/ with other models, so a migration can be

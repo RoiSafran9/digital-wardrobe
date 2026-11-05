@@ -62,3 +62,17 @@ def test_resent_app_event_ids_and_milestones_are_written_once():
             {"user_id": A, "event": "popup_shown", "props": {"saved": 1}, "client_event_id": "e2"}]
     assert store.insert_events(rows) == 2
     assert store.insert_events(rows + [{"user_id": A, "event": "popup_shown", "props": {}, "client_event_id": "e3"}]) == 0
+
+
+def test_photo_type_events_take_only_the_fixed_choices():
+    assert activity.validate("add_photo_type_selected", {"type": "laid_out", "entry": "add"}) == {"type": "laid_out", "entry": "add"}
+    assert activity.validate("add_photo_type_corrected", {"from": "worn", "to": "laid_out", "stage": "outfit_pick"}) == {
+        "from": "worn", "to": "laid_out", "stage": "outfit_pick"}
+    for event, props in [("add_photo_type_selected", {"type": "flat lay"}),
+                         ("add_photo_type_selected", {"entry": "home"}),
+                         ("add_photo_type_selected", {"uri": "file:///private/photo.jpg"}),   # never a photo path
+                         ("add_photo_type_corrected", {"stage": "processing"}),            # only before generating
+                         ("add_photo_type_corrected", {"from": "garment"})]:
+        with pytest.raises(ValueError):
+            activity.validate(event, props)
+    assert activity.PRIVACY_CATEGORIES["add_photo_type_selected"] == activity.PRIVACY_CATEGORIES["capture_source"] == "app use"

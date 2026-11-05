@@ -8,27 +8,14 @@ import { useCredits } from "../../src/credits/CreditsProvider";
 import { haptics } from "../../src/haptics";
 import { useFirstPiecesMaybe } from "../../src/firstPieces/FirstPiecesProvider";
 import { pickPhoto, pickPhotos } from "../../src/photoPicker";
+import { CHOOSE_FROM_LIBRARY, PHOTO_TYPES, TAKE_PHOTO, photoRoute, typeOfMode } from "../../src/addPhoto";
 import { hitSlopFor, radius, type } from "../../src/theme";
 import { Button } from "../../src/ui";
 import { track, trackPermission, useScreenViewed } from "../../src/activity/track";
 
-type Mode = "garments" | "outfit";
 // The camera is always dark, whatever the appearance; these are fixed, not theme colors.
 const INK = "#FFFFFF";
-const MODE_ON = "#FFD60A";  // the system camera's selected-mode yellow
-
-export const HINTS: Record<Mode, string> = {
-  garments: "Lay clothes flat · shoot shoes from a low side angle",
-  outfit: "Full body in view · good light",
-};
-
-// Where a photo goes next: garments to the preview and quote, outfits to the free scan (in First 3
-// Pieces' onboarding mode when it came from there).
-export function nextRoute(mode: Mode, uri: string, onboarding = false) {
-  return mode === "outfit"
-    ? { pathname: "/outfit/detect" as const, params: onboarding ? { uri, onboarding: "1" } : { uri } }
-    : { pathname: "/capture/preview" as const, params: { uri } };
-}
+const DONE = "#FFD60A";  // the system camera's yellow
 
 export default function CameraScreen() {
   useScreenViewed("camera");
@@ -39,7 +26,10 @@ export default function CameraScreen() {
   const firstPieces = useFirstPiecesMaybe();
   const collecting = params.collect === "1" && !!firstPieces;
   const [taken, setTaken] = useState<string[]>([]);
-  const [mode, setMode] = useState<Mode>(params.mode === "outfit" && outfitOn ? "outfit" : "garments");
+  // The photo type was chosen before the camera opened (Add, First 3 Pieces); the camera never asks again.
+  // Collect mode is the laid-out tray only; a worn type with outfit import off falls back to laid out.
+  const photoType = collecting ? "laid_out" : typeOfMode(params.mode, !!outfitOn);
+  const { title, hint } = PHOTO_TYPES[photoType];
   const [permission, requestPermission] = useCameraPermissions();
   const insets = useSafeAreaInsets();
   // In a full-screen modal over the camera the reported inset can come back as 0; never let the
@@ -57,8 +47,8 @@ export default function CameraScreen() {
 
   const go = (uri: string, from: "camera" | "library") => {
     if (!collecting) {
-      track("capture_source", { flow: mode === "outfit" ? "outfit" : "garment", from });
-      return router.replace(nextRoute(mode, uri, params.onboarding === "1"));
+      track("capture_source", { flow: photoType === "worn" ? "outfit" : "garment", from });
+      return router.replace(photoRoute(photoType, uri, params.onboarding === "1"));
     }
     firstPieces!.addPhotos([uri], "camera");
     setTaken((t) => [...t, uri]);
@@ -110,7 +100,7 @@ export default function CameraScreen() {
             Allow the camera to photograph your clothes, or pick a photo you already took.
           </Text>
           {permission.canAskAgain ? <Button title="Allow Camera" onPress={() => void requestPermission()} /> : null}
-          <Button title={mode === "outfit" ? "Choose Outfit Photo" : collecting ? "Choose Garment Photos" : "Choose Garment Photo"} variant="secondary" onPress={library} />
+          <Button title={CHOOSE_FROM_LIBRARY} icon="photos" variant="secondary" onPress={library} />
           {error ? <Text style={{ ...type.footnote, color: "#FF8A8A" }}>{error}</Text> : null}
         </View>
       </View>
@@ -123,10 +113,10 @@ export default function CameraScreen() {
       <View style={{ flex: 1, justifyContent: "space-between", paddingTop: top, paddingBottom: bottom }}>
         <View style={{ paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           {close}
-          <Text style={{ ...type.subhead, fontWeight: "600", color: INK }}>{mode === "outfit" ? "Outfit" : "Garments"}</Text>
+          <Text accessibilityRole="header" style={{ ...type.subhead, fontWeight: "600", color: INK }}>{title}</Text>
           {collecting ? (
             <Pressable onPress={done} accessibilityRole="button" accessibilityLabel={`Done, ${taken.length} ${taken.length === 1 ? "photo" : "photos"}`} hitSlop={hitSlopFor(40, 60)}
-              style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: MODE_ON, justifyContent: "center" }}>
+              style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: DONE, justifyContent: "center" }}>
               <Text style={{ ...type.subhead, fontWeight: "700", color: "#000" }}>Done</Text>
             </Pressable>
           ) : <View style={{ width: 40 }} />}
@@ -145,8 +135,9 @@ export default function CameraScreen() {
               borderBottomLeftRadius: c === "bl" ? 14 : 0, borderBottomRightRadius: c === "br" ? 14 : 0,
             }} />
           ))}
-          <View style={{ position: "absolute", top: 14, alignSelf: "center", paddingHorizontal: 12, height: 30, borderRadius: radius.pill, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center" }}>
-            <Text style={{ ...type.footnote, fontWeight: "600", color: INK }}>{HINTS[mode]}</Text>
+          <View style={{ position: "absolute", top: 14, left: 12, right: 12, alignItems: "center" }}>
+            <Text style={{ ...type.footnote, fontWeight: "600", color: INK, textAlign: "center", paddingHorizontal: 12, paddingVertical: 6,
+                           borderRadius: radius.pill, overflow: "hidden", backgroundColor: "rgba(0,0,0,0.55)" }}>{hint}</Text>
           </View>
         </View>
 
@@ -156,24 +147,13 @@ export default function CameraScreen() {
             <Text accessibilityLiveRegion="polite" style={{ ...type.footnote, fontWeight: "600", color: INK, textAlign: "center" }}>
               {taken.length ? `${taken.length} ${taken.length === 1 ? "photo" : "photos"} added · keep going or tap Done` : "Take as many photos as you like"}
             </Text>
-          ) : outfitOn ? (
-            <View style={{ flexDirection: "row", justifyContent: "center", gap: 22 }}>
-              {(["garments", "outfit"] as const).map((m) => (
-                <Pressable key={m} onPress={() => { haptics.selection(); setMode(m); }} accessibilityRole="tab"
-                  accessibilityLabel={m === "garments" ? "Garments" : "Outfit"} accessibilityState={{ selected: mode === m }} hitSlop={hitSlopFor(24, 80)}>
-                  <Text style={{ ...type.footnote, fontWeight: "700", letterSpacing: 1, color: mode === m ? MODE_ON : INK }}>
-                    {m === "garments" ? "GARMENTS" : "OUTFIT"}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
           ) : null}
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 36 }}>
-            <Pressable onPress={library} accessibilityRole="button" accessibilityLabel={mode === "outfit" ? "Choose an outfit photo from your library" : "Choose a garment photo from your library"} hitSlop={hitSlopFor(48, 48)}
+            <Pressable onPress={library} accessibilityRole="button" accessibilityLabel={`${CHOOSE_FROM_LIBRARY}, ${title.toLowerCase()}`} hitSlop={hitSlopFor(48, 48)}
               style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" }}>
               <Icon name="closet" size={22} color={INK} />
             </Pressable>
-            <Pressable onPress={shoot} disabled={busy || !permission?.granted} accessibilityRole="button" accessibilityLabel={mode === "outfit" ? "Take outfit photo" : "Take garment photo"}
+            <Pressable onPress={shoot} disabled={busy || !permission?.granted} accessibilityRole="button" accessibilityLabel={TAKE_PHOTO}
               style={{ width: 76, height: 76, borderRadius: 38, borderWidth: 4, borderColor: INK, alignItems: "center", justifyContent: "center", opacity: busy ? 0.6 : 1 }}>
               <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: INK }} />
             </Pressable>

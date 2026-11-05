@@ -14,6 +14,7 @@ export type Screen = "home" | "closet" | "add" | "account" | "camera" | "preview
 export type Action = "garment" | "back" | "turn" | "outfit" | "regenerate";
 export type Path = "near" | "not_near";
 export type OutfitSlot = "top" | "bottom" | "one_piece" | "outerwear" | "footwear";
+export type PhotoType = "laid_out" | "worn";  // src/addPhoto.ts
 
 export type Events = {
   // First 3 Pieces onboarding
@@ -34,6 +35,9 @@ export type Events = {
   out_of_credits_shown: { action?: Action };
   permission: { kind: "camera" | "photos" | "notifications"; granted: boolean };
   capture_source: { flow: "garment" | "outfit"; from: "camera" | "library" };
+  // Add Clothes: the photo type the user chose, and a change of it before anything was paid for.
+  add_photo_type_selected: { type: PhotoType; entry: "add" | "first_pieces" };
+  add_photo_type_corrected: { from: PhotoType; to: PhotoType; stage: "garment_preview" | "outfit_detect" | "outfit_pick" };
   item_opened: { has_back: boolean; has_turn: boolean };
   // request_id: the X-Request-ID of the call that failed (src/api/v1.ts), to find it in the server log.
   client_error: { where: Screen | "global"; kind: "render" | "unhandled" | "network" | "http_5xx"; request_id?: string };

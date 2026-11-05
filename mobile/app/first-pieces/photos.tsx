@@ -8,6 +8,7 @@ import { ROUND_CAP } from "../../src/firstPieces/round";
 import { haptics } from "../../src/haptics";
 import { pickPhotos } from "../../src/photoPicker";
 import { track } from "../../src/firstPieces/analytics";
+import { CHOOSE_FROM_LIBRARY, PHOTO_TYPES } from "../../src/addPhoto";
 import { colors, hitSlopFor, radius, type } from "../../src/theme";
 import { BackButton, Button } from "../../src/ui";
 
@@ -53,7 +54,7 @@ export default function FirstPiecesPhotos() {
         <View style={{ gap: 6 }}>
           <Text accessibilityRole="header" style={{ ...type.screenTitle, color: colors.label }}>Your photos</Text>
           <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>
-            {`Add as many as you like. Each round makes up to ${ROUND_CAP} pieces.`}
+            {`${PHOTO_TYPES.laid_out.title}: ${PHOTO_TYPES.laid_out.body.toLowerCase()} Add as many photos as you like. Each round makes up to ${ROUND_CAP} pieces.`}
           </Text>
         </View>
 
@@ -81,9 +82,9 @@ export default function FirstPiecesPhotos() {
         )}
 
         <View style={{ gap: 8 }}>
-          <Button title="Take Garment Photos" variant="secondary"
+          <Button title="Take Photos" icon="camera" variant="secondary"
             onPress={() => router.push({ pathname: "/capture/camera", params: { mode: "garments", collect: "1" } })} />
-          <Button title="Choose Garment Photos" variant="secondary" onPress={library} />
+          <Button title={CHOOSE_FROM_LIBRARY} icon="photos" variant="secondary" onPress={library} />
           {error ? <Text style={{ ...type.footnote, color: colors.destructive }}>{error}</Text> : null}
         </View>
 

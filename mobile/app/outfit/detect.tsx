@@ -12,6 +12,9 @@ import { rememberScan } from "../../src/outfit/scanCache";
 import { colors, radius, type } from "../../src/theme";
 import { BackButton, Button } from "../../src/ui";
 import { useScreenViewed } from "../../src/activity/track";
+import { cameraRoute } from "../../src/addPhoto";
+import { ChangePhotoType } from "../../src/components/add/PhotoTypeChooser";
+import { useChangePhotoType } from "../../src/useChangePhotoType";
 
 export const SHOW_BOXES_MS = 1400;  // let the boxes land before moving on
 
@@ -24,6 +27,7 @@ export default function DetectScreen() {
   const mode = onboarding === "1" ? { onboarding: "1" } : {};  // First 3 Pieces carries on through pick and review
   const [scan, setScan] = useState<OutfitScan | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const changeType = useChangePhotoType();
 
   useEffect(() => {
     let live = true;
@@ -56,12 +60,14 @@ export default function DetectScreen() {
           <View style={{ gap: 12 }}>
             <Text style={{ ...type.section, color: colors.label }}>Couldn't check this photo</Text>
             <Text style={{ ...type.body, color: colors.secondaryLabel }}>{error}</Text>
-            <Button title="Try Another Outfit Photo" onPress={() => router.replace({ pathname: "/capture/camera", params: { mode: "outfit", ...mode } })} />
+            <Button title="Try Another Photo" onPress={() => router.replace(cameraRoute("worn", onboarding === "1"))} />
+            {/* The scan failed, so nothing was found or paid for: the same photo can still go the other way. */}
+            {uri ? <ChangePhotoType to="laid_out" onPress={() => changeType("worn", uri, "outfit_detect", onboarding === "1")} /> : null}
           </View>
         ) : (
           <View style={{ alignItems: "center", gap: 8 }}>
             <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={{ ...type.section, color: colors.label }}>
-              {scan ? (found.length === 1 ? "1 garment found" : `${found.length} garments found`) : "Finding garments…"}
+              {scan ? (found.length === 1 ? "1 piece found" : `${found.length} pieces found`) : "Finding the pieces…"}
             </Text>
             <View style={{ paddingHorizontal: 12, height: 28, borderRadius: radius.pill, backgroundColor: colors.grouped, justifyContent: "center" }}>
               <Text style={{ ...type.footnote, fontWeight: "600", color: colors.successText }}>Detection is free</Text>

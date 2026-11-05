@@ -20,7 +20,7 @@ test("notes are plain language", () => {
   expect(visibilityNote(cand("c1", "shirt", "partial"))).toMatch(/completed/);
   expect(visibilityNote(cand("c1", "shirt"))).toBeNull();
   expect(candidateTitle(cand("c1", "t-shirt"))).toBe("T-shirt");
-  expect(sceneNote(scan([], { scene_kind: "flat" }))).toMatch(/Garment photo/);
+  expect(sceneNote(scan([], { scene_kind: "flat" }))).toMatch(/clothes by themselves/);
   expect(sceneNote(scan([], { person_count: 2 }))).toMatch(/main person/);
   expect(sceneNote(scan([]))).toBeNull();
 });

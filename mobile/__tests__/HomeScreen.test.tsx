@@ -34,16 +34,17 @@ function renderHome(credits: Partial<CreditsValue> = {}) {
 
 beforeEach(() => jest.clearAllMocks());
 
-test("shows the greeting, a search field, the two labelled add tiles and the closet by category", async () => {
+test("shows the greeting, a search field, one Add Clothes entry and the closet by category", async () => {
   (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "t-shirt", ["gray"]), item("item_1", "shorts", ["navy"]), item("item_2", "T-shirt", ["navy"])] });
   await renderHome({ outfit: true });
   expect(screen.getByText("FRIDAY, OCTOBER 16")).toBeTruthy();
   expect(screen.getByRole("header", { name: "Good evening" })).toBeTruthy();  // midnight
   expect(await screen.findByText("Search 3 pieces")).toBeTruthy();
-  expect(screen.getByText("FLAT LAY")).toBeTruthy();
-  expect(screen.getByText("WORN")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Add garments, flat lay photo, Camera" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Add from outfit photo, Choose photo" })).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: "Add Clothes" })).toHaveLength(1);
+  // No photo-type or source choice on Home itself: that is the Add tab's job.
+  for (const old of ["FLAT LAY", "WORN", "Camera", "Library", "Choose Photo", "Clothes by themselves", "Someone wearing them"]) {
+    expect(screen.queryByText(old)).toBeNull();
+  }
   expect(screen.getByRole("button", { name: "Tops, 2" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Bottoms, 1" })).toBeTruthy();
   // The old dashboard pieces are gone.
@@ -60,36 +61,28 @@ test("a category row opens the closet filtered to it; search opens the closet re
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/closet", params: expect.objectContaining({ search: "1" }) });
 });
 
-test("garment buttons feed the garment flow; the outfit button feeds the outfit flow", async () => {
-  (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "shirt", [])] });
-  (pickPhoto as jest.Mock).mockResolvedValue("file:///p.jpg");
-  await renderHome({ outfit: true });
-  await fireEvent.press(await screen.findByRole("button", { name: "Add garments, flat lay photo, Camera" }));
-  expect(mockPush).toHaveBeenCalledWith({ pathname: "/capture/camera", params: { mode: "garments" } });
-  await fireEvent.press(screen.getByRole("button", { name: "Add garments, flat lay photo, Library" }));
-  await waitFor(() => expect(mockPush).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///p.jpg", flow: "garment" } }));
-  await fireEvent.press(screen.getByRole("button", { name: "Add from outfit photo, Choose photo" }));
-  await waitFor(() => expect(mockPush).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///p.jpg", flow: "outfit" } }));
+test("Add Clothes opens the Add tab, with or without outfit import; Home opens no camera or library itself", async () => {
+  for (const outfit of [true, false]) {
+    (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "shirt", [])] });
+    await renderHome({ outfit });
+    await fireEvent.press(await screen.findByRole("button", { name: "Add Clothes" }));
+    expect(mockPush).toHaveBeenLastCalledWith("/add");
+    await screen.unmount();
+  }
+  expect(pickPhoto).not.toHaveBeenCalled();
 });
 
-test("without outfit import only the garment tile shows", async () => {
-  (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "shirt", [])] });
-  await renderHome();
-  await screen.findByText("FLAT LAY");
-  expect(screen.queryByText("WORN")).toBeNull();
-});
-
-test("an empty closet shows the frames, two labelled rows and the tips", async () => {
+test("local mode's empty closet: the frames, one Add Clothes entry and the tips", async () => {
   (getItems as jest.Mock).mockResolvedValue({ items: [] });
   await renderHome({ outfit: true });
   expect(await screen.findByText("Your closet starts here")).toBeTruthy();
-  expect(screen.getByText("Clothes laid flat or hung, and shoes")).toBeTruthy();
-  expect(screen.getByText("You wearing it")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Garment photo, Camera" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Garment photo, Library" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Outfit photo, Choose photo" })).toBeTruthy();
-  expect(screen.getByText("Lay pieces flat on a bed or floor in daylight.")).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Take Photo" })).toBeNull();
+  await fireEvent.press(screen.getByRole("button", { name: "Add Clothes" }));
+  expect(mockPush).toHaveBeenCalledWith("/add");
+  expect(screen.getByText("Lay clothes out on a bed or floor, or hang them up, in daylight.")).toBeTruthy();
+  expect(screen.getByText("A full-body photo of someone wearing them works too.")).toBeTruthy();
+  for (const old of ["Garment photo, Camera", "Garment photo, Library", "Outfit photo, Choose photo", "Take Photo"]) {
+    expect(screen.queryByRole("button", { name: old })).toBeNull();
+  }
 });
 
 test("the credit pill shows only while billing is on", async () => {
@@ -134,7 +127,7 @@ test("categoryRows keeps group order and uses each group's first piece", () => {
   expect(rows.map((r: { name: string; count: number; first: { item_id: string } }) => [r.name, r.count, r.first.item_id])).toEqual([["Tops", 1, "b"], ["Bottoms", 2, "a"]]);
 });
 
-test("signed in with an empty closet: the guided First 3 Pieces card leads the add options", async () => {
+test("signed in with an empty closet: the guided First 3 Pieces card is the one way in", async () => {
   const { AuthContext } = require("../src/auth/AuthProvider");
   (getItems as jest.Mock).mockResolvedValue({ items: [] });
   const value: CreditsValue = { billing: false, prices: {}, credits: null, outfit: false, refresh: jest.fn(async () => {}) };
@@ -145,6 +138,9 @@ test("signed in with an empty closet: the guided First 3 Pieces card leads the a
   );
   await fireEvent.press(await screen.findByRole("button", { name: "Add your first 3 pieces" }));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/first-pieces", params: { entry: "home" } });
+  // No second set of add buttons competing with it (the Add tab stays in the tab bar).
+  expect(screen.queryByRole("button", { name: "Add Clothes" })).toBeNull();
+  expect(screen.queryByText(/Camera|Library|Choose Photo/)).toBeNull();
 });
 
 test("local mode's empty closet has no guided card", async () => {

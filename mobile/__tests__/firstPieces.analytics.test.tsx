@@ -29,13 +29,15 @@ test("onboarding steps go to the app's activity events", async () => {
 test("the Start screen reports that onboarding started, the path chosen, and leaving", async () => {
   const value: CreditsValue = { billing: false, prices: {}, credits: null, outfit: true, generation: true, refresh: jest.fn(async () => {}) };
   await render(<CreditsContext.Provider value={value}><FirstPiecesStart /></CreditsContext.Provider>);
-  await fireEvent.press(screen.getByRole("button", { name: "Not right now" }));
-  await fireEvent.press(screen.getByRole("button", { name: "Not right now" }));  // counted once
+  const worn = "Someone wearing them. A person wearing the clothes or shoes.";
+  for (let i = 0; i < 3; i++) await fireEvent.press(screen.getByRole("button", { name: worn }));  // counted once
   await fireEvent.press(screen.getByRole("button", { name: "Close" }));
   await flush();
+  // The reports keep their "near" / "not_near" paths; the new type event sits beside them.
   expect(sent()).toEqual([
     ["onboarding_started", { entry: "starter" }],
     ["path_selected", { path: "not_near" }],
+    ["add_photo_type_selected", { type: "worn", entry: "first_pieces" }],
     ["onboarding_abandoned", { step: "start" }],
   ]);
 });

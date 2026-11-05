@@ -45,6 +45,7 @@ def test_signing_in_is_required(client):
     ("photos_collected", {"count": -1}),
     ("photos_collected", {"count": 100_000}),
     ("path_selected", {"path": "kitchen"}),                 # choices come from a fixed list
+    ("add_photo_type_corrected", {"from": "worn", "to": "laid_out", "stage": "outfit_pick", "uri": "file:///p.jpg"}),
     ("onboarding_abandoned", {"step": "a long free text the app should never send"}),
 ])
 def test_anything_off_the_list_is_refused_and_nothing_is_stored(client, store, event, props):

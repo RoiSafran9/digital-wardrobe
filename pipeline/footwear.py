@@ -54,7 +54,7 @@ _SINGLE_RE = re.compile(rf"\bsingle\b|\bone (left |right )?{_SHOE}\b")
 
 
 def shoe_count(visible_parts) -> ShoeCount:
-    """How many shoes the photo shows, from the detection's own visible_parts words (the v5 prompt asks
+    """How many shoes the photo shows, from the detection's own visible_parts words (the v5/v6 prompts ask
     for "pair (both shoes)" or "single shoe"; the outfit prompt says "both shoes"). Conflicting or
     missing words are "unknown": the prompt then says to show only the shoes visible, never to add one."""
     parts = visible_parts if isinstance(visible_parts, list) else [visible_parts]

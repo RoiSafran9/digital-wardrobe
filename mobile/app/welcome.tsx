@@ -4,54 +4,59 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Redirect, useRouter } from "expo-router";
 import { GlyphTile } from "../src/components/onboarding/GlyphTile";
 import type { IconName } from "../src/components/Icon";
+import { Float } from "../src/motion/Breathe";
 import { PopIn } from "../src/motion/PopIn";
 import { useOnboarding } from "../src/onboarding";
 import { colors, type } from "../src/theme";
-import { Button } from "../src/ui";
+import { Button, GlassScreen } from "../src/ui";
 
-// Five tiles scattered like clothes on a bed; rotations −10°…+6°, popping in 0.05–0.45s.
-const COLLAGE: { icon: IconName; left: number; top: number; w: number; h: number; rotate: number }[] = [
-  { icon: "jacket", left: 0.04, top: 0.02, w: 0.36, h: 0.44, rotate: -6 },
-  { icon: "garment", left: 0.5, top: 0.0, w: 0.4, h: 0.36, rotate: 4 },
-  { icon: "hanger", left: 0.08, top: 0.5, w: 0.32, h: 0.42, rotate: -10 },
-  { icon: "handbag", left: 0.46, top: 0.42, w: 0.4, h: 0.44, rotate: 6 },
-  { icon: "shoe", left: 0.7, top: 0.76, w: 0.24, h: 0.2, rotate: -3 },
+// Five glass tiles scattered like clothes on a bed, laid out on the handoff's 362×300 board (rotations
+// −8°…+10°): each pops in 0.12s after the last, then drifts gently on its own beat.
+const COLLAGE: { icon: IconName; x: number; y: number; rotate: number; drift: number }[] = [
+  { icon: "garment", x: 30, y: 30, rotate: -8, drift: 0 },
+  { icon: "shoe", x: 220, y: 10, rotate: 7, drift: 300 },
+  { icon: "handbag", x: 120, y: 140, rotate: -3, drift: 600 },
+  { icon: "hanger", x: 250, y: 180, rotate: 10, drift: 150 },
+  { icon: "jacket", x: 10, y: 210, rotate: 5, drift: 450 },
 ];
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const { seen, markSeen } = useOnboarding();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   if (seen === null) return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   if (seen) return <Redirect href="/sign-in" />;
 
-  const art = width - 40;
-  const artHeight = art * 0.92;
+  // The board is a 402×874 phone; smaller phones shrink the collage so the buttons still fit.
+  const s = Math.min(1, (width - 40) / 362, height / 874);
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ flex: 1, paddingHorizontal: 20, justifyContent: "space-between", paddingBottom: 12 }}>
-        <View style={{ width: art, height: artHeight, marginTop: 12 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          {COLLAGE.map((t, i) => (
-            <PopIn key={i} delay={50 + i * 100} style={{ position: "absolute", left: t.left * art, top: t.top * artHeight }}>
-              <GlyphTile icon={t.icon} size={{ width: t.w * art, height: t.h * artHeight }} style={{ transform: [{ rotate: `${t.rotate}deg` }] }} />
-            </PopIn>
-          ))}
-        </View>
-        <View style={{ gap: 14 }}>
-          <Text accessibilityRole="header" style={{ ...type.display(46), color: colors.label }}>{"Your closet,\nbeautifully digital."}</Text>
-          <Text style={{ ...type.body, lineHeight: 24, color: colors.secondaryLabel }}>
+    <GlassScreen>
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
+          <View style={{ height: 300 * s }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            {COLLAGE.map((t, i) => (
+              <Float key={i} delay={t.drift} style={{ position: "absolute", left: t.x * s, top: t.y * s }}>
+                <PopIn delay={i * 120}>
+                  <GlyphTile glass icon={t.icon} size={{ width: 92 * s, height: 112 * s }} style={{ transform: [{ rotate: `${t.rotate}deg` }] }} />
+                </PopIn>
+              </Float>
+            ))}
+          </View>
+          <Text accessibilityRole="header" style={{ ...type.display(42), color: colors.label, marginTop: 10 }}>{"Your closet,\nbeautifully digital."}</Text>
+          <Text style={{ ...type.body, lineHeight: 24, color: colors.secondaryLabel, marginTop: 12 }}>
             Photograph the clothes you own. AI turns them into clean catalog images you can browse anywhere.
           </Text>
+          <View style={{ flex: 1, minHeight: 34 }} />
+          <View style={{ gap: 6 }}>
+            <Button title="Get Started" onPress={() => router.push("/intro")} />
+            <Button
+              title="I already have an account"
+              variant="text"
+              onPress={async () => { await markSeen(); router.replace("/sign-in"); }}
+            />
+          </View>
         </View>
-        <View style={{ gap: 6, marginTop: 20 }}>
-          <Button title="Get Started" onPress={() => router.push("/intro")} />
-          <Button
-            title="I already have an account"
-            variant="text"
-            onPress={async () => { await markSeen(); router.replace("/sign-in"); }}
-          />
-        </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </GlassScreen>
   );
 }

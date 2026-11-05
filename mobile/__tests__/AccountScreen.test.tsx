@@ -44,7 +44,7 @@ afterEach(() => jest.restoreAllMocks());
 
 test("signed in: shows the email with initials and signs out after confirming", async () => {
   const auth = await renderAccount({});
-  expect(screen.getByText("Account")).toBeTruthy();
+  expect(screen.getByText("Me")).toBeTruthy();
   expect(screen.getByText("me@example.com")).toBeTruthy();
   expect(screen.getByText("M")).toBeTruthy();
   await fireEvent.press(screen.getByRole("button", { name: "Sign Out" }));
@@ -95,11 +95,20 @@ test("billing off: the balance shows, with no price list and a plain note", asyn
 
 test("the price list comes from the server", async () => {
   await renderAccount({}, { credits: CREDITS, billing: true, prices: { garment: 1, back: 2, turn: 5 }, outfit: true });
-  expect(screen.getByText("Garment detection")).toBeTruthy();
+  expect(screen.getByText("Price list")).toBeTruthy();
+  expect(screen.getByLabelText("Garment detection, Free")).toBeTruthy();
   expect(screen.getByText("Free")).toBeTruthy();
-  expect(screen.getByText("Front image")).toBeTruthy();
-  expect(screen.getByText("2 credits")).toBeTruthy();
-  expect(screen.getByText("5 credits")).toBeTruthy();
+  expect(screen.getByLabelText("Front image, 1 credit")).toBeTruthy();
+  expect(screen.getByLabelText("Back image, 2 credits")).toBeTruthy();
+  expect(screen.getByLabelText("360° view, 5 credits")).toBeTruthy();
+  expect(screen.getByText("5")).toBeTruthy();
+});
+
+test("the price list leaves out actions the server has no price for", async () => {
+  await renderAccount({}, { credits: CREDITS, billing: true, prices: { garment: 1 } });
+  expect(screen.getByLabelText("Front image, 1 credit")).toBeTruthy();
+  expect(screen.queryByLabelText(/Back image/)).toBeNull();
+  expect(screen.queryByLabelText(/Garment detection/)).toBeNull();
 });
 
 test("activity lists grants and charges, not internal holds and releases", async () => {

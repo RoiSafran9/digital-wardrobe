@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Easing, type StyleProp, type ViewStyle } from "react-native";
+import { Animated, Easing, View, type StyleProp, type ViewStyle } from "react-native";
 import { useReducedMotion } from "../useReducedMotion";
 
-// The camera buttons breathe: 1 → 1.04 → 1 over 3s, forever. Still under Reduce Motion.
+// The camera buttons breathe: 1 → 1.04 → 1 over 3s, forever. Still under Reduce Motion. The scale
+// replaces any transform in `style`.
 export function Breathe({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   const reduced = useReducedMotion();
   const t = useRef(new Animated.Value(0)).current;
@@ -30,5 +31,6 @@ export function Float({ children, style, delay = 0 }: { children: React.ReactNod
     return () => { clearTimeout(timer); loop.stop(); };
   }, [reduced, t, delay]);
   const translateY = t.interpolate({ inputRange: [0, 1], outputRange: [0, -8] });
-  return <Animated.View style={[style, { transform: [{ translateY }] }]}>{children}</Animated.View>;
+  // The hover sits on an inner view, so a transform passed in `style` (a rotation) is kept.
+  return <View style={style}><Animated.View style={{ transform: [{ translateY }] }}>{children}</Animated.View></View>;
 }

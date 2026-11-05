@@ -4,6 +4,7 @@ import type { ClosetItem } from "../api/types";
 import { PressScale } from "../motion/PressScale";
 import { colors, radius, shadow, type, weight } from "../theme";
 import { GarmentImage } from "./GarmentImage";
+import { Glass } from "../ui";
 
 type Props = {
   item: ClosetItem;
@@ -17,7 +18,8 @@ type Props = {
 };
 
 // A garment on the stone tile with the handoff's soft shadow. The cutout sits straight on the tile;
-// images that keep their own background are inset on it (GarmentImage decides).
+// images that keep their own background are inset on it (GarmentImage decides). A badge ("360°") is a
+// small glass pill in the tile's corner; nothing tints the garment itself.
 export function GarmentTile({ item, width, height, onPress, label, rounded = radius.tile, badge, testID }: Props) {
   const body = (
     <View style={{ width, height, borderRadius: rounded, backgroundColor: colors.tile, ...shadow.tile }}>
@@ -26,9 +28,9 @@ export function GarmentTile({ item, width, height, onPress, label, rounded = rad
         tile={colors.tile} style={{ width, height, borderRadius: rounded }}
       />
       {badge ? (
-        <View style={{ position: "absolute", top: 10, right: 10, paddingHorizontal: 8, height: 22, borderRadius: radius.pill, backgroundColor: colors.card, justifyContent: "center" }}>
+        <Glass radius={radius.pill} level="sheet" flat style={{ position: "absolute", top: 8, right: 8, paddingHorizontal: 8, height: 22, justifyContent: "center" }}>
           <Text style={{ ...type.caption, ...weight(600), color: colors.label }}>{badge}</Text>
-        </View>
+        </Glass>
       ) : null}
     </View>
   );

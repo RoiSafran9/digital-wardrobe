@@ -1,14 +1,14 @@
 # Screen Map — Digital Wardrobe
-Status: **As built** · Updated: 2026-10-20 (First 3 Pieces)
+Status: **As built** · Updated: 2026-11-06 (KIPS Glass redesign)
 
-Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: system font, grouped backgrounds, one blue tint, light/dark, Reduce Motion). Feature specs: `docs/superpowers/specs/`.
+Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (KIPS Glass: Bricolage Grotesque, glass cards over soft blobs, one blue tint, light/dark, Reduce Motion). Board of every screen: [design_handoff_glass_redesign](design/design_handoff_glass_redesign/README.md). Feature specs: `docs/superpowers/specs/`.
 
 ## Navigation
 - Signed out (account mode): **Welcome** (first launch) → **Intro** → **Sign in** → **Code**. Local mode skips them. A release build without Supabase settings shows a blocking "not configured" screen.
-- Signed in: bottom tabs **Home** (default) · **Closet** · **Add** · **Account** (`mobile/app/(tabs)/`). The item sheet opens over Home or Closet; it is not a tab.
+- Signed in: a floating glass tab bar **Home** (default) · **Closet** · [**camera**] · **Looks** · **Me** (`mobile/app/(tabs)/`, `src/components/TabBar.tsx`). The raised camera opens the camera in garment mode; Looks (only when the server offers Build My Look) opens Build My Look; Me is the old Account tab. Add is no longer a tab (its route stays). The item sheet opens over Home or Closet; it is not a tab.
 
 ## 0. Onboarding and sign-in (account mode only; local mode skips all of it)
-- **Welcome** (`app/welcome.tsx`, first launch on this device): collage of garment tiles popping in, "Your closet, beautifully digital." (Instrument Serif), **Get Started** → Intro, **I already have an account** → Sign in. After onboarding is seen it forwards straight to Sign in.
+- **Welcome** (`app/welcome.tsx`, first launch on this device): collage of glass garment tiles popping in, "Your closet, beautifully digital.", **Get Started** → Intro, **I already have an account** → Sign in. After onboarding is seen it forwards straight to Sign in.
 - **Intro** (`app/intro.tsx`): three paged cards — "Snap any garment", "Or import an outfit", "Browse what you own" — with dots, Next/Continue and Skip. Leaving it remembers onboarding (`onboarding.seen`).
 - **Sign in with email** (`app/sign-in.tsx`): "We'll send you a six-digit code. No password needed."; Continue disabled until the address is valid; terms note; clear messages for rate limits and connection errors.
 - **Check your inbox** (`app/sign-in-code.tsx`): six boxes over one one-time-code field (Mail autofill, paste); verifies 600 ms after the sixth digit; a wrong or expired code shows the message and clears the boxes; "Resend code in Ns" (60 s); "Use a different email".
@@ -25,11 +25,12 @@ Visual system, tokens and motion rules: [DESIGN.md](../DESIGN.md) (native iOS: s
 
 ## 1. Home (`mobile/app/(tabs)/index.tsx`)
 Rule (handoff [CHANGE_home_photo_type.md](design/design_handoff_digital_wardrobe/CHANGE_home_photo_type.md)): every photo entry point says which photo it wants — garment photo (laid flat or on a hanger → garment flow) or outfit photo (someone wearing it → outfit flow).
-- Date eyebrow, "Good morning,\n{Name}" (afternoon / evening) in Instrument Serif with the name chosen at sign-up, balance pill (billing on) → Account; a banner while a garment photo is being processed.
-- Search field "Search N pieces" → Closet with the search field focused.
-- **ADD TO CLOSET:** two tiles. **Garments** (`FLAT LAY`, "Each piece becomes an item"): Camera → camera in garment mode; Library → photo picker → Preview. **Outfit photo** (`WORN`, "We find each piece you wear"; only when the server offers outfits): Choose Photo → photo picker → Detecting. The flow travels in the route params (`flow: garment | outfit`).
-- **YOUR CLOSET:** one row per category group with pieces (thumbnail of its first piece, name, count, chevron) → Closet filtered to the group.
-- Empty closet: dashed frames, "Your closet starts here", two labelled rows — **Garment photo** "Clothes laid flat or hung, and shoes" [Camera] [Library], **Outfit photo** "You wearing it" [Choose Photo] — then three numbered tips.
+- Eyebrow "Good evening, {Name}" (morning / afternoon), the piece count (64/800) with "pieces", the glass balance pill (billing on) → Me; a glass banner while pieces are being made.
+- **Add clothes** (blue glass card): "Finding pieces is free" plus the server's price per piece while billing is on; **Laid flat** → camera in garment mode; **Worn** → camera in outfit mode (only when the server offers outfits). The camera has the library button.
+- **Build My Look** card (signed in, server flag on, closet not empty): "Outfits from your N pieces" with three of the user's own pieces floating → Build My Look.
+- **Category tiles:** a 2-column grid, one glass tile per group with pieces (name, count, a fan of up to three of its pieces) → Closet filtered to the group. Search lives in Closet.
+- **New this week:** only when pieces were added in the last 7 days; up to four tiles → the item sheet.
+- Empty closet: "Your closet starts here", three dashed frames, the blue **Add your first 3 pieces** card with **Get Started** (account mode), a glass list — **Garment photo** "Clothes laid flat or hung, and shoes" [Camera] [Library], **Outfit photo** "You wearing it" [Choose Photo] — then three numbered tips.
 
 ## 2. Closet (`mobile/app/(tabs)/closet.tsx`)
 - Large title "Closet" + "N pieces"; search field (name, category, group, colors, pattern, details, printed text — `src/closetFilter.ts`).

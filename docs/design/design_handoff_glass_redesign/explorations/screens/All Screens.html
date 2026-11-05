@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="he"><head><meta charset="utf-8"><title>KIPS — All screens (Glass · Bricolage)</title>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+body{margin:0;font-family:"Bricolage Grotesque",sans-serif;color:#131315}
+a{color:#0B5EFF}a:hover{opacity:.8}
+.flow{position:absolute;left:60px;font:800 34px "Bricolage Grotesque",sans-serif;letter-spacing:-.03em}
+.flow small{display:block;font:500 15px -apple-system,sans-serif;letter-spacing:0;color:#6E6E73;margin-top:4px;direction:rtl;text-align:left}
+.scr{position:absolute;width:402px}
+.lbl{display:flex;align-items:center;gap:8px;height:40px;font:700 17px "Bricolage Grotesque",sans-serif}
+.lbl b{font-size:12px;background:#131315;color:#fff;border-radius:6px;padding:3px 7px}
+@keyframes rd-fade{from{opacity:0}to{opacity:1}}
+@keyframes rd-rise{from{opacity:.4;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes rd-pop{from{opacity:0;transform:scale(.9) translateY(8px)}to{opacity:1;transform:none}}
+@keyframes rd-turn{0%,100%{transform:perspective(900px) rotateY(-14deg)}50%{transform:perspective(900px) rotateY(14deg)}}
+@keyframes rd-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes rd-float{from{transform:translateY(0)}to{transform:translateY(-8px)}}
+@keyframes kips-shimmer{from{transform:translateX(-100%) skewX(-12deg)}to{transform:translateX(200%) skewX(-12deg)}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head><body>
+<script type="text/babel" src="../../ui_kits/kips-ios/ios-frame.js"></script>
+<script type="text/babel" src="../redesign/shared.js"></script>
+<script type="text/babel" src="../redesign/dir-glass.js"></script>
+<script type="text/babel" src="../home/home-options.js"></script>
+<script type="text/babel" src="../home/home-final.js"></script>
+<script type="text/babel" src="../glass/glass-capture.js"></script>
+<script type="text/babel" src="../glass/glass-build.js"></script>
+<script type="text/babel" src="../glass/glass-me.js"></script>
+<script type="text/babel" src="kit.js"></script>
+<script type="text/babel" src="S_Onboarding.js"></script>
+<script type="text/babel" src="S_Main.js"></script>
+<script type="text/babel" src="S_More.js"></script>
+<script type="text/babel">
+const ALL = [...S_ONB, ...S_MAIN, ...S_MORE];
+const flows = [...new Set(ALL.map((s) => s.flow))];
+const NOTE = {
+  "Onboarding & sign-in": "פתיחה, היכרות, התחברות במייל, קוד, שם ומתנת פתיחה",
+  "First 3 Pieces": "המסלול הראשון לחשבון חדש עם ארון ריק",
+  "Home": "מסך הבית הסופי (6a) והמצבים שלו",
+  "Closet": "ארון, ארון ריק, אין תוצאות",
+  "Add · garment photo": "כפתור המצלמה: צילום → סריקה חינמית → יצירה → תוצאות",
+  "Add · outfit photo": "תמונה של מישהו לובש: זיהוי → בחירה → סקירה",
+  "Garment details": "מסך הפריט וכל המצבים: גב, 360°, עלות, חוסר קרדיטים, עריכה, הסרה",
+  "Me (Account)": "חשבון, קרדיטים, עזרה, פרטיות, יציאה ומחיקה",
+  "Build My Look": "שלוש שאלות, לוקים בסוויפ והחלפת פריט",
+};
+const W = 402, GAP = 44, ROW = 874 + 40 + 120;
+flows.forEach((f, r) => {
+  const y = 60 + r * ROW;
+  const h = document.createElement("div"); h.className = "flow"; h.style.top = y + "px";
+  h.innerHTML = `${f}<small>${NOTE[f] || ""}</small>`; document.body.appendChild(h);
+  ALL.filter((s) => s.flow === f).forEach((s, c) => {
+    const d = document.createElement("div"); d.className = "scr"; d.id = "s" + s.id.replace(".", "-");
+    d.dataset.screenLabel = `${s.id} ${s.name}`;
+    d.style.left = 60 + c * (W + GAP) + "px"; d.style.top = y + 70 + "px";
+    d.innerHTML = `<div class="lbl"><b>${s.id}</b>${s.name}</div><div></div>`;
+    document.body.appendChild(d);
+    ReactDOM.createRoot(d.lastChild).render(<s.C />);
+  });
+});
+</script>
+</body></html>

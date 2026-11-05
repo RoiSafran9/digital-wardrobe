@@ -27,7 +27,7 @@ export function helpSections(outfit: boolean, billing: boolean): InfoSection[] {
     ] },
     ...(billing ? [{ title: "AI Credits", body: [
       "Finding garments is free. Each image AI creates — a front, a back, or a 360° view — uses credits, and you always see the cost first.",
-      "Failed attempts don't use credits. Your balance and the price list are in Account.",
+      "Failed attempts don't use credits. Your balance and the price list are in Me.",
     ] }] : []),
     { title: "Editing and removing", body: [
       "Tap Edit on a piece to change its name, type, colors, pattern, details or printed text.",

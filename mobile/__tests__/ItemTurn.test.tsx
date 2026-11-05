@@ -82,7 +82,7 @@ test("resumes polling when the item is already running", async () => {
 test("a finished 360 opens on the turn view with the AI label", async () => {
   await sheet({ ...item, turn: done });
   expect(screen.getByLabelText("360 view")).toBeTruthy();
-  expect(screen.getByText("Drag to rotate · AI view")).toBeTruthy();
+  expect(screen.getByText("Front · Drag to rotate · AI view")).toBeTruthy();
   await fireEvent.press(screen.getByRole("tab", { name: "Front" }));
   expect(screen.queryByLabelText("360 view")).toBeNull();
 });
@@ -111,14 +111,23 @@ test("polling stops when the sheet closes", async () => {
   expect(mockedGet).not.toHaveBeenCalled();
 });
 
-test("turning the garment pauses item paging until the finger lifts", async () => {
-  await sheet({ ...item, turn: done });
+test("turning the garment holds the item swipe until the finger lifts", async () => {
+  const other = { ...item, item_id: "item_1" };
+  await render(<ItemSheet items={[{ ...item, turn: done }, other]} index={0} onClose={() => {}} onUpdated={jest.fn()} onDeleted={() => {}} />);
   const touch = { nativeEvent: { touches: [], changedTouches: [] }, touchHistory: { numberActiveTouches: 1, indexOfSingleActiveTouch: 0, mostRecentTimeStamp: 1, touchBank: [{ touchActive: true, startPageX: 0, startPageY: 0, startTimeStamp: 0, currentPageX: 0, currentPageY: 0, currentTimeStamp: 1, previousPageX: 0, previousPageY: 0, previousTimeStamp: 0 }] } };
-  expect(screen.getByTestId("item-pager").props.scrollEnabled).toBe(true);
+  // A sideways move over the image: would the item swipe take it over?
+  let t = 10;
+  const sideways = () => {
+    t += 10;
+    return { nativeEvent: { touches: [], changedTouches: [] }, touchHistory: { numberActiveTouches: 1, indexOfSingleActiveTouch: 0, mostRecentTimeStamp: t, touchBank: [{ touchActive: true, startPageX: 0, startPageY: 0, startTimeStamp: 0, currentPageX: 50, currentPageY: 0, currentTimeStamp: t, previousPageX: 0, previousPageY: 0, previousTimeStamp: t - 1 }] } };
+  };
+  const swipeWants = () => screen.getByTestId("item-pager").props.onMoveShouldSetResponderCapture(sideways());
+  expect(swipeWants()).toBe(true);
   await fireEvent(screen.getByLabelText("360 view"), "responderGrant", touch);
-  expect(screen.getByTestId("item-pager").props.scrollEnabled).toBe(false);
+  expect(swipeWants()).toBe(false);
   await fireEvent(screen.getByLabelText("360 view"), "responderRelease", touch);
-  expect(screen.getByTestId("item-pager").props.scrollEnabled).toBe(true);
+  expect(swipeWants()).toBe(true);
+  expect(screen.getByText("1 / 2")).toBeTruthy();
 });
 
 test("a slow status check is never stacked with another one", async () => {

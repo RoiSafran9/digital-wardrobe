@@ -22,7 +22,7 @@ export const PRIVACY_SECTIONS: InfoSection[] = [
   ] },
   { title: "Removing and deleting", body: [
     "Removing a piece takes it out of your closet; it can still be restored by the app owner.",
-    "Delete Account (in Account) permanently removes your account, every piece, every photo, your credits and your usage records.",
+    "Delete Account (in Me) permanently removes your account, every piece, every photo, your credits and your usage records.",
   ] },
 ];
 

@@ -36,12 +36,12 @@ export function InsufficientCreditsSheet({ visible, needed, onClose, onAdjust, b
         <ProgressBar value={needed ? available / needed : 0} warning accessibilityLabel="Credits available against needed" />
       </View>
       <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>Not enough credits</Text>
-      <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 6, marginBottom: 20 }}>
+      <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 6, marginBottom: 18 }}>
         {[left, body, ASK_FOR_MORE].filter(Boolean).join(" ")}
       </Text>
       <View style={{ gap: 6 }}>
         {onAdjust ? <Button title="Adjust Selection" onPress={onAdjust} /> : <Button title="OK" onPress={onClose} />}
-        <Button title="View Price List" variant="text" onPress={() => { onClose(); router.push("/account"); }} />
+        <Button title="View Price List" variant="text" size="medium" onPress={() => { onClose(); router.push("/account"); }} />
       </View>
     </Sheet>
   );

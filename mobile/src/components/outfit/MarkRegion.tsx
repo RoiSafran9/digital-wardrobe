@@ -58,11 +58,11 @@ export function MarkRegion({ uri, onBox, maxHeight = 340 }: { uri: string; onBox
         testID="mark-region"
         accessible
         accessibilityLabel="Your photo. Drag across the garment that was missed."
-        style={{ width, height, borderRadius: radius.list, overflow: "hidden", backgroundColor: colors.tile }}
+        style={{ width, height, borderRadius: radius.garment, overflow: "hidden", backgroundColor: colors.tile }}
       >
         <Image source={{ uri }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
         {box ? (
-          <View pointerEvents="none" style={{ position: "absolute", ...box, borderRadius: 8, borderWidth: 2, borderColor: colors.tint, backgroundColor: "rgba(31,107,255,0.12)" }} />
+          <View pointerEvents="none" style={{ position: "absolute", ...box, borderRadius: 10, borderWidth: 2, borderColor: colors.tint, backgroundColor: "rgba(11,94,255,0.18)" }} />
         ) : null}
       </View>
       <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>Drag across the garment that was missed.</Text>

@@ -4,6 +4,10 @@ type Boxed = { id: string; box: { x: number; y: number; width: number; height: n
 import { colors, radius, type, weight } from "../../theme";
 import { useReducedMotion } from "../../useReducedMotion";
 
+// Fixed colors over the user's photo, the same in either appearance.
+const PHOTO_BG = "#1C1C1E";
+const WASH = "rgba(11,94,255,0.18)";
+
 type Props = {
   uri: string;
   candidates: Boxed[];
@@ -12,11 +16,13 @@ type Props = {
   onToggle?: (id: string) => void;
   overlay?: React.ReactNode;
   maxHeight?: number;
+  framed?: boolean;  // a full-width dark rounded frame around the photo (the handoff's photo panel)
+  wash?: boolean;  // a light accent fill inside selected boxes (outfit photos); off for the garment preview
 };
 
 // The user's photo with a box around each garment found. Boxes pop in one by one; selected boxes are
-// solid accent with a light wash, unselected ones dashed white. Box coordinates are photo pixels.
-export function PhotoWithBoxes({ uri, candidates, selected, onToggle, overlay, maxHeight = 420, photoSize }: Props) {
+// solid accent (with a light wash), unselected ones dashed white. Box coordinates are photo pixels.
+export function PhotoWithBoxes({ uri, candidates, selected, onToggle, overlay, maxHeight = 420, photoSize, framed = false, wash = true }: Props) {
   const [measured, setSize] = useState<{ w: number; h: number } | null>(null);
   const size = photoSize ? { w: photoSize.width, h: photoSize.height } : measured;
   const [frame, setFrame] = useState(0);
@@ -33,21 +39,28 @@ export function PhotoWithBoxes({ uri, candidates, selected, onToggle, overlay, m
   const width = Math.min(frame, maxHeight * aspect);
   const height = width / aspect;
   const scale = size ? width / size.w : 0;
+  const photo = (
+    <View style={{ width, height, borderRadius: framed ? 0 : radius.feature, overflow: "hidden", backgroundColor: framed ? PHOTO_BG : colors.tile }}>
+      <Image source={{ uri }} style={{ width: "100%", height: "100%" }} resizeMode="cover" accessibilityLabel="Your outfit photo" />
+      {overlay}
+      {size ? candidates.map((c, i) => (
+        <Box key={c.id} index={i} candidate={c} scale={scale} wash={wash}
+          selected={selected ? selected.includes(c.id) : true} onPress={onToggle ? () => onToggle(c.id) : undefined} />
+      )) : null}
+    </View>
+  );
   return (
     <View onLayout={(e: LayoutChangeEvent) => setFrame(e.nativeEvent.layout.width)} style={{ alignItems: "center" }}>
-      <View style={{ width, height, borderRadius: radius.feature, overflow: "hidden", backgroundColor: colors.tile }}>
-        <Image source={{ uri }} style={{ width: "100%", height: "100%" }} resizeMode="cover" accessibilityLabel="Your outfit photo" />
-        {overlay}
-        {size ? candidates.map((c, i) => (
-          <Box key={c.id} index={i} candidate={c} scale={scale}
-            selected={selected ? selected.includes(c.id) : true} onPress={onToggle ? () => onToggle(c.id) : undefined} />
-        )) : null}
-      </View>
+      {framed ? (
+        <View style={{ alignSelf: "stretch", height, borderRadius: radius.feature, overflow: "hidden", backgroundColor: PHOTO_BG, alignItems: "center", justifyContent: "center" }}>
+          {photo}
+        </View>
+      ) : photo}
     </View>
   );
 }
 
-function Box({ candidate, index, scale, selected, onPress }: { candidate: Boxed; index: number; scale: number; selected: boolean; onPress?: () => void }) {
+function Box({ candidate, index, scale, selected, wash, onPress }: { candidate: Boxed; index: number; scale: number; selected: boolean; wash: boolean; onPress?: () => void }) {
   const reduced = useReducedMotion();
   const t = useRef(new Animated.Value(reduced ? 1 : 0)).current;
   useEffect(() => {
@@ -58,13 +71,13 @@ function Box({ candidate, index, scale, selected, onPress }: { candidate: Boxed;
   const { x, y, width, height } = candidate.box;
   const style = {
     position: "absolute" as const, left: x * scale, top: y * scale, width: width * scale, height: height * scale,
-    borderRadius: 10, borderWidth: 2, borderStyle: (selected ? "solid" : "dashed") as "solid" | "dashed",
-    borderColor: selected ? colors.tint : "#FFFFFF", backgroundColor: selected ? "rgba(31,107,255,0.08)" : "transparent",
+    borderRadius: 12, borderWidth: 2, borderStyle: (selected ? "solid" : "dashed") as "solid" | "dashed",
+    borderColor: selected ? colors.tint : "rgba(255,255,255,0.85)", backgroundColor: selected && wash ? WASH : "transparent",
     opacity: t, transform: [{ scale: reduced ? 1 : t.interpolate({ inputRange: [0, 1], outputRange: [1.15, 1] }) }],
   };
   const badge = (
-    <View style={{ position: "absolute", top: -10, left: -10, width: 22, height: 22, borderRadius: 11, backgroundColor: selected ? colors.tint : "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ ...type.caption, ...weight(700), color: "#FFFFFF" }}>{index + 1}</Text>
+    <View style={{ position: "absolute", top: -10, left: -10, width: 22, height: 22, borderRadius: 11, backgroundColor: selected ? colors.tint : "#FFFFFF", alignItems: "center", justifyContent: "center" }}>
+      <Text style={{ ...type.caption, ...weight(700), color: selected ? "#FFFFFF" : "#131315" }}>{index + 1}</Text>
     </View>
   );
   if (!onPress) return <Animated.View pointerEvents="none" style={style}>{badge}</Animated.View>;

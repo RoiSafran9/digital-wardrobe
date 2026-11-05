@@ -1,12 +1,12 @@
 import React, { useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
-import { Icon } from "./Icon";
+import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { updateItem } from "../api/client";
 import type { ClosetItem } from "../api/types";
-import { COLOR_NAMES, PATTERNS, asList, capitalize, colors, hitSlopFor, palettes, radius, swatchFor, type } from "../theme";
+import { COLOR_NAMES, PATTERNS, asList, capitalize, colors, radius, swatchFor, type, weight } from "../theme";
 import { haptics } from "../haptics";
-import { Button, Chip } from "../ui";
+import { Button, Chip, Glass, IconButton, Swatch } from "../ui";
 import { garmentName } from "../garmentName";
+import { GarmentImage } from "./GarmentImage";
 import { CATEGORY_GROUPS } from "../categoryGroups";
 
 // Group shortcuts fill the type with a plain word; the free text stays for anything more specific.
@@ -14,36 +14,50 @@ const GROUP_WORDS: Partial<Record<(typeof CATEGORY_GROUPS)[number], string>> = {
   Tops: "top", Outerwear: "jacket", Bottoms: "pants", Dresses: "dress", Shoes: "shoes", Bags: "bag", Accessories: "accessory",
 };
 
-const LIGHT_SWATCHES = new Set(["white", "beige", "yellow", "mint", "dusty pink", "pink"]);
-
-function Label({ children }: { children: string }) {
-  return <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginBottom: 8, marginTop: 20 }}>{children}</Text>;
+// A small uppercase field name.
+function Label({ children, first }: { children: string; first?: boolean }) {
+  return (
+    <Text style={{ ...type.caption, ...weight(600), textTransform: "uppercase", letterSpacing: 0.6, color: colors.secondaryLabel, marginTop: first ? 0 : 20, marginBottom: 8 }}>
+      {children}
+    </Text>
+  );
 }
 
-function Field({ label, value, onChange, placeholder }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder: string;
+const field = {
+  height: 44, borderRadius: radius.input, paddingHorizontal: 12, paddingVertical: 0,
+  backgroundColor: colors.card, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator,
+  ...type.body, color: colors.label,
+} as const;
+
+// A row of the Details / Text list: the field name on the left, the editable value on the right.
+function ListField({ label, accessibilityLabel, value, onChange, placeholder, first }: {
+  label: string; accessibilityLabel: string; value: string; onChange: (v: string) => void; placeholder: string; first?: boolean;
 }) {
   return (
-    <View>
-      <Label>{label}</Label>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48, paddingHorizontal: 16, borderTopWidth: first ? 0 : StyleSheet.hairlineWidth, borderTopColor: colors.separator }}>
+      <Text style={{ ...type.body, color: colors.label }}>{label}</Text>
       <TextInput
-        accessibilityLabel={label}
+        accessibilityLabel={accessibilityLabel}
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
         placeholderTextColor={colors.secondaryLabel}
-        style={{
-          borderRadius: radius.input,
-          paddingHorizontal: 14, paddingVertical: 12, ...type.body, color: colors.label, backgroundColor: colors.grouped,
-        }}
+        style={{ ...type.body, color: colors.label, flex: 1, textAlign: "right", paddingVertical: 12 }}
       />
     </View>
   );
 }
 
-type Props = { item: ClosetItem; onSaved: (updated: ClosetItem) => void; onCancel: () => void };
+type Props = {
+  item: ClosetItem;
+  onSaved: (updated: ClosetItem) => void;
+  onCancel: () => void;
+  onClose: () => void;  // the × (the sheet asks before discarding edits)
+};
 
-export function ItemEditForm({ item, onSaved, onCancel }: Props) {
+// Editing a closet item: a bar with Save that stays put, then name, type, colors, pattern, details and
+// printed text. Only what the user changes is sent; the server checks it.
+export function ItemEditForm({ item, onSaved, onCancel, onClose }: Props) {
   const { facts } = item;
   const currentName = facts.name ? asList(facts.name.value)[0] ?? "" : "";
   const [name, setName] = useState(currentName);
@@ -77,56 +91,80 @@ export function ItemEditForm({ item, onSaved, onCancel }: Props) {
   }
 
   return (
-    <View>
-      <Field label="Name" value={name} onChange={setName} placeholder={garmentName({ facts: { ...facts, name: null } })} />
-      <Field label="Type" value={category} onChange={setCategory} placeholder="Fleece" />
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-        {(Object.entries(GROUP_WORDS) as [string, string][]).map(([group, word]) => (
-          <Chip key={group} label={group} selected={category.trim().toLowerCase() === word} onPress={() => setCategory(word)} />
-        ))}
+    <View style={{ flex: 1 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 8, minHeight: 64 }}>
+        <IconButton icon="close" label="Close" onPress={onClose} />
+        <Text accessibilityRole="header" style={{ ...type.subhead, ...weight(600), color: colors.label }}>Editing</Text>
+        <View style={{ minWidth: 40, alignItems: "flex-end" }}>
+          <Button title="Save" variant="text" onPress={save} loading={saving} />
+        </View>
       </View>
 
-      <Label>Colors</Label>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-        {COLOR_NAMES.map((name) => {
-          const on = picked.includes(name);
-          return (
-            <Pressable
-              key={name}
-              accessibilityRole="checkbox"
-              accessibilityLabel={`Color ${name}`}
-              accessibilityState={{ checked: on }}
-              onPress={() => toggleColor(name)}
-              hitSlop={hitSlopFor(34, 34)}
-              style={{
-                width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center",
-                backgroundColor: swatchFor(name), borderWidth: on ? 2.5 : 1,
-                borderColor: on ? colors.label : colors.separatorStrong,
-              }}
-            >
-              {/* Swatches are fixed garment colors, so the check uses fixed ink/white too. */}
-              {on ? <Icon name="checkmark" size={16} color={LIGHT_SWATCHES.has(name) ? palettes.light.label : "#FFFFFF"} /> : null}
-            </Pressable>
-          );
-        })}
-      </View>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 48 }}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <GarmentImage
+            path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url}
+            style={{ width: 72, height: 88, borderRadius: radius.image + 2, backgroundColor: colors.tile }}
+          />
+          <View style={{ flex: 1 }}>
+            <Label first>Name</Label>
+            <TextInput
+              accessibilityLabel="Name"
+              value={name}
+              onChangeText={setName}
+              placeholder={garmentName({ facts: { ...facts, name: null } })}
+              placeholderTextColor={colors.secondaryLabel}
+              style={field}
+            />
+          </View>
+        </View>
 
-      <Label>Pattern</Label>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        {PATTERNS.map((p) => (
-          <Chip key={p} label={capitalize(p)} selected={p === pattern} onPress={() => setPattern(p)} />
-        ))}
-      </View>
+        <Label>Type</Label>
+        <TextInput
+          accessibilityLabel="Type"
+          value={category}
+          onChangeText={setCategory}
+          placeholder="Fleece"
+          placeholderTextColor={colors.secondaryLabel}
+          style={field}
+        />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+          {(Object.entries(GROUP_WORDS) as [string, string][]).map(([group, word]) => (
+            <Chip key={group} label={group} selected={category.trim().toLowerCase() === word} onPress={() => setCategory(word)} />
+          ))}
+        </View>
 
-      <Field label="Details" value={trims} onChange={setTrims} placeholder="Half zip, white piping" />
-      <Field label="Text on the garment" value={text} onChange={setText} placeholder="Leave empty if none" />
+        <Label>Colors</Label>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+          {COLOR_NAMES.map((name) => (
+            <Swatch key={name} color={swatchFor(name)} label={`Color ${name}`} selected={picked.includes(name)} onPress={() => toggleColor(name)} />
+          ))}
+        </View>
 
-      {error ? <Text style={{ ...type.subhead, color: colors.destructive, marginTop: 16 }}>{error}</Text> : null}
+        <Label>Pattern</Label>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {PATTERNS.map((p) => (
+            <Chip key={p} label={capitalize(p)} selected={p === pattern} onPress={() => setPattern(p)} />
+          ))}
+        </View>
 
-      <View style={{ gap: 10, marginTop: 28 }}>
-        <Button title="Save" onPress={save} loading={saving} />
-        <Button title="Cancel" variant="text" onPress={onCancel} disabled={saving} />
-      </View>
+        <Glass radius={radius.list} level="card" style={{ marginTop: 20 }}>
+          <View style={{ borderRadius: radius.list, overflow: "hidden" }}>
+            <ListField first label="Details" accessibilityLabel="Details" value={trims} onChange={setTrims} placeholder="Half zip, white piping" />
+            <ListField label="Text" accessibilityLabel="Text on the garment" value={text} onChange={setText} placeholder="Leave empty if none" />
+          </View>
+        </Glass>
+
+        {error ? <Text style={{ ...type.subhead, color: colors.destructive, marginTop: 16 }}>{error}</Text> : null}
+
+        <View style={{ marginTop: 14 }}>
+          <Button title="Cancel" variant="text" onPress={onCancel} disabled={saving} />
+        </View>
+      </ScrollView>
     </View>
   );
 }

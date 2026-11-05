@@ -12,7 +12,7 @@ import { CATEGORY_GROUPS, groupFor, groupOf } from "../../src/categoryGroups";
 import { ALL, colorsPresent, filterCloset } from "../../src/closetFilter";
 import { garmentName } from "../../src/garmentName";
 import { asList, capitalize, colors, radius, swatchFor, TAB_BAR_HEIGHT, type, weight } from "../../src/theme";
-import { Button, Chip, Swatch } from "../../src/ui";
+import { Backdrop, Button, Chip, Glass, Swatch } from "../../src/ui";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { FirstPiecesPopup } from "../../src/components/firstPieces/FirstPiecesPopup";
 import { useFirstPiecesMaybe } from "../../src/firstPieces/FirstPiecesProvider";
@@ -21,6 +21,8 @@ import { FIRST_GOAL } from "../../src/firstPieces/round";
 import { pathOf, track } from "../../src/firstPieces/analytics";
 import { useScreenViewed } from "../../src/activity/track";
 
+// Closet grid: 16pt sides like Home, 12pt between the two columns.
+const SIDE = 16;
 const GAP = 12;
 
 function sameItem(a: ClosetItem, b: ClosetItem): boolean {
@@ -126,25 +128,27 @@ export default function ClosetScreen() {
   const visible = filterCloset(items, { group: activeGroup, color: activeColor, query });
   const filtered = activeGroup !== ALL || activeColor !== ALL || query.trim() !== "";
   const clearFilters = () => { setGroup(ALL); setColor(ALL); setQuery(""); };
-  const tileWidth = (width - 40 - GAP) / 2;
+  const tileWidth = (width - SIDE * 2 - GAP) / 2;
 
+  // Filter rows scroll past the screen edge, so they bleed out of the side padding.
+  const bleed = { marginHorizontal: -SIDE };
   const header = (
-    <View style={{ paddingTop: 8, paddingBottom: 18, gap: 14 }}>
+    <View style={{ paddingTop: 8, paddingBottom: 18, gap: 12 }}>
       <View>
         <Text accessibilityRole="header" style={{ ...type.largeTitle, color: colors.label }}>Closet</Text>
-        <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 2 }}>
+        <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 2, fontVariant: ["tabular-nums"] }}>
           {items.length === 1 ? "1 piece" : `${items.length} pieces`}
         </Text>
       </View>
       {loadError ? (
-        <View style={{ padding: 16, borderRadius: radius.list, backgroundColor: colors.destructiveBg, gap: 10 }}>
+        <Glass radius={radius.list} style={{ padding: 16, gap: 10 }}>
           <Text style={{ ...type.subhead, color: colors.destructive }}>{loadError}</Text>
-          <Button title="Try again" size="medium" variant="secondary" onPress={load} />
-        </View>
+          <Button title="Try again" size="medium" variant="soft" onPress={load} />
+        </Glass>
       ) : null}
       {items.length > 0 ? (
         <>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 40, borderRadius: radius.input, backgroundColor: colors.fill, paddingHorizontal: 10 }}>
+          <Glass radius={radius.input} level="base" style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 40, paddingHorizontal: 12 }}>
             <Icon name="search" size={16} color={colors.secondaryLabel} />
             <TextInput
               ref={searchField}
@@ -158,14 +162,14 @@ export default function ClosetScreen() {
               returnKeyType="search"
               style={{ ...type.body, color: colors.label, flex: 1, paddingVertical: 0 }}
             />
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          </Glass>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={bleed} contentContainerStyle={{ gap: 8, paddingHorizontal: SIDE }}>
             {groups.map((name) => (
-              <Chip key={name} label={name} selected={name === activeGroup} onPress={() => setGroup(name)} />
+              <Chip key={name} variant="glass" label={name} selected={name === activeGroup} onPress={() => setGroup(name)} />
             ))}
           </ScrollView>
           {swatches.length > 1 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, alignItems: "center" }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={bleed} contentContainerStyle={{ gap: 6, alignItems: "center", paddingHorizontal: SIDE - 3 }}>
               {swatches.map((c) => (
                 <Swatch
                   key={c} color={swatchFor(c)} label={capitalize(c)} selected={c === activeColor.toLowerCase()}
@@ -181,60 +185,71 @@ export default function ClosetScreen() {
 
   const emptyState = loaded && !loadError ? (
     items.length === 0 ? (
-      <View style={{ paddingTop: 48, alignItems: "center", gap: 8 }}>
-        <Text style={{ ...type.section, color: colors.label }}>Your closet is empty</Text>
-        <Text style={{ ...type.body, color: colors.secondaryLabel, textAlign: "center", marginBottom: 16 }}>
+      <View style={{ paddingTop: 72, alignItems: "center" }}>
+        <View style={{ width: 120, height: 150, borderRadius: radius.garment, backgroundColor: colors.tile, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.separatorStrong, alignItems: "center", justifyContent: "center" }}>
+          <Icon name="garment" size={50} color={colors.secondaryLabel} />
+        </View>
+        <Text style={{ ...type.display(26), color: colors.label, textAlign: "center", marginTop: 22 }}>Your closet is empty</Text>
+        <Text style={{ ...type.body, color: colors.secondaryLabel, textAlign: "center", marginTop: 6, maxWidth: 300 }}>
           Photograph a piece and it'll land here as a clean catalog image.
         </Text>
-        <Button title="Add Clothes" icon="camera" onPress={() => router.push("/add")} />
+        <View style={{ width: 220, marginTop: 22 }}>
+          <Button title="Add Clothes" icon="camera" onPress={() => router.push("/add")} />
+        </View>
       </View>
     ) : filtered ? (
-      <View style={{ paddingTop: 48, alignItems: "center", gap: 8 }}>
-        <Text style={{ ...type.section, color: colors.label }}>No matches</Text>
-        <Text style={{ ...type.body, color: colors.secondaryLabel, textAlign: "center", marginBottom: 16 }}>
+      <View style={{ paddingTop: 88, alignItems: "center" }}>
+        <Icon name="search" size={40} color={colors.tertiaryLabel} />
+        <Text style={{ ...type.display(26), color: colors.label, textAlign: "center", marginTop: 16 }}>No matches</Text>
+        <Text style={{ ...type.body, color: colors.secondaryLabel, textAlign: "center", marginTop: 6 }}>
           Nothing in your closet fits these filters.
         </Text>
-        <Button title="Clear Filters" size="medium" variant="secondary" onPress={clearFilters} />
+        <View style={{ width: 200, marginTop: 20 }}>
+          <Button title="Clear Filters" size="medium" variant="glass" onPress={clearFilters} />
+        </View>
       </View>
     ) : null
   ) : null;
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
-      <FlatList
-        data={visible}
-        numColumns={2}
-        keyExtractor={(item) => `${item.run_id}-${item.photo_name}-${item.item_id}`}
-        ListHeaderComponent={header}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: TAB_BAR_HEIGHT + 24 }}
-        columnWrapperStyle={{ gap: GAP }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.secondaryLabel} />}
-        ListEmptyComponent={emptyState ?? undefined}
-        renderItem={({ item, index }) => {
-          const name = garmentName(item);
-          const firstColor = asList(item.facts.colors.value)[0];
-          return (
-            // The collection lays itself out: short stagger, capped so long closets don't wait.
-            <Rise delay={Math.min(index, 8) * 30} style={{ width: tileWidth, marginBottom: 18 }}>
-              <View>
-                <GarmentTile
-                  testID={`thumb-${item.run_id}-${item.item_id}`}
-                  item={item} width={tileWidth} height={tileWidth * 1.25} label={`Open ${name}`}
-                  onPress={() => setSelectedIndex(index)}
-                  badge={item.turn?.state === "done" ? "360°" : null}
-                />
-              </View>
-              {item.turn?.state === "done" ? <View testID={`badge-360-${item.run_id}-${item.item_id}`} accessibilityLabel="Has a 360 view" /> : null}
-              <Text numberOfLines={1} style={{ ...type.subhead, ...weight(600), color: colors.label, marginTop: 10 }}>{name}</Text>
-              <Text numberOfLines={1} style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 1 }}>
-                {[groupOf(item), firstColor ? capitalize(firstColor) : null].filter(Boolean).join(" · ")}
-              </Text>
-            </Rise>
-          );
-        }}
-      />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Backdrop />
+      <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+        <FlatList
+          data={visible}
+          numColumns={2}
+          keyExtractor={(item) => `${item.run_id}-${item.photo_name}-${item.item_id}`}
+          ListHeaderComponent={header}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={{ paddingHorizontal: SIDE, paddingBottom: TAB_BAR_HEIGHT + 28 }}
+          columnWrapperStyle={{ gap: GAP }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.secondaryLabel} />}
+          ListEmptyComponent={emptyState ?? undefined}
+          renderItem={({ item, index }) => {
+            const name = garmentName(item);
+            const firstColor = asList(item.facts.colors.value)[0];
+            return (
+              // The collection lays itself out: short stagger, capped so long closets don't wait.
+              <Rise delay={Math.min(index, 8) * 30} style={{ width: tileWidth, marginBottom: 16 }}>
+                <View>
+                  <GarmentTile
+                    testID={`thumb-${item.run_id}-${item.item_id}`}
+                    item={item} width={tileWidth} height={tileWidth * 1.25} rounded={radius.garment} label={`Open ${name}`}
+                    onPress={() => setSelectedIndex(index)}
+                    badge={item.turn?.state === "done" ? "360°" : null}
+                  />
+                </View>
+                {item.turn?.state === "done" ? <View testID={`badge-360-${item.run_id}-${item.item_id}`} accessibilityLabel="Has a 360 view" /> : null}
+                <Text numberOfLines={1} style={{ ...type.subhead, ...weight(600), color: colors.label, marginTop: 8 }}>{name}</Text>
+                <Text numberOfLines={1} style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 1 }}>
+                  {[groupOf(item), firstColor ? capitalize(firstColor) : null].filter(Boolean).join(" · ")}
+                </Text>
+              </Rise>
+            );
+          }}
+        />
+      </SafeAreaView>
       {/* Swipes through the grid as currently filtered. */}
       <ItemSheet
         items={visible}
@@ -255,6 +270,6 @@ export default function ClosetScreen() {
           ? "/first-pieces/pick"
           : { pathname: "/first-pieces", params: { entry: "home" } }); })}
       />
-    </SafeAreaView>
+    </View>
   );
 }

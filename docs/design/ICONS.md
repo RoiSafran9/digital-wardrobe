@@ -24,7 +24,7 @@ Scope: icons inside the app (buttons, tiles, rows, empty states). Not the app ic
 ### 2. Outline, not filled
 - Use the plain symbol name (`heart`, `briefcase`, `cloud.rain`), not `.fill`, `.circle` or `.square` variants.
 - Filled variants are reserved for status: `check` (`checkmark.circle.fill`) for done, `plusCircle` for the add
-  action. A few shapes are solid by nature (`sparkle`, `snowflake`, `figure.run`); that is fine, as long as no
+  action, and the selected tab in the tab bar (`homeFill`, `closetFill`, `accountFill`, the iOS convention). A few shapes are solid by nature (`sparkle`, `snowflake`, `figure.run`); that is fine, as long as no
   outline version exists.
 
 ### 3. Weight follows the role

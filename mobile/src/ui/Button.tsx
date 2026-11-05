@@ -8,7 +8,7 @@ import { Glass } from "./Glass";
 type Props = {
   title: string;
   onPress: () => void;
-  variant?: "primary" | "secondary" | "glass" | "soft" | "ink" | "text" | "destructive";
+  variant?: "primary" | "secondary" | "glass" | "soft" | "ink" | "danger" | "text" | "destructive";
   size?: "large" | "medium";  // large: 54pt (main action), medium: 44pt (paired and small actions)
   icon?: IconName;
   disabled?: boolean;
@@ -22,6 +22,7 @@ const LOOK: Record<NonNullable<Props["variant"]>, { bg: ColorValue | undefined; 
   glass: { bg: undefined, fg: colors.label },
   soft: { bg: colors.fill, fg: colors.label },
   ink: { bg: colors.label, fg: colors.background },
+  danger: { bg: colors.destructiveBg, fg: colors.destructive },  // confirming a removal or deletion
   text: { bg: undefined, fg: colors.tint },
   destructive: { bg: undefined, fg: colors.destructive },
 };

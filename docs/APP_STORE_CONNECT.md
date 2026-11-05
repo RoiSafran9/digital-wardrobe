@@ -43,7 +43,7 @@ Facts here follow `site/public/privacy/index.html` and `PRODUCT.md`; change them
 > 2. Press and hold the title "Sign in with email" for one second. A password sign-in screen opens.
 > 3. Enter the user name and password above, then tap Sign In.
 >
-> The demo account has free AI Credits. To try the main feature: Add tab → take or choose a photo of clothes laid flat (a shirt or jeans on a bed works well). Processing takes about 15–60 seconds; the pieces then appear in the Closet tab. Account → Delete Account removes the account and all its data.
+> The demo account has free AI Credits. To try the main feature: the blue camera button in the tab bar → take or choose a photo of clothes laid flat (a shirt or jeans on a bed works well). Processing takes about 15–60 seconds; the pieces then appear in the Closet tab. Me → Delete Account removes the account and all its data.
 >
 > The app's server and AI processing are live during review. Contact support@kipscloset.com with any problem.
 

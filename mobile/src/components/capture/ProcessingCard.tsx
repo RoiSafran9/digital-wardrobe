@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Text, View } from "react-native";
+import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
 import { Icon } from "../Icon";
-import { colors, radius, shadow, type, weight } from "../../theme";
-import { ProgressBar, Shimmer } from "../../ui";
+import { colors, radius, type, weight } from "../../theme";
+import { Glass, ProgressBar, Shimmer } from "../../ui";
 import { useReducedMotion } from "../../useReducedMotion";
+import { PHOTO_BG } from "./FlowChrome";
 
 export type Stage = { label: string; at: number };  // `at`: seconds since start
 
@@ -16,6 +17,8 @@ export const GARMENT_STAGES: Stage[] = [
 
 // Long server work with nothing to show yet: the photo comes into focus as time passes, the stage
 // list advances on a timed script, and the bar eases toward 90% — it never claims to be done.
+// Laid out like the handoff's processing screen: the photo panel, the stage as a title, the bar, then a
+// glass checklist (done = green check, current = spinner, pending = empty ring).
 export function ProcessingCard({ photoUri, stages, title, estimateSeconds = 45, startedAt, note, count }: {
   photoUri: string; stages: Stage[]; title: string; estimateSeconds?: number; startedAt: number; note: string;
   count?: { done: number; total: number };  // real per-piece progress from the server, when known
@@ -33,41 +36,44 @@ export function ProcessingCard({ photoUri, stages, title, estimateSeconds = 45, 
   const blur = Math.max(0, 1 - elapsed / estimateSeconds);
 
   return (
-    <View style={{ alignItems: "center", gap: 22 }}>
-      <View style={{ width: 230, height: 288, borderRadius: radius.feature, backgroundColor: colors.tile, overflow: "hidden", ...shadow.tile }}>
-        <Image source={{ uri: photoUri }} style={{ position: "absolute", width: "100%", height: "100%" }} resizeMode="cover" />
-        <Image source={{ uri: photoUri }} blurRadius={18} style={{ position: "absolute", width: "100%", height: "100%", opacity: blur }} resizeMode="cover" />
+    <View style={{ paddingHorizontal: 20 }}>
+      <View style={{ height: 300, borderRadius: radius.hero, backgroundColor: PHOTO_BG, overflow: "hidden" }}>
+        <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <Image source={{ uri: photoUri }} blurRadius={18} style={[StyleSheet.absoluteFill, { opacity: blur }]} resizeMode="cover" />
         <Shimmer />
         {count && count.total > 0 ? (
-          <View testID="piece-count" style={{ position: "absolute", top: 12, right: 12, paddingHorizontal: 10, height: 26, borderRadius: radius.pill, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center" }}>
-            <Text style={{ ...type.footnote, ...weight(600), color: "#FFFFFF" }}>{`${Math.min(count.done + 1, count.total)} of ${count.total}`}</Text>
-          </View>
+          <Glass testID="piece-count" radius={radius.pill} level="base" style={{ position: "absolute", top: 12, left: 12, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <Text style={{ ...type.footnote, ...weight(700), color: colors.label, fontVariant: ["tabular-nums"] }}>{`${Math.min(count.done + 1, count.total)} of ${count.total}`}</Text>
+          </Glass>
         ) : null}
       </View>
-      <View style={{ alignItems: "center", gap: 10 }}>
-        <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>{`${stages[current].label}…`}</Text>
-        <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>{title}</Text>
-        {reduced ? null : (
-          <View style={{ width: 260 }}>
-            <ProgressBar value={progress} height={6} accessibilityLabel={stages[current].label} />
-          </View>
-        )}
-      </View>
-      <View style={{ gap: 12, alignSelf: "stretch", paddingHorizontal: 40 }}>
+
+      <Text accessibilityRole="header" style={{ ...type.pageTitle, color: colors.label, marginTop: 18 }}>{`${stages[current].label}…`}</Text>
+      <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 4 }}>{title}</Text>
+      {reduced ? null : (
+        <View style={{ marginTop: 12 }}>
+          <ProgressBar value={progress} height={8} accessibilityLabel={stages[current].label} />
+        </View>
+      )}
+
+      <Glass radius={radius.tile} style={{ marginTop: 16, paddingHorizontal: 16, paddingVertical: 6 }}>
         {stages.map((s, i) => {
           const done = i < current;
           const now = i === current;
           return (
-            <View key={s.label} style={{ flexDirection: "row", alignItems: "center", gap: 12 }} accessibilityLabel={`${s.label}${done ? ", done" : now ? ", in progress" : ""}`} accessible>
-              <View style={{ width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: done ? colors.success : "transparent", borderWidth: done ? 0 : 2, borderColor: now ? colors.fill : colors.fill }}>
-                {done ? <Icon name="checkmark" size={12} color="#FFFFFF" /> : now ? <ActivityIndicator size="small" color={colors.tint} /> : null}
+            <View key={s.label} accessible accessibilityLabel={`${s.label}${done ? ", done" : now ? ", in progress" : ""}`}
+              style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderTopWidth: i ? StyleSheet.hairlineWidth : 0, borderTopColor: colors.separator }}>
+              <View style={{ width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                {done ? <Icon name="check" size={20} color={colors.success} />
+                  : now ? <ActivityIndicator size="small" color={colors.tint} />
+                  : <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: colors.separatorStrong }} />}
               </View>
-              <Text style={{ ...type.body, color: i <= current ? colors.label : colors.secondaryLabel }}>{s.label}</Text>
+              <Text style={{ ...type.callout, color: i <= current ? colors.label : colors.secondaryLabel }}>{s.label}</Text>
             </View>
           );
         })}
-      </View>
-      <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center", paddingHorizontal: 32 }}>{note}</Text>
+      </Glass>
+      <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center", marginTop: 14, paddingHorizontal: 12 }}>{note}</Text>
     </View>
   );
 }

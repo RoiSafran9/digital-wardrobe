@@ -1,16 +1,17 @@
-import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Animated, Image, Modal, PanResponder, ScrollView, StyleSheet, Text, View, useWindowDimensions, type GestureResponderHandlers } from "react-native";
 import { Icon } from "./Icon";
-import { deleteItem } from "../api/client";
+import { deleteItem, imageUrl } from "../api/client";
 import { useAddBack } from "../useAddBack";
 import { NO_SIDE_VIEWS, isFootwearItem } from "../footwear";
 import { TurnView } from "./TurnView";
 import { TURN_LABELS, useTurn } from "../useTurn";
-import type { BackView, ClosetItem, RunItem } from "../api/types";
+import type { ClosetItem, RunItem } from "../api/types";
 import { addedLabel, asList, capitalize, colors, hitSlopFor, radius, type, weight } from "../theme";
 import { haptics } from "../haptics";
-import { ColorSwatches } from "./ColorSwatches";
-import { Rise } from "../motion/Rise";
+import { ColorSwatches, FactChip } from "./ColorSwatches";
+import { EASE_OUT, Rise } from "../motion/Rise";
+import { PressScale } from "../motion/PressScale";
 import { GarmentImage } from "./GarmentImage";
 import { ItemEditForm } from "./ItemEditForm";
 import { RetakeNote } from "./RetakeNote";
@@ -19,28 +20,11 @@ import { garmentName } from "../garmentName";
 import { groupOf } from "../categoryGroups";
 import { useCredits } from "../credits/CreditsProvider";
 import { creditsLabel } from "../credits/credits";
-import { Button, CostSheet, GroupedList, InsufficientCreditsSheet, Row, Segmented, Sheet, Shimmer, useToast } from "../ui";
+import { Button, CostSheet, Glass, GroupedList, IconButton, InsufficientCreditsSheet, Row, Segmented, Sheet, Shimmer, useToast } from "../ui";
+import { useReducedMotion } from "../useReducedMotion";
 import { track } from "../activity/track";
 
 type Item = RunItem | ClosetItem;
-
-function FactRow({ label, children, first }: { label: string; children: React.ReactNode; first?: boolean }) {
-  return (
-    <View
-      style={{
-        flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 16, minHeight: 48,
-        paddingVertical: 12, borderTopWidth: first ? 0 : StyleSheet.hairlineWidth, borderTopColor: colors.separator,
-      }}
-    >
-      <Text style={{ ...type.body, color: colors.secondaryLabel }}>{label}</Text>
-      <View style={{ flexShrink: 1, alignItems: "flex-end" }}>{children}</View>
-    </View>
-  );
-}
-
-function FactText({ children }: { children: string }) {
-  return <Text style={{ ...type.body, color: colors.label, textAlign: "right" }}>{children}</Text>;
-}
 
 type Props = {
   items: Item[];
@@ -55,7 +39,10 @@ function isClosetItem(item: Item): item is ClosetItem {
   return "photo_name" in item;
 }
 
-// Opens on items[index]; swipe left/right to page through the rest of the list.
+// One photo can hold several pieces, and one run several photos, so the key needs all three.
+const keyOf = (item: Item, i: number) => ("run_id" in item ? `${item.run_id}-${item.photo_name}-${item.item_id}` : `${item.photo_name}-${item.item_id}-${i}`);
+
+// Opens on items[index]; swipe the image left/right to page through the rest of the list.
 export function ItemSheet({ items, index, onClose, onUpdated, onDeleted }: Props) {
   const visible = index !== null && index >= 0 && index < items.length;
   const opened = visible ? items[index!] : null;
@@ -100,17 +87,97 @@ type PagerProps = Omit<Props, "index"> & {
   setEditing: (editing: boolean) => void;
 };
 
+// The image swipe takes over only after 8pt sideways (taps and vertical scrolls stay with the screen);
+// 60pt, or a quick flick, moves to the next or previous item.
+const SWIPE_SLOP = 8;
+const SWIPE_STEP = 60;
+const FLICK = { dx: 24, vx: 0.5 };
+// How far the next item slides in from (a plain fade under Reduce Motion).
+const ENTER_FROM = 48;
+
+type Swipe = { handlers: GestureResponderHandlers; x: Animated.Value; fade: Animated.Value };
+
 function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setEditing }: PagerProps) {
   const toast = useToast();
-  const { width } = useWindowDimensions();
+  const reduced = useReducedMotion();
   const [current, setCurrent] = useState(startIndex);
-  const [busy, setBusy] = useState(false);
-  const currentItem = items[current];
+  const index = Math.max(0, Math.min(current, items.length - 1));
+  const currentItem = items[index];
   const canEdit = !!onUpdated && !!currentItem && isClosetItem(currentItem);
 
   const { billing } = useCredits();
   const [removing, setRemoving] = useState<ClosetItem | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
+
+  // A back uploading, or a finger turning the 360, holds the item where it is.
+  const busy = useRef(false);
+  const onBusy = useRef((b: boolean) => { busy.current = b; }).current;
+
+  // The image follows the finger; past the threshold the next item slides in and the details fade in.
+  const x = useRef(new Animated.Value(0)).current;
+  const fade = useRef(new Animated.Value(1)).current;
+  const live = useRef({ index, count: items.length, editing, reduced });
+  live.current = { index, count: items.length, editing, reduced };
+  const [swiping, setSwiping] = useState(false);
+
+  const step = (dir: 1 | -1): boolean => {
+    const next = live.current.index + dir;
+    if (next < 0 || next >= live.current.count) return false;
+    setCurrent(next);
+    x.setValue(live.current.reduced ? 0 : dir * ENTER_FROM);
+    fade.setValue(0.3);
+    Animated.parallel([
+      Animated.timing(x, { toValue: 0, duration: 320, easing: EASE_OUT, useNativeDriver: true }),
+      Animated.timing(fade, { toValue: 1, duration: 320, easing: EASE_OUT, useNativeDriver: true }),
+    ]).start();
+    return true;
+  };
+  const stepRef = useRef(step);
+  stepRef.current = step;
+
+  const swipe: Swipe = useMemo(() => {
+    const wants = (dx: number, dy: number) => {
+      const { editing: e, count } = live.current;
+      return !e && !busy.current && count > 1 && Math.abs(dx) > SWIPE_SLOP && Math.abs(dx) > Math.abs(dy);
+    };
+    const settle = (dx: number, vx: number) => {
+      setSwiping(false);
+      const dir = dx <= -SWIPE_STEP || (dx < -FLICK.dx && vx < -FLICK.vx) ? 1
+        : dx >= SWIPE_STEP || (dx > FLICK.dx && vx > FLICK.vx) ? -1 : 0;
+      if (dir && stepRef.current(dir)) return;
+      (live.current.reduced
+        ? Animated.timing(x, { toValue: 0, duration: 200, easing: EASE_OUT, useNativeDriver: true })
+        : Animated.spring(x, { toValue: 0, speed: 20, bounciness: 4, useNativeDriver: true })).start();
+    };
+    const pan = PanResponder.create({
+      onMoveShouldSetPanResponderCapture: (_, g) => wants(g.dx, g.dy),
+      onMoveShouldSetPanResponder: (_, g) => wants(g.dx, g.dy),
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        x.stopAnimation();
+        fade.stopAnimation();
+        fade.setValue(1);
+        setSwiping(true);
+      },
+      onPanResponderMove: (_, g) => {
+        const { index: i, count } = live.current;
+        const end = (g.dx > 0 && i === 0) || (g.dx < 0 && i === count - 1);
+        x.setValue(end ? g.dx * 0.25 : g.dx);  // the ends give a little, like a rubber band
+      },
+      onPanResponderRelease: (_, g) => settle(g.dx, g.vx),
+      onPanResponderTerminate: () => settle(0, 0),
+    });
+    return { handlers: pan.panHandlers, x, fade };
+  }, [x, fade]);
+
+  // The neighbours' images load ahead, so a swipe lands on a picture, not a blank stage.
+  useEffect(() => {
+    for (const neighbour of [items[index - 1], items[index + 1]]) {
+      const path = neighbour ? neighbour.cutout_url ?? neighbour.generated_url : null;
+      if (!path) continue;
+      try { Image.prefetch(imageUrl(path)).catch(() => {}); } catch { /* no image cache here (tests) */ }
+    }
+  }, [index, items]);
 
   async function remove(item: ClosetItem) {
     setRemoveError(null);
@@ -124,106 +191,110 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
     }
   }
 
+  if (!currentItem) return null;
+
+  const chrome = (
+    <>
+      <View pointerEvents="box-none" style={{ position: "absolute", top: CHROME_TOP, left: 16, right: 16, height: 40, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <IconButton icon="close" label="Close" onPress={onClose} />
+        {canEdit ? <EditPill onPress={() => setEditing(true)} /> : null}
+      </View>
+      {items.length > 1 ? (
+        <View pointerEvents="box-none" style={{ position: "absolute", top: CHROME_TOP, left: 0, right: 0, height: 40, alignItems: "center", justifyContent: "center" }}>
+          <Counter index={index} count={items.length} onStep={(dir) => stepRef.current(dir)} />
+        </View>
+      ) : null}
+    </>
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-          onPress={onClose}
-          hitSlop={hitSlopFor(32, 32)}
-          style={({ pressed }) => ({
-            width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center",
-            backgroundColor: colors.fill, transform: [{ scale: pressed ? 0.92 : 1 }],
-          })}
-        >
-          <Icon name="close" size={15} color={colors.label} />
-        </Pressable>
-        <Text style={{ ...type.footnote, color: colors.secondaryLabel, fontVariant: ["tabular-nums"] }}>
-          {editing ? "Editing" : items.length > 1 ? `${current + 1} / ${items.length}` : ""}
-        </Text>
-        {canEdit && !editing ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Edit" onPress={() => setEditing(true)} hitSlop={hitSlopFor(28, 44)}>
-            <Text style={{ ...type.body, ...weight(600), color: colors.tint }}>Edit</Text>
-          </Pressable>
-        ) : <View style={{ width: 32 }} />}
-      </View>
-
-      <FlatList
-        testID="item-pager"
-        data={items}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEnabled={!editing && !busy}
-        extraData={editing}
-        initialScrollIndex={startIndex}
-        getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
-        keyExtractor={(item, i) => ("run_id" in item ? `${item.run_id}-${item.item_id}` : `${item.item_id}-${i}`)}
-        onMomentumScrollEnd={(e) => {
-          const { contentOffset, layoutMeasurement } = e.nativeEvent;
-          setCurrent(Math.round(contentOffset.x / layoutMeasurement.width));
-        }}
-        renderItem={({ item, index }) => (
-          <View style={{ width }}>
-            {editing && index === current && isClosetItem(item) ? (
-              <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 4, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
-                <Rise distance={0}>
-                <ItemEditForm
-                  item={item}
-                  onCancel={() => setEditing(false)}
-                  onSaved={(updated) => {
-                    setEditing(false);
-                    onUpdated?.(updated);
-                    toast.show("Changes saved");
-                  }}
-                />
-                </Rise>
-              </ScrollView>
-            ) : (
-              <SheetContent
-                item={item}
-                onRemove={onDeleted && isClosetItem(item) ? () => { setRemoveError(null); setRemoving(item); } : undefined}
-                onUpdated={onUpdated}
-                onBusy={setBusy}
-              />
-            )}
-          </View>
-        )}
-      />
+      {editing && isClosetItem(currentItem) ? (
+        <Rise distance={0} style={{ flex: 1 }}>
+          <ItemEditForm
+            item={currentItem}
+            onClose={onClose}
+            onCancel={() => setEditing(false)}
+            onSaved={(updated) => {
+              setEditing(false);
+              onUpdated?.(updated);
+              toast.show("Changes saved");
+            }}
+          />
+        </Rise>
+      ) : (
+        <SheetContent
+          key={keyOf(currentItem, index)}
+          item={currentItem}
+          chrome={chrome}
+          swipe={swipe}
+          swiping={swiping}
+          onRemove={onDeleted && isClosetItem(currentItem) ? () => { setRemoveError(null); setRemoving(currentItem); } : undefined}
+          onUpdated={onUpdated}
+          onBusy={onBusy}
+        />
+      )}
       <Sheet visible={!!removing} onClose={() => setRemoving(null)} title="Remove from closet?" floating>
-        <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginBottom: 20 }}>
+        <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginBottom: 18 }}>
           {`It leaves your closet. You can't undo this in the app.${billing ? " Credits used for its images are not returned." : ""}`}
         </Text>
         {removeError ? <Text style={{ ...type.footnote, color: colors.destructive, marginBottom: 12 }}>{removeError}</Text> : null}
         <View style={{ gap: 6 }}>
-          <Button title="Remove" variant="destructive" onPress={() => removing && remove(removing)} />
-          <Button title="Cancel" variant="text" onPress={() => setRemoving(null)} />
+          <Button title="Remove" variant="danger" onPress={() => removing && remove(removing)} />
+          <Button title="Cancel" variant="text" size="medium" onPress={() => setRemoving(null)} />
         </View>
       </Sheet>
     </View>
   );
 }
 
-type Side = "front" | "back" | "360";
+const CHROME_TOP = 16;
 
-const STAGE = 372;
-
-// The image stage: the garment on the stone tile, or the empty/working states of Back and 360°.
-function Stage({ children }: { children: React.ReactNode }) {
+function EditPill({ onPress }: { onPress: () => void }) {
   return (
-    <View style={{ height: STAGE, borderRadius: radius.stage, backgroundColor: colors.tile, overflow: "hidden", alignItems: "center", justifyContent: "center" }}>
-      {children}
+    <PressScale onPress={onPress} accessibilityRole="button" accessibilityLabel="Edit" hitSlop={hitSlopFor(40)} style={{ height: 40, borderRadius: radius.pill, paddingHorizontal: 16, justifyContent: "center" }}>
+      <Glass radius={radius.pill} level="base" style={StyleSheet.absoluteFill} />
+      <Text style={{ ...type.subhead, ...weight(600), color: colors.tint }}>Edit</Text>
+    </PressScale>
+  );
+}
+
+// "5 / 8" over the image. VoiceOver can move through the items from here (swipe up or down), since the
+// image swipe is a gesture only.
+function Counter({ index, count, onStep }: { index: number; count: number; onStep: (dir: 1 | -1) => void }) {
+  return (
+    <View
+      accessible
+      accessibilityRole="adjustable"
+      accessibilityLabel="Item"
+      accessibilityValue={{ text: `${index + 1} of ${count}` }}
+      accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+      onAccessibilityAction={(e) => onStep(e.nativeEvent.actionName === "increment" ? 1 : -1)}
+    >
+      <Glass radius={radius.pill} level="base" style={{ height: 30, paddingHorizontal: 12, justifyContent: "center" }}>
+        <Text style={{ ...type.footnote, ...weight(600), color: colors.label, fontVariant: ["tabular-nums"] }}>{`${index + 1} / ${count}`}</Text>
+      </Glass>
     </View>
   );
 }
 
+// Red on a soft red fill: the one irreversible action in the sheet.
+type Side = "front" | "back" | "360";
+
+// The image stage: full width at the top of the screen, on the stone tile. Its controls float over it,
+// so the garment sits between the top row and the segmented control and is never covered.
+const STAGE_MAX = 480;
+const STAGE_TOP = CHROME_TOP + 40 + 8;
+const SEGMENTED_SPACE = 16 + 38 + 12;
+
 function Working({ label }: { label: string }) {
   return (
-    <View accessibilityLiveRegion="polite" style={{ alignItems: "center", gap: 12 }}>
+    <View style={StyleSheet.absoluteFill}>
       <Shimmer />
-      <ActivityIndicator color={colors.secondaryLabel} />
-      <Text style={{ ...type.subhead, ...weight(600), color: colors.label }}>{label}</Text>
+      <View accessibilityLiveRegion="polite" style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
+        <ActivityIndicator color={colors.secondaryLabel} />
+        <Text style={{ ...type.subhead, ...weight(600), color: colors.label }}>{label}</Text>
+      </View>
     </View>
   );
 }
@@ -232,16 +303,21 @@ const withPrice = (label: string, price?: number) => (price ? `${label} · ${cre
 
 type SheetContentProps = {
   item: Item;
+  chrome: React.ReactNode;
+  swipe: Swipe;
+  swiping: boolean;
   onRemove?: () => void;
   onUpdated?: (item: ClosetItem) => void;
-  onBusy?: (busy: boolean) => void;
+  onBusy: (busy: boolean) => void;
 };
 
-function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) {
+function SheetContent({ item, chrome, swipe, swiping, onRemove, onUpdated, onBusy }: SheetContentProps) {
   const { facts } = item;
   const toast = useToast();
+  const { height } = useWindowDimensions();
   const trims = asList(facts.trims.value).filter((t) => t.toLowerCase() !== "not visible");
   const text = asList(facts.visible_text.value);
+  const pattern = capitalize(asList(facts.pattern.value).join(", "));
   const added = "run_id" in item ? addedLabel(item.run_id) : null;
   const back = isClosetItem(item) ? item.back ?? null : null;
   const closetItem = isClosetItem(item) ? item : null;
@@ -301,139 +377,128 @@ function SheetContent({ item, onRemove, onUpdated, onBusy }: SheetContentProps) 
     ...(back || sideViews ? [{ value: "back" as Side, label: "Back" }] : []),
     ...(turnViews || sideViews ? [{ value: "360" as Side, label: "360°" }] : []),
   ];
+  const stageHeight = Math.min(STAGE_MAX, Math.round(height * 0.55));
+  const bottom = segments.length > 1 ? SEGMENTED_SPACE : 20;
+  // The area between the stage's controls.
+  const area = { position: "absolute" as const, top: STAGE_TOP, bottom, left: 20, right: 20 };
 
   let stage: React.ReactNode;
   if (side === "360" && turnViews) {
-    stage = <TurnView views={turnViews} label="AI view" onDragActive={onBusy} />;
+    stage = <TurnView views={turnViews} label="AI view" onDragActive={onBusy} inset={{ top: STAGE_TOP, bottom }} />;
   } else if (side === "360") {
-    stage = (
-      <Stage>
-        {turn?.state === "running" ? <Working label="Creating four angles…" /> : (
-          <View style={{ alignItems: "center", gap: 12, paddingHorizontal: 24 }}>
-            <View style={{ flexDirection: "row", gap: 6 }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-              {[1, 0.7, 0.45, 0.25].map((opacity, i) => (
-                <View key={i} style={{ opacity }}>
-                  <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} tile={colors.grouped} style={{ width: 54, height: 66, borderRadius: 12 }} />
-                </View>
-              ))}
+    stage = turn?.state === "running" ? <Working label="Creating four angles…" /> : (
+      <View style={{ ...area, left: 30, right: 30, alignItems: "center", justifyContent: "center", gap: 12 }}>
+        <View style={{ flexDirection: "row", gap: 6 }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+          {[1, 0.7, 0.45, 0.25].map((opacity, i) => (
+            <View key={i} style={{ opacity }}>
+              <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: 54, height: 66, borderRadius: radius.image - 2 }} />
             </View>
-            <Text style={{ ...type.headline, color: colors.label }}>See it from every angle</Text>
-            <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>
-              Four AI views on an invisible body, about a minute. Labelled as AI.
-            </Text>
-            {turn?.state === "failed" && turn.error ? <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center" }}>{turn.error}</Text> : null}
-            {turnError ? <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center" }}>{turnError}</Text> : null}
-            {sideViews ? (
-              <Button
-                title={withPrice(turn?.state === "failed" ? "Try Again" : "Generate 360°", turnState.price)}
-                size="medium" icon="turn" onPress={requestTurn}
-              />
-            ) : null}
-          </View>
-        )}
-      </Stage>
+          ))}
+        </View>
+        <Text style={{ ...type.headline, color: colors.label }}>See it from every angle</Text>
+        <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>
+          Four AI views on an invisible body, about a minute. Labelled as AI.
+        </Text>
+        {turn?.state === "failed" && turn.error ? <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center" }}>{turn.error}</Text> : null}
+        {turnError ? <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center" }}>{turnError}</Text> : null}
+        {sideViews ? (
+          <Button
+            title={withPrice(turn?.state === "failed" ? "Try Again" : "Generate 360°", turnState.price)}
+            size="medium" icon="turn" onPress={requestTurn}
+          />
+        ) : null}
+      </View>
     );
   } else if (side === "back" && !back) {
-    stage = (
-      <Stage>
-        {uploading ? <Working label="Creating back image…" /> : (
-          <View style={{ alignSelf: "stretch", flex: 1, margin: 16, borderRadius: radius.feature, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.separatorStrong, alignItems: "center", justifyContent: "center", gap: 10, paddingHorizontal: 24 }}>
-            <Icon name="cameraBack" size={30} color={colors.secondaryLabel} />
-            <Text style={{ ...type.headline, color: colors.label }}>No back image yet</Text>
-            <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>
-              Take a photo of the back and we'll create a matching catalog image.
-            </Text>
-            {backError ? <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center" }}>{backError}</Text> : null}
-            {sideViews ? <Button title={withPrice("Add Back Image", backState.price)} size="medium" onPress={requestBack} /> : null}
-          </View>
-        )}
-      </Stage>
+    stage = uploading ? <Working label="Creating back image…" /> : (
+      <View style={{ ...area, top: STAGE_TOP + 8, left: 28, right: 28, borderRadius: radius.stage, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.separatorStrong, alignItems: "center", justifyContent: "center", gap: 10, padding: 20 }}>
+        <Icon name="cameraBack" size={30} color={colors.secondaryLabel} />
+        <Text style={{ ...type.headline, color: colors.label }}>No back image yet</Text>
+        <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>
+          Take a photo of the back and we'll create a matching catalog image.
+        </Text>
+        {backError ? <Text style={{ ...type.footnote, color: colors.destructive, textAlign: "center" }}>{backError}</Text> : null}
+        {sideViews ? <View style={{ marginTop: 4 }}><Button title={withPrice("Add Back Image", backState.price)} size="medium" onPress={requestBack} /></View> : null}
+      </View>
     );
   } else {
     const showBack = side === "back" && back;
     stage = (
       // Same garment turning over: a quick crossfade, not a hard cut.
-      <Rise key={side} distance={0}>
-        <Stage>
-          {showBack ? (
-            <GarmentImage path={back.generated_url} cutoutPath={back.cutout_url} style={{ width: "100%", height: "100%" }} />
-          ) : (
-            <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: "100%", height: "100%" }} />
-          )}
-        </Stage>
+      <Rise key={side} distance={0} style={area}>
+        {showBack ? (
+          <GarmentImage path={back.generated_url} cutoutPath={back.cutout_url} style={{ width: "100%", height: "100%", borderRadius: 0 }} />
+        ) : (
+          <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url} style={{ width: "100%", height: "100%", borderRadius: 0 }} />
+        )}
       </Rise>
     );
   }
 
   const groupLabel = groupOf(item);
+  const category = capitalize(asList(facts.category.value)[0] ?? "");
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, paddingBottom: 48 }}>
-        {stage}
-        {segments.length > 1 ? (
-          <View style={{ marginTop: 14 }}>
-            <Segmented options={segments} value={side} onChange={setSide} />
-          </View>
-        ) : null}
-        {uploading && side !== "back" ? (
-          <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center", marginTop: 10 }}>Creating back image…</Text>
-        ) : null}
-        {backError && side !== "back" ? <Text style={{ ...type.footnote, color: colors.destructive, marginTop: 10, textAlign: "center" }}>{backError}</Text> : null}
+      <ScrollView scrollEnabled={!swiping} contentContainerStyle={{ paddingBottom: 48 }}>
+        <View testID="item-pager" {...swipe.handlers} style={{ height: stageHeight, backgroundColor: colors.tile, overflow: "hidden" }}>
+          <Animated.View style={[StyleSheet.absoluteFill, { opacity: swipe.fade, transform: [{ translateX: swipe.x }] }]}>
+            {stage}
+          </Animated.View>
+          {chrome}
+          {segments.length > 1 ? (
+            <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 16, alignItems: "center" }}>
+              <View style={{ width: segments.length * 78 + 6 }}>
+                <Segmented glass options={segments} value={side} onChange={setSide} />
+              </View>
+            </View>
+          ) : null}
+        </View>
 
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 22, gap: 12 }}>
-          <Text accessibilityRole="header" style={{ ...type.pageTitle, color: colors.label, flexShrink: 1 }}>
-            {garmentName(item)}
+        <Rise distance={0} style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+          {uploading && side !== "back" ? (
+            <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginBottom: 10 }}>Creating back image…</Text>
+          ) : null}
+          {backError && side !== "back" ? <Text style={{ ...type.footnote, color: colors.destructive, marginBottom: 10 }}>{backError}</Text> : null}
+
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <Text accessibilityRole="header" style={{ ...type.pageTitle, color: colors.label, flexShrink: 1 }}>
+              {garmentName(item)}
+            </Text>
+            <TierBadge tier={item.tier} />
+          </View>
+          <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 4 }}>
+            {[groupLabel === "Other" ? (category || "Item") : `${groupLabel} · ${category}`, added].filter(Boolean).join(" · ")}
           </Text>
-          <TierBadge tier={item.tier} />
-        </View>
-        <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 4 }}>
-          {[groupLabel === "Other" ? capitalize(asList(facts.category.value)[0] ?? "Item") : `${groupLabel} · ${capitalize(asList(facts.category.value)[0] ?? "")}`, added].filter(Boolean).join(" · ")}
-        </Text>
 
-        <View testID="facts-card" style={{ marginTop: 20, backgroundColor: colors.grouped, borderRadius: radius.list, paddingHorizontal: 16 }}>
-          <FactRow label="Color" first>
+          <View testID="facts-card" style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
             <ColorSwatches value={facts.colors.value} />
-          </FactRow>
-          <FactRow label="Pattern">
-            <FactText>{capitalize(asList(facts.pattern.value).join(", "))}</FactText>
-          </FactRow>
-          {trims.length > 0 ? (
-            <FactRow label="Details">
-              <FactText>{capitalize(trims.join(", "))}</FactText>
-            </FactRow>
-          ) : null}
-          {text.length > 0 ? (
-            <FactRow label="Text">
-              <FactText>{`“${text.join(" ")}”`}</FactText>
-            </FactRow>
-          ) : null}
-          {back && back.visible_text ? (
-            <FactRow label="Back text">
-              <FactText>{`“${back.visible_text}”`}</FactText>
-            </FactRow>
-          ) : null}
-        </View>
-
-        {"retake_instruction" in item && item.retake_instruction ? (
-          <RetakeNote tier={item.tier} text={item.retake_instruction} />
-        ) : null}
-
-        {actions || onRemove ? (
-          <View style={{ marginTop: 24 }}>
-            <GroupedList>
-              {sideViews && !back && !uploading ? (
-                <Row label="Add Back Image" value={backState.price ? creditsLabel(backState.price) : undefined} onPress={() => { setSide("back"); requestBack(); }} />
-              ) : null}
-              {sideViews && !turnViews && turn?.state !== "running" ? (
-                <Row label="Generate 360° View" value={turnState.price ? creditsLabel(turnState.price) : undefined} onPress={() => { setSide("360"); requestTurn(); }} />
-              ) : null}
-              {onRemove ? <Row label="Remove from closet" destructive onPress={onRemove} /> : null}
-            </GroupedList>
-            {actions && shoe ? (
-              <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 8, marginHorizontal: 16 }}>{NO_SIDE_VIEWS}</Text>
-            ) : null}
+            {pattern ? <FactChip label={`Pattern: ${pattern}`} text={pattern} /> : null}
+            {trims.length > 0 ? <FactChip label={`Details: ${capitalize(trims.join(", "))}`} text={capitalize(trims.join(", "))} /> : null}
+            {text.length > 0 ? <FactChip label={`Text: ${text.join(" ")}`} text={`“${text.join(" ")}”`} /> : null}
+            {back && back.visible_text ? <FactChip label={`Back text: ${back.visible_text}`} prefix="Back" text={`“${back.visible_text}”`} /> : null}
           </View>
-        ) : null}
+
+          {"retake_instruction" in item && item.retake_instruction ? (
+            <RetakeNote tier={item.tier} text={item.retake_instruction} />
+          ) : null}
+
+          {actions || onRemove ? (
+            <View style={{ marginTop: 16 }}>
+              <GroupedList>
+                {sideViews && !back && !uploading ? (
+                  <Row label="Add Back Image" value={backState.price ? creditsLabel(backState.price) : undefined} onPress={() => { setSide("back"); requestBack(); }} />
+                ) : null}
+                {sideViews && !turnViews && turn?.state !== "running" ? (
+                  <Row label="Generate 360° View" value={turnState.price ? creditsLabel(turnState.price) : undefined} onPress={() => { setSide("360"); requestTurn(); }} />
+                ) : null}
+                {onRemove ? <Row label="Remove from closet" destructive onPress={onRemove} /> : null}
+              </GroupedList>
+              {actions && shoe ? (
+                <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 8, marginHorizontal: 16 }}>{NO_SIDE_VIEWS}</Text>
+              ) : null}
+            </View>
+          ) : null}
+        </Rise>
       </ScrollView>
 
       <CostSheet

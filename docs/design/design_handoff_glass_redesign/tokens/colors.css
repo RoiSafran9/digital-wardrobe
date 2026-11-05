@@ -1,0 +1,32 @@
+/* KIPS colors — mirrors mobile/src/theme.ts `palettes`. Light is :root; dark is [data-theme="dark"]. */
+:root{
+--kips-white:#FFFFFF;--kips-black:#000000;
+--kips-stone-50:#F4F4F2;--kips-stone-100:#F3F2EF;
+--kips-ink:#131315;--kips-gray-600:#6E6E73;--kips-gray-400:#A1A1A6;--kips-gray-300:#C7C7CC;
+--kips-blue:#0B5EFF;--kips-blue-handoff:#1F6BFF;--kips-brand-blue:#216CFF;--kips-cream:#EEE6DC;
+--kips-green:#23A55A;--kips-green-text:#1B7F45;--kips-red:#D61E24;--kips-red-bg:#FFECEC;--kips-amber:#E8A33D;--kips-amber-text:#98610E;
+/* semantic — names match theme.ts */
+--background:#FFFFFF;--grouped:#F4F4F2;--card:#FFFFFF;--tile:#F3F2EF;
+--label:#131315;--secondary-label:#6E6E73;--tertiary-label:#A1A1A6;
+--separator:rgba(20,20,25,0.08);--separator-strong:#C7C7CC;--fill:rgba(120,120,128,0.12);
+--tint:#0B5EFF;--tint-soft:rgba(31,107,255,0.10);--on-tint:#FFFFFF;
+--success:#23A55A;--success-text:#1B7F45;
+--destructive:#D61E24;--destructive-bg:#FFECEC;
+--warning:#E8A33D;--warning-text:#98610E;
+--tab-bar:rgba(250,250,250,0.94);--scrim:rgba(0,0,0,0.32);
+/* quality tier badge */
+--tier-high-bg:#E3EBDD;--tier-high-fg:#3B5530;--tier-medium-bg:#F3E8CF;--tier-medium-fg:#7A5A12;--tier-low-bg:#F6E4DD;--tier-low-fg:#9A3B26;
+/* garment swatches — data, not UI; same in both appearances */
+--swatch-black:#1D1B18;--swatch-white:#FFFFFF;--swatch-gray:#8C8C8C;--swatch-navy:#26325A;--swatch-blue:#3E6FB0;--swatch-red:#B8322A;--swatch-pink:#E59AB3;--swatch-dusty-pink:#C9A0A0;--swatch-mint:#A8DCC5;--swatch-green:#4C7A3A;--swatch-yellow:#E8C547;--swatch-orange:#DD7A2E;--swatch-purple:#6E4C9E;--swatch-brown:#7A5236;--swatch-beige:#DCCDB1;
+/* aliases */
+--text-body:var(--label);--text-muted:var(--secondary-label);--surface-screen:var(--background);--surface-card:var(--card);--surface-grouped:var(--grouped);--surface-tile:var(--tile);--accent:var(--tint);
+}
+[data-theme="dark"]{
+--background:#000000;--grouped:#1C1C1E;--card:#1C1C1E;--tile:#1B1B1D;
+--label:#F5F5F7;--secondary-label:#98989F;--tertiary-label:#636366;
+--separator:rgba(255,255,255,0.10);--separator-strong:#48484A;--fill:rgba(120,120,128,0.26);
+--tint:#3D86FF;--tint-soft:rgba(61,134,255,0.18);--on-tint:#000000;
+--success:#30C26A;--success-text:#30C26A;--destructive:#FF5A5F;--destructive-bg:#3A1D1F;
+--warning:#E8A33D;--warning-text:#E8A33D;--tab-bar:rgba(28,28,30,0.94);
+--tier-high-bg:#223020;--tier-high-fg:#B9D4A8;--tier-medium-bg:#362C14;--tier-medium-fg:#E9CD8A;--tier-low-bg:#3B221B;--tier-low-fg:#F2A48F;
+}

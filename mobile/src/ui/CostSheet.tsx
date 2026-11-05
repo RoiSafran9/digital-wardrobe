@@ -31,20 +31,20 @@ export function CostSheet({ visible, title, subtitle, lines, note, confirmLabel,
   };
   return (
     <Sheet visible={visible} onClose={choose("cancelled", onClose)} title={title} floating>
-      {subtitle ? <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginBottom: 16 }}>{subtitle}</Text> : null}
+      {subtitle ? <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginBottom: 14 }}>{subtitle}</Text> : null}
       <View style={{ backgroundColor: colors.fill, borderRadius: 18, paddingHorizontal: 16 }}>
         {q.lines.map((l) => (
           <View key={l.label} style={styles.row}>
             <Text style={{ ...type.body, color: colors.label }}>{l.label}</Text>
-            <Text style={{ ...type.body, color: colors.label }}>{creditsLabel(l.credits)}</Text>
+            <Text style={{ ...type.body, color: colors.label, fontVariant: ["tabular-nums"] }}>{creditsLabel(l.credits)}</Text>
           </View>
         ))}
         <View style={[styles.row, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator }]}>
           <Text style={{ ...type.headline, color: colors.label }}>Total</Text>
-          <Text style={{ ...type.headline, color: colors.label }}>{creditsLabel(q.total)}</Text>
+          <Text style={{ ...type.headline, color: colors.label, fontVariant: ["tabular-nums"] }}>{creditsLabel(q.total)}</Text>
         </View>
       </View>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 12, marginBottom: 20, gap: 12 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 12, marginBottom: 18, gap: 12 }}>
         {credits && q.after !== null ? (
           <Text style={{ ...type.footnote, color: colors.secondaryLabel, fontVariant: ["tabular-nums"] }}>{`Balance ${credits.available} → ${q.after}`}</Text>
         ) : <View />}
@@ -52,7 +52,7 @@ export function CostSheet({ visible, title, subtitle, lines, note, confirmLabel,
       </View>
       <View style={{ gap: 6 }}>
         <Button title={confirmLabel} onPress={choose("confirmed", onConfirm)} disabled={!q.affordable} />
-        <Button title="Cancel" variant="text" onPress={choose("cancelled", onClose)} />
+        <Button title="Cancel" variant="text" size="medium" onPress={choose("cancelled", onClose)} />
       </View>
     </Sheet>
   );

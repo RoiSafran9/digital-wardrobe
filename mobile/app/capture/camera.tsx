@@ -1,21 +1,23 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { CAMERA_INK, FlowBar, Viewfinder } from "../../src/components/capture/FlowChrome";
 import { Icon } from "../../src/components/Icon";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { haptics } from "../../src/haptics";
 import { useFirstPiecesMaybe } from "../../src/firstPieces/FirstPiecesProvider";
+import { PressScale } from "../../src/motion/PressScale";
 import { pickPhoto, pickPhotos } from "../../src/photoPicker";
 import { hitSlopFor, radius, type, weight } from "../../src/theme";
+import { useReducedMotion } from "../../src/useReducedMotion";
 import { Button } from "../../src/ui";
 import { track, trackPermission, useScreenViewed } from "../../src/activity/track";
 
 type Mode = "garments" | "outfit";
-// The camera is always dark, whatever the appearance; these are fixed, not theme colors.
-const INK = "#FFFFFF";
-const MODE_ON = "#FFD60A";  // the system camera's selected-mode yellow
+const MODES: { value: Mode; label: string }[] = [{ value: "garments", label: "Garments" }, { value: "outfit", label: "Outfit" }];
 
 export const HINTS: Record<Mode, string> = {
   garments: "Lay clothes flat · shoot shoes from a low side angle",
@@ -28,6 +30,51 @@ export function nextRoute(mode: Mode, uri: string, onboarding = false) {
   return mode === "outfit"
     ? { pathname: "/outfit/detect" as const, params: onboarding ? { uri, onboarding: "1" } : { uri } }
     : { pathname: "/capture/preview" as const, params: { uri } };
+}
+
+// The Garments / Outfit switch under the viewfinder: a white segment on white 14% that springs to the
+// choice (a 200ms slide under Reduce Motion).
+function ModeSwitch({ value, onChange }: { value: Mode; onChange: (m: Mode) => void }) {
+  const reduced = useReducedMotion();
+  const [spots, setSpots] = useState<Partial<Record<Mode, { x: number; width: number }>>>({});
+  const x = useRef(new Animated.Value(0)).current;
+  const w = useRef(new Animated.Value(0)).current;
+  const placed = useRef(false);
+  const spot = spots[value];
+  useEffect(() => {
+    if (!spot) return;
+    if (!placed.current) {
+      placed.current = true;
+      x.setValue(spot.x);
+      w.setValue(spot.width);
+      return;
+    }
+    const to = (v: Animated.Value, toValue: number) => (reduced
+      ? Animated.timing(v, { toValue, duration: 200, easing: Easing.out(Easing.ease), useNativeDriver: false })
+      : Animated.spring(v, { toValue, damping: 14, stiffness: 180, mass: 1, useNativeDriver: false }));
+    const anim = Animated.parallel([to(x, spot.x), to(w, spot.width)]);
+    anim.start();
+    return () => anim.stop();
+  }, [spot?.x, spot?.width, reduced, x, w]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <View accessibilityRole="tablist" style={{ flexDirection: "row", padding: 3, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.14)" }}>
+      {spot ? (
+        <Animated.View pointerEvents="none" style={{ position: "absolute", top: 3, bottom: 3, left: x, width: w, borderRadius: radius.pill, backgroundColor: CAMERA_INK }} />
+      ) : null}
+      {MODES.map((m) => {
+        const on = m.value === value;
+        return (
+          <Pressable key={m.value} accessibilityRole="tab" accessibilityLabel={m.label} accessibilityState={{ selected: on }} hitSlop={hitSlopFor(31, 80)}
+            onLayout={(e) => { const { x: left, width } = e.nativeEvent.layout; setSpots((s) => ({ ...s, [m.value]: { x: left, width } })); }}
+            onPress={() => { if (on) return; haptics.selection(); onChange(m.value); }}
+            style={{ paddingVertical: 7, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: on && !spot ? CAMERA_INK : "transparent" }}>
+            <Text style={{ ...type.toast, color: on ? "#000000" : CAMERA_INK }}>{m.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
 }
 
 export default function CameraScreen() {
@@ -93,95 +140,75 @@ export default function CameraScreen() {
     }
   }
 
-  const close = (
-    <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} accessibilityRole="button" accessibilityLabel="Close camera" hitSlop={hitSlopFor(40, 40)}
-      style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center" }}>
-      <Icon name="close" size={16} color={INK} />
-    </Pressable>
-  );
+  const close = { icon: "close" as const, label: "Close camera", onPress: () => (router.canGoBack() ? router.back() : router.replace("/")) };
+  const errorText = error ? <Text style={{ ...type.footnote, color: "#FF8A8A", textAlign: "center", paddingHorizontal: 20 }}>{error}</Text> : null;
 
   if (permission && !permission.granted) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#000", paddingHorizontal: 20, paddingTop: top, paddingBottom: bottom }}>
-        {close}
-        <View style={{ flex: 1, justifyContent: "center", gap: 14 }}>
-          <Text style={{ ...type.section, color: INK }}>Camera access is off</Text>
-          <Text style={{ ...type.body, color: "rgba(255,255,255,0.75)" }}>
-            Allow the camera to photograph your clothes, or pick a photo you already took.
-          </Text>
+      <View style={{ flex: 1, backgroundColor: "#000000", paddingTop: top, paddingBottom: bottom }}>
+        <StatusBar style="light" />
+        <FlowBar dark left={close} />
+        <Viewfinder>
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 10, padding: 36 }}>
+            <Icon name="camera" size={40} color="rgba(255,255,255,0.6)" />
+            <Text accessibilityRole="header" style={{ ...type.title3, color: CAMERA_INK, textAlign: "center", marginTop: 4 }}>Camera access is off</Text>
+            <Text style={{ ...type.subhead, color: "rgba(255,255,255,0.75)", textAlign: "center" }}>
+              Allow the camera to photograph your clothes, or pick a photo you already took.
+            </Text>
+          </View>
+        </Viewfinder>
+        <View style={{ minHeight: 170, justifyContent: "center", gap: 10, paddingHorizontal: 20, paddingVertical: 12 }}>
+          {errorText}
           {permission.canAskAgain ? <Button title="Allow Camera" onPress={() => void requestPermission()} /> : null}
-          <Button title={mode === "outfit" ? "Choose Outfit Photo" : collecting ? "Choose Garment Photos" : "Choose Garment Photo"} variant="secondary" onPress={library} />
-          {error ? <Text style={{ ...type.footnote, color: "#FF8A8A" }}>{error}</Text> : null}
+          <Button title={mode === "outfit" ? "Choose Outfit Photo" : collecting ? "Choose Garment Photos" : "Choose Garment Photo"} variant="secondary" icon="photos" onPress={library} />
         </View>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
-      {permission?.granted ? <CameraView ref={camera} style={StyleSheet.absoluteFill} facing="back" /> : null}
-      <View style={{ flex: 1, justifyContent: "space-between", paddingTop: top, paddingBottom: bottom }}>
-        <View style={{ paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          {close}
-          <Text style={{ ...type.subhead, ...weight(600), color: INK }}>{mode === "outfit" ? "Outfit" : "Garments"}</Text>
-          {collecting ? (
-            <Pressable onPress={done} accessibilityRole="button" accessibilityLabel={`Done, ${taken.length} ${taken.length === 1 ? "photo" : "photos"}`} hitSlop={hitSlopFor(40, 60)}
-              style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: MODE_ON, justifyContent: "center" }}>
-              <Text style={{ ...type.subhead, ...weight(700), color: "#000" }}>Done</Text>
-            </Pressable>
-          ) : <View style={{ width: 40 }} />}
-        </View>
+    <View style={{ flex: 1, backgroundColor: "#000000", paddingTop: top, paddingBottom: bottom }}>
+      <StatusBar style="light" />
+      {/* With the Garments / Outfit switch on screen the mode needs no title. */}
+      <FlowBar dark left={close} title={outfitOn && !collecting ? undefined : mode === "outfit" ? "Outfit" : "Garments"}
+        right={collecting ? (
+          <Pressable onPress={done} accessibilityRole="button" accessibilityLabel={`Done, ${taken.length} ${taken.length === 1 ? "photo" : "photos"}`} hitSlop={hitSlopFor(36, 60)}
+            style={{ height: 36, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: CAMERA_INK, justifyContent: "center" }}>
+            <Text style={{ ...type.subhead, ...weight(700), color: "#000000" }}>Done</Text>
+          </Pressable>
+        ) : null} />
 
-        {/* Corner brackets frame where the clothes should go. */}
-        <View pointerEvents="none" style={{ marginHorizontal: 36, aspectRatio: 0.8, alignSelf: "stretch" }}>
-          {(["tl", "tr", "bl", "br"] as const).map((c) => (
-            <View key={c} style={{
-              position: "absolute", width: 34, height: 34, borderColor: INK,
-              top: c[0] === "t" ? 0 : undefined, bottom: c[0] === "b" ? 0 : undefined,
-              left: c[1] === "l" ? 0 : undefined, right: c[1] === "r" ? 0 : undefined,
-              borderTopWidth: c[0] === "t" ? 3 : 0, borderBottomWidth: c[0] === "b" ? 3 : 0,
-              borderLeftWidth: c[1] === "l" ? 3 : 0, borderRightWidth: c[1] === "r" ? 3 : 0,
-              borderTopLeftRadius: c === "tl" ? 14 : 0, borderTopRightRadius: c === "tr" ? 14 : 0,
-              borderBottomLeftRadius: c === "bl" ? 14 : 0, borderBottomRightRadius: c === "br" ? 14 : 0,
-            }} />
-          ))}
-          <View style={{ position: "absolute", top: 14, alignSelf: "center", paddingHorizontal: 12, height: 30, borderRadius: radius.pill, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center" }}>
-            <Text style={{ ...type.footnote, ...weight(600), color: INK }}>{HINTS[mode]}</Text>
+      <Viewfinder>
+        {permission?.granted ? <CameraView ref={camera} style={StyleSheet.absoluteFill} facing="back" /> : null}
+        <View pointerEvents="none" style={{ position: "absolute", top: 20, left: 20, right: 20, alignItems: "center" }}>
+          <View style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: "rgba(0,0,0,0.5)" }}>
+            <Text style={{ ...type.footnote, ...weight(600), color: CAMERA_INK, textAlign: "center" }}>{HINTS[mode]}</Text>
           </View>
         </View>
+      </Viewfinder>
 
-        <View style={{ paddingBottom: 12, gap: 18 }}>
-          {error ? <Text style={{ ...type.footnote, color: "#FF8A8A", textAlign: "center" }}>{error}</Text> : null}
-          {collecting ? (
-            <Text accessibilityLiveRegion="polite" style={{ ...type.footnote, ...weight(600), color: INK, textAlign: "center" }}>
-              {taken.length ? `${taken.length} ${taken.length === 1 ? "photo" : "photos"} added · keep going or tap Done` : "Take as many photos as you like"}
-            </Text>
-          ) : outfitOn ? (
-            <View style={{ flexDirection: "row", justifyContent: "center", gap: 22 }}>
-              {(["garments", "outfit"] as const).map((m) => (
-                <Pressable key={m} onPress={() => { haptics.selection(); setMode(m); }} accessibilityRole="tab"
-                  accessibilityLabel={m === "garments" ? "Garments" : "Outfit"} accessibilityState={{ selected: mode === m }} hitSlop={hitSlopFor(24, 80)}>
-                  <Text style={{ ...type.footnote, ...weight(700), letterSpacing: 1, color: mode === m ? MODE_ON : INK }}>
-                    {m === "garments" ? "GARMENTS" : "OUTFIT"}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 36 }}>
-            <Pressable onPress={library} accessibilityRole="button" accessibilityLabel={mode === "outfit" ? "Choose an outfit photo from your library" : "Choose a garment photo from your library"} hitSlop={hitSlopFor(48, 48)}
-              style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="closet" size={22} color={INK} />
-            </Pressable>
-            <Pressable onPress={shoot} disabled={busy || !permission?.granted} accessibilityRole="button" accessibilityLabel={mode === "outfit" ? "Take outfit photo" : "Take garment photo"}
-              style={{ width: 76, height: 76, borderRadius: 38, borderWidth: 4, borderColor: INK, alignItems: "center", justifyContent: "center", opacity: busy ? 0.6 : 1 }}>
-              <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: INK }} />
-            </Pressable>
-            {collecting && taken.length ? (
-              <Image source={{ uri: taken[taken.length - 1] }} accessibilityLabel="Last photo taken"
-                style={{ width: 48, height: 48, borderRadius: 12, borderWidth: 2, borderColor: INK }} />
-            ) : <View style={{ width: 48 }} />}
-          </View>
+      <View style={{ minHeight: 170, alignItems: "center", justifyContent: "center", gap: 18, paddingVertical: 12 }}>
+        {errorText}
+        {collecting ? (
+          <Text accessibilityLiveRegion="polite" style={{ ...type.footnote, ...weight(600), color: CAMERA_INK, textAlign: "center" }}>
+            {taken.length ? `${taken.length} ${taken.length === 1 ? "photo" : "photos"} added · keep going or tap Done` : "Take as many photos as you like"}
+          </Text>
+        ) : outfitOn ? (
+          <ModeSwitch value={mode} onChange={setMode} />
+        ) : null}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 46 }}>
+          <Pressable onPress={library} accessibilityRole="button" accessibilityLabel={mode === "outfit" ? "Choose an outfit photo from your library" : "Choose a garment photo from your library"} hitSlop={hitSlopFor(44, 44)}
+            style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 12, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.5)", backgroundColor: pressed ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.1)", alignItems: "center", justifyContent: "center" })}>
+            <Icon name="photos" size={20} color={CAMERA_INK} />
+          </Pressable>
+          <PressScale onPress={shoot} disabled={busy || !permission?.granted} accessibilityRole="button" accessibilityLabel={mode === "outfit" ? "Take outfit photo" : "Take garment photo"} scaleTo={0.92}
+            style={{ width: 76, height: 76, borderRadius: 38, borderWidth: 4, borderColor: CAMERA_INK, padding: 4, opacity: busy ? 0.6 : 1 }}>
+            <View style={{ flex: 1, borderRadius: 30, backgroundColor: CAMERA_INK }} />
+          </PressScale>
+          {collecting && taken.length ? (
+            <Image source={{ uri: taken[taken.length - 1] }} accessibilityLabel="Last photo taken"
+              style={{ width: 44, height: 44, borderRadius: 12, borderWidth: 2, borderColor: CAMERA_INK }} />
+          ) : <View style={{ width: 44 }} />}
         </View>
       </View>
     </View>

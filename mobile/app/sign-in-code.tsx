@@ -8,7 +8,7 @@ import { ErrorNote } from "../src/components/ErrorNote";
 import { haptics } from "../src/haptics";
 import { useOnboarding } from "../src/onboarding";
 import { colors, hitSlopFor, type } from "../src/theme";
-import { BackButton } from "../src/ui";
+import { BackButton, GlassScreen } from "../src/ui";
 
 const RESEND_AFTER_S = 60;  // Supabase allows one code per address per minute
 const VERIFY_AFTER_MS = 600;  // let the six green boxes register before moving on
@@ -73,35 +73,37 @@ export default function SignInCodeScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }} keyboardShouldPersistTaps="handled">
-          <View style={{ height: 44, justifyContent: "center" }}>
-            <BackButton onPress={() => router.back()} />
-          </View>
-          <Text accessibilityRole="header" style={{ ...type.screenTitle, color: colors.label, marginTop: 12 }}>Check your inbox</Text>
-          <Text style={{ ...type.body, color: colors.secondaryLabel, marginTop: 8, marginBottom: 28 }}>
-            {`Enter the code we sent to ${email}`}
-          </Text>
-          <CodeBoxes value={code} onChange={(c) => { setError(null); setCode(c); }} disabled={busy} />
-          {code.length === CODE_LENGTH && !error ? (
-            <Text style={{ ...type.footnote, color: colors.successText, marginTop: 10 }}>Checking…</Text>
-          ) : null}
-          {error ? <View style={{ marginTop: 14 }}><ErrorNote message={error} /></View> : null}
-          <View style={{ marginTop: 24, alignItems: "center", gap: 4 }}>
-            <TextLink label={resendIn > 0 ? `Resend code in ${resendIn}s` : "Resend code"} onPress={resend} disabled={busy || resendIn > 0} />
-            <TextLink label="Use a different email" onPress={() => router.back()} disabled={busy} />
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    <GlassScreen>
+      <SafeAreaView style={{ flex: 1 }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }} keyboardShouldPersistTaps="handled">
+            <View style={{ height: 44, justifyContent: "center" }}>
+              <BackButton onPress={() => router.back()} />
+            </View>
+            <Text accessibilityRole="header" style={{ ...type.screenTitle, color: colors.label, marginTop: 14 }}>Check your inbox</Text>
+            <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 6, marginBottom: 22 }}>
+              {`Enter the code we sent to ${email}`}
+            </Text>
+            <CodeBoxes value={code} onChange={(c) => { setError(null); setCode(c); }} disabled={busy} />
+            {code.length === CODE_LENGTH && !error ? (
+              <Text style={{ ...type.footnote, color: colors.successText, marginTop: 10 }}>Checking…</Text>
+            ) : null}
+            {error ? <View style={{ marginTop: 14 }}><ErrorNote message={error} /></View> : null}
+            <View style={{ marginTop: 18, flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
+              <TextLink label={resendIn > 0 ? `Resend code in ${resendIn}s` : "Resend code"} onPress={resend} disabled={busy || resendIn > 0} />
+              <TextLink label="Use a different email" onPress={() => router.back()} disabled={busy} />
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </GlassScreen>
   );
 }
 
 function TextLink({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled: !!disabled }} onPress={onPress} disabled={disabled} hitSlop={hitSlopFor(22)} style={{ paddingVertical: 11 }}>
-      <Text style={{ ...type.body, color: disabled ? colors.secondaryLabel : colors.tint, fontVariant: ["tabular-nums"] }}>{label}</Text>
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled: !!disabled }} onPress={onPress} disabled={disabled} hitSlop={hitSlopFor(20)}>
+      <Text style={{ ...type.subhead, color: disabled ? colors.secondaryLabel : colors.tint, fontVariant: ["tabular-nums"] }}>{label}</Text>
     </Pressable>
   );
 }

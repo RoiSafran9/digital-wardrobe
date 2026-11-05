@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { CameraPill, FadeFromBlack, FlowBar, FlowFooter, PHOTO_BG, Viewfinder } from "../../src/components/capture/FlowChrome";
 import { Icon } from "../../src/components/Icon";
 import { creditsLabel } from "../../src/credits/credits";
 import { useFrontsChoice } from "../../src/credits/useFrontsChoice";
 import { useCaptureJobs } from "../../src/store/captureJobs";
-import { colors, hitSlopFor, radius, type, weight } from "../../src/theme";
-import { BackButton, Button, InsufficientCreditsSheet } from "../../src/ui";
+import { colors, hitSlopFor, radius, type } from "../../src/theme";
+import { Button, Glass, GlassScreen, GroupedList, InsufficientCreditsSheet, Row } from "../../src/ui";
 import { scanGarments } from "../../src/api/client";
 import type { GarmentScan } from "../../src/api/types";
 import { PhotoWithBoxes } from "../../src/components/outfit/PhotoWithBoxes";
@@ -26,6 +28,7 @@ function MaxFrontsPreview({ uri, note }: { uri: string; note?: string | null }) 
   const { start } = useCaptureJobs();
   const fronts = useFrontsChoice();
   const [short, setShort] = useState(false);
+  const [footer, setFooter] = useState(0);
   const { active, fronts: n, max, price, available } = fronts;
 
   const generate = () => {
@@ -38,67 +41,93 @@ function MaxFrontsPreview({ uri, note }: { uri: string; note?: string | null }) 
     <Pressable
       accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !enabled }} disabled={!enabled}
       onPress={() => fronts.setFronts(next)} hitSlop={hitSlopFor(34, 34)}
-      style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.card, alignItems: "center", justifyContent: "center", opacity: enabled ? 1 : 0.4 }}
+      style={({ pressed }) => ({ width: 34, height: 34, borderRadius: 17, backgroundColor: pressed ? colors.tintSoft : colors.fill, alignItems: "center", justifyContent: "center", opacity: enabled ? 1 : 0.4 })}
     >
       <Icon name={icon} size={16} color={colors.tint} />
     </Pressable>
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ height: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20 }}>
-        <BackButton label="Retake" onPress={() => router.back()} />
-        <Text style={{ ...type.headline, color: colors.label }}>Preview</Text>
-        <View style={{ width: 70 }} />
-      </View>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 18 }}>
-        <Image source={{ uri }} accessibilityLabel="Your photo" style={{ width: "100%", aspectRatio: 1, borderRadius: radius.feature, backgroundColor: colors.tile }} resizeMode="cover" />
+    <GlassScreen>
+      <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+        <FlowBar left={{ icon: "chevronLeft", label: "Retake", onPress: () => router.back() }} title="Preview" />
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 6, paddingBottom: footer + 20, gap: 16 }}>
+          <Image source={{ uri }} accessibilityLabel="Your photo" style={{ width: "100%", height: 300, borderRadius: radius.feature, backgroundColor: PHOTO_BG }} resizeMode="cover" />
 
-        <View style={{ gap: 4 }}>
-          <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>Ready to create</Text>
-          <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>
-            Each piece in the photo becomes its own catalog image. Finding them is free.
-          </Text>
-          {note ? <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>{note}</Text> : null}
-        </View>
-
-        {active ? (
-          <View style={{ backgroundColor: colors.grouped, borderRadius: radius.list, padding: 16, gap: 12 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <Text style={{ ...type.body, color: colors.label }}>Pieces in this photo</Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                {step("Fewer pieces", "remove", n > 1, n - 1)}
-                <Text accessibilityLabel={`${n} pieces`} style={{ ...type.headline, color: colors.label, fontVariant: ["tabular-nums"], minWidth: 22, textAlign: "center" }}>{n}</Text>
-                {step("More pieces", "add", n < max, n + 1)}
-              </View>
-            </View>
-            <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator, paddingTop: 12, gap: 8 }}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ ...type.body, color: colors.label }}>{`Front catalog image × ${n}`}</Text>
-                <Text style={{ ...type.body, color: colors.label }}>{creditsLabel(n * price)}</Text>
-              </View>
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Balance after</Text>
-                <Text style={{ ...type.subhead, color: colors.secondaryLabel, fontVariant: ["tabular-nums"] }}>{creditsLabel(Math.max(0, available - n * price))}</Text>
-              </View>
-            </View>
-            <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>
-              You pay only for the pieces made, up to this number; extra pieces aren't made.
+          <View style={{ gap: 4 }}>
+            <Text accessibilityRole="header" style={{ ...type.title2, color: colors.label }}>Ready to create</Text>
+            <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>
+              Each piece in the photo becomes its own catalog image. Finding them is free.
             </Text>
+            {note ? <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>{note}</Text> : null}
           </View>
-        ) : null}
-        <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>
-          You can review every piece once it's ready.
-        </Text>
-      </ScrollView>
-      <View style={{ paddingHorizontal: 20, paddingBottom: 8, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator }}>
-        <Button
-          title={active ? `Generate up to ${n} ${n === 1 ? "Item" : "Items"} · ${creditsLabel(n * price)}` : "Create Catalog Images"}
-          onPress={generate}
-        />
-      </View>
+
+          {active ? (
+            <View style={{ gap: 8 }}>
+              <GroupedList>
+                <Row label="Pieces in this photo" accessory={
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+                    {step("Fewer pieces", "remove", n > 1, n - 1)}
+                    <Text accessibilityLabel={`${n} pieces`} style={{ ...type.headline, color: colors.label, fontVariant: ["tabular-nums"], minWidth: 22, textAlign: "center" }}>{n}</Text>
+                    {step("More pieces", "add", n < max, n + 1)}
+                  </View>
+                } />
+                <Row label={`Front catalog image × ${n}`} value={creditsLabel(n * price)} />
+                <Row label="Balance after" value={creditsLabel(Math.max(0, available - n * price))} />
+              </GroupedList>
+              <Text style={{ ...type.footnote, color: colors.secondaryLabel, paddingHorizontal: 16 }}>
+                You pay only for the pieces made, up to this number; extra pieces aren't made.
+              </Text>
+            </View>
+          ) : null}
+          <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>
+            You can review every piece once it's ready.
+          </Text>
+        </ScrollView>
+        <FlowFooter onHeight={setFooter}>
+          <Button
+            title={active ? `Generate up to ${n} ${n === 1 ? "Item" : "Items"} · ${creditsLabel(n * price)}` : "Create Catalog Images"}
+            onPress={generate}
+          />
+        </FlowFooter>
+      </SafeAreaView>
+      <FadeFromBlack />
       <InsufficientCreditsSheet visible={short} needed={price} onClose={() => setShort(false)} />
-    </SafeAreaView>
+    </GlassScreen>
+  );
+}
+
+// The free scan runs on the camera's dark screen: the photo stays in the viewfinder where it was taken
+// while a band sweeps over it.
+function Scanning({ uri, onBack }: { uri: string; onBack: () => void }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={{ flex: 1, backgroundColor: "#000000", paddingTop: Math.max(insets.top, 54) + 6, paddingBottom: Math.max(insets.bottom, 20) }}>
+      <StatusBar style="light" />
+      <FlowBar dark left={{ icon: "chevronLeft", label: "Retake", onPress: onBack }} title="Finding the pieces…" live />
+      <Viewfinder>
+        <Image source={{ uri }} accessibilityLabel="Your photo" style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <ScanBand />
+      </Viewfinder>
+      <View style={{ minHeight: 170, justifyContent: "center" }}>
+        <CameraPill text="Finding them is free" />
+      </View>
+    </View>
+  );
+}
+
+// One piece the scan found: "1 · White shirt ×" to leave it out, dimmed with a + to bring it back.
+function PieceChip({ n, label, on, onPress }: { n: number; label: string; on: boolean; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={`${n}, ${label}`} hitSlop={hitSlopFor(34)}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 34, paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: on ? undefined : colors.fill }}>
+        {on ? <Glass radius={radius.pill} level="card" style={StyleSheet.absoluteFill} /> : null}
+        <Text style={{ ...type.toast, color: on ? colors.label : colors.secondaryLabel, textDecorationLine: on ? "none" : "line-through" }}>
+          <Text style={{ color: on ? colors.tint : colors.secondaryLabel }}>{n}</Text>{` · ${label}`}
+        </Text>
+        <Icon name={on ? "close" : "add"} size={12} color={colors.secondaryLabel} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -117,6 +146,7 @@ export default function PreviewScreen() {
   const [note, setNote] = useState<string | null>(null);
   const [off, setOff] = useState<Set<number>>(new Set());
   const [short, setShort] = useState(false);
+  const [footer, setFooter] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -135,6 +165,7 @@ export default function PreviewScreen() {
   const label = pieceLabel;
 
   if (mode === "fallback") return <MaxFrontsPreview uri={uri} note={note} />;
+  if (mode === "scanning") return <Scanning uri={uri} onBack={() => router.back()} />;
 
   const toggle = (index: number) => {
     haptics.selection();
@@ -147,94 +178,70 @@ export default function PreviewScreen() {
     router.replace("/capture/processing");
   };
   const retake = scan?.quality?.status === "retake";
-  const nothing = mode === "scanned" && !retake && pieces.length === 0;
+  const nothing = !retake && pieces.length === 0;
   const deselect = price ? Math.max(0, picked.length - Math.floor(available / price)) : 0;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ height: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20 }}>
-        <BackButton label="Retake" onPress={() => router.back()} />
-        <Text style={{ ...type.headline, color: colors.label }}>Preview</Text>
-        <View style={{ width: 70 }} />
-      </View>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
-        <PhotoWithBoxes uri={uri} candidates={retake ? [] : boxes} photoSize={scan?.image}
-          selected={picked.map((p) => `p${p.index}`)} onToggle={(id) => toggle(Number(id.slice(1)))}
-          overlay={mode === "scanning" ? <ScanBand /> : null} maxHeight={380} />
-        {mode === "scanning" ? (
-          <View style={{ alignItems: "center", gap: 8 }}>
-            <Text accessibilityLiveRegion="polite" style={{ ...type.section, color: colors.label }}>Finding the pieces…</Text>
-            <Text style={{ ...type.footnote, ...weight(600), color: colors.successText }}>Finding them is free</Text>
-          </View>
-        ) : retake ? (
-          <View style={{ gap: 6 }}>
-            <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>This photo can't be used</Text>
-            <Text style={{ ...type.body, color: colors.secondaryLabel }}>{`${scan?.quality?.reason ?? "Try again"}. Lay each piece flat, in good light.`}</Text>
-          </View>
-        ) : nothing ? (
-          <View style={{ gap: 10 }}>
-            <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>No pieces found</Text>
-            <Text style={{ ...type.body, color: colors.secondaryLabel }}>{scan?.reason ?? "Try again with each piece laid flat, in good light."}</Text>
-            {outfit && isWornRejection(scan?.reason) ? (
-              <Button title={TRY_AS_OUTFIT} variant="secondary" onPress={() => router.replace({ pathname: "/outfit/detect", params: { uri, flow: "outfit" } })} />
-            ) : null}
-          </View>
-        ) : (
-          <>
-            <View style={{ gap: 4 }}>
-              <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>
-                {pieces.length === 1 ? "1 garment found" : `${pieces.length} garments found`}
-              </Text>
-              <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Tap a piece to leave it out. You pay only for the ones you create.</Text>
+    <GlassScreen>
+      <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+        <FlowBar left={{ icon: "chevronLeft", label: "Retake", onPress: () => router.back() }} title="Preview" />
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 6, paddingBottom: footer + 20, gap: 16 }}>
+          <PhotoWithBoxes framed wash={false} uri={uri} candidates={retake ? [] : boxes} photoSize={scan?.image}
+            selected={picked.map((p) => `p${p.index}`)} onToggle={(id) => toggle(Number(id.slice(1)))} maxHeight={300} />
+          {retake ? (
+            <View style={{ gap: 6 }}>
+              <Text accessibilityRole="header" style={{ ...type.title2, color: colors.label }}>This photo can't be used</Text>
+              <Text style={{ ...type.body, color: colors.secondaryLabel }}>{`${scan?.quality?.reason ?? "Try again"}. Lay each piece flat, in good light.`}</Text>
             </View>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {pieces.map((p, i) => {
-                const on = !off.has(p.index);
-                return (
-                  <Pressable key={p.index} onPress={() => toggle(p.index)} accessibilityRole="checkbox" accessibilityState={{ checked: on }}
-                    accessibilityLabel={`${i + 1}, ${label(p)}`}
-                    style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 34, paddingHorizontal: 12, borderRadius: radius.pill,
-                      backgroundColor: on ? colors.tintSoft : colors.fill, borderWidth: 1.5, borderColor: on ? colors.tint : "transparent" }}>
-                    <Text style={{ ...type.footnote, ...weight(700), color: on ? colors.tint : colors.secondaryLabel }}>{i + 1}</Text>
-                    <Text style={{ ...type.subhead, color: on ? colors.label : colors.secondaryLabel }}>{label(p)}</Text>
-                  </Pressable>
-                );
-              })}
+          ) : nothing ? (
+            <View style={{ gap: 10 }}>
+              <Text accessibilityRole="header" style={{ ...type.title2, color: colors.label }}>No pieces found</Text>
+              <Text style={{ ...type.body, color: colors.secondaryLabel }}>{scan?.reason ?? "Try again with each piece laid flat, in good light."}</Text>
+              {outfit && isWornRejection(scan?.reason) ? (
+                <Button title={TRY_AS_OUTFIT} variant="glass" onPress={() => router.replace({ pathname: "/outfit/detect", params: { uri, flow: "outfit" } })} />
+              ) : null}
             </View>
-            {price !== undefined ? (
-              <View style={{ backgroundColor: colors.grouped, borderRadius: radius.list, padding: 16, gap: 8 }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={{ ...type.body, color: colors.label }}>{`Front catalog image × ${picked.length}`}</Text>
-                  <Text style={{ ...type.body, color: colors.label }}>{creditsLabel(total)}</Text>
-                </View>
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Balance after</Text>
-                  <Text style={{ ...type.subhead, color: colors.secondaryLabel, fontVariant: ["tabular-nums"] }}>{creditsLabel(Math.max(0, available - total))}</Text>
-                </View>
+          ) : (
+            <>
+              <View style={{ gap: 4 }}>
+                <Text accessibilityRole="header" style={{ ...type.title2, color: colors.label }}>
+                  {pieces.length === 1 ? "1 garment found" : `${pieces.length} garments found`}
+                </Text>
+                <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Tap a piece to leave it out. You pay only for the ones you create.</Text>
               </View>
-            ) : null}
-            <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>You'll review every piece once it's ready.</Text>
-          </>
-        )}
-      </ScrollView>
-      <View style={{ paddingHorizontal: 20, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator }}>
-        {retake || nothing ? (
-          <Button title="Retake" onPress={() => router.back()} />
-        ) : (
-          <Button
-            title={price !== undefined
-              ? `Generate ${picked.length} ${picked.length === 1 ? "Item" : "Items"} · ${creditsLabel(total)}`
-              : `Create ${picked.length} ${picked.length === 1 ? "Item" : "Items"}`}
-            onPress={generate}
-            disabled={mode !== "scanned" || picked.length === 0}
-          />
-        )}
-      </View>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {pieces.map((p, i) => <PieceChip key={p.index} n={i + 1} label={label(p)} on={!off.has(p.index)} onPress={() => toggle(p.index)} />)}
+              </View>
+              {price !== undefined ? (
+                <GroupedList>
+                  <Row label={`Front catalog image × ${picked.length}`} value={creditsLabel(total)} />
+                  <Row label="Balance after" value={creditsLabel(Math.max(0, available - total))} />
+                </GroupedList>
+              ) : null}
+              <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>You'll review every piece once it's ready.</Text>
+            </>
+          )}
+        </ScrollView>
+        <FlowFooter onHeight={setFooter}>
+          {retake || nothing ? (
+            <Button title="Retake" onPress={() => router.back()} />
+          ) : (
+            <Button
+              title={price !== undefined
+                ? `Generate ${picked.length} ${picked.length === 1 ? "Item" : "Items"} · ${creditsLabel(total)}`
+                : `Create ${picked.length} ${picked.length === 1 ? "Item" : "Items"}`}
+              onPress={generate}
+              disabled={picked.length === 0}
+            />
+          )}
+        </FlowFooter>
+      </SafeAreaView>
+      <FadeFromBlack />
       <InsufficientCreditsSheet
         visible={short} needed={total} onClose={() => setShort(false)}
         onAdjust={deselect > 0 ? () => setShort(false) : undefined}
         body={deselect > 0 ? `Leave out ${deselect} ${deselect === 1 ? "piece" : "pieces"} to continue with what you have.` : undefined}
       />
-    </SafeAreaView>
+    </GlassScreen>
   );
 }

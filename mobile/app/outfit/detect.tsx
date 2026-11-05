@@ -4,16 +4,28 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { scanOutfit } from "../../src/api/client";
 import type { OutfitScan } from "../../src/api/types";
+import { FlowBar } from "../../src/components/capture/FlowChrome";
 import { PhotoWithBoxes } from "../../src/components/outfit/PhotoWithBoxes";
 import { ScanBand } from "../../src/components/outfit/ScanBand";
 import { haptics } from "../../src/haptics";
 import { pickable } from "../../src/outfit/outfit";
 import { rememberScan } from "../../src/outfit/scanCache";
 import { colors, radius, type, weight } from "../../src/theme";
-import { BackButton, Button } from "../../src/ui";
+import { Button, Glass, GlassScreen } from "../../src/ui";
 import { useScreenViewed } from "../../src/activity/track";
 
 export const SHOW_BOXES_MS = 1400;  // let the boxes land before moving on
+
+// "Detection is free", floating on glass at the top of the photo.
+function FreePill() {
+  return (
+    <View pointerEvents="none" style={{ position: "absolute", top: 12, left: 0, right: 0, alignItems: "center" }}>
+      <Glass radius={radius.pill} level="base" style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
+        <Text style={{ ...type.footnote, ...weight(700), color: colors.label }}>Detection is free</Text>
+      </Glass>
+    </View>
+  );
+}
 
 // Outfit Photo, Stage 1 (free): upload the photo, find the garments on the person, show them, then
 // open the pick screen. No image is generated and no credits are used here.
@@ -45,30 +57,25 @@ export default function DetectScreen() {
   }, [scan]);
 
   const found = scan ? pickable(scan) : [];
+  const title = error ? undefined : scan ? (found.length === 1 ? "1 garment found" : `${found.length} garments found`) : "Finding garments…";
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ height: 44, justifyContent: "center", paddingHorizontal: 20 }}>
-        <BackButton label="Cancel" onPress={() => router.back()} />
-      </View>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }}>
-        <PhotoWithBoxes uri={uri} candidates={found} overlay={scan || error ? null : <ScanBand />} />
-        {error ? (
-          <View style={{ gap: 12 }}>
-            <Text style={{ ...type.section, color: colors.label }}>Couldn't check this photo</Text>
-            <Text style={{ ...type.body, color: colors.secondaryLabel }}>{error}</Text>
-            <Button title="Try Another Outfit Photo" onPress={() => router.replace({ pathname: "/capture/camera", params: { mode: "outfit", ...mode } })} />
-          </View>
-        ) : (
-          <View style={{ alignItems: "center", gap: 8 }}>
-            <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={{ ...type.section, color: colors.label }}>
-              {scan ? (found.length === 1 ? "1 garment found" : `${found.length} garments found`) : "Finding garments…"}
-            </Text>
-            <View style={{ paddingHorizontal: 12, height: 28, borderRadius: radius.pill, backgroundColor: colors.grouped, justifyContent: "center" }}>
-              <Text style={{ ...type.footnote, ...weight(600), color: colors.successText }}>Detection is free</Text>
+    <GlassScreen>
+      <SafeAreaView style={{ flex: 1 }}>
+        <FlowBar left={{ icon: "chevronLeft", label: "Cancel", onPress: () => router.back() }} title={title} live />
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 6, paddingBottom: 24, gap: 20 }}>
+          <PhotoWithBoxes framed uri={uri} candidates={found} maxHeight={520}
+            overlay={error ? null : <>{scan ? null : <ScanBand />}<FreePill /></>} />
+          {error ? (
+            <View style={{ gap: 10 }}>
+              <Text accessibilityRole="header" style={{ ...type.title2, color: colors.label }}>Couldn't check this photo</Text>
+              <Text style={{ ...type.body, color: colors.secondaryLabel }}>{error}</Text>
+              <View style={{ marginTop: 8 }}>
+                <Button title="Try Another Outfit Photo" onPress={() => router.replace({ pathname: "/capture/camera", params: { mode: "outfit", ...mode } })} />
+              </View>
             </View>
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+          ) : null}
+        </ScrollView>
+      </SafeAreaView>
+    </GlassScreen>
   );
 }

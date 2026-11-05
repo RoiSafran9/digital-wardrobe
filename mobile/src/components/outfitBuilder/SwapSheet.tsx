@@ -8,7 +8,10 @@ import { colors, radius, type, weight } from "../../theme";
 import { Button, Sheet } from "../../ui";
 import { GarmentImage } from "../GarmentImage";
 
-const TILE = 64;
+const TILE_W = 96;
+const TILE_H = 118;
+const RING = 2.5;  // the current piece's tint outline
+const RING_GAP = 2;
 
 type Props = {
   visible: boolean;
@@ -22,69 +25,65 @@ type Props = {
   onChoose: (itemId: string) => void;
 };
 
-// U5 — Swap This Piece (02-UX-FLOWS.md): ranked owned alternatives for the tapped slot, or a
-// friendly "no alternatives yet" state. Never a stock photo, never another account's item.
-export function SwapSheet({ visible, onClose, slot, current, loading, error, alternatives, items, onChoose }: Props) {
-  const label = slot ? SLOT_LABELS[slot] : "";
+// A garment on its stone tile, inside a ring that is tint for the piece in the look and clear for the rest.
+function Candidate({ item, current, note, label, onPress }: {
+  item: ClosetItem; current: boolean; note?: string; label: string; onPress: () => void;
+}) {
   return (
-    <Sheet visible={visible} onClose={onClose} title="Swap This Piece">
-      {current ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <View style={{ width: 48, height: 48, borderRadius: radius.tile, backgroundColor: colors.tile, overflow: "hidden" }}>
-            <GarmentImage path={current.generated_url} cutoutPath={current.cutout_url} cropPath={current.crop_url}
-              tile={colors.tile} style={{ width: 48, height: 48, borderRadius: radius.tile }} />
-          </View>
-          <View>
-            <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>Currently in this look</Text>
-            <Text style={{ ...type.subhead, ...weight(600), color: colors.label }}>{garmentName(current)}</Text>
-          </View>
+    <PressScale onPress={onPress} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: current }}
+      style={{ width: TILE_W + (RING + RING_GAP) * 2, alignItems: "center" }}>
+      <View style={{ padding: RING_GAP, borderWidth: RING, borderColor: current ? colors.tint : "transparent", borderRadius: radius.garment + RING + RING_GAP }}>
+        <View style={{ width: TILE_W, height: TILE_H, borderRadius: radius.garment, backgroundColor: colors.tile, overflow: "hidden" }}>
+          <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url}
+            tile={colors.tile} style={{ width: TILE_W, height: TILE_H, borderRadius: radius.garment }} />
         </View>
-      ) : null}
+      </View>
+      <Text numberOfLines={1} style={{ ...type.footnote, ...weight(600), color: colors.label, marginTop: 4, maxWidth: TILE_W }}>{garmentName(item)}</Text>
+      {note ? <Text numberOfLines={2} style={{ ...type.caption, color: colors.secondaryLabel, textAlign: "center", maxWidth: TILE_W }}>{note}</Text> : null}
+    </PressScale>
+  );
+}
 
-      {loading ? (
-        <View style={{ paddingVertical: 24, alignItems: "center" }}>
-          <ActivityIndicator color={colors.secondaryLabel} />
-        </View>
-      ) : error ? (
-        <Text style={{ ...type.body, color: colors.destructive, marginBottom: 16 }}>{error}</Text>
-      ) : alternatives.length === 0 ? (
-        <View style={{ paddingVertical: 8, gap: 16 }}>
-          <Text style={{ ...type.body, color: colors.secondaryLabel }}>
-            {`No other ${label.toLowerCase()} in your closet yet.`}
-          </Text>
-          <Button title="Keep This Piece" variant="secondary" size="medium" onPress={onClose} />
-        </View>
-      ) : (
-        <>
-          <Text style={{ ...type.eyebrow, color: colors.secondaryLabel, marginBottom: 10 }}>Other options from your closet</Text>
-          <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
-            <View style={{ gap: 10, paddingBottom: 8 }}>
-              {alternatives.map(({ item_id, reason }) => {
-                const item = items.get(item_id);
-                if (!item) return null;
-                return (
-                  <PressScale
-                    key={item_id}
-                    onPress={() => onChoose(item_id)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Use ${garmentName(item)}`}
-                    style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.fill, borderRadius: radius.list, padding: 10 }}
-                  >
-                    <View style={{ width: TILE, height: TILE, borderRadius: radius.tile, backgroundColor: colors.tile, overflow: "hidden" }}>
-                      <GarmentImage path={item.generated_url} cutoutPath={item.cutout_url} cropPath={item.crop_url}
-                        tile={colors.tile} style={{ width: TILE, height: TILE, borderRadius: radius.tile }} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ ...type.subhead, ...weight(600), color: colors.label }}>{garmentName(item)}</Text>
-                      <Text numberOfLines={2} style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 1 }}>{reason}</Text>
-                    </View>
-                  </PressScale>
-                );
-              })}
-            </View>
-          </ScrollView>
-        </>
-      )}
+// U5 — Swap a piece (02-UX-FLOWS.md): the piece in the look first, outlined, then the server's ranked
+// owned alternatives for that slot in a sideways row; tap one to use it. Or a friendly "no
+// alternatives yet" state. Never a stock photo, never another account's item.
+export function SwapSheet({ visible, onClose, slot, current, loading, error, alternatives, items, onChoose }: Props) {
+  const label = slot ? SLOT_LABELS[slot].toLowerCase() : "";
+  const options = alternatives.flatMap((a) => {
+    const item = items.get(a.item_id);
+    return item ? [{ id: a.item_id, item, reason: a.reason }] : [];
+  });
+  return (
+    <Sheet visible={visible} onClose={onClose} floating>
+      <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>{`Swap ${label}`}</Text>
+      <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 2, marginBottom: 14 }}>
+        {loading ? "Looking in your closet…" : options.length
+          ? `${options.length} other ${options.length === 1 ? "option" : "options"} from your closet`
+          : current ? "Currently in this look" : ""}
+      </Text>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }}
+        contentContainerStyle={{ paddingHorizontal: 20 - RING - RING_GAP, gap: 6, alignItems: "flex-start" }}>
+        {current ? (
+          <Candidate item={current} current label={`${garmentName(current)}, currently in this look`} onPress={onClose} />
+        ) : null}
+        {loading ? (
+          <View style={{ width: TILE_W, height: TILE_H, alignItems: "center", justifyContent: "center" }}>
+            <ActivityIndicator color={colors.secondaryLabel} />
+          </View>
+        ) : error ? null : options.map(({ id, item, reason }) => (
+          <Candidate key={id} item={item} current={false} note={reason} label={`Use ${garmentName(item)}`} onPress={() => onChoose(id)} />
+        ))}
+      </ScrollView>
+
+      {error ? (
+        <Text style={{ ...type.body, color: colors.destructive, marginTop: 14 }}>{error}</Text>
+      ) : !loading && options.length === 0 ? (
+        <Text style={{ ...type.body, color: colors.secondaryLabel, marginTop: 14 }}>{`No other ${label} in your closet yet.`}</Text>
+      ) : null}
+      <View style={{ marginTop: 10 }}>
+        <Button title="Keep This Piece" variant="text" size="medium" onPress={onClose} />
+      </View>
     </Sheet>
   );
 }

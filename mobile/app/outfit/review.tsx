@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { deleteItem, getPendingItems, imageUrl, keepItem, regenerateItem } from "../../src/api/client";
@@ -8,6 +8,8 @@ import { creditsLabel } from "../../src/credits/credits";
 import { ActivityIndicator } from "react-native";
 import type { ClosetItem } from "../../src/api/types";
 import { groupOf } from "../../src/categoryGroups";
+import { FlowBar, FlowFooter, PHOTO_BG } from "../../src/components/capture/FlowChrome";
+import { ErrorNote } from "../../src/components/ErrorNote";
 import { GarmentImage } from "../../src/components/GarmentImage";
 import { TierBadge } from "../../src/components/TierBadge";
 import { useCredits } from "../../src/credits/CreditsProvider";
@@ -17,7 +19,7 @@ import { AI_NOTE } from "../../src/outfit/outfit";
 import { useCaptureJobs } from "../../src/store/captureJobs";
 import { idsParam } from "../../src/firstPieces/celebrate";
 import { colors, hitSlopFor, radius, type, weight } from "../../src/theme";
-import { Button, CostSheet, InsufficientCreditsSheet } from "../../src/ui";
+import { Button, CostSheet, GlassScreen, GroupedList, InsufficientCreditsSheet, Row } from "../../src/ui";
 import { useScreenViewed } from "../../src/activity/track";
 
 // Outfit Photo results wait here until the user keeps or discards each one: the crop of their photo
@@ -37,6 +39,7 @@ export default function ReviewScreen() {
   const [regenerating, setRegenerating] = useState<string | null>(null);
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [short, setShort] = useState(false);
+  const [footer, setFooter] = useState(0);
   const unit = billing ? prices.garment : undefined;
 
   async function regenerate(target: ClosetItem) {
@@ -97,102 +100,104 @@ export default function ReviewScreen() {
   }
 
   const header = (
-    <View style={{ height: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20 }}>
-      <Text style={{ ...type.headline, color: colors.label }}>{list.length ? `Review ${at + 1} of ${list.length}` : "Review"}</Text>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-        {list.length ? <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>{`${kept.length} kept`}</Text> : null}
+    <FlowBar
+      title={list.length ? `Review ${at + 1} of ${list.length}` : "Review"}
+      leftNode={list.length ? <Text style={{ ...type.subhead, color: colors.secondaryLabel, fontVariant: ["tabular-nums"] }}>{`${kept.length} kept`}</Text> : null}
+      right={
         <Pressable onPress={() => router.replace("/closet")} accessibilityRole="button" hitSlop={hitSlopFor(28)}>
           <Text style={{ ...type.body, color: colors.tint }}>Later</Text>
         </Pressable>
-      </View>
-    </View>
+      }
+    />
   );
+  const regenLabel = unit ? `↻ Regenerate · ${creditsLabel(unit)}` : "↻ Regenerate";
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      {header}
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
-        {failed ? (
-          <View style={{ borderRadius: radius.button, padding: 12, backgroundColor: colors.destructiveBg }}>
-            <Text style={{ ...type.subhead, color: colors.destructive }}>
-              {`Couldn't make: ${failed}. Those weren't charged — try again, or photograph them laid flat.`}
-            </Text>
-          </View>
-        ) : null}
-        {error ? <Text style={{ ...type.subhead, color: colors.destructive }}>{error}</Text> : null}
-        {items === null && !error ? <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Loading…</Text> : null}
-        {items !== null && list.length === 0 ? <Text style={{ ...type.body, color: colors.secondaryLabel }}>All reviewed.</Text> : null}
+    <GlassScreen>
+      <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+        {header}
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 6, paddingBottom: footer + 20, gap: 14 }}>
+          {failed ? <ErrorNote message={`Couldn't make: ${failed}. Those weren't charged — try again, or photograph them laid flat.`} /> : null}
+          {error ? <Text style={{ ...type.subhead, color: colors.destructive }}>{error}</Text> : null}
+          {items === null && !error ? <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Loading…</Text> : null}
+          {items !== null && list.length === 0 ? <Text style={{ ...type.body, color: colors.secondaryLabel }}>All reviewed.</Text> : null}
 
-        {item ? (
-          <>
-            <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-end" }}>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={{ ...type.eyebrow, color: colors.secondaryLabel }}>Your photo</Text>
-                <View style={{ aspectRatio: 3 / 4, borderRadius: radius.list, overflow: "hidden", backgroundColor: colors.tile }}>
-                  <Image source={{ uri: imageUrl(item.crop_url) }} style={{ width: "100%", height: "100%" }} resizeMode="cover" accessibilityLabel="Crop of your photo" />
+          {item ? (
+            <>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flex: 1, gap: 6 }}>
+                  <Text style={{ ...type.eyebrow, color: colors.secondaryLabel }}>Your photo</Text>
+                  <View style={{ height: 250, borderRadius: radius.garment, overflow: "hidden", backgroundColor: PHOTO_BG }}>
+                    <Image source={{ uri: imageUrl(item.crop_url) }} style={{ width: "100%", height: "100%" }} resizeMode="cover" accessibilityLabel="Crop of your photo" />
+                  </View>
+                </View>
+                <View style={{ flex: 1.4, gap: 6 }}>
+                  <Text style={{ ...type.eyebrow, color: colors.secondaryLabel }}>Generated</Text>
+                  <View style={{ height: 250, borderRadius: radius.garment, backgroundColor: colors.tile, overflow: "hidden" }}>
+                    <GarmentImage key={item.generated_url} path={item.generated_url} cutoutPath={item.cutout_url} tile={colors.tile} style={{ width: "100%", height: "100%" }} />
+                    {regenerating === item.item_id ? (
+                      <View accessibilityLiveRegion="polite" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.6)", gap: 8 }}>
+                        <ActivityIndicator color={colors.tint} />
+                        <Text style={{ ...type.footnote, ...weight(600), color: "#131315" }}>Making a new image…</Text>
+                      </View>
+                    ) : null}
+                  </View>
                 </View>
               </View>
-              <View style={{ flex: 1.1, gap: 6 }}>
-                <Text style={{ ...type.eyebrow, color: colors.secondaryLabel }}>Generated</Text>
-                <View style={{ aspectRatio: 4 / 5, borderRadius: radius.list, backgroundColor: colors.tile, overflow: "hidden" }}>
-                  <GarmentImage key={item.generated_url} path={item.generated_url} cutoutPath={item.cutout_url} tile={colors.tile} style={{ width: "100%", height: "100%" }} />
-                  {regenerating === item.item_id ? (
-                    <View accessibilityLiveRegion="polite" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.6)", gap: 8 }}>
-                      <ActivityIndicator color={colors.tint} />
-                      <Text style={{ ...type.footnote, ...weight(600), color: "#131315" }}>Making a new image…</Text>
-                    </View>
-                  ) : null}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 2 }}>
+                <View style={{ flex: 1 }}>
+                  <Text accessibilityRole="header" style={{ ...type.display(26), color: colors.label }}>{garmentName(item)}</Text>
+                  <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>{groupOf(item)}</Text>
                 </View>
+                <TierBadge tier={item.tier} />
               </View>
-            </View>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>{AI_NOTE}</Text>
+              <GroupedList>
+                <Row label="Keep" accessory={
+                  <Switch accessibilityLabel={`Keep ${garmentName(item)}`} value={!off.has(item.item_id)} onValueChange={(v) => setKeep(item, v)} />
+                } />
+                <Pressable
+                  accessibilityRole="button" accessibilityLabel={regenLabel}
+                  accessibilityState={{ disabled: regenerating !== null }} disabled={regenerating !== null}
+                  onPress={() => (unit ? setConfirmRegen(true) : void regenerate(item))}
+                  style={({ pressed }) => ({ minHeight: 48, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12,
+                    backgroundColor: pressed ? colors.fill : "transparent", opacity: regenerating !== null ? 0.4 : 1 })}
+                >
+                  <Text style={{ ...type.body, color: colors.tint, flex: 1 }}>↻ Regenerate</Text>
+                  {unit ? <Text style={{ ...type.body, color: colors.secondaryLabel }}>{creditsLabel(unit)}</Text> : null}
+                </Pressable>
+              </GroupedList>
+              {list.length > 1 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                  {list.map((i, k) => (
+                    <Pressable key={i.item_id} onPress={() => setAt(k)} accessibilityRole="button" accessibilityLabel={`Piece ${k + 1}`}
+                      accessibilityState={{ selected: k === at }}
+                      style={{ padding: 2, borderRadius: 14, borderWidth: 2, borderColor: k === at ? colors.tint : "transparent", opacity: off.has(i.item_id) ? 0.4 : 1 }}>
+                      <GarmentImage path={i.generated_url} cutoutPath={i.cutout_url} tile={colors.tile} style={{ width: 48, height: 58, borderRadius: 10 }} />
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              ) : null}
+            </>
+          ) : null}
+        </ScrollView>
+        <FlowFooter onHeight={setFooter}>
+          {list.length ? (
+            <View style={{ flexDirection: "row", gap: 8 }}>
               <View style={{ flex: 1 }}>
-                <Text accessibilityRole="header" style={{ ...type.section, color: colors.label }}>{garmentName(item)}</Text>
-                <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>{groupOf(item)}</Text>
+                <Button title="Back" variant="glass" onPress={() => setAt(Math.max(0, at - 1))} disabled={at === 0} />
               </View>
-              <TierBadge tier={item.tier} />
+              <View style={{ flex: 1 }}>
+                {last
+                  ? <Button title={`Save ${kept.length} to Closet`} onPress={save} loading={saving} />
+                  : <Button title="Next" onPress={() => setAt(at + 1)} />}
+              </View>
             </View>
-            <Text style={{ ...type.footnote, color: colors.secondaryLabel }}>{AI_NOTE}</Text>
-            <Button
-              title={unit ? `↻ Regenerate · ${creditsLabel(unit)}` : "↻ Regenerate"}
-              variant="secondary" size="medium"
-              disabled={regenerating !== null}
-              onPress={() => (unit ? setConfirmRegen(true) : void regenerate(item))}
-            />
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: colors.grouped, borderRadius: radius.list, paddingHorizontal: 16, paddingVertical: 10 }}>
-              <Text style={{ ...type.body, color: colors.label }}>Keep</Text>
-              <Switch accessibilityLabel={`Keep ${garmentName(item)}`} value={!off.has(item.item_id)} onValueChange={(v) => setKeep(item, v)} />
-            </View>
-            {list.length > 1 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                {list.map((i, k) => (
-                  <Pressable key={i.item_id} onPress={() => setAt(k)} accessibilityRole="button" accessibilityLabel={`Piece ${k + 1}`}
-                    accessibilityState={{ selected: k === at }}
-                    style={{ borderRadius: 12, borderWidth: 2, borderColor: k === at ? colors.tint : "transparent", opacity: off.has(i.item_id) ? 0.4 : 1 }}>
-                    <GarmentImage path={i.generated_url} cutoutPath={i.cutout_url} tile={colors.tile} style={{ width: 52, height: 64, borderRadius: 10 }} />
-                  </Pressable>
-                ))}
-              </ScrollView>
-            ) : null}
-          </>
-        ) : null}
-      </ScrollView>
-      {list.length ? (
-        <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 20, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator }}>
-          <View style={{ width: 92 }}>
-            <Button title="Back" variant="secondary" onPress={() => setAt(Math.max(0, at - 1))} disabled={at === 0} />
-          </View>
-          <View style={{ flex: 1 }}>
-            {last
-              ? <Button title={`Save ${kept.length} to Closet`} onPress={save} loading={saving} />
-              : <Button title="Next" onPress={() => setAt(at + 1)} />}
-          </View>
-        </View>
-      ) : (
-        <View style={{ paddingHorizontal: 20, paddingVertical: 8 }}>
-          <Button title="Go to Closet" variant="secondary" onPress={() => router.replace("/closet")} />
-        </View>
-      )}
+          ) : (
+            <Button title="Go to Closet" variant="glass" onPress={() => router.replace("/closet")} />
+          )}
+        </FlowFooter>
+      </SafeAreaView>
       <CostSheet
         visible={confirmRegen}
         title="Make a new image"
@@ -204,6 +209,6 @@ export default function ReviewScreen() {
         action="regenerate"
       />
       <InsufficientCreditsSheet action="regenerate" visible={short} needed={unit ?? 0} onClose={() => setShort(false)} />
-    </SafeAreaView>
+    </GlassScreen>
   );
 }

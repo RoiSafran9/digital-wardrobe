@@ -67,10 +67,12 @@ test("all views are loaded up front so turning never waits on the network", asyn
   expect(uris).toEqual(views.map((v) => `${API_BASE_URL}${v.cutoutPath}`));
 });
 
-test("shows the angle pill, the drag hint and the AI label", async () => {
+test("one glass pill names the side, the drag hint and the AI label, and follows the turn", async () => {
   await render(<TurnView views={views} label="360 · AI view" />);
-  expect(screen.getByText("Drag to rotate · 360 · AI view")).toBeTruthy();
   expect(screen.getByTestId("turn-angle")).toBeTruthy();
+  expect(screen.getByText("Front · Drag to rotate · 360 · AI view")).toBeTruthy();
+  await fireEvent.press(screen.getByRole("button", { name: "Turn right" }));
+  expect(screen.getByText("Right side · Drag to rotate · 360 · AI view")).toBeTruthy();
 });
 
 test("the arrow buttons turn the garment both ways", async () => {

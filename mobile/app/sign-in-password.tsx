@@ -1,14 +1,15 @@
 import React, { useState } from "react";
-import { KeyboardAvoidingView, ScrollView, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "../src/auth/AuthProvider";
 import { isValidEmail } from "../src/auth/messages";
 import { ErrorNote } from "../src/components/ErrorNote";
+import { GlassField } from "../src/components/onboarding/GlassField";
 import { haptics } from "../src/haptics";
 import { useOnboarding } from "../src/onboarding";
-import { colors, radius, type } from "../src/theme";
-import { BackButton, Button } from "../src/ui";
+import { colors, type } from "../src/theme";
+import { BackButton, Button, GlassScreen } from "../src/ui";
 
 // Password sign-in for the App Review demo account, reached by holding the Sign In title.
 // Everyone else signs in with an email code; their accounts have no password.
@@ -37,58 +38,53 @@ export default function SignInPasswordScreen() {
     }
   }
 
-  const field = {
-    ...type.body, color: colors.label, backgroundColor: colors.grouped, height: 56, borderRadius: radius.button, paddingHorizontal: 16,
-  };
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-        <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingBottom: 16 }} keyboardShouldPersistTaps="handled">
-          <View style={{ height: 44, justifyContent: "center" }}>
-            <BackButton onPress={() => router.back()} />
-          </View>
-          <Text accessibilityRole="header" style={{ ...type.screenTitle, color: colors.label, marginTop: 12 }}>Sign in with password</Text>
-          <Text style={{ ...type.body, color: colors.secondaryLabel, marginTop: 8, marginBottom: 28 }}>
-            For demo accounts only. Everyone else signs in with an email code.
-          </Text>
-          <View style={{ gap: 12 }}>
-            <TextInput
-              accessibilityLabel="Email"
-              placeholder="you@example.com"
-              placeholderTextColor={colors.tertiaryLabel}
-              value={email}
-              onChangeText={(t) => { setError(null); setEmail(t); }}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              keyboardType="email-address"
-              textContentType="username"
-              returnKeyType="next"
-              autoFocus
-              style={field}
-            />
-            <TextInput
-              accessibilityLabel="Password"
-              placeholder="Password"
-              placeholderTextColor={colors.tertiaryLabel}
-              value={password}
-              onChangeText={(t) => { setError(null); setPassword(t); }}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="password"
-              textContentType="password"
-              returnKeyType="go"
-              onSubmitEditing={signIn}
-              style={field}
-            />
-          </View>
-          {error ? <View style={{ marginTop: 14 }}><ErrorNote message={error} /></View> : null}
-          <View style={{ flex: 1, minHeight: 24 }} />
-          <Button title="Sign In" onPress={signIn} disabled={!ready} loading={busy} />
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    <GlassScreen>
+      <SafeAreaView style={{ flex: 1 }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingBottom: 16 }} keyboardShouldPersistTaps="handled">
+            <View style={{ height: 44, justifyContent: "center" }}>
+              <BackButton onPress={() => router.back()} />
+            </View>
+            <Text accessibilityRole="header" style={{ ...type.screenTitle, color: colors.label, marginTop: 14 }}>Sign in with password</Text>
+            <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginTop: 6, marginBottom: 22 }}>
+              For demo accounts only. Everyone else signs in with an email code.
+            </Text>
+            <View style={{ gap: 12 }}>
+              <GlassField
+                accessibilityLabel="Email"
+                placeholder="you@example.com"
+                value={email}
+                onChangeText={(t) => { setError(null); setEmail(t); }}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                keyboardType="email-address"
+                textContentType="username"
+                returnKeyType="next"
+                autoFocus
+              />
+              <GlassField
+                accessibilityLabel="Password"
+                placeholder="Password"
+                value={password}
+                onChangeText={(t) => { setError(null); setPassword(t); }}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="password"
+                textContentType="password"
+                returnKeyType="go"
+                onSubmitEditing={signIn}
+              />
+            </View>
+            {error ? <View style={{ marginTop: 14 }}><ErrorNote message={error} /></View> : null}
+            <View style={{ marginTop: 18 }}>
+              <Button title="Sign In" onPress={signIn} disabled={!ready} loading={busy} />
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </GlassScreen>
   );
 }

@@ -1,11 +1,9 @@
 ---
-name: Wardrobe
-description: A native iOS closet where your own garments drift, rise and pop into place.
+name: KIPS Glass
+description: A native iOS closet where your own garments sit on frosted glass over soft color.
 colors:
-  background: "#FFFFFF"
+  background: "#F2F2F6"
   background-dark: "#000000"
-  grouped: "#F4F4F2"
-  grouped-dark: "#1C1C1E"
   card: "#FFFFFF"
   card-dark: "#1C1C1E"
   tile: "#F3F2EF"
@@ -16,12 +14,20 @@ colors:
   secondary-label-dark: "#98989F"
   tertiary-label: "#A1A1A6"
   tertiary-label-dark: "#636366"
+  tab-inactive: "#3A3A3F"
+  tab-inactive-dark: "#C7C7CC"
   separator: "rgba(20,20,25,0.08)"
   separator-dark: "rgba(255,255,255,0.10)"
   separator-strong: "#C7C7CC"
   separator-strong-dark: "#48484A"
   fill: "rgba(120,120,128,0.12)"
   fill-dark: "rgba(120,120,128,0.26)"
+  glass: "rgba(255,255,255,0.58)"
+  glass-card: "rgba(255,255,255,0.68)"
+  glass-sheet: "rgba(255,255,255,0.90)"
+  glass-border: "rgba(255,255,255,0.80)"
+  glass-tint: "rgba(11,94,255,0.90)"
+  glass-dark: "rgba(44,44,46,0.55)"
   tint: "#0B5EFF"
   tint-dark: "#3D86FF"
   tint-soft: "rgba(31,107,255,0.10)"
@@ -29,198 +35,184 @@ colors:
   on-tint: "#FFFFFF"
   on-tint-dark: "#000000"
   success: "#23A55A"
-  success-dark: "#30C26A"
   success-text: "#1B7F45"
-  success-text-dark: "#30C26A"
   destructive: "#D61E24"
   destructive-dark: "#FF5A5F"
   warning: "#E8A33D"
   warning-text: "#98610E"
-  warning-text-dark: "#E8A33D"
 typography:
+  family: "Bricolage Grotesque (400, 500, 600, 700, 800)"
+  hero:
+    fontSize: "64px"
+    fontWeight: 800
+    letterSpacing: "-0.03em"
   display:
-    fontFamily: "Instrument Serif"
-    fontSize: "46px / 42px / 40px"
-    fontWeight: 400
+    fontSize: "36–42px"
+    fontWeight: 800
+    letterSpacing: "-0.03em"
   large-title:
-    fontFamily: "SF Pro (iOS system font)"
     fontSize: "34px"
-    fontWeight: 700
-    letterSpacing: "-0.02em"
+    fontWeight: 800
+    letterSpacing: "-0.03em"
   screen-title:
-    fontFamily: "SF Pro (iOS system font)"
     fontSize: "32px"
-    fontWeight: 700
+    fontWeight: 800
+  page-title:
+    fontSize: "28px"
+    fontWeight: 800
+  title2:
+    fontSize: "24px"
+    fontWeight: 800
+  title3:
+    fontSize: "21px"
+    fontWeight: 800
   section:
-    fontFamily: "SF Pro (iOS system font)"
     fontSize: "22px"
     fontWeight: 700
   headline:
-    fontFamily: "SF Pro (iOS system font)"
     fontSize: "17px"
     fontWeight: 600
   body:
-    fontFamily: "SF Pro (iOS system font)"
     fontSize: "17px"
     fontWeight: 400
   subhead:
-    fontFamily: "SF Pro (iOS system font)"
     fontSize: "15px"
     fontWeight: 400
   footnote:
-    fontFamily: "SF Pro (iOS system font)"
     fontSize: "13px"
     fontWeight: 400
   eyebrow:
-    fontFamily: "SF Pro (iOS system font)"
     fontSize: "13px"
     fontWeight: 600
-    letterSpacing: "0.05em"
-  stat:
-    fontFamily: "SF Pro (iOS system font)"
-    fontSize: "26px"
-    fontWeight: 600
+    letterSpacing: "0.6px"
   tab-label:
-    fontFamily: "SF Pro (iOS system font)"
     fontSize: "10.5px"
-    fontWeight: 500
+    fontWeight: 600
 rounded:
-  segment: "8px"
-  input: "12px"
   button: "14px"
   primary: "16px"
-  list: "18px"
-  tile: "22px"
-  feature: "26px"
-  stage: "28px"
+  image: "14px"
+  garment: "20px"
+  list: "22px"
+  tile: "24px"
+  hero: "28px"
   sheet: "34px"
   pill: "999px"
 spacing:
-  chip-gap: "8px"
-  stack: "10px"
-  inner: "14px"
-  list-inset: "16px"
-  screen: "20px"
-  section: "28px"
+  card-gap: "10px"
+  card-inner: "14px"
+  home-screen: "16px"
+  flow-screen: "20px"
+  section: "24px"
 ---
 
-# Design System: Wardrobe
+# Design System: KIPS Glass
 
-Source: the owner's design handoff, `docs/design/design_handoff_digital_wardrobe/` (README + clickable prototype). Adopted 2026-10-19 (redesign spec `docs/superpowers/specs/2026-10-19-ios-redesign-design.md`, decisions D1 and D2). Tokens live in `mobile/src/theme.ts`; shared components in `mobile/src/ui/`.
+Source: the owner's KIPS Glass handoff, `docs/design/design_handoff_glass_redesign/` (README, the static board `explorations/screens/All Screens.html` with every screen numbered 0.1–8.5, and the clickable `explorations/glass/KIPS Glass.html`). Adopted 2026-11-06; it replaces the first handoff (`docs/design/design_handoff_digital_wardrobe/`, 2026-10-19). Tokens live in `mobile/src/theme.ts`; shared components in `mobile/src/ui/`.
 
 ## Overview
 
 **Creative North Star: "Your own clothes, beautifully catalogued."**
 
-The app still reads as a well-made first-party iOS app — SF Pro, SF Symbols, native page sheets, segmented controls, one blue accent — but warmer and more editorial than stock Settings grey. Screens are white; grouped content sits on warm-grey cards; garments sit on a soft stone tile with a gentle shadow. Four editorial headlines use Instrument Serif. What makes it feel alive is still the user's own garments: tiles that pop into place, cards that give under a finger, the 360 turntable.
+Still a well-made iOS app — native sheets, SF Symbols, one blue accent — but with its own voice: one typeface (Bricolage Grotesque, heavy and tightly tracked for titles), frosted-glass cards floating over a cool grey screen with two soft color blobs, and a floating capsule tab bar with a raised camera. What makes it feel alive is still the user's own garments: fans of pieces on Home's cards, tiles that pop in, the 360 turntable.
 
-Light and dark are one system: every color is a `DynamicColorIOS` pair. Every text pair holds 4.5:1 in both appearances, and `mobile/__tests__/theme.test.ts` enforces it.
+Light and dark are one system: every color is a `DynamicColorIOS` pair, and every text pair holds 4.5:1 in both appearances (`mobile/__tests__/theme.test.ts`). The Glass handoff designed light mode only; dark mode keeps the earlier dark tokens with a dark glass fill and no blobs, until the owner designs it.
 
-**Built against the handoff:** where a handoff color failed 4.5:1 as text on the grey cards in light mode, the shipped value is the nearest darker one that passes — accent `#1F6BFF` → `#0B5EFF`, danger `#E5484D` → `#D61E24`, success text `#23A55A` → `#1B7F45`, warning text `#C27C12` → `#98610E`. Fills (the success check, the amber low-credit bar) keep the handoff values. The handoff's `ink3` (`#A1A1A6`) fails as text, so `tertiaryLabel` is for glyphs, placeholders and disabled states only (a test fails if it is used as a text color). The tab bar's inactive labels use `secondaryLabel` for the same reason.
+**Built against the handoff:** colors that failed 4.5:1 as text keep the shipped darker values (accent `#0B5EFF`, danger `#D61E24`, success text `#1B7F45`, warning text `#98610E`). `#A1A1A6` (`tertiaryLabel`) fails as text, so it is for glyphs, placeholders and disabled states only (a test fails if it colors text). The "AI stylist" tag on Home's Build My Look card waits for the owner's approval of the copy; the card shows "Outfit ideas" instead.
 
 ## Colors
 
 ### Accent
-- **Accent Blue** (`tint`): primary buttons, links, the active tab, selected states, the credits bar and dot. **Tint Soft** (`tintSoft`) is its 10% wash: the starter-credits circle, avatar, selected outfit boxes. **On-Tint** is the text on a blue fill.
+- **Accent Blue** (`tint`): primary buttons, links, the active tab, the camera button, selected states, the credits dot. **Tint Soft** (`tintSoft`) is its 10% wash: numbered badges, the Build My Look tag, selected outfit boxes. **On-Tint** is text on a blue fill. **Glass Tint** (`glassTint`, 90%) is the blue glass of the Add clothes card.
 
 ### Neutral
-- **Background** (`background`): white screens (black in dark).
-- **Grouped** (`grouped`): warm-grey cards and grouped lists on white screens (the handoff's `bg2`).
-- **Card** (`card`): sheets and white controls on grouped backgrounds.
-- **Tile** (`tile`): the stone well behind garment images and image stages.
-- **Label / Secondary / Tertiary** (`label`, `secondaryLabel`, `tertiaryLabel`): ink, supporting text, and non-text glyphs.
-- **Separator** (`separator`): hairlines. **Fill** (`fill`): search fields, segmented track, filter chips, round icon buttons, progress tracks. **Separator Strong**: swatch outlines.
+- **Background** (`background`): the cool grey screen (`#F2F2F6`) behind the glass; black in dark mode.
+- **Glass** (`glass` 58%, `glassCard` 68%, `glassSheet` 90%): the white fills over the blur; `glassBorder` its 0.5pt edge, `glassHighlight` the 1pt top highlight.
+- **Card** (`card`): white controls (the selected segment, chips over glass). **Tile** (`tile`): the stone stage behind every garment image.
+- **Label / Secondary / Tertiary** (`label`, `secondaryLabel`, `tertiaryLabel`); **Tab Inactive** (`tabInactive`, `#3A3A3F`): inactive tabs and long copy.
+- **Separator** (`separator`): hairlines. **Fill** (`fill`): soft buttons, segmented tracks, unselected chips, progress tracks.
 
 ### Status (one meaning each)
-- **Success** (`success` fill, `successText` text): ready states, check marks, credits added (+N).
-- **Warning** (`warning` fill, `warningText` text): low credits (≤ 3) and "Not sure — please check".
-- **Destructive** (`destructive`): removal, deletion, errors.
-- Tier colors (`tier-*`, unchanged) stay inside the tier badge.
+- **Success** (`success` fill, `successText` text): ready, check marks, credits added.
+- **Warning** (`warning` fill, `warningText` text): low credits (≤ 3), "Not sure — please check".
+- **Destructive** (`destructive`): removal, deletion, errors. Tier colors stay inside the tier badge.
 
 ### Garment swatches (data, not UI)
-The closed vocabulary of 15 colors in `SWATCHES` (`theme.ts`) describes garments and doesn't change with appearance. Swatches carry a hairline outline so white and beige stay visible.
+The 15 colors in `SWATCHES` (`theme.ts`) describe garments and don't change with appearance.
 
 ### Named Rules
-**One Accent.** Blue means you can act or it is selected. Green, amber and red each carry one status meaning and are never decoration.
+**One Accent.** Blue means you can act or it is selected. Green, amber and red each carry one status meaning.
 
-**Dynamic Pairs.** A new color is added to both palettes and to the contrast test.
+**Dynamic Pairs.** A new color is added to both palettes and, if it colors text, to the contrast test.
 
-**Honest Credits.** No credit number is ever hardcoded. Balances and prices come from the server; with billing off, no amount is shown.
+**Honest Credits.** No credit number is ever hardcoded. Balances and prices come from the server; with billing off, no amount is shown ("Finding pieces is free").
 
 ## Typography
 
-**Display:** Instrument Serif (`@expo-google-fonts/instrument-serif`, loaded in `app/_layout.tsx`), regular, line height 1.0. Only four places: Welcome (46), Home greeting (42), "A welcome gift" and "Added to your closet" (40). Use `type.display(size)`.
-**Everything else:** SF Pro through `type.*`; no `fontFamily` anywhere else, except `type.tag` (Menlo, 10/600, +0.06em) for the small photo-type tags on Home's add tiles ("FLAT LAY", "WORN").
+**One family: Bricolage Grotesque** (`@expo-google-fonts/bricolage-grotesque`, 400–800, loaded in `app/_layout.tsx`). React Native chooses a custom face by family name, not by weight, so every weight is its own family: `type.*` already carries it, and a weight change is `...weight(600)` — never a bare `fontWeight` (a test fails on one outside `theme.ts`).
 
-- **Large Title** 34/700, −0.02em: tab screen titles ("Closet", "Account").
-- **Screen Title** 32/700: flow screens ("Sign in with email", "Add Clothes").
-- **Section** 22/700: section and sheet titles.
-- **Headline** 17/600: large button labels, row titles.
-- **Body** 17 / **Callout** 16 / **Subhead** 15: copy, rows, chips and segments.
-- **Footnote** 13: captions and metadata. **Eyebrow** 13/600 uppercase +0.05em: dates and list headers ("AI CREDITS").
-- **Stat** 26/600 tabular, **Balance** 54/700 tabular: numbers that matter.
-- **Tab Label** 10.5/500.
+- **Titles** are 800, tracked −0.03em, leading ~1.1: `type.hero` 64 (Home's piece count, tabular), `type.display(36–42)` (Welcome, celebrations, empty Home), `type.largeTitle` 34 (Closet, Me), `type.screenTitle` 32 (flow titles), `type.pageTitle` 28 (item name), `type.title2` 24 (hero cards), `type.title3` 21 (category tiles), `type.balance` 54.
+- **UI text:** `section` 22/700 (sheet titles), `cardTitle` 19/700, `headline` 17/600 (buttons, row titles), `body` 17, `callout` 16, `subhead` 15, `footnote` 13, `caption` 12, `toast` 14/600, `tabLabel` 10.5/600.
+- **Eyebrow** 13/600 uppercase +0.6: the Home greeting, list headers.
+- `type.tag` (Menlo) is the one exception, for small photo-type tags.
 
-**The Text Style Rule.** Size and weight come from `type.*`; never a raw `fontSize`. **Tabular counts:** numbers that change in place use tabular figures.
+**The Text Style Rule.** Size and family come from `type.*`; never a raw `fontSize` or `fontFamily`. **Tabular counts:** counts and credits use tabular figures.
 
 ## Layout
 
-Screen padding 20pt (grouped lists 16pt). Gaps 8/10/12/14/18/22/28. Closet is a two-column grid (12pt columns, 18pt rows) of 4:5 tiles. Flow screens (camera, preview, processing, results, outfit steps) are full-screen stack routes without the tab bar, with a sticky bottom CTA above the home indicator. iPhone frame reference: 393×852pt.
+Home and Closet: 16pt side padding; flow screens 20pt. Content starts ~56pt below the top. Card gap 10, section gap 24, card padding 14–16. Tab screens end their scroll `TAB_BAR_HEIGHT + 28` above the bottom so the last row clears the capsule. Flow screens (camera, preview, processing, results, outfit steps, Build My Look) are stack routes without the tab bar. Reference frame: iPhone 16/17, 402×874pt — Home's header, Add card, Build My Look card and four category tiles fit above the tab bar.
 
 ## Elevation & Depth
 
-Tone first, then a soft shadow where the handoff uses one:
-- Garment tiles: `shadow.tile` (0, 12, 15 radius, 8%).
-- Sheets: `shadow.sheet` (0, −10, 20 radius, 12%).
-- Garment cutouts may carry `shadow.cutout` (0, 8, 5 radius, 13%) — a shadow under the piece, never a tint, filter or glow on its pixels.
-- Buttons, chips and grouped cards have no shadow; the selected segment has a 1pt hint.
+**Glass** (`Glass` in `mobile/src/ui/Glass.tsx`): a system blur (`BlurView`, intensity 40, `systemChromeMaterial`) under a white fill at 58/68/90%, a 0.5pt `rgba(255,255,255,0.8)` border, a 1pt inner highlight at the top, and `shadow.glass` (0, 10, radius 15, 10%). The shadow sits on the outer view and the blur is clipped inside, so a card never clips its own shadow; `decor` draws art inside the clip (the Add card's circle, garments bleeding off a tile). Blue glass (`blue`) has no blur.
+
+**Backdrop:** two blurred blobs (`#8FB0D6` 320pt at 30%, top left; `#E8C9A8` 260pt at 24%, right) pre-rendered into `mobile/assets/backdrop.png`, behind Home, Closet, Me and onboarding. Never on the camera or the item screen; hidden in dark mode.
+
+Garment fans carry `shadow.lift` on their stone tile with a 2pt white border — a shadow under the piece's tile, never a tint, filter or glow on its pixels. Sheets: `shadow.sheet`.
 
 ## Shapes
 
-Segment 8 · input/search 12 · 48pt button 14 · 54pt primary 16 · grouped list 18 · garment tile 20–22 · feature card 26 · image stage 28 · floating sheet 34 · capsules for chips, pills and toasts.
+Tab capsule and chips 999 · hero cards 28 · cards and tiles 24 · list groups 22 · garment images 14–20 · buttons 16 (≥ 50pt) or 14 · fields 14 · sheets 34.
 
 ## Icons
 
-SF Symbols through `Icon` (`mobile/src/components/Icon.tsx`): outline, one color taken from the label, literal everyday objects, always with a word. Choice icons (answers the user picks) are 24pt semibold on `OptionTile`. Rules, reserved symbols and the preview script: [docs/design/ICONS.md](docs/design/ICONS.md).
+SF Symbols through `Icon` (`mobile/src/components/Icon.tsx`), Ionicons only as fallback; the handoff's Ionicons names map to their SF twins. Rules, reserved symbols and the preview script: [docs/design/ICONS.md](docs/design/ICONS.md). The selected tab uses the filled twin (`homeFill`, `closetFill`, `accountFill`).
 
 ## Components (`mobile/src/ui/`)
 
-- **Button:** `primary` (54pt, accent, white 17/600), `secondary` (48pt white/card), `text` (accent), `destructive` (red text). Disabled = 40% opacity. Press scales to 0.98.
-- **Sheet:** bottom sheet over `rgba(0,0,0,.32)`, slides up 380ms on `cubic-bezier(.2,.8,.2,1)`, grabber, tap outside to dismiss; `floating` for confirmations (radius 34, inset 10pt). Under Reduce Motion it fades.
-- **CostSheet:** every paid AI action is confirmed here — lines at server prices, Total, "Balance X → Y", an optional note ("Detection was free").
-- **InsufficientCreditsSheet:** "available / N credits needed", amber bar, "Not enough credits", contextual body + "Ask the app owner for more credits." No purchase UI.
-- **Toast:** top-center ink pill, 14/600, 2.6s.
-- **Segmented:** fill track, card segment, haptic selection.
-- **Chip:** 34pt capsule; selected = ink fill with inverted text; `outlined` for Home's category pills.
-- **OptionTile** (`mobile/src/components/outfitBuilder/OptionTile.tsx`): Build My Look's answers, three per row, 78pt tall, radius 18, fill background; a 24pt semibold outline SF Symbol (Colors: three overlapping 20pt swatches) over a 15/500 label. Selected = ink fill with inverted content; the icon pops from 80% with a light spring (skipped under Reduce Motion).
-- **Swatch:** 28pt circle; selected = double ring (background gap + 1.5pt ink).
-- **GroupedList / Row:** eyebrow header, card with hairline-divided rows, chevron or value accessory.
-- **ProgressBar:** rounded bar on a fill track; amber when warning.
-- **CreditPill:** fill capsule with an accent dot and the balance; only while billing is on.
-- **Shimmer / PopIn** (`mobile/src/motion/PopIn.tsx`): AI-work sweep; pop-in from 90% and 8pt low over 600ms, staggered 0.12s by the caller.
-- **Tab bar:** Home · Closet · Add · Account, 84pt, translucent blur with a hairline top, active accent.
+- **Glass / Backdrop / GlassScreen:** the surface and the blobs (above).
+- **Tab bar** (`mobile/src/components/TabBar.tsx`): Home · Closet · [camera] · Looks · Me. A 62pt glass capsule 16pt from the sides and 26pt above the bottom; 23pt icons over 10.5/600 labels, active = tint with the filled icon, inactive = `tabInactive`. The camera is a 72pt tint circle raised 26pt with a 5pt white ring and a blue shadow; it breathes and opens the camera in garment mode. Looks (only when the server offers Build My Look) opens Build My Look. Me is the old Account tab; Add is no longer a tab (its route stays for flows that link to it).
+- **Button:** `primary` (54pt, accent), `glass`, `soft` (fill), `ink`, `secondary` (white), `text`, `destructive`; `medium` is 44pt. Disabled = 40% opacity; press scales to 0.98.
+- **IconButton:** a 40pt round glass button for close / back; `dark` over the camera and photos.
+- **Sheet:** glass (90% fill) over `rgba(0,0,0,.32)`, radius 34, grabber, tap outside to dismiss; `floating` sits 10pt from the edges. Slides up 380ms; fades under Reduce Motion.
+- **CostSheet** and **InsufficientCreditsSheet:** every paid action is confirmed with server prices, Total and "Balance X → Y"; running out shows "available / N credits needed" with an amber bar. No purchase UI.
+- **Segmented:** a capsule track (fill, or `glass` over an image) with a white segment that springs to the choice (damping 14, stiffness 180; a 200ms slide under Reduce Motion).
+- **Chip:** 34pt capsule; selected = ink fill with inverted text; `glass` variant over the blobs.
+- **GroupedList / Row:** eyebrow header over a glass list (radius 22), hairline-divided rows.
+- **CreditPill:** glass capsule with an accent dot and the balance; only while billing is on.
+- **Toast:** top-center ink pill, 14/600.
+- **Home cards** (`mobile/src/components/home/HomeCards.tsx`): the blue Add clothes card (Laid flat / Worn), the Build My Look card with three floating pieces, category tiles with a fan of up to three pieces, New this week (only when something was added in the last 7 days).
 
-Existing pieces keep their roles: `PressScale` (cards and garments scale to 0.97), `Rise`, `GarmentImage` (cutout → white generated → crop), `TierBadge`, `TurnView` (360 turntable swing, labelled AI).
+Existing pieces keep their roles: `PressScale` (cards scale to 0.97), `Rise`, `PopIn`, `Breathe` / `Float` (`mobile/src/motion/Breathe.tsx`), `GarmentImage` (cutout → white generated → crop), `TierBadge`, `TurnView` (360 turntable, labelled AI).
 
 ## Motion
 
-- Easing: the handoff's `cubic-bezier(.2,.8,.2,1)` (`SHEET_EASE`) for sheets and pop-ins; `EASE_OUT` for presses and rises.
-- Pop-in: scale .9 + 8pt → rest, 0.5–0.7s, staggered 0.12s. Sheets 0.35–0.4s. Toast fades in/out.
-- Haptics: selection on toggles, chips and segments; success on confirms and saves.
-- **Reduce Motion:** no translate, scale, scan band or shimmer; short fades stay.
+- Springs for the segmented and tab indicators (damping 14, stiffness 180). Rise in: opacity and 14pt up, ~400ms. Sheets 380ms on `cubic-bezier(.2,.8,.2,1)`.
+- Breathe (camera buttons): scale 1 → 1.04 → 1 over 3s. Float (Build My Look card garments): 0 → −8pt over 2.6s, staggered 300ms. Shimmer while generating: 1.6s sweep.
+- Haptics: selection on tabs, toggles, chips and segments; success on confirms and saves.
+- **Reduce Motion:** no breathe, float, shimmer, turn or drift; springs become short slides or fades.
 
 ## Do's and Don'ts
 
 ### Do
-- Label every photo entry point with the kind of photo it wants: garment photo (laid flat or on a hanger) or outfit photo (someone wearing it). Never a bare "Take Photo / From Library" pair.
-- Take every color from `colors.*` and every text style from `type.*`.
+- Label every photo entry point with the kind of photo it wants: garment photo (laid flat or on a hanger) or outfit photo (someone wearing it).
+- Take every color from `colors.*` and every text style from `type.*` (+ `weight()`).
+- Put cards on glass over the backdrop; keep garment images on the stone `tile`.
 - Show a price only from the server, and confirm every paid action with a CostSheet.
 - Make every tappable reach 44pt (`hitSlopFor`) and give state controls `accessibilityRole` and `accessibilityState`.
-- Use native structures where they exist (page sheet for Garment Details, SF Symbols, system photo picker).
 
 ### Don't
 - Hardcode credit amounts or prices, or show any purchase UI.
-- Use `tertiaryLabel` as a text color.
-- Use Instrument Serif outside the four editorial headlines.
-- Tint, filter or glow garment images, or box a transparent cutout.
+- Use a raw `fontWeight`, `fontSize` or `fontFamily`, or `tertiaryLabel` as a text color.
+- Tint, filter or glow garment images, or put the blobs behind the camera or the item screen.
 - Keep anything moving under Reduce Motion.

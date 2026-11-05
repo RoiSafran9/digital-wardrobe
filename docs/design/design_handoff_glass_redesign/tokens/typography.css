@@ -1,0 +1,23 @@
+/* KIPS type — mirrors theme.ts `type`. Sizes in pt == CSS px at 1x. */
+:root{
+--font-system:"Bricolage Grotesque",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+--font-display:"Bricolage Grotesque",-apple-system,"Helvetica Neue",Arial,sans-serif;
+--font-display-weight:800;--font-display-tracking:-0.03em;
+--font-tag:Menlo,ui-monospace,"SF Mono",monospace;
+--type-hero-size:64px;--type-hero-weight:700;
+--type-balance-size:54px;--type-balance-weight:700;
+--type-display-xl:46px;--type-display-lg:42px;--type-display-md:40px;--type-display-lh:1.18;
+--type-large-title-size:34px;--type-large-title-weight:700;--type-large-title-tracking:-0.68px;
+--type-screen-title-size:32px;--type-screen-title-weight:700;--type-screen-title-tracking:-0.64px;
+--type-page-title-size:28px;--type-page-title-weight:700;
+--type-stat-size:26px;--type-stat-weight:600;
+--type-section-size:22px;--type-section-weight:700;
+--type-card-title-size:19px;--type-card-title-weight:600;
+--type-headline-size:17px;--type-headline-weight:600;
+--type-body-size:17px;--type-callout-size:16px;--type-subhead-size:15px;
+--type-toast-size:14px;--type-toast-weight:600;
+--type-footnote-size:13px;--type-caption-size:12px;
+--type-eyebrow-size:13px;--type-eyebrow-weight:600;--type-eyebrow-tracking:0.65px;
+--type-tab-label-size:10.5px;--type-tab-label-weight:500;
+--type-tag-size:10px;--type-tag-weight:600;--type-tag-tracking:0.6px;
+}

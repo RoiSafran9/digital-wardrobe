@@ -1,0 +1,29 @@
+/* Radii, spacing, elevation, motion — mirrors theme.ts radius/shadow and DESIGN.md layout. */
+:root{
+--radius-segment:8px;--radius-input:12px;--radius-button:14px;--radius-primary:16px;--radius-list:18px;--radius-tile:22px;--radius-feature:26px;--radius-stage:28px;--radius-hero:30px;--radius-sheet:34px;--radius-pill:999px;
+--space-chip-gap:8px;--space-stack:10px;--space-12:12px;--space-inner:14px;--space-list-inset:16px;--space-18:18px;--space-screen:20px;--space-22:22px;--space-section:28px;
+--grid-col-gap:12px;--grid-row-gap:18px;
+--tile-aspect:4/5; /* @kind other */
+
+--tab-bar-height:84px;--min-touch:44px;--button-large:54px;--button-medium:48px;--chip-height:34px;--swatch-size:28px;
+/* iOS shadows translated to CSS (blur ≈ 2× iOS radius) */
+--shadow-tile:0 12px 30px rgba(0,0,0,0.08);
+--shadow-sheet:0 -10px 40px rgba(0,0,0,0.12);
+--shadow-cutout:0 8px 10px rgba(0,0,0,0.13);
+--shadow-segment:0 1px 3px rgba(0,0,0,0.12);
+--ease-sheet:cubic-bezier(.2,.8,.2,1); /* @kind other */
+--ease-out:cubic-bezier(.23,1,.32,1); /* @kind other */
+
+--dur-press:100ms; /* @kind other */
+--dur-rise:320ms; /* @kind other */
+--dur-sheet:380ms; /* @kind other */
+--dur-sheet-out:260ms; /* @kind other */
+--dur-pop:600ms; /* @kind other */
+--dur-toast:2600ms; /* @kind other */
+--dur-shimmer:1600ms; /* @kind other */
+
+--press-card:0.97; /* @kind other */
+--press-button:0.98; /* @kind other */
+
+}
+@keyframes kips-spin{to{transform:rotate(360deg)}}

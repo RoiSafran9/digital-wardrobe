@@ -1,17 +1,20 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Text, View } from "react-native";
+import { Animated, StyleSheet, Text, View } from "react-native";
 import { Icon } from "../Icon";
 import { PressScale } from "../../motion/PressScale";
 import { haptics } from "../../haptics";
 import type { Option } from "../../outfitBuilder/filters";
 import { useReducedMotion } from "../../useReducedMotion";
-import { colors, radius, type, weight } from "../../theme";
+import { colors, radius, shadow, type, weight } from "../../theme";
+import { Glass } from "../../ui";
 
 const SWATCH = 20;
 const SWATCH_STEP = 14;
+export const OPTION_TILE_HEIGHT = 86;
 
-// One answer in Build My Look's questions: a bold outline icon (or three swatches) over its label.
-// Selected = ink fill with inverted content, like Chip; the icon pops once when it becomes selected.
+// One answer in Build My Look's questions: a glass tile with a bold outline icon (or three swatches)
+// over its label. Selected = ink fill with inverted content, like Chip; the icon pops once when it
+// becomes selected. Choice icons stay 24pt semibold (docs/design/ICONS.md), centered in a 26pt slot.
 export function OptionTile<T extends string>({ option, selected, width, onPress }: {
   option: Option<T>; selected: boolean; width: number; onPress: () => void;
 }) {
@@ -34,10 +37,11 @@ export function OptionTile<T extends string>({ option, selected, width, onPress 
       accessibilityLabel={option.label}
       accessibilityState={{ selected }}
       style={{
-        width, height: 78, borderRadius: radius.list, alignItems: "center", justifyContent: "center", gap: 8,
-        backgroundColor: selected ? colors.label : colors.fill,
+        width, height: OPTION_TILE_HEIGHT, borderRadius: radius.garment, alignItems: "center", justifyContent: "center", gap: 8,
+        ...(selected ? { backgroundColor: colors.label, ...shadow.glass } : null),
       }}
     >
+      {selected ? null : <Glass radius={radius.garment} level="base" style={StyleSheet.absoluteFill} />}
       <Animated.View style={{ height: 26, justifyContent: "center", transform: [{ scale: pop }] }}>
         {"icon" in option ? (
           <Icon name={option.icon} size={24} color={fg} weight="semibold" />

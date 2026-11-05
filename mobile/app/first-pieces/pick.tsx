@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { PhotoWithBoxes } from "../../src/components/outfit/PhotoWithBoxes";
+import { Icon } from "../../src/components/Icon";
 import { ScanBand } from "../../src/components/outfit/ScanBand";
 import { creditsLabel } from "../../src/credits/credits";
 import { useCredits } from "../../src/credits/CreditsProvider";
@@ -11,9 +11,10 @@ import { track } from "../../src/firstPieces/analytics";
 import { CAP_TOAST, FIRST_GOAL, ROUND_CAP, roundQuote, type RoundPhoto, type RoundPiece } from "../../src/firstPieces/round";
 import { pieceLabel as scanPieceLabel } from "../../src/footwear";
 import { haptics } from "../../src/haptics";
+import { PressScale } from "../../src/motion/PressScale";
 import { isWornRejection, TRY_AS_OUTFIT } from "../../src/outfit/outfit";
 import { colors, radius, type, weight } from "../../src/theme";
-import { BackButton, Button, CostSheet, InsufficientCreditsSheet, useToast } from "../../src/ui";
+import { Button, CostSheet, Glass, GlassScreen, IconButton, InsufficientCreditsSheet, useToast } from "../../src/ui";
 
 export { CAP_TOAST };
 
@@ -33,11 +34,74 @@ function photoNote(photo: RoundPhoto): string | null {
   }
 }
 
+type Box = { x: number; y: number; width: number; height: number };
+type Size = { width: number; height: number };
+const GAP = 10;
+
+// The photo's pixel size: the scan's when it reports one (the boxes were measured on it), else measured.
+function usePhotoSize(uri: string, known?: Size | null): Size | null {
+  const [measured, setMeasured] = useState<Size | null>(null);
+  useEffect(() => {
+    if (known) return;
+    let live = true;
+    try {
+      Image.getSize(uri, (width, height) => { if (live) setMeasured({ width, height }); }, () => {});
+    } catch {
+      // Unknown size: the tile stays an empty stone frame.
+    }
+    return () => { live = false; };
+  }, [uri, known]);
+  return known ?? measured;
+}
+
+// One found piece: the user's own photo framed on that piece's box with a little room around it, on the
+// stone tile. A piece left out dims to 45% under an empty glass check.
+function PieceTile({ uri, box, photoSize, width, selected, name, label, onPress }: {
+  uri: string; box: Box; photoSize?: Size | null; width: number; selected: boolean; name: string; label: string; onPress: () => void;
+}) {
+  const height = width * 1.25;
+  const size = usePhotoSize(uri, photoSize);
+  const s = box.width > 0 && box.height > 0 ? Math.min(width / (box.width * 1.16), height / (box.height * 1.16)) : 0;
+  return (
+    <View style={{ width }}>
+      <PressScale onPress={onPress} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} accessibilityLabel={label}>
+        <View style={{ width, height, borderRadius: radius.garment, overflow: "hidden", backgroundColor: colors.tile }}>
+          {size && s ? (
+            <Image source={{ uri }} style={{
+              position: "absolute", width: size.width * s, height: size.height * s, opacity: selected ? 1 : 0.45,
+              left: width / 2 - (box.x + box.width / 2) * s, top: height / 2 - (box.y + box.height / 2) * s,
+            }} />
+          ) : null}
+          <View style={{ position: "absolute", top: 8, right: 8, width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center",
+                         backgroundColor: selected ? colors.tint : undefined }}>
+            {selected ? <Icon name="checkmark" size={18} color={colors.onTint} />
+              : <Glass radius={15} flat style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />}
+          </View>
+        </View>
+      </PressScale>
+      <Text numberOfLines={1} accessibilityElementsHidden importantForAccessibility="no"
+        style={{ ...type.subhead, ...weight(600), color: selected ? colors.label : colors.secondaryLabel, marginTop: 6, paddingHorizontal: 2 }}>{name}</Text>
+    </View>
+  );
+}
+
+// A photo still being checked: the whole photo under the scan band, in the grid where its pieces will land.
+function ScanningTile({ uri, width, label }: { uri: string; width: number; label: string }) {
+  return (
+    <View style={{ width, height: width * 1.25, borderRadius: radius.garment, overflow: "hidden", backgroundColor: colors.tile }}>
+      <Image source={{ uri }} style={{ width: "100%", height: "100%" }} resizeMode="cover" accessibilityLabel={label} />
+      <ScanBand />
+    </View>
+  );
+}
+
 // First 3 Pieces, Path A: find the pieces in every photo (free), pick up to five for this round across
 // all of them, confirm the cost, then start one generate job per photo.
 export default function FirstPiecesPick() {
   const router = useRouter();
   const toast = useToast();
+  const { width } = useWindowDimensions();
+  const tile = (width - 40 - GAP) / 2;
   const { billing, prices, credits, generation, outfit } = useCredits();
   const { photos, pieces, selected, round, scanAll, togglePiece, removePhoto, submitRound } = useFirstPieces();
   const [confirming, setConfirming] = useState(false);
@@ -96,101 +160,96 @@ export default function FirstPiecesPick() {
     : pieces.length < FIRST_GOAL ? "Tap a piece to leave it out. Add another photo to reach 3."
     : "Tap a piece to leave it out.";
 
+  const noted = photos.map((photo, n) => ({ photo, n, note: photoNote(photo) })).filter((x) => x.note);
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ height: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20 }}>
-        <BackButton label="Photos" onPress={() => router.back()} />
-        {pieces.length ? (
-          <Text accessibilityLiveRegion="polite" style={{ ...type.subhead, ...weight(600), color: selected.length >= ROUND_CAP ? colors.tint : colors.secondaryLabel }}>
-            {`${selected.length} of ${Math.min(ROUND_CAP, pieces.length)} selected`}
-          </Text>
-        ) : null}
-      </View>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 18 }}>
-        <View style={{ gap: 4 }}>
-          <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={{ ...type.section, color: colors.label }}>{title}</Text>
-          <Text style={{ ...type.subhead, color: scanning ? colors.successText : colors.secondaryLabel }}>{hint}</Text>
+    <GlassScreen>
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={{ height: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16 }}>
+          <IconButton icon="chevronLeft" label="Back" onPress={() => router.back()} />
+          {pieces.length ? (
+            <Text accessibilityLiveRegion="polite" style={{ ...type.subhead, ...weight(600), color: selected.length >= ROUND_CAP ? colors.tint : colors.secondaryLabel }}>
+              {`${selected.length} of ${Math.min(ROUND_CAP, pieces.length)} selected`}
+            </Text>
+          ) : null}
         </View>
-
-        {photos.map((photo, n) => {
-          const mine = byPhoto.get(photo.id) ?? [];
-          const note = photoNote(photo);
-          const busyPhoto = photo.state === "waiting" || photo.state === "scanning";
-          if (photo.state === "found" && !mine.length) return null;  // all its pieces were made in an earlier round
-          return (
-            <View key={photo.id} style={{ gap: 10 }}>
-              <PhotoWithBoxes uri={photo.uri} photoSize={photo.scan?.image}
-                candidates={mine.map((p) => ({ id: p.key, box: photo.scan!.pieces.find((x) => x.index === p.index)!.box }))}
-                selected={busyPhoto ? undefined : selected} onToggle={toggle}
-                overlay={busyPhoto ? <ScanBand /> : null} maxHeight={note ? 160 : 320} />
-              {mine.length ? (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {mine.map((p) => {
-                    const on = selected.includes(p.key);
-                    const label = pieceLabel(photo, p.index);
-                    return (
-                      <Pressable key={p.key} onPress={() => toggle(p.key)} accessibilityRole="checkbox" accessibilityState={{ checked: on }}
-                        accessibilityLabel={`Photo ${n + 1}, ${label}`}
-                        style={{ height: 34, paddingHorizontal: 12, borderRadius: radius.pill, justifyContent: "center",
-                                 backgroundColor: on ? colors.tintSoft : colors.fill, borderWidth: 1.5, borderColor: on ? colors.tint : "transparent" }}>
-                        <Text style={{ ...type.subhead, color: on ? colors.label : colors.secondaryLabel }}>{label}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              ) : null}
-              {note ? (
-                <View style={{ gap: 8 }}>
-                  <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>{note}</Text>
-                  {photo.state === "none" && outfit && isWornRejection(photo.scan?.reason) ? (
-                    <Button title={TRY_AS_OUTFIT} variant="secondary" size="medium"
-                      onPress={() => router.push({ pathname: "/outfit/detect", params: { uri: photo.uri, flow: "outfit", onboarding: "1" } })} />
-                  ) : null}
-                  {photo.state === "unusable" || photo.state === "none" ? (
-                    <Button title="Remove Photo" variant="text" onPress={() => removePhoto(photo.id)} />
-                  ) : null}
-                </View>
-              ) : null}
-            </View>
-          );
-        })}
-
-        {retryable && !scanning ? <Button title="Check Again" variant="secondary" onPress={() => void scanAll()} /> : null}
-
-        {!scanning && unitPrice !== undefined && selected.length ? (
-          <View style={{ backgroundColor: colors.grouped, borderRadius: radius.list, padding: 16, gap: 8 }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ ...type.body, color: colors.label }}>{`Front catalog image × ${selected.length}`}</Text>
-              <Text style={{ ...type.body, color: colors.label }}>{creditsLabel(quote.total ?? 0)}</Text>
-            </View>
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Balance after</Text>
-              <Text style={{ ...type.subhead, color: colors.secondaryLabel, fontVariant: ["tabular-nums"] }}>
-                {creditsLabel(Math.max(0, (credits?.available ?? 0) - (quote.total ?? 0)))}
-              </Text>
-            </View>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 6, paddingBottom: 20, gap: 16 }}>
+          <View style={{ gap: 6 }}>
+            <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={{ ...type.pageTitle, color: colors.label }}>{title}</Text>
+            <Text style={{ ...type.subhead, color: scanning ? colors.successText : colors.secondaryLabel }}>{hint}</Text>
           </View>
-        ) : null}
-        {generation === false ? (
-          <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Making new AI images is paused for now. Try again later.</Text>
-        ) : null}
-      </ScrollView>
-      <View style={{ paddingHorizontal: 20, paddingVertical: 8, gap: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator }}>
-        {!scanning && pieces.length === 0 ? (
-          <Button title="Add Photos" onPress={() => router.back()} />
-        ) : (
-          <>
-            <Button
-              title={quote.total !== null
-                ? `Create ${selected.length} ${selected.length === 1 ? "Piece" : "Pieces"} · ${creditsLabel(quote.total)}`
-                : `Create ${selected.length} ${selected.length === 1 ? "Piece" : "Pieces"}`}
-              onPress={request} loading={busy}
-              disabled={scanning || !selected.length || generation === false || !!round}
-            />
-            {!scanning ? <Button title="Add More Photos" variant="text" onPress={() => router.back()} /> : null}
-          </>
-        )}
-      </View>
+
+          <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: GAP, rowGap: 14 }}>
+            {photos.flatMap((photo, n) => {
+              if (photo.state === "waiting" || photo.state === "scanning") {
+                return [<ScanningTile key={photo.id} uri={photo.uri} width={tile} label={`Photo ${n + 1}`} />];
+              }
+              return (byPhoto.get(photo.id) ?? []).map((p) => {
+                const name = pieceLabel(photo, p.index);
+                return (
+                  <PieceTile key={p.key} uri={photo.uri} photoSize={photo.scan?.image} width={tile}
+                    box={photo.scan!.pieces.find((x) => x.index === p.index)!.box}
+                    selected={selected.includes(p.key)} name={name} label={`Photo ${n + 1}, ${name}`} onPress={() => toggle(p.key)} />
+                );
+              });
+            })}
+          </View>
+
+          {noted.map(({ photo, n, note }) => (
+            <Glass key={photo.id} radius={radius.tile} style={{ padding: 12, gap: 10 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <Image source={{ uri: photo.uri }} accessibilityLabel={`Photo ${n + 1}`}
+                  style={{ width: 56, height: 68, borderRadius: radius.image, backgroundColor: colors.tile }} resizeMode="cover" />
+                <Text style={{ ...type.subhead, color: colors.secondaryLabel, flex: 1 }}>{note}</Text>
+              </View>
+              {photo.state === "none" && outfit && isWornRejection(photo.scan?.reason) ? (
+                <Button title={TRY_AS_OUTFIT} variant="soft" size="medium"
+                  onPress={() => router.push({ pathname: "/outfit/detect", params: { uri: photo.uri, flow: "outfit", onboarding: "1" } })} />
+              ) : null}
+              {photo.state === "unusable" || photo.state === "none" ? (
+                <Button title="Remove Photo" variant="text" size="medium" onPress={() => removePhoto(photo.id)} />
+              ) : null}
+            </Glass>
+          ))}
+
+          {retryable && !scanning ? <Button title="Check Again" variant="glass" onPress={() => void scanAll()} /> : null}
+
+          {!scanning && unitPrice !== undefined && selected.length ? (
+            <Glass radius={radius.list} style={{ padding: 16, gap: 8 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ ...type.body, color: colors.label }}>{`Front catalog image × ${selected.length}`}</Text>
+                <Text style={{ ...type.body, color: colors.label, fontVariant: ["tabular-nums"] }}>{creditsLabel(quote.total ?? 0)}</Text>
+              </View>
+              <View style={{ height: 0.5, backgroundColor: colors.separator }} />
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Balance after</Text>
+                <Text style={{ ...type.subhead, color: colors.secondaryLabel, fontVariant: ["tabular-nums"] }}>
+                  {creditsLabel(Math.max(0, (credits?.available ?? 0) - (quote.total ?? 0)))}
+                </Text>
+              </View>
+            </Glass>
+          ) : null}
+          {generation === false ? (
+            <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Making new AI images is paused for now. Try again later.</Text>
+          ) : null}
+        </ScrollView>
+        <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8, gap: 6 }}>
+          {!scanning && pieces.length === 0 ? (
+            <Button title="Add Photos" onPress={() => router.back()} />
+          ) : (
+            <>
+              <Button
+                title={quote.total !== null
+                  ? `Create ${selected.length} ${selected.length === 1 ? "Piece" : "Pieces"} · ${creditsLabel(quote.total)}`
+                  : `Create ${selected.length} ${selected.length === 1 ? "Piece" : "Pieces"}`}
+                onPress={request} loading={busy}
+                disabled={scanning || !selected.length || generation === false || !!round}
+              />
+              {!scanning ? <Button title="Add More Photos" variant="text" onPress={() => router.back()} /> : null}
+            </>
+          )}
+        </View>
+      </SafeAreaView>
       <CostSheet
         visible={confirming}
         title={selected.length === 1 ? "Create 1 piece" : `Create ${selected.length} pieces`}
@@ -207,6 +266,6 @@ export default function FirstPiecesPick() {
         body={quote.leaveOut > 0 && quote.leaveOut < selected.length
           ? `Leave out ${quote.leaveOut} ${quote.leaveOut === 1 ? "piece" : "pieces"} to continue with what you have.` : undefined}
       />
-    </SafeAreaView>
+    </GlassScreen>
   );
 }

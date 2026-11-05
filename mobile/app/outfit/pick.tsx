@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { generateOutfit, getOutfitScan, markRegion } from "../../src/api/client";
 import { NO_CREDITS } from "../../src/api/v1";
 import type { OutfitCandidate, OutfitScan } from "../../src/api/types";
 import { groupFor } from "../../src/categoryGroups";
+import { FlowBar, FlowFooter } from "../../src/components/capture/FlowChrome";
 import { ProcessingCard, type Stage } from "../../src/components/capture/ProcessingCard";
 import { Icon } from "../../src/components/Icon";
 import { PhotoWithBoxes } from "../../src/components/outfit/PhotoWithBoxes";
@@ -17,7 +18,7 @@ import { cachedScan, rememberScan } from "../../src/outfit/scanCache";
 import { MarkRegion, type PhotoBox } from "../../src/components/outfit/MarkRegion";
 import { colors, hitSlopFor, radius, type, weight } from "../../src/theme";
 import { TextInput } from "react-native";
-import { BackButton, Button, Chip, CostSheet, InsufficientCreditsSheet, Sheet, useToast } from "../../src/ui";
+import { Button, Chip, CostSheet, Glass, GlassScreen, InsufficientCreditsSheet, Sheet, useToast } from "../../src/ui";
 import { CAP_TOAST, ROUND_CAP } from "../../src/firstPieces/round";
 import { track } from "../../src/firstPieces/analytics";
 import { useScreenViewed } from "../../src/activity/track";
@@ -61,6 +62,7 @@ export default function PickScreen() {
   const [markType, setMarkType] = useState("");
   const [markBusy, setMarkBusy] = useState(false);
   const [markError, setMarkError] = useState<string | null>(null);
+  const [footer, setFooter] = useState(0);
 
   async function addMarked() {
     if (!scan || !markBox || !markType.trim()) return;
@@ -138,69 +140,72 @@ export default function PickScreen() {
   if (busy !== null) {
     const photo = uri ?? candidates[0]?.preview_url ?? "";
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center" }}>
-        <ProcessingCard photoUri={photo} stages={OUTFIT_STAGES} startedAt={busy} estimateSeconds={12 + selected.length * 10}
-          title={selected.length === 1 ? "Creating 1 catalog image" : `Creating ${selected.length} catalog images`}
-          note="Keep the app open — this takes about half a minute per piece." />
-      </SafeAreaView>
+      <GlassScreen>
+        <SafeAreaView style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}>
+            <ProcessingCard photoUri={photo} stages={OUTFIT_STAGES} startedAt={busy} estimateSeconds={12 + selected.length * 10}
+              title={selected.length === 1 ? "Creating 1 catalog image" : `Creating ${selected.length} catalog images`}
+              note="Keep the app open — this takes about half a minute per piece." />
+          </ScrollView>
+        </SafeAreaView>
+      </GlassScreen>
     );
   }
 
   const deselectCount = unitPrice ? Math.max(0, selected.length - Math.floor(available / unitPrice)) : 0;
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ height: 44, justifyContent: "center", paddingHorizontal: 20 }}>
-        <BackButton label="Photos" onPress={() => router.back()} />
-      </View>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24, gap: 16 }}>
-        <Text accessibilityRole="header" style={{ ...type.screenTitle, color: colors.label }}>Select Garments</Text>
-        {uri && candidates.length ? <PhotoWithBoxes uri={uri} candidates={candidates} selected={selected} onToggle={toggle} maxHeight={360} /> : null}
-        {scan ? (
-          <View style={{ gap: 4 }}>
-            <Text style={{ ...type.section, color: colors.label }}>
-              {candidates.length === 1 ? "We found 1 garment" : `We found ${candidates.length} garments`}
-            </Text>
-            <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Choose which to digitize. Crops are from your photo; an image is made only for the ones you pick.</Text>
-          </View>
-        ) : null}
-        {note ? <Note text={note} /> : null}
-        {!scan && !error ? <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Loading…</Text> : null}
-        {scan && candidates.length === 0 ? <Note text="No pieces to add were found. Try a photo where the clothes are clearly in view." /> : null}
-        <View style={{ gap: 10 }}>
-          {candidates.map((c, i) => (
-            <CandidateRow key={c.id} index={i} candidate={corrections[c.id] ? { ...c, category: corrections[c.id] } : c} selected={selected.includes(c.id)}
-              onPress={() => toggle(c.id)} onEdit={() => { setDraft(corrections[c.id] ?? c.category); setEditing(c); }} />
-          ))}
-        </View>
-        {uri && scan && scan.candidates.length < 8 ? (
-          <Pressable onPress={() => { setMarkBox(null); setMarkType(""); setMarkError(null); setMarking(true); }} accessibilityRole="button"
-            style={{ height: 48, borderRadius: radius.list, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.separatorStrong, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ ...type.subhead, ...weight(600), color: colors.tint }}>+ Mark a missed garment</Text>
-          </Pressable>
-        ) : null}
-        {error ? <Note text={error} destructive /> : null}
-      </ScrollView>
-
-      <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 8, gap: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ ...type.headline, color: colors.label }}>{`${selected.length} selected`}</Text>
-            {unitPrice !== undefined ? (
-              <Text accessibilityLiveRegion="polite" style={{ ...type.footnote, color: affordable ? colors.secondaryLabel : colors.destructive }}>
-                {`${creditsLabel(total)} · ${available} available`}
+    <GlassScreen>
+      <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+        <FlowBar left={{ icon: "chevronLeft", label: "Photos", onPress: () => router.back() }} title="Select Garments" />
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 6, paddingBottom: footer + 20, gap: 14 }}>
+          {uri && candidates.length ? <PhotoWithBoxes framed uri={uri} candidates={candidates} selected={selected} onToggle={toggle} maxHeight={280} /> : null}
+          {scan ? (
+            <View style={{ gap: 4 }}>
+              <Text style={{ ...type.title3, color: colors.label }}>
+                {candidates.length === 1 ? "We found 1 garment" : `We found ${candidates.length} garments`}
               </Text>
-            ) : null}
+              <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Choose which to digitize. Crops are from your photo; an image is made only for the ones you pick.</Text>
+            </View>
+          ) : null}
+          {note ? <Note text={note} /> : null}
+          {!scan && !error ? <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Loading…</Text> : null}
+          {scan && candidates.length === 0 ? <Note text="No pieces to add were found. Try a photo where the clothes are clearly in view." /> : null}
+          <View style={{ gap: 8 }}>
+            {candidates.map((c, i) => (
+              <CandidateRow key={c.id} index={i} candidate={corrections[c.id] ? { ...c, category: corrections[c.id] } : c} selected={selected.includes(c.id)}
+                onPress={() => toggle(c.id)} onEdit={() => { setDraft(corrections[c.id] ?? c.category); setEditing(c); }} />
+            ))}
           </View>
-          <View style={{ width: 140 }}>
-            <Button title="Generate" size="medium" onPress={request} disabled={!scan || selected.length === 0} />
+          {uri && scan && scan.candidates.length < 8 ? (
+            <Pressable onPress={() => { setMarkBox(null); setMarkType(""); setMarkError(null); setMarking(true); }} accessibilityRole="button"
+              hitSlop={hitSlopFor(24, 200)} style={({ pressed }) => ({ alignSelf: "flex-start", paddingHorizontal: 4, opacity: pressed ? 0.5 : 1 })}>
+              <Text style={{ ...type.subhead, ...weight(600), color: colors.tint }}>+ Mark a missed garment</Text>
+            </Pressable>
+          ) : null}
+          {error ? <Note text={error} destructive /> : null}
+        </ScrollView>
+
+        <FlowFooter onHeight={setFooter}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ ...type.subhead, ...weight(700), color: colors.label }}>{`${selected.length} selected`}</Text>
+              {unitPrice !== undefined ? (
+                <Text accessibilityLiveRegion="polite" style={{ ...type.footnote, color: affordable ? colors.secondaryLabel : colors.destructive }}>
+                  {`${creditsLabel(total)} · ${available} available`}
+                </Text>
+              ) : null}
+            </View>
+            <View style={{ minWidth: 128 }}>
+              <Button title="Generate" size="medium" onPress={request} disabled={!scan || selected.length === 0} />
+            </View>
           </View>
-        </View>
-      </View>
+        </FlowFooter>
+      </SafeAreaView>
 
       <Sheet visible={!!editing} onClose={() => setEditing(null)} title="Correct this garment" floating>
         <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginBottom: 6 }}>Type</Text>
         <TextInput accessibilityLabel="Garment type" value={draft} onChangeText={setDraft} autoCapitalize="none" maxLength={40}
-          style={{ ...type.body, color: colors.label, backgroundColor: colors.grouped, height: 48, borderRadius: radius.input, paddingHorizontal: 14 }} />
+          style={{ ...type.body, color: colors.label, backgroundColor: colors.fill, height: 50, borderRadius: radius.input, paddingHorizontal: 14 }} />
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10, marginBottom: 18 }}>
           {TYPE_SHORTCUTS.map((t) => <Chip key={t} label={t} selected={draft.trim().toLowerCase() === t} onPress={() => setDraft(t)} />)}
         </View>
@@ -219,7 +224,7 @@ export default function PickScreen() {
         {uri ? <MarkRegion uri={uri} onBox={setMarkBox} /> : null}
         <TextInput accessibilityLabel="Missed garment type" placeholder="What is it? (e.g. belt)" placeholderTextColor={colors.tertiaryLabel}
           value={markType} onChangeText={setMarkType} autoCapitalize="none" maxLength={40}
-          style={{ ...type.body, color: colors.label, backgroundColor: colors.grouped, height: 48, borderRadius: radius.input, paddingHorizontal: 14, marginTop: 14 }} />
+          style={{ ...type.body, color: colors.label, backgroundColor: colors.fill, height: 50, borderRadius: radius.input, paddingHorizontal: 14, marginTop: 14 }} />
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10, marginBottom: 14 }}>
           {TYPE_SHORTCUTS.map((t) => <Chip key={t} label={t} selected={markType.trim().toLowerCase() === t} onPress={() => setMarkType(t)} />)}
         </View>
@@ -245,7 +250,7 @@ export default function PickScreen() {
         onAdjust={deselectCount > 0 ? () => setShort(false) : undefined}
         body={deselectCount > 0 ? `Deselect ${deselectCount} ${deselectCount === 1 ? "garment" : "garments"} to continue with what you have.` : undefined}
       />
-    </SafeAreaView>
+    </GlassScreen>
   );
 }
 
@@ -256,42 +261,44 @@ function CandidateRow({ candidate, index, selected, onPress, onEdit }: {
   const title = candidateTitle(candidate);
   const doubt = unsure(candidate);
   return (
-    <View style={{ backgroundColor: colors.grouped, borderRadius: radius.list, padding: 12, gap: 8 }}>
+    <Glass radius={radius.tile} style={{ padding: 8, paddingRight: 12, flexDirection: "row", alignItems: "center", gap: 10 }}>
       <Pressable
         accessibilityRole="checkbox" accessibilityState={{ checked: selected }}
         accessibilityLabel={`${title}. ${candidate.description}${note ? `. ${note}` : ""}`}
         onPress={onPress}
-        style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+        style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }}
       >
         {/* A crop of the real photo keeps its background, so it sits on a tile. */}
-        <View style={{ width: 62, height: 62, borderRadius: radius.button, overflow: "hidden", backgroundColor: colors.tile }}>
+        <View style={{ width: 52, height: 62, borderRadius: 12, overflow: "hidden", backgroundColor: colors.tile }}>
           {candidate.preview_url ? <Image source={{ uri: candidate.preview_url }} style={{ width: "100%", height: "100%" }} resizeMode="cover" /> : null}
           <View style={{ position: "absolute", top: 4, left: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: colors.tint, alignItems: "center", justifyContent: "center" }}>
             <Text style={{ ...type.caption, ...weight(700), color: colors.onTint }}>{index + 1}</Text>
           </View>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ ...type.headline, color: colors.label }}>{title}</Text>
-          <Text style={{ ...type.footnote, color: doubt ? colors.warningText : colors.secondaryLabel, marginTop: 2 }}>
+          <Text style={{ ...type.callout, ...weight(600), color: colors.label }}>{title}</Text>
+          <Text style={{ ...type.footnote, color: doubt ? colors.warningText : colors.secondaryLabel, marginTop: 1 }}>
             {`${groupFor(candidate.category)} · ${doubt ? "Not sure — please check" : "Clear match"}`}
           </Text>
-          {note ? <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 2 }}>{note}</Text> : null}
+          {note ? <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 1 }}>{note}</Text> : null}
         </View>
-        <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center",
+      </Pressable>
+      <Pressable onPress={onEdit} accessibilityRole="button" accessibilityLabel={`Edit ${title}`} hitSlop={hitSlopFor(22, 40)}>
+        <Text style={{ ...type.subhead, color: colors.tint }}>Edit</Text>
+      </Pressable>
+      {/* The check repeats the row's own checkbox for the eye; VoiceOver already has it. */}
+      <Pressable onPress={onPress} accessible={false} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden hitSlop={hitSlopFor(26, 26)}
+        style={{ width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center",
           backgroundColor: selected ? colors.tint : "transparent", borderWidth: selected ? 0 : 1.5, borderColor: colors.separatorStrong }}>
-          {selected ? <Icon name="checkmark" size={15} color={colors.onTint} /> : null}
-        </View>
+        {selected ? <Icon name="checkmark" size={15} color={colors.onTint} /> : null}
       </Pressable>
-      <Pressable onPress={onEdit} accessibilityRole="button" accessibilityLabel={`Edit ${title}`} hitSlop={hitSlopFor(22)} style={{ alignSelf: "flex-end" }}>
-        <Text style={{ ...type.footnote, ...weight(600), color: colors.tint }}>Edit</Text>
-      </Pressable>
-    </View>
+    </Glass>
   );
 }
 
 function Note({ text, destructive }: { text: string; destructive?: boolean }) {
   return (
-    <View style={{ flexDirection: "row", gap: 8, borderRadius: radius.button, padding: 12, backgroundColor: destructive ? colors.destructiveBg : colors.grouped }}>
+    <View style={{ flexDirection: "row", gap: 8, borderRadius: radius.button, padding: 12, backgroundColor: destructive ? colors.destructiveBg : colors.fill }}>
       <Icon name="alert" size={18} color={destructive ? colors.destructive : colors.secondaryLabel} />
       <Text style={{ ...type.subhead, flex: 1, color: destructive ? colors.destructive : colors.secondaryLabel }}>{text}</Text>
     </View>

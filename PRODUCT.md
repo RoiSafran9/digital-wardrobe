@@ -50,10 +50,11 @@ Fidelity to the owner's actual garment, not an idealized product shot. Each piec
 
 ## Brand Commitments
 
-Native iOS at full craft (SF Pro, SF Symbols, native sheets, one blue accent), warmed by the owner's design
-handoff (2026-10-19): white screens with warm-grey grouped cards, stone garment tiles with soft shadows, and
-Instrument Serif for four editorial headlines only. Immersion comes from motion of the garments, not decoration.
-Dark mode follows the system unless the user picks one in Account. See `DESIGN.md`.
+Native iOS at full craft (SF Symbols, native sheets, one blue accent) in the owner's KIPS Glass handoff
+(2026-11-06): one typeface (Bricolage Grotesque, heavy titles), frosted-glass cards over a cool grey screen with
+two soft color blobs, stone garment tiles, and a floating tab bar with a raised camera. Immersion comes from the
+user's own garments and their motion, not decoration. Dark mode follows the system unless the user picks one in
+Me. See `DESIGN.md`.
 
 ## Evidence on Hand
 

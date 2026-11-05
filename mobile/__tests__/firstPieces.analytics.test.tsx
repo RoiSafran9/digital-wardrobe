@@ -29,8 +29,8 @@ test("onboarding steps go to the app's activity events", async () => {
 test("the Start screen reports that onboarding started, the path chosen, and leaving", async () => {
   const value: CreditsValue = { billing: false, prices: {}, credits: null, outfit: true, generation: true, refresh: jest.fn(async () => {}) };
   await render(<CreditsContext.Provider value={value}><FirstPiecesStart /></CreditsContext.Provider>);
-  await fireEvent.press(screen.getByRole("button", { name: "Not right now" }));
-  await fireEvent.press(screen.getByRole("button", { name: "Not right now" }));  // counted once
+  await fireEvent.press(screen.getByRole("button", { name: "Someone wearing them. A person wearing the clothes or shoes." }));
+  await fireEvent.press(screen.getByRole("button", { name: "Someone wearing them. A person wearing the clothes or shoes." }));  // counted once
   await fireEvent.press(screen.getByRole("button", { name: "Close" }));
   await flush();
   expect(sent()).toEqual([

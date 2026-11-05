@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Icon, type IconName } from "../../src/components/Icon";
 import { GlyphTile } from "../../src/components/onboarding/GlyphTile";
+import { PressScale } from "../../src/motion/PressScale";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { haptics } from "../../src/haptics";
 import { Rise } from "../../src/motion/Rise";
@@ -12,7 +14,9 @@ import { colors, radius, type, weight } from "../../src/theme";
 import { Button, Glass, GlassScreen, IconButton } from "../../src/ui";
 
 export const START_TITLE = "Let's add your first 3 pieces";
-export const NEAR_QUESTION = "Are you near your wardrobe?";
+// Unified Add Clothes: the same photo-type question and words as the rest of the app (the analytics
+// keep their old values: laid out = path "near", someone wearing them = path "not_near").
+export const TYPE_QUESTION = "What does your photo show?";
 
 // Three empty frames waiting for the first pieces, each with its number on an accent badge.
 function Frames() {
@@ -30,8 +34,28 @@ function Frames() {
   );
 }
 
-// First 3 Pieces, step one: what we're about to do, and where the clothes are. Near the wardrobe →
-// photograph garments (Path A); not near it → an outfit photo (Path B, only when the server offers it).
+// One photo type: a glass card with its icon, name and what the photo looks like. Selected = ink fill.
+function TypeCard({ icon, title, caption, selected, onPress }: { icon: IconName; title: string; caption: string; selected?: boolean; onPress: () => void }) {
+  const fg = selected ? colors.background : colors.label;
+  return (
+    <PressScale onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}. ${caption}`} accessibilityState={{ selected: !!selected }} scaleTo={0.98}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderRadius: radius.list, backgroundColor: selected ? colors.label : undefined }}>
+        {selected ? null : <Glass radius={radius.list} flat style={StyleSheet.absoluteFill} />}
+        <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: selected ? "rgba(255,255,255,0.16)" : colors.tintSoft }}>
+          <Icon name={icon} size={22} color={selected ? colors.background : colors.tint} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ ...type.headline, ...weight(700), color: fg }}>{title}</Text>
+          <Text style={{ ...type.footnote, color: selected ? colors.background : colors.secondaryLabel }}>{caption}</Text>
+        </View>
+        <Icon name="chevron" size={15} color={selected ? colors.background : colors.tertiaryLabel} />
+      </View>
+    </PressScale>
+  );
+}
+
+// First 3 Pieces, step one: what we're about to do, and what the photo shows. Clothes by themselves →
+// the photo tray (Path A); someone wearing them → an outfit photo (Path B, only when the server offers it).
 export default function FirstPiecesStart() {
   const router = useRouter();
   const { entry } = useLocalSearchParams<{ entry?: string }>();
@@ -77,21 +101,18 @@ export default function FirstPiecesStart() {
 
           {outfit ? (
             <>
-              <Glass radius={radius.tile} style={{ marginTop: 28, padding: 16 }}>
-                <Text accessibilityRole="header" style={{ ...type.headline, ...weight(700), color: colors.label }}>{NEAR_QUESTION}</Text>
-                <View style={{ gap: 8, marginTop: 14 }}>
-                  <Button title="Yes, I'm near it" icon="camera" onPress={near} />
-                  <Button title="Not right now" variant="soft"
-                    onPress={() => { haptics.selection(); if (!away) track("path_selected", { path: "not_near" }); setAway(true); }} />
-                </View>
-              </Glass>
+              <Text accessibilityRole="header" style={{ ...type.title3, color: colors.label, marginTop: 28, marginBottom: 12 }}>{TYPE_QUESTION}</Text>
+              <View style={{ gap: 10 }}>
+                <TypeCard icon="flat" title="Clothes by themselves" caption="Laid out, hanging, or shoes together." onPress={near} />
+                <TypeCard icon="person2" title="Someone wearing them" caption="A person wearing the clothes or shoes." selected={away}
+                  onPress={() => { haptics.selection(); if (!away) track("path_selected", { path: "not_near" }); setAway(true); }} />
+              </View>
               {away ? (
                 <Rise>
                   <Glass radius={radius.tile} style={{ marginTop: 10, padding: 16, gap: 8 }}>
-                    <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginBottom: 6 }}>Use what you're wearing, or an outfit photo you have.</Text>
-                    <Button title="Take Outfit Photo" icon="camera" onPress={() => router.push({ pathname: "/capture/camera", params: { mode: "outfit", onboarding: "1" } })} />
-                    <Button title="Choose Outfit Photo" icon="photos" variant="glass" onPress={outfitPhoto} />
-                    <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 2 }}>A photo of someone wearing the clothes, full body in view.</Text>
+                    <Button title="Take Photo" icon="camera" onPress={() => router.push({ pathname: "/capture/camera", params: { mode: "outfit", onboarding: "1" } })} />
+                    <Button title="Choose from Library" icon="photos" variant="glass" onPress={outfitPhoto} />
+                    <Text style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 2 }}>Keep the clothing visible; full outfit in frame.</Text>
                   </Glass>
                 </Rise>
               ) : null}

@@ -6,6 +6,7 @@ import { generateOutfit, getOutfitScan, markRegion } from "../../src/api/client"
 import { NO_CREDITS } from "../../src/api/v1";
 import type { OutfitCandidate, OutfitScan } from "../../src/api/types";
 import { groupFor } from "../../src/categoryGroups";
+import { ChangePhotoType } from "../../src/components/capture/ChangePhotoType";
 import { FlowBar, FlowFooter } from "../../src/components/capture/FlowChrome";
 import { ProcessingCard, type Stage } from "../../src/components/capture/ProcessingCard";
 import { Icon } from "../../src/components/Icon";
@@ -38,7 +39,8 @@ export function unsure(c: OutfitCandidate): boolean {
 }
 
 // Outfit Photo, between the stages: the garments found on the person. The user picks which to add,
-// confirms the exact price, and only then are images made.
+// confirms the exact price, and only then are images made. Until then Change Photo Type sends the same
+// photo to the garment preview's own free scan (prominent when the scan says the clothes are laid out).
 export default function PickScreen() {
   useScreenViewed("outfit_pick");
   const { scanId, uri, onboarding } = useLocalSearchParams<{ scanId: string; uri?: string; onboarding?: string }>();
@@ -152,6 +154,10 @@ export default function PickScreen() {
     );
   }
 
+  // Gone once the cost is being confirmed or images are being made: no type change after paying starts.
+  const changeType = (suggested: boolean) => (
+    <ChangePhotoType from="worn" stage="outfit_pick" uri={uri} onboarding={cap !== undefined} suggested={suggested} disabled={confirming || busy !== null} />
+  );
   const deselectCount = unitPrice ? Math.max(0, selected.length - Math.floor(available / unitPrice)) : 0;
   return (
     <GlassScreen>
@@ -168,6 +174,7 @@ export default function PickScreen() {
             </View>
           ) : null}
           {note ? <Note text={note} /> : null}
+          {scan?.scene_kind === "flat" ? changeType(true) : null}
           {!scan && !error ? <Text style={{ ...type.subhead, color: colors.secondaryLabel }}>Loading…</Text> : null}
           {scan && candidates.length === 0 ? <Note text="No pieces to add were found. Try a photo where the clothes are clearly in view." /> : null}
           <View style={{ gap: 8 }}>
@@ -183,6 +190,7 @@ export default function PickScreen() {
             </Pressable>
           ) : null}
           {error ? <Note text={error} destructive /> : null}
+          {scan && scan.scene_kind !== "flat" ? changeType(false) : null}
         </ScrollView>
 
         <FlowFooter onHeight={setFooter}>

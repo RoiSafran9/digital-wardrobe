@@ -34,6 +34,8 @@ export type Events = {
   out_of_credits_shown: { action?: Action };
   permission: { kind: "camera" | "photos" | "notifications"; granted: boolean };
   capture_source: { flow: "garment" | "outfit"; from: "camera" | "library" };
+  // Change Photo Type before paid generation (src/photoType.ts): the two photo types and where it happened.
+  add_photo_type_corrected: { from: "laid_out" | "worn"; to: "laid_out" | "worn"; stage: "garment_preview" | "outfit_detect" | "outfit_pick" };
   item_opened: { has_back: boolean; has_turn: boolean };
   // request_id: the X-Request-ID of the call that failed (src/api/v1.ts), to find it in the server log.
   client_error: { where: Screen | "global"; kind: "render" | "unhandled" | "network" | "http_5xx"; request_id?: string };

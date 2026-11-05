@@ -62,3 +62,11 @@ def test_resent_app_event_ids_and_milestones_are_written_once():
             {"user_id": A, "event": "popup_shown", "props": {"saved": 1}, "client_event_id": "e2"}]
     assert store.insert_events(rows) == 2
     assert store.insert_events(rows + [{"user_id": A, "event": "popup_shown", "props": {}, "client_event_id": "e3"}]) == 0
+
+
+def test_photo_type_correction_takes_only_the_listed_types_and_stages():
+    props = {"from": "laid_out", "to": "worn", "stage": "garment_preview"}
+    assert activity.validate("add_photo_type_corrected", props) == props
+    for bad in ({"from": "file:///photo.jpg"}, {"to": "outfit"}, {"stage": "camera"}, {"uri": "file:///photo.jpg"}):
+        with pytest.raises(ValueError):
+            activity.validate("add_photo_type_corrected", {**props, **bad})

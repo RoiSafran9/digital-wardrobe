@@ -253,8 +253,10 @@ describe("preview with the free pre-scan", () => {
     (scanGarments as jest.Mock).mockResolvedValueOnce({ ...SCAN, pieces: [], reason: "No garment to add: worn on body." });
     await renderWith(<PreviewScreen />, { outfit: true });
     expect(await screen.findByText("No pieces found")).toBeTruthy();
-    await fireEvent.press(screen.getByRole("button", { name: "Try it as an outfit photo" }));
-    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///photo.jpg", flow: "outfit" } });
+    expect(screen.getByText("This looks like someone wearing the clothes. Try as a worn photo.")).toBeTruthy();
+    expect(screen.getByText("We'll scan this photo again for free.")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "Try as a worn photo" }));
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///photo.jpg" } });
   });
 
   test("if the pre-scan fails it falls back to choosing how many to create", async () => {

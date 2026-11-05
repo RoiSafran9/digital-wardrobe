@@ -4,12 +4,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { scanOutfit } from "../../src/api/client";
 import type { OutfitScan } from "../../src/api/types";
+import { ChangePhotoType } from "../../src/components/capture/ChangePhotoType";
 import { FlowBar } from "../../src/components/capture/FlowChrome";
 import { PhotoWithBoxes } from "../../src/components/outfit/PhotoWithBoxes";
 import { ScanBand } from "../../src/components/outfit/ScanBand";
 import { haptics } from "../../src/haptics";
 import { pickable } from "../../src/outfit/outfit";
 import { rememberScan } from "../../src/outfit/scanCache";
+import { LOOKS_LAID_OUT } from "../../src/photoType";
 import { colors, radius, type, weight } from "../../src/theme";
 import { Button, Glass, GlassScreen } from "../../src/ui";
 import { useScreenViewed } from "../../src/activity/track";
@@ -28,7 +30,9 @@ function FreePill() {
 }
 
 // Outfit Photo, Stage 1 (free): upload the photo, find the garments on the person, show them, then
-// open the pick screen. No image is generated and no credits are used here.
+// open the pick screen. No image is generated and no credits are used here. When the scan says the clothes
+// are laid out (not worn) it stays here instead, offering the same photo as clothes by themselves; a failed
+// scan offers Change Photo Type too. The timed move to the pick screen never runs while either is shown.
 export default function DetectScreen() {
   useScreenViewed("outfit_detect");
   const router = useRouter();
@@ -50,9 +54,12 @@ export default function DetectScreen() {
     return () => { live = false; };
   }, [uri]);
 
+  const laidOut = scan?.scene_kind === "flat";
+  const toPick = () => scan && router.replace({ pathname: "/outfit/pick", params: { scanId: scan.id, uri, ...mode } });
+
   useEffect(() => {
-    if (!scan) return;
-    const timer = setTimeout(() => router.replace({ pathname: "/outfit/pick", params: { scanId: scan.id, uri, ...mode } }), SHOW_BOXES_MS);
+    if (!scan || scan.scene_kind === "flat") return;
+    const timer = setTimeout(toPick, SHOW_BOXES_MS);
     return () => clearTimeout(timer);
   }, [scan]);
 
@@ -69,8 +76,17 @@ export default function DetectScreen() {
             <View style={{ gap: 10 }}>
               <Text accessibilityRole="header" style={{ ...type.title2, color: colors.label }}>Couldn't check this photo</Text>
               <Text style={{ ...type.body, color: colors.secondaryLabel }}>{error}</Text>
-              <View style={{ marginTop: 8 }}>
+              <View style={{ marginTop: 8, gap: 12 }}>
                 <Button title="Try Another Outfit Photo" onPress={() => router.replace({ pathname: "/capture/camera", params: { mode: "outfit", ...mode } })} />
+                <ChangePhotoType from="worn" stage="outfit_detect" uri={uri} onboarding={onboarding === "1"} />
+              </View>
+            </View>
+          ) : laidOut ? (
+            <View style={{ gap: 10 }}>
+              <Text accessibilityRole="header" style={{ ...type.title3, color: colors.label }}>{LOOKS_LAID_OUT}</Text>
+              <View style={{ marginTop: 4, gap: 6 }}>
+                <ChangePhotoType from="worn" stage="outfit_detect" uri={uri} onboarding={onboarding === "1"} suggested />
+                {found.length ? <Button title="Continue as Worn Photo" variant="text" size="medium" onPress={toPick} /> : null}
               </View>
             </View>
           ) : null}

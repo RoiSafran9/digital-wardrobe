@@ -2,6 +2,7 @@
 // Prices always come from the server (GET /v1/prices); nothing here is a price.
 import type { OutfitCandidate, OutfitScan } from "../api/types";
 import { creditsLabel } from "../credits/credits";
+import { LOOKS_LAID_OUT } from "../photoType";
 
 // Every candidate can be picked. Shoes were held back in v1 (owner decision D2); the footwear MVP offers
 // them: a worn pair is one candidate and gets the footwear prompt on the server.
@@ -31,7 +32,7 @@ export function visibilityNote(c: OutfitCandidate): string | null {
 }
 
 export function sceneNote(scan: OutfitScan): string | null {
-  if (scan.scene_kind === "flat") return "This looks like clothes laid out, not worn. Garment photo works better for that.";
+  if (scan.scene_kind === "flat") return LOOKS_LAID_OUT;  // the pick screen offers the same photo as clothes by themselves
   if (scan.scene_kind === "none") return "No clothing found in this photo.";
   if ((scan.person_count ?? 1) > 1) return "More than one person: these are the main person's clothes.";
   return null;

@@ -17,15 +17,19 @@ import { ScanBand } from "../../src/components/outfit/ScanBand";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { pieceLabel } from "../../src/footwear";
 import { haptics } from "../../src/haptics";
-import { TRY_AS_OUTFIT, isWornRejection } from "../../src/outfit/outfit";
+import { isWornRejection } from "../../src/outfit/outfit";
+import { ChangePhotoType } from "../../src/components/capture/ChangePhotoType";
+import { LOOKS_WORN } from "../../src/photoType";
 import { useScreenViewed } from "../../src/activity/track";
 
 // The fallback quote (local mode, or when the free pre-scan isn't available): following the approved
 // rule (CREDITS §6), the user approves the most front images they'll pay for; the server makes at most
 // that many and charges only what it made.
-function MaxFrontsPreview({ uri, note }: { uri: string; note?: string | null }) {
+function MaxFrontsPreview({ uri, note, onboarding }: { uri: string; note?: string | null; onboarding: boolean }) {
   const router = useRouter();
   const { start } = useCaptureJobs();
+  const { outfit } = useCredits();
+  const [started, setStarted] = useState(false);
   const fronts = useFrontsChoice();
   const [short, setShort] = useState(false);
   const [footer, setFooter] = useState(0);
@@ -33,6 +37,7 @@ function MaxFrontsPreview({ uri, note }: { uri: string; note?: string | null }) 
 
   const generate = () => {
     if (fronts.blocked) return setShort(true);
+    setStarted(true);
     start(uri, fronts.maxFronts);
     router.replace("/capture/processing");
   };
@@ -83,6 +88,7 @@ function MaxFrontsPreview({ uri, note }: { uri: string; note?: string | null }) 
           <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>
             You can review every piece once it's ready.
           </Text>
+          {outfit ? <ChangePhotoType from="laid_out" stage="garment_preview" uri={uri} onboarding={onboarding} disabled={started} /> : null}
         </ScrollView>
         <FlowFooter onHeight={setFooter}>
           <Button
@@ -138,7 +144,8 @@ export const SCAN_FALLBACK = "Couldn't find the pieces first — choose how many
 export default function PreviewScreen() {
   useScreenViewed("preview");
   const router = useRouter();
-  const { uri } = useLocalSearchParams<{ uri: string }>();
+  const { uri, onboarding } = useLocalSearchParams<{ uri: string; onboarding?: string }>();
+  const guided = onboarding === "1";  // came from First 3 Pieces' worn flow: Change Photo Type keeps the mode
   const { startFromScan } = useCaptureJobs();
   const { billing, prices, credits, outfit } = useCredits();
   const [scan, setScan] = useState<GarmentScan | null>(null);
@@ -147,6 +154,7 @@ export default function PreviewScreen() {
   const [off, setOff] = useState<Set<number>>(new Set());
   const [short, setShort] = useState(false);
   const [footer, setFooter] = useState(0);
+  const [started, setStarted] = useState(false);  // paid generation began: no more type change
 
   useEffect(() => {
     let live = true;
@@ -164,7 +172,7 @@ export default function PreviewScreen() {
   const boxes = useMemo(() => pieces.map((p) => ({ id: `p${p.index}`, box: p.box })), [pieces]);
   const label = pieceLabel;
 
-  if (mode === "fallback") return <MaxFrontsPreview uri={uri} note={note} />;
+  if (mode === "fallback") return <MaxFrontsPreview uri={uri} note={note} onboarding={guided} />;
   if (mode === "scanning") return <Scanning uri={uri} onBack={() => router.back()} />;
 
   const toggle = (index: number) => {
@@ -174,12 +182,18 @@ export default function PreviewScreen() {
   const generate = () => {
     if (!scan || picked.length === 0) return;
     if (price !== undefined && total > available) return setShort(true);
+    setStarted(true);
     startFromScan(uri, scan.id, picked.map((p) => p.index), price ?? null);
     router.replace("/capture/processing");
   };
   const retake = scan?.quality?.status === "retake";
   const nothing = !retake && pieces.length === 0;
   const deselect = price ? Math.max(0, picked.length - Math.floor(available / price)) : 0;
+  // The scan refused a photo of someone wearing the clothes: the outfit flow is the prominent way on.
+  const looksWorn = outfit && nothing && isWornRejection(scan?.reason);
+  const changeType = outfit ? (
+    <ChangePhotoType from="laid_out" stage="garment_preview" uri={uri} onboarding={guided} suggested={looksWorn} disabled={started} />
+  ) : null;
 
   return (
     <GlassScreen>
@@ -192,14 +206,15 @@ export default function PreviewScreen() {
             <View style={{ gap: 6 }}>
               <Text accessibilityRole="header" style={{ ...type.title2, color: colors.label }}>This photo can't be used</Text>
               <Text style={{ ...type.body, color: colors.secondaryLabel }}>{`${scan?.quality?.reason ?? "Try again"}. Lay each piece flat, in good light.`}</Text>
+              {changeType}
             </View>
           ) : nothing ? (
             <View style={{ gap: 10 }}>
               <Text accessibilityRole="header" style={{ ...type.title2, color: colors.label }}>No pieces found</Text>
-              <Text style={{ ...type.body, color: colors.secondaryLabel }}>{scan?.reason ?? "Try again with each piece laid flat, in good light."}</Text>
-              {outfit && isWornRejection(scan?.reason) ? (
-                <Button title={TRY_AS_OUTFIT} variant="glass" onPress={() => router.replace({ pathname: "/outfit/detect", params: { uri, flow: "outfit" } })} />
-              ) : null}
+              <Text style={{ ...type.body, color: colors.secondaryLabel }}>
+                {looksWorn ? LOOKS_WORN : scan?.reason ?? "Try again with each piece laid flat, in good light."}
+              </Text>
+              {changeType}
             </View>
           ) : (
             <>
@@ -219,6 +234,7 @@ export default function PreviewScreen() {
                 </GroupedList>
               ) : null}
               <Text style={{ ...type.footnote, color: colors.secondaryLabel, textAlign: "center" }}>You'll review every piece once it's ready.</Text>
+              {changeType}
             </>
           )}
         </ScrollView>

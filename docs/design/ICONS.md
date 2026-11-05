@@ -81,7 +81,7 @@ Some symbols already mean one thing in KIPS; don't reuse them for something else
 
 ### 9. The tile it sits on
 Choice icons live on `OptionTile` (`mobile/src/components/outfitBuilder/OptionTile.tsx`):
-- Three per row, 8pt gaps, 20pt screen margins, 78pt tall, radius 18 (`radius.list`), `colors.fill` background.
+- Three per row, 8pt gaps, 20pt screen margins, 86pt tall, radius 20, on glass (`Glass`, KIPS Glass handoff 8.1).
 - Icon centered in a 26pt slot, 8pt above the label.
 - Selected: ink fill (`colors.label`) with inverted icon and label, like `Chip`.
 - Motion: press scales to 0.97 (`PressScale`); becoming selected pops the icon from 80% with a light spring and a

@@ -15,7 +15,7 @@ const TABS: Record<string, { label: string; icon: IconName; active: IconName }> 
 
 type Extra = { onCamera: () => void; onLooks?: () => void };  // Looks only when Build My Look is on
 
-function Item({ label, icon, selected, onPress, testID }: { label: string; icon: IconName; selected: boolean; onPress: () => void; testID?: string }) {
+function Item({ label, icon, selected, onPress, testID, wide }: { label: string; icon: IconName; selected: boolean; onPress: () => void; testID?: string; wide?: boolean }) {
   const color = selected ? colors.tint : colors.tabInactive;
   return (
     <Pressable
@@ -24,7 +24,7 @@ function Item({ label, icon, selected, onPress, testID }: { label: string; icon:
       accessibilityRole="tab"
       accessibilityLabel={label}
       accessibilityState={{ selected }}
-      style={{ flex: 1, height: "100%", alignItems: "center", justifyContent: "center", gap: 2 }}
+      style={{ flex: wide ? 2 : 1, height: "100%", alignItems: "center", justifyContent: "center", gap: 2 }}
     >
       <Icon name={icon} size={23} color={color} />
       <Text style={{ ...type.tabLabel, color }}>{label}</Text>
@@ -42,13 +42,14 @@ export function TabBar({ state, emitter, navigateToTab, onCamera, onLooks }: Bot
       navigateToTab(key);
     }
   };
-  const route = (name: string) => {
+  // Without Looks, Me takes both right-hand slots so the camera stays centered.
+  const route = (name: string, wide = false) => {
     const i = state.routes.findIndex((r) => r.name === name);
     const r = state.routes[i];
     if (!r) return null;
     const tab = TABS[name];
     const focused = state.index === i;
-    return <Item key={name} testID={`tab-${name}`} label={tab.label} icon={focused ? tab.active : tab.icon} selected={focused} onPress={go(focused, r.key)} />;
+    return <Item key={name} testID={`tab-${name}`} label={tab.label} icon={focused ? tab.active : tab.icon} selected={focused} onPress={go(focused, r.key)} wide={wide} />;
   };
   return (
     <View pointerEvents="box-none" style={{ position: "absolute", left: 16, right: 16, bottom: 26 }}>
@@ -63,7 +64,7 @@ export function TabBar({ state, emitter, navigateToTab, onCamera, onLooks }: Bot
           </Pressable>
         </View>
         {onLooks ? <Item testID="tab-looks" label="Looks" icon="sparkles" selected={false} onPress={() => { haptics.selection(); onLooks(); }} /> : null}
-        {route("account")}
+        {route("account", !onLooks)}
       </Glass>
     </View>
   );

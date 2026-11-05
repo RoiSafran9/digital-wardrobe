@@ -48,23 +48,23 @@ Rule (handoff [CHANGE_home_photo_type.md](design/design_handoff_digital_wardrobe
 - **Results** (`capture/results.tsx`): "✓ READY", "N pieces created", tiles with check toggles (deselected 40%), tier badge and retake/edge tips, pieces over the limit and pieces that failed; "No pieces found" / unusable-photo messages with Take Another Photo. **Add N to Closet** removes deselected pieces (soft delete; "Credits for removed pieces are not returned." while billing is on).
 - **Saved** (`capture/saved.tsx`, shared with outfits): fan of up to three tiles with a green check, "Added to your closet" (Instrument Serif), "N new pieces · N credits used" (credits only while billing is on), View Closet / Add More Clothes.
 
-## 4. Account (`mobile/app/(tabs)/account.tsx`)
-- Grouped list on the warm-grey background.
+## 4. Me (`mobile/app/(tabs)/account.tsx`; the old Account tab)
+- Large title "Me"; glass cards and lists over the blobs.
 - Profile card: initials (from the name, else the email) in an accent-wash circle, the name and email, and **Edit** to change the name.
-- **AI Credits** card (account mode): the available balance (54pt), "of N granted" from the server, an 8pt bar of available/granted that turns amber at ≤ 3 credits, "N used so far · enough for about N more garments" (or "Running low. Ask the app owner for more credits."), "N held for work in progress". Billing off: "Billing is off — AI actions don't use credits yet." **How it works** opens a sheet with three points (detection free · pay per image created · cost always shown first).
-- **Price list** (billing on): Garment detection Free (when outfits are offered), Front image, Back image, 360° view — all from the server.
+- **AI Credits** card (account mode): a 92pt ring meter of available/granted (tint, amber at ≤ 3 credits) with the available balance in its center, "of N granted" from the server, "N used so far · enough for about N more garments" (or "Running low. Ask the app owner for more credits."), "N held for work in progress". Billing off: "Billing is off — AI actions don't use credits yet." **How it works** opens a sheet with three points (detection free · pay per image created · cost always shown first).
+- **Price list** (billing on): a grid of Garment detection Free (when outfits are offered), Front image, Back image, 360° view — all from the server.
 - **Recent activity:** grants (+N, green) and charges (−N) with dates, newest first, "Show more".
 - **Settings:** Appearance System / Light / Dark (remembered on the device; default System); **Notify when ready** (account mode, off by default: asks iOS permission, registers this phone's Expo push token with the server, which pushes "Your pieces are ready", "Back image ready", "360° view ready", "Your outfit pieces are ready" or "Generation paused"; the processing screen then says "We'll notify you…"); **Help & Support** (`app/help.tsx`: how garment photos, outfits, back/360, credits and editing work; a Contact Support button only when `EXPO_PUBLIC_SUPPORT_EMAIL` is set) and **Privacy** (`app/privacy.tsx`: what is stored, who can see it, AI processing, where it lives, removing and deleting — a plain-language summary, not a legal policy).
 - **Sign Out** (confirmed in a sheet) and **Delete Account** (danger; sheet: "Your closet, photos and AI credits are removed for good. This can't be undone."; deletes on the server, then signs out). Version footer.
 - Local mode: a "Local mode" card ("Not signed in. Your items live on your computer's wardrobe server.") and Appearance.
 
 ## 5. Garment Details (`mobile/src/components/ItemSheet.tsx`)
-- Native page sheet that pages between items; × (round fill button), "N / M" counter, **Edit** (accent text).
-- 372pt image stage on the stone tile; segmented **Front / Back / 360°** (Back and 360° shown for closet items, or when they exist).
+- Native page sheet. A full-width 480pt image stage on the stone tile (55% of the screen on small phones) with a glass × , a glass **Edit** pill and a "N / M" counter over it, and a floating glass segmented **Front / Back / 360°** near its bottom (Back and 360° shown for closet items, or when they exist).
+- **Swipe between items:** a sideways drag on the image (it takes over after 8pt, and only when more sideways than vertical) moves to the next or previous item at 60pt or on a flick; off while editing, uploading a back image, or turning the 360. VoiceOver moves between items from the counter (adjustable, "1 of 3").
   - **Back, none yet:** dashed frame, "No back image yet", "Add Back Image" (+ "· N credit" while billing is on). While it runs: shimmer + "Creating back image…".
   - **360°, none yet:** four fading thumbnails, "See it from every angle", "Generate 360°" (+ price); running: "Creating four angles…"; failed: the reason and "Try Again".
   - **360° ready:** the turntable (drag, ‹ › buttons, angle pill, "Drag to rotate · AI view").
-- Title = the garment's name, then "Group · Type · Added Oct 18", tier badge; grouped facts: Color, Pattern, Details, Text, Back text (no Material — never guessed).
+- Title = the garment's name (28/800), then "Group · Type · Added Oct 18", tier badge; facts as white chips: color (with its dot), pattern, details, printed text, back text (no Material — never guessed).
 - Actions list: Add Back Image (price), Generate 360° View (price), Remove from closet.
 - Paid actions (billing on) confirm with the cost sheet first (line, total, "Balance X → Y"); short of credits, or a server "not enough credits", opens the Not enough credits sheet. Finished work shows a toast ("✓ Back image ready · 1 credit used", "✓ 360° view ready").
 - **Edit:** Name (placeholder = the derived name), Type with group shortcuts, Colors, Pattern chips, Details, Text; Save → "Changes saved" toast; unsaved-changes guard kept.
@@ -72,14 +72,14 @@ Rule (handoff [CHANGE_home_photo_type.md](design/design_handoff_digital_wardrobe
 
 ## Screen-level acceptance
 - Signed out you see Welcome on first launch, then Sign In; after the code you land on Home (or once, A welcome gift); restart keeps you signed in; Sign Out returns to Sign In.
-- Every tab reachable from the bar; capture from Home and Add both land new pieces in Just added and the closet.
-- Category chips on Home open Closet pre-filtered.
+- Every tab reachable from the bar; the camera button and Home's Add card both land new pieces in New this week and the closet.
+- Category tiles on Home open Closet pre-filtered.
 - Item sheet states (no back / back, 360 none / running / done / failed, edit, remove) all reachable on the phone.
 - Light and dark mode readable; Reduce Motion removes drift, count-up and scrub crossfades.
 
 ## Credits (account mode; [spec](superpowers/specs/2026-10-18-ai-credits-app-design.md))
 All figures come from the server (`GET /v1/credits`, `GET /v1/prices`); nothing is shown in local mode, and no amount is shown while billing is off.
-- **Account:** balance of what was granted, meter, price list and activity (§4). Home shows the balance as a pill.
+- **Me:** balance of what was granted, ring meter, price list and activity (§4). Home shows the balance as a pill.
 - **Every paid action** (front images, back image, 360, outfit pieces) confirms its cost first: a sheet with the line items, Total and "Balance X → Y" (garment photos: the preview's "Pieces in this photo" quote, CREDITS §6).
 - **Not enough credits** (before starting, or when the server answers 402): a sheet with "available / needed credits needed", an amber bar, the reason and "Ask the app owner for more credits."; Adjust Selection where the user can lower the cost, View Price List otherwise. No purchase UI.
 - **Starter credits:** a one-time "A welcome gift" screen after sign-in when the server has granted credits (§0).
@@ -87,13 +87,18 @@ All figures come from the server (`GET /v1/credits`, `GET /v1/prices`); nothing 
 ## Outfit Photo import (built behind `WARDROBE_OUTFIT=on`, off by default; account mode only)
 
 Shown only when `GET /v1/prices` says `outfit: true`. Design and measurements: [spec](superpowers/specs/2026-10-19-outfit-photo-two-step-design.md), [evaluation](superpowers/specs/outfit-import-evaluation.md).
-- **Entry:** Add → Import from Outfit Photo, the camera's OUTFIT mode, Home's "Wearing it?" link, or "Try it as an outfit photo" after a garment photo was refused as worn (same photo, no auto-routing).
+- **Entry:** Home's Add card → **Worn** (the camera's OUTFIT mode), Add → Import from Outfit Photo, Home's empty-closet Outfit photo row, or "Try it as an outfit photo" after a garment photo was refused as worn (same photo, no auto-routing).
 - **Detecting** (`app/outfit/detect.tsx`): the photo with a scanning band, "Finding garments…" and a "Detection is free" pill; when the free scan returns, the boxes pop in one by one ("N garments found"), then the pick screen opens. A failed scan explains and offers another photo.
 - **Select Garments** (`app/outfit/pick.tsx`): the photo with tappable numbered boxes (selected = solid accent, unselected = dashed white); rows with a 62pt crop of the real photo, the category, "Group · Clear match" or amber "Not sure — please check", plain-language visibility notes, a check circle and **Edit** ("Correct this garment": type with shortcuts → sent with Generate and used for the image and the saved piece; "Not a garment" removes it). **+ Mark a missed garment**: drag across it on the photo and name its type; it joins the list selected (free, no model call). Worn shoes are offered as one candidate per pair (footwear MVP; D2 held them back in v1); mostly hidden pieces start unselected (D3). Sticky footer: "N selected", "N credits · X available" (billing on), Generate.
 - **Confirm cost** (billing on): sheet with "Front image × N", Total, "Balance X → Y", "Detection was free", "Generate · N credits". Short of credits → Not enough credits with "Deselect K garments to continue with what you have." and Adjust Selection. A changed price (server 409) refreshes prices and re-opens the sheet; nothing is charged.
 - **Creating:** the processing card ("Taking them off the photo" → "Laying them flat" → "Adding final details").
 - **Review** (`app/outfit/review.tsx`): "Review i of N", "N kept", Later; the crop of your photo next to the generated image, name, tier, AI note, **↻ Regenerate** (a new image from the same photo at the front price, confirmed with the cost sheet; replaces the image, stays in review), a **Keep** switch, a thumbnail strip, Back / Next, and on the last piece **Save N to Closet** (kept → closet, others discarded) → Saved. Failed picks are listed as not charged. Results stay out of the closet until saved; pending results reopen from Add (also after a restart).
 - **Not in v1:** auto-routing, multi-person choice.
+
+## Build My Look (`mobile/app/build-my-look/index.tsx`; behind `WARDROBE_OUTFIT_BUILDER=on`, account mode)
+- Reached from Home's Build My Look card and the tab bar's **Looks**. One question per step with progress dots, "Build My Look · i of 5", a 32/800 question and three-column glass option tiles (selected = ink); **Next**, then **Build Looks** ("Made with clothes you already own."). × on the first step, back on later ones.
+- **Looks:** the answers as a chip, "N looks for you", a swipe deck of white cards (two stacked behind) with the look's own catalog images, name, piece count and reason; swiping either way shows the next look, and "1 of N" with **Next Look** is always there (VoiceOver, Reduce Motion). Tapping a card opens the look; the look's pieces sit in a row under the deck.
+- **Swap** sheet: "Swap {slot}", the current piece outlined in tint, then the server's owned alternatives with their reasons; **Keep This Piece**. Nothing is saved.
 
 ## Not built (see ROADMAP "Later")
 A pre-save Review screen with an Original/Generated toggle and Save button, saved-item Regenerate, in-app restore of removed items, buying credits.

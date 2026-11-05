@@ -191,6 +191,8 @@ SF Symbols through `Icon` (`mobile/src/components/Icon.tsx`), Ionicons only as f
 - **GroupedList / Row:** eyebrow header over a glass list (radius 22), hairline-divided rows.
 - **CreditPill:** glass capsule with an accent dot and the balance; only while billing is on.
 - **Toast:** top-center ink pill, 14/600.
+- **OptionTile** (`mobile/src/components/outfitBuilder/OptionTile.tsx`): Build My Look's answers, three per row, 86pt glass tiles, radius 20, a 24pt semibold SF Symbol over a 15/500 label (choice icons stay 24pt per ICONS.md, not the board's 26); selected = ink fill with inverted content.
+- **Item sheet stage** (`mobile/src/components/ItemSheet.tsx`): a full-width stone stage with glass × / Edit / counter and a floating glass segmented control; sideways drags on the image move between items.
 - **Home cards** (`mobile/src/components/home/HomeCards.tsx`): the blue Add clothes card (Laid flat / Worn), the Build My Look card with three floating pieces, category tiles with a fan of up to three pieces, New this week (only when something was added in the last 7 days).
 
 Existing pieces keep their roles: `PressScale` (cards scale to 0.97), `Rise`, `PopIn`, `Breathe` / `Float` (`mobile/src/motion/Breathe.tsx`), `GarmentImage` (cutout → white generated → crop), `TierBadge`, `TurnView` (360 turntable, labelled AI).

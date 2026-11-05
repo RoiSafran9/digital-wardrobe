@@ -1,6 +1,6 @@
 # KIPS — Unified Add Clothes UX
 
-**Status:** Approved direction / implementation-ready specification. Documentation only — no app code has been changed by this commit.  
+**Status:** Implemented on branch `feat/unified-add-clothes` (PR, not merged); device and real-photo QA pending — see [05-IMPLEMENTATION-REPORT.md](05-IMPLEMENTATION-REPORT.md).  
 **Date:** 2026-11-05  
 **Source inspected:** `main` at `04788789334038622bfbe2c1c66a795a72482230`. Claude must pull current `main` again before coding.  
 **Purpose:** Remove confusing/doubled Flat Lay / Worn / Garments / Outfit choices ahead of the first-five Friends & Family TestFlight pilot.
@@ -25,6 +25,7 @@
 2. [02-ENGINEERING-IMPLEMENTATION.md](02-ENGINEERING-IMPLEMENTATION.md) — actual repo paths, routing, scope, state/analytics, safety.
 3. [03-ACCEPTANCE-AND-QA.md](03-ACCEPTANCE-AND-QA.md) — automated and manual tests, acceptance gate.
 4. [04-CLAUDE-CODE-PROMPT.md](04-CLAUDE-CODE-PROMPT.md) — complete copy/paste implementation request.
+5. [05-IMPLEMENTATION-REPORT.md](05-IMPLEMENTATION-REPORT.md) — what was built, deviations, check results, QA status.
 
 ## Scope boundary
 

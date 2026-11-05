@@ -150,7 +150,7 @@ The closed vocabulary of 15 colors in `SWATCHES` (`theme.ts`) describes garments
 ## Typography
 
 **Display:** Instrument Serif (`@expo-google-fonts/instrument-serif`, loaded in `app/_layout.tsx`), regular, line height 1.0. Only four places: Welcome (46), Home greeting (42), "A welcome gift" and "Added to your closet" (40). Use `type.display(size)`.
-**Everything else:** SF Pro through `type.*`; no `fontFamily` anywhere else, except `type.tag` (Menlo, 10/600, +0.06em) for the small photo-type tags on Home's add tiles ("FLAT LAY", "WORN").
+**Everything else:** SF Pro through `type.*`; no `fontFamily` anywhere else, except `type.tag` (Menlo, 10/600, +0.06em) (kept in the theme; Home's "FLAT LAY" / "WORN" tags it was made for were removed with the unified Add Clothes flow).
 
 - **Large Title** 34/700, −0.02em: tab screen titles ("Closet", "Account").
 - **Screen Title** 32/700: flow screens ("Sign in with email", "Add Clothes").

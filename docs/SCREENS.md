@@ -60,7 +60,7 @@ Rule (handoff [CHANGE_home_photo_type.md](design/design_handoff_digital_wardrobe
 
 ## 5. Garment Details (`mobile/src/components/ItemSheet.tsx`)
 - Native page sheet. A full-width 480pt image stage on the stone tile (55% of the screen on small phones) with a glass × , a glass **Edit** pill and a "N / M" counter over it, and a floating glass segmented **Front / Back / 360°** near its bottom (Back and 360° shown for closet items, or when they exist).
-- **Swipe between items:** a sideways drag on the image (it takes over after 8pt, and only when more sideways than vertical) moves to the next or previous item at 60pt or on a flick; off while editing, uploading a back image, or turning the 360. VoiceOver moves between items from the counter (adjustable, "1 of 3").
+- **Swipe between items:** the image is a native horizontal paging list (it works alongside the sheet's vertical scroll and swipe-down); it pages one item at a time and doesn't wrap. Off while uploading a back image and on a finished 360 (sideways drags turn the garment there; tap Front or Back first). VoiceOver moves between items from the counter (adjustable, "1 of 3").
   - **Back, none yet:** dashed frame, "No back image yet", "Add Back Image" (+ "· N credit" while billing is on). While it runs: shimmer + "Creating back image…".
   - **360°, none yet:** four fading thumbnails, "See it from every angle", "Generate 360°" (+ price); running: "Creating four angles…"; failed: the reason and "Try Again".
   - **360° ready:** the turntable (drag, ‹ › buttons, angle pill, "Drag to rotate · AI view").

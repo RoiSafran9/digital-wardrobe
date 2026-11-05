@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Animated, Image, Modal, PanResponder, ScrollView, StyleSheet, Text, View, useWindowDimensions, type GestureResponderHandlers } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, FlatList, Image, Modal, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Icon } from "./Icon";
 import { deleteItem, imageUrl } from "../api/client";
 import { useAddBack } from "../useAddBack";
@@ -10,7 +10,7 @@ import type { ClosetItem, RunItem } from "../api/types";
 import { addedLabel, asList, capitalize, colors, hitSlopFor, radius, type, weight } from "../theme";
 import { haptics } from "../haptics";
 import { ColorSwatches, FactChip } from "./ColorSwatches";
-import { EASE_OUT, Rise } from "../motion/Rise";
+import { Rise } from "../motion/Rise";
 import { PressScale } from "../motion/PressScale";
 import { GarmentImage } from "./GarmentImage";
 import { ItemEditForm } from "./ItemEditForm";
@@ -21,7 +21,6 @@ import { groupOf } from "../categoryGroups";
 import { useCredits } from "../credits/CreditsProvider";
 import { creditsLabel } from "../credits/credits";
 import { Button, CostSheet, Glass, GroupedList, IconButton, InsufficientCreditsSheet, Row, Segmented, Sheet, Shimmer, useToast } from "../ui";
-import { useReducedMotion } from "../useReducedMotion";
 import { track } from "../activity/track";
 
 type Item = RunItem | ClosetItem;
@@ -87,19 +86,12 @@ type PagerProps = Omit<Props, "index"> & {
   setEditing: (editing: boolean) => void;
 };
 
-// The image swipe takes over only after 8pt sideways (taps and vertical scrolls stay with the screen);
-// 60pt, or a quick flick, moves to the next or previous item.
-const SWIPE_SLOP = 8;
-const SWIPE_STEP = 60;
-const FLICK = { dx: 24, vx: 0.5 };
-// How far the next item slides in from (a plain fade under Reduce Motion).
-const ENTER_FROM = 48;
-
-type Swipe = { handlers: GestureResponderHandlers; x: Animated.Value; fade: Animated.Value };
+// Swiping the image pages through the items: a native horizontal paging list, so iOS settles it with
+// the sheet's vertical scroll and its swipe-down (a JS pan inside them is cancelled on a device).
+type Paging = { items: Item[]; index: number; onIndex: (index: number) => void };
 
 function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setEditing }: PagerProps) {
   const toast = useToast();
-  const reduced = useReducedMotion();
   const [current, setCurrent] = useState(startIndex);
   const index = Math.max(0, Math.min(current, items.length - 1));
   const currentItem = items[index];
@@ -109,66 +101,10 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
   const [removing, setRemoving] = useState<ClosetItem | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
-  // A back uploading, or a finger turning the 360, holds the item where it is.
-  const busy = useRef(false);
-  const onBusy = useRef((b: boolean) => { busy.current = b; }).current;
-
-  // The image follows the finger; past the threshold the next item slides in and the details fade in.
-  const x = useRef(new Animated.Value(0)).current;
-  const fade = useRef(new Animated.Value(1)).current;
-  const live = useRef({ index, count: items.length, editing, reduced });
-  live.current = { index, count: items.length, editing, reduced };
-  const [swiping, setSwiping] = useState(false);
-
-  const step = (dir: 1 | -1): boolean => {
-    const next = live.current.index + dir;
-    if (next < 0 || next >= live.current.count) return false;
-    setCurrent(next);
-    x.setValue(live.current.reduced ? 0 : dir * ENTER_FROM);
-    fade.setValue(0.3);
-    Animated.parallel([
-      Animated.timing(x, { toValue: 0, duration: 320, easing: EASE_OUT, useNativeDriver: true }),
-      Animated.timing(fade, { toValue: 1, duration: 320, easing: EASE_OUT, useNativeDriver: true }),
-    ]).start();
-    return true;
+  const step = (dir: 1 | -1) => {
+    const next = index + dir;
+    if (next >= 0 && next < items.length) setCurrent(next);
   };
-  const stepRef = useRef(step);
-  stepRef.current = step;
-
-  const swipe: Swipe = useMemo(() => {
-    const wants = (dx: number, dy: number) => {
-      const { editing: e, count } = live.current;
-      return !e && !busy.current && count > 1 && Math.abs(dx) > SWIPE_SLOP && Math.abs(dx) > Math.abs(dy);
-    };
-    const settle = (dx: number, vx: number) => {
-      setSwiping(false);
-      const dir = dx <= -SWIPE_STEP || (dx < -FLICK.dx && vx < -FLICK.vx) ? 1
-        : dx >= SWIPE_STEP || (dx > FLICK.dx && vx > FLICK.vx) ? -1 : 0;
-      if (dir && stepRef.current(dir)) return;
-      (live.current.reduced
-        ? Animated.timing(x, { toValue: 0, duration: 200, easing: EASE_OUT, useNativeDriver: true })
-        : Animated.spring(x, { toValue: 0, speed: 20, bounciness: 4, useNativeDriver: true })).start();
-    };
-    const pan = PanResponder.create({
-      onMoveShouldSetPanResponderCapture: (_, g) => wants(g.dx, g.dy),
-      onMoveShouldSetPanResponder: (_, g) => wants(g.dx, g.dy),
-      onPanResponderTerminationRequest: () => false,
-      onPanResponderGrant: () => {
-        x.stopAnimation();
-        fade.stopAnimation();
-        fade.setValue(1);
-        setSwiping(true);
-      },
-      onPanResponderMove: (_, g) => {
-        const { index: i, count } = live.current;
-        const end = (g.dx > 0 && i === 0) || (g.dx < 0 && i === count - 1);
-        x.setValue(end ? g.dx * 0.25 : g.dx);  // the ends give a little, like a rubber band
-      },
-      onPanResponderRelease: (_, g) => settle(g.dx, g.vx),
-      onPanResponderTerminate: () => settle(0, 0),
-    });
-    return { handlers: pan.panHandlers, x, fade };
-  }, [x, fade]);
 
   // The neighbours' images load ahead, so a swipe lands on a picture, not a blank stage.
   useEffect(() => {
@@ -201,7 +137,7 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
       </View>
       {items.length > 1 ? (
         <View pointerEvents="box-none" style={{ position: "absolute", top: CHROME_TOP, left: 0, right: 0, height: 40, alignItems: "center", justifyContent: "center" }}>
-          <Counter index={index} count={items.length} onStep={(dir) => stepRef.current(dir)} />
+          <Counter index={index} count={items.length} onStep={step} />
         </View>
       ) : null}
     </>
@@ -227,11 +163,9 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
           key={keyOf(currentItem, index)}
           item={currentItem}
           chrome={chrome}
-          swipe={swipe}
-          swiping={swiping}
+          paging={{ items, index, onIndex: setCurrent }}
           onRemove={onDeleted && isClosetItem(currentItem) ? () => { setRemoveError(null); setRemoving(currentItem); } : undefined}
           onUpdated={onUpdated}
-          onBusy={onBusy}
         />
       )}
       <Sheet visible={!!removing} onClose={() => setRemoving(null)} title="Remove from closet?" floating>
@@ -304,17 +238,17 @@ const withPrice = (label: string, price?: number) => (price ? `${label} · ${cre
 type SheetContentProps = {
   item: Item;
   chrome: React.ReactNode;
-  swipe: Swipe;
-  swiping: boolean;
+  paging: Paging;
   onRemove?: () => void;
   onUpdated?: (item: ClosetItem) => void;
-  onBusy: (busy: boolean) => void;
 };
 
-function SheetContent({ item, chrome, swipe, swiping, onRemove, onUpdated, onBusy }: SheetContentProps) {
+function SheetContent({ item, chrome, paging, onRemove, onUpdated }: SheetContentProps) {
   const { facts } = item;
   const toast = useToast();
-  const { height } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
+  // A back uploading, or a finger turning the 360, holds the item where it is.
+  const [busy, setBusy] = useState(false);
   const trims = asList(facts.trims.value).filter((t) => t.toLowerCase() !== "not visible");
   const text = asList(facts.visible_text.value);
   const pattern = capitalize(asList(facts.pattern.value).join(", "));
@@ -341,7 +275,7 @@ function SheetContent({ item, chrome, swipe, swiping, onRemove, onUpdated, onBus
       setSide("back");
       toast.show(backState.price ? `✓ Back image ready · ${creditsLabel(backState.price)} used` : "✓ Back image ready");
     }),
-    onBusy,
+    setBusy,
   );
   const { uploading, error: backError } = backState;
 
@@ -384,7 +318,7 @@ function SheetContent({ item, chrome, swipe, swiping, onRemove, onUpdated, onBus
 
   let stage: React.ReactNode;
   if (side === "360" && turnViews) {
-    stage = <TurnView views={turnViews} label="AI view" onDragActive={onBusy} inset={{ top: STAGE_TOP, bottom }} />;
+    stage = <TurnView views={turnViews} label="AI view" onDragActive={setBusy} inset={{ top: STAGE_TOP, bottom }} />;
   } else if (side === "360") {
     stage = turn?.state === "running" ? <Working label="Creating four angles…" /> : (
       <View style={{ ...area, left: 30, right: 30, alignItems: "center", justifyContent: "center", gap: 12 }}>
@@ -439,11 +373,35 @@ function SheetContent({ item, chrome, swipe, swiping, onRemove, onUpdated, onBus
   const category = capitalize(asList(facts.category.value)[0] ?? "");
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView scrollEnabled={!swiping} contentContainerStyle={{ paddingBottom: 48 }}>
-        <View testID="item-pager" {...swipe.handlers} style={{ height: stageHeight, backgroundColor: colors.tile, overflow: "hidden" }}>
-          <Animated.View style={[StyleSheet.absoluteFill, { opacity: swipe.fade, transform: [{ translateX: swipe.x }] }]}>
-            {stage}
-          </Animated.View>
+      <ScrollView contentContainerStyle={{ paddingBottom: 48 }}>
+        <View style={{ height: stageHeight, backgroundColor: colors.tile, overflow: "hidden" }}>
+          <FlatList
+            testID="item-pager"
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            // On the 360 a sideways drag turns the garment; Front / Back first to change item.
+            scrollEnabled={!busy && !(side === "360" && turnViews)}
+            data={paging.items}
+            keyExtractor={(it, i) => keyOf(it, i)}
+            initialScrollIndex={paging.index}
+            getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
+            initialNumToRender={1}
+            windowSize={3}
+            onMomentumScrollEnd={(e) => {
+              const i = Math.round(e.nativeEvent.contentOffset.x / width);
+              if (i !== paging.index && i >= 0 && i < paging.items.length) paging.onIndex(i);
+            }}
+            renderItem={({ item: it, index: i }) => (
+              <View style={{ width, height: stageHeight }}>
+                {i === paging.index ? stage : (
+                  <View style={area}>
+                    <GarmentImage path={it.generated_url} cutoutPath={it.cutout_url} cropPath={it.crop_url} style={{ width: "100%", height: "100%", borderRadius: 0 }} />
+                  </View>
+                )}
+              </View>
+            )}
+          />
           {chrome}
           {segments.length > 1 ? (
             <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 16, alignItems: "center" }}>

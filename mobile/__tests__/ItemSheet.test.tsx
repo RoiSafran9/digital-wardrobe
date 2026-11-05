@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, act } from "@testing-library/react-native";
+import { Dimensions } from "react-native";
 import { ItemSheet } from "../src/components/ItemSheet";
 import type { ClosetItem } from "../src/api/types";
 
@@ -60,33 +61,10 @@ const jacket: ClosetItem = {
   facts: { ...item.facts, category: { value: "jacket", confidence: 0.9, basis: "observed" } },
 };
 
-// Touches the way the responder system delivers them (PanResponder reads touchHistory). Slow and
-// deliberate: no flick.
-let clock = 1;
-function touchAt(x: number, startX: number) {
-  const t = (clock += 1000);
-  return {
-    nativeEvent: { touches: [], changedTouches: [], pageX: x, pageY: 0, timestamp: t },
-    touchHistory: {
-      numberActiveTouches: 1, indexOfSingleActiveTouch: 0, mostRecentTimeStamp: t,
-      touchBank: [{
-        touchActive: true, startPageX: startX, startPageY: 0, startTimeStamp: 0,
-        currentPageX: x, currentPageY: 0, currentTimeStamp: t,
-        previousPageX: startX, previousPageY: 0, previousTimeStamp: t - 1,
-      }],
-    },
-  };
-}
-
-// Drags sideways across the image (negative = toward the next item). The swipe claims a touch only once
-// it has moved (it never answers "start"), so the responder events go straight to its handlers, as
-// they do on a phone once the move has been captured.
-async function swipe(dx: number) {
-  const from = 200;
-  const pager = () => screen.getByTestId("item-pager").props;
-  await act(async () => { pager().onResponderGrant(touchAt(from, from)); });
-  await act(async () => { pager().onResponderMove(touchAt(from + dx, from)); });
-  await act(async () => { pager().onResponderRelease(touchAt(from + dx, from)); });
+// The image is a native horizontal paging list: a swipe ends with the list resting on a page.
+async function swipeTo(page: number) {
+  const width = Dimensions.get("window").width;
+  await fireEvent(screen.getByTestId("item-pager"), "momentumScrollEnd", { nativeEvent: { contentOffset: { x: page * width, y: 0 } } });
 }
 
 test("opens on the tapped item and shows its position", async () => {
@@ -98,51 +76,25 @@ test("opens on the tapped item and shows its position", async () => {
 test("swiping the image moves through the list and updates the counter", async () => {
   await render(<ItemSheet items={[item, shorts, jacket]} index={0} onClose={() => {}} />);
   expect(screen.getByText("1 / 3")).toBeTruthy();
-  await swipe(-100);
+  await swipeTo(1);
   expect(screen.getByText("2 / 3")).toBeTruthy();
-  await swipe(-100);
-  expect(screen.getByText("3 / 3")).toBeTruthy();
-  await swipe(100);
-  expect(screen.getByText("2 / 3")).toBeTruthy();
-});
-
-test("every item in the list can be reached by swiping", async () => {
-  await render(<ItemSheet items={[item, shorts, jacket]} index={0} onClose={() => {}} />);
-  expect(screen.getByRole("header", { name: "Gray t-shirt" })).toBeTruthy();
-  await swipe(-100);
   expect(screen.getByRole("header", { name: "Gray shorts" })).toBeTruthy();
-  await swipe(-100);
+  await swipeTo(2);
+  expect(screen.getByText("3 / 3")).toBeTruthy();
   expect(screen.getByRole("header", { name: "Gray jacket" })).toBeTruthy();
+  await swipeTo(1);
+  expect(screen.getByText("2 / 3")).toBeTruthy();
 });
 
-test("a short drag stays on the item, and the ends don't wrap around", async () => {
-  await render(<ItemSheet items={[item, shorts]} index={0} onClose={() => {}} />);
-  await swipe(-40);  // under the 60pt threshold
-  expect(screen.getByText("1 / 2")).toBeTruthy();
-  await swipe(100);  // nothing before the first item
-  expect(screen.getByText("1 / 2")).toBeTruthy();
-  await swipe(-100);
-  await swipe(-100);  // nothing after the last
-  expect(screen.getByText("2 / 2")).toBeTruthy();
-});
-
-test("the swipe only takes over sideways moves past 8pt, so taps and scrolls stay with the screen", async () => {
-  await render(<ItemSheet items={[item, shorts]} index={0} onClose={() => {}} />);
-  const wants = (dx: number, dy: number) => {
-    const t = (clock += 1000);
-    return screen.getByTestId("item-pager").props.onMoveShouldSetResponderCapture({
-      nativeEvent: { touches: [], changedTouches: [] },
-      touchHistory: { numberActiveTouches: 1, indexOfSingleActiveTouch: 0, mostRecentTimeStamp: t, touchBank: [{ touchActive: true, startPageX: 0, startPageY: 0, startTimeStamp: 0, currentPageX: dx, currentPageY: dy, currentTimeStamp: t, previousPageX: 0, previousPageY: 0, previousTimeStamp: t - 1 }] },
-    });
-  };
-  // Each check starts a fresh gesture, as a new touch would.
-  const fresh = () => screen.getByTestId("item-pager").props.onStartShouldSetResponderCapture({ nativeEvent: { touches: [{}], changedTouches: [] }, touchHistory: { numberActiveTouches: 1 } });
-  fresh();
-  expect(wants(5, 0)).toBe(false);
-  fresh();
-  expect(wants(12, 40)).toBe(false);
-  fresh();
-  expect(wants(12, 2)).toBe(true);
+test("the pager opens on the tapped item and pages one item per screen width", async () => {
+  await render(<ItemSheet items={[item, shorts, jacket]} index={1} onClose={() => {}} />);
+  const list = screen.getByTestId("item-pager").props;
+  expect(list.horizontal).toBe(true);
+  expect(list.pagingEnabled).toBe(true);
+  expect(list.initialScrollIndex).toBe(1);
+  expect(list.scrollEnabled).toBe(true);
+  await swipeTo(1);  // came to rest on the same page: nothing changes
+  expect(screen.getByText("2 / 3")).toBeTruthy();
 });
 
 test("VoiceOver moves between items from the counter", async () => {

@@ -111,22 +111,13 @@ test("polling stops when the sheet closes", async () => {
   expect(mockedGet).not.toHaveBeenCalled();
 });
 
-test("turning the garment holds the item swipe until the finger lifts", async () => {
+test("on a finished 360 sideways drags turn the garment; Front frees the item swipe", async () => {
   const other = { ...item, item_id: "item_1" };
   await render(<ItemSheet items={[{ ...item, turn: done }, other]} index={0} onClose={() => {}} onUpdated={jest.fn()} onDeleted={() => {}} />);
-  const touch = { nativeEvent: { touches: [], changedTouches: [] }, touchHistory: { numberActiveTouches: 1, indexOfSingleActiveTouch: 0, mostRecentTimeStamp: 1, touchBank: [{ touchActive: true, startPageX: 0, startPageY: 0, startTimeStamp: 0, currentPageX: 0, currentPageY: 0, currentTimeStamp: 1, previousPageX: 0, previousPageY: 0, previousTimeStamp: 0 }] } };
-  // A sideways move over the image: would the item swipe take it over?
-  let t = 10;
-  const sideways = () => {
-    t += 10;
-    return { nativeEvent: { touches: [], changedTouches: [] }, touchHistory: { numberActiveTouches: 1, indexOfSingleActiveTouch: 0, mostRecentTimeStamp: t, touchBank: [{ touchActive: true, startPageX: 0, startPageY: 0, startTimeStamp: 0, currentPageX: 50, currentPageY: 0, currentTimeStamp: t, previousPageX: 0, previousPageY: 0, previousTimeStamp: t - 1 }] } };
-  };
-  const swipeWants = () => screen.getByTestId("item-pager").props.onMoveShouldSetResponderCapture(sideways());
-  expect(swipeWants()).toBe(true);
-  await fireEvent(screen.getByLabelText("360 view"), "responderGrant", touch);
-  expect(swipeWants()).toBe(false);
-  await fireEvent(screen.getByLabelText("360 view"), "responderRelease", touch);
-  expect(swipeWants()).toBe(true);
+  const pagerScrolls = () => screen.getByTestId("item-pager").props.scrollEnabled;
+  expect(pagerScrolls()).toBe(false);  // the sheet opens on the 360
+  await fireEvent.press(screen.getByRole("tab", { name: "Front" }));
+  expect(pagerScrolls()).toBe(true);
   expect(screen.getByText("1 / 2")).toBeTruthy();
 });
 

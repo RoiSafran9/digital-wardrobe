@@ -179,6 +179,10 @@ Tone first, then a soft shadow where the handoff uses one:
 
 Segment 8 · input/search 12 · 48pt button 14 · 54pt primary 16 · grouped list 18 · garment tile 20–22 · feature card 26 · image stage 28 · floating sheet 34 · capsules for chips, pills and toasts.
 
+## Icons
+
+SF Symbols through `Icon` (`mobile/src/components/Icon.tsx`): outline, one color taken from the label, literal everyday objects, always with a word. Choice icons (answers the user picks) are 24pt semibold on `OptionTile`. Rules, reserved symbols and the preview script: [docs/design/ICONS.md](docs/design/ICONS.md).
+
 ## Components (`mobile/src/ui/`)
 
 - **Button:** `primary` (54pt, accent, white 17/600), `secondary` (48pt white/card), `text` (accent), `destructive` (red text). Disabled = 40% opacity. Press scales to 0.98.

@@ -78,6 +78,20 @@ describe("camera", () => {
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///camera.jpg" } });
   });
 
+  test("opened without a type (the tab bar's camera), it offers Garments / Outfit with icons", async () => {
+    await renderWith(<CameraScreen />, { outfit: true });
+    expect(screen.getAllByRole("tab").map((t) => t.props.accessibilityLabel)).toEqual(["Garments", "Outfit"]);
+    await fireEvent.press(screen.getByRole("tab", { name: "Outfit" }));
+    expect(screen.getByText("Someone wearing them")).toBeTruthy();
+    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take outfit photo" })));
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///camera.jpg" } });
+  });
+
+  test("without outfits on the server, no switch even without a type", async () => {
+    await renderWith(<CameraScreen />);
+    expect(screen.queryByRole("tab")).toBeNull();
+  });
+
   test("outfit mode falls back to clothes by themselves when the server has outfits off", async () => {
     mockParams = { mode: "outfit" };
     await renderWith(<CameraScreen />);

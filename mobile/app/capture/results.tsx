@@ -137,7 +137,7 @@ export default function ResultsScreen() {
         </ScrollView>
         <FlowFooter onHeight={setFooter}>
           {nothing ? (
-            <Button title="Take Another Garment Photo" onPress={() => { clear(); router.replace("/capture/camera"); }} />
+            <Button title="Take Another Garment Photo" onPress={() => { clear(); router.replace({ pathname: "/capture/camera", params: { mode: "garments" } }); }} />
           ) : (
             <Button title={`Add ${keep.length} to Closet`} onPress={add} disabled={keep.length === 0} loading={saving} />
           )}

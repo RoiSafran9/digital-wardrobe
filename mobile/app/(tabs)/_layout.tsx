@@ -37,7 +37,7 @@ export default function TabsLayout() {
       tabBar={(props) => (
         <TabBar
           {...props}
-          onCamera={() => router.push({ pathname: "/capture/camera", params: { mode: "garments" } })}
+          onCamera={() => router.push("/capture/camera")}  // no type: the camera offers Garments / Outfit
           onLooks={() => (status === "signedIn" && outfitBuilder
             ? router.push("/build-my-look")
             : toast.show(status === "signedIn" ? "Build My Look isn't available yet." : "Build My Look needs a signed-in account."))}

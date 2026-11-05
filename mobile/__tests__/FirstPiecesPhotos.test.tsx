@@ -74,7 +74,7 @@ test("with the camera refused, collect mode still adds library photos", async ()
   (pickPhotos as jest.Mock).mockResolvedValue(["file:///a.jpg"]);
   try {
     await inFlow(<CameraScreen />);
-    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose Garment Photos" })));
+    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose from Library" })));
     expect(fp.photos).toHaveLength(1);
     expect(mockBack).toHaveBeenCalled();
   } finally {

@@ -63,19 +63,34 @@ describe("camera", () => {
 
   test("the shutter takes the photo and opens its preview", async () => {
     await renderWith(<CameraScreen />);
-    expect(screen.getByText("Lay clothes flat · shoot shoes from a low side angle")).toBeTruthy();
+    expect(screen.getByText("Clothes by themselves")).toBeTruthy();
+    expect(screen.getByText("Lay clothes out or hang them. Shoes: low side angle.")).toBeTruthy();
     await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take garment photo" })));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///camera.jpg" } });
   });
 
-  test("outfit mode sends the photo to the free scan; the switch shows only when outfits are on", async () => {
-    await renderWith(<CameraScreen />);
-    expect(screen.queryByRole("tab", { name: "Outfit" })).toBeNull();
-    await screen.unmount();
+  test("the photo type comes from the entry: no Garments / Outfit switch in the camera", async () => {
+    mockParams = { mode: "outfit" };
     await renderWith(<CameraScreen />, { outfit: true });
-    await fireEvent.press(screen.getByRole("tab", { name: "Outfit" }));
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.getByText("Someone wearing them")).toBeTruthy();
     await act(async () => fireEvent.press(screen.getByRole("button", { name: "Take outfit photo" })));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///camera.jpg" } });
+  });
+
+  test("outfit mode falls back to clothes by themselves when the server has outfits off", async () => {
+    mockParams = { mode: "outfit" };
+    await renderWith(<CameraScreen />);
+    expect(screen.getByText("Clothes by themselves")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Take garment photo" })).toBeTruthy();
+  });
+
+  test("the library button keeps the chosen type", async () => {
+    mockParams = { mode: "outfit" };
+    (pickPhoto as jest.Mock).mockResolvedValue("file:///lib.jpg");
+    await renderWith(<CameraScreen />, { outfit: true });
+    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose from Library" })));
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///lib.jpg" } });
   });
 
   test("with the camera refused it offers the photo library", async () => {
@@ -83,7 +98,7 @@ describe("camera", () => {
     (pickPhoto as jest.Mock).mockResolvedValue("file:///lib.jpg");
     await renderWith(<CameraScreen />);
     expect(screen.getByText("Camera access is off")).toBeTruthy();
-    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose Garment Photo" })));
+    await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose from Library" })));
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/capture/preview", params: { uri: "file:///lib.jpg" } });
   });
 });

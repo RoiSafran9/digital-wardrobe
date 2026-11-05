@@ -3,7 +3,7 @@
 This repository is the source of truth for Digital Wardrobe code and product decisions. `PRODUCT.md` (users, principles) and `DESIGN.md` (visual system) override anything older; `docs/superpowers/specs/2026-10-18-multiuser-architecture-design.md` records the account/backend decisions.
 
 ## Before working
-1. Read `README.md`, `PRODUCT.md`, `docs/PRD.md` and `docs/ARCHITECTURE.md`; for UI also `DESIGN.md`; for a feature, its spec in `docs/superpowers/specs/`.
+1. Read `README.md`, `PRODUCT.md`, `docs/PRD.md` and `docs/ARCHITECTURE.md`; for UI also `DESIGN.md` (icons: `docs/design/ICONS.md`); for a feature, its spec in `docs/superpowers/specs/`.
 2. Inspect the current branch, status and recent commits. Do not overwrite or discard work from another agent.
 3. If a request falls under "Later" in `docs/ROADMAP.md` or isn't covered by the docs, raise it rather than building it silently.
 

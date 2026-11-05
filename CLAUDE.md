@@ -4,7 +4,7 @@ Read `AGENTS.md` first. It holds the shared rules for **all** AI coding agents.
 
 ## At session start
 - Run `git status` and `git branch --show-current`; `git pull --ff-only` when a tracking branch exists and it is safe.
-- Read `README.md`, `PRODUCT.md`, `docs/PRD.md` and `docs/ARCHITECTURE.md`. Read `DESIGN.md` before any UI work and the matching spec in `docs/superpowers/specs/` before changing a feature.
+- Read `README.md`, `PRODUCT.md`, `docs/PRD.md` and `docs/ARCHITECTURE.md`. Read `DESIGN.md` before any UI work, `docs/design/ICONS.md` before adding or changing an icon, and the matching spec in `docs/superpowers/specs/` before changing a feature.
 
 ## Implementation guidelines
 - Stack as built: iPhone app **KIPS** (`mobile/`, Expo Router, TypeScript; Expo Go in development, EAS builds for TestFlight) → FastAPI (`api/`) on the owner's Mac (home Wi-Fi in development; public HTTPS at `api.kipscloset.com` through a Cloudflare Tunnel) → Python pipeline (`pipeline/`) calling Gemini. Account mode adds Supabase Auth (6-digit email code), Postgres with RLS, a private Storage bucket and a Postgres job queue with an in-process worker; local mode (default) keeps everything as files under `runs/`.

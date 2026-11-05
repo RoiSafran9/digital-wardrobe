@@ -14,7 +14,7 @@ An iPhone closet. Photograph clothes laid on a bed or floor — or a photo of yo
 - AI Credits: balance, price list and activity in Account; every paid action shows its cost first; a one-time welcome grant; billing off unless the server enables it. "Notify when ready" push, Help & Support, Privacy, Delete Account.
 
 ## Project source of truth
-- [Product](PRODUCT.md) — users, purpose, principles · [Design system](DESIGN.md) — native iOS look and motion
+- [Product](PRODUCT.md) — users, purpose, principles · [Design system](DESIGN.md) — native iOS look and motion · [Icons](docs/design/ICONS.md) — icon language and preview script
 - [Requirements](docs/PRD.md) · [Architecture](docs/ARCHITECTURE.md) · [Screens](docs/SCREENS.md) · [Roadmap](docs/ROADMAP.md)
 - [TestFlight F&F Beta launch master plan](docs/tasks/testflight-beta-launch-master-plan.md) · [Claude Code staged execution kickoff](docs/tasks/testflight-beta-launch-execution.md)
 - Feature specs and plans: `docs/superpowers/specs/`, `docs/superpowers/plans/`

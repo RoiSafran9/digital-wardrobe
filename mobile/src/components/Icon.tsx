@@ -5,6 +5,7 @@ import { SymbolView, type SymbolWeight } from "expo-symbols";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 // SF Symbols on iOS (they match the system type and weight); Ionicons only as fallback.
+// Before adding an icon, follow docs/design/ICONS.md (style, reserved symbols, preview script).
 const ICONS = {
   home: { sf: "house", ion: "home-outline" },
   camera: { sf: "camera", ion: "camera-outline" },

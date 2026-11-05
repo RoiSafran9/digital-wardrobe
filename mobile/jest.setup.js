@@ -20,3 +20,12 @@ jest.mock("expo-notifications", () => ({
   requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
   getExpoPushTokenAsync: jest.fn(async () => ({ data: "ExponentPushToken[test]" })),
 }));
+// expo-image has no native view under Jest: draw a plain Image with the same source and error callback.
+jest.mock("expo-image", () => {
+  const React = require("react");
+  const { Image } = require("react-native");
+  const ExpoImage = ({ source, onError, contentFit, cachePolicy, recyclingKey, transition, ...rest }) =>
+    React.createElement(Image, { ...rest, source, onError, resizeMode: contentFit });
+  ExpoImage.prefetch = jest.fn(async () => true);
+  return { Image: ExpoImage };
+});

@@ -3,6 +3,7 @@ import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { getItems } from "../../src/api/client";
+import { cachedItems, rememberItems } from "../../src/store/itemsCache";
 import type { ClosetItem } from "../../src/api/types";
 import { CATEGORY_GROUPS, groupOf } from "../../src/categoryGroups";
 import { AddRows, type PhotoActions } from "../../src/components/home/AddToCloset";
@@ -61,10 +62,11 @@ export default function HomeScreen() {
   useScreenViewed("home");
   const router = useRouter();
   const { outfit: outfitOn, outfitBuilder, billing, prices } = useCredits();
-  const { status } = useAuth();
+  const { status, userId } = useAuth();
   const { profile } = useProfile();
-  const [items, setItems] = useState<ClosetItem[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  // The last closet fetched for this account draws at once; the fetch on focus refreshes it.
+  const [items, setItems] = useState<ClosetItem[]>(() => cachedItems(userId ?? null) ?? []);
+  const [loaded, setLoaded] = useState(() => cachedItems(userId ?? null) !== null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pickError, setPickError] = useState<string | null>(null);
   const [open, setOpen] = useState<{ list: ClosetItem[]; index: number } | null>(null);
@@ -72,13 +74,15 @@ export default function HomeScreen() {
   const load = useCallback(async () => {
     setLoadError(null);
     try {
-      setItems((await getItems()).items);
+      const fresh = (await getItems()).items;
+      rememberItems(userId ?? null, fresh);
+      setItems(fresh);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Couldn't load your closet.");
     } finally {
       setLoaded(true);
     }
-  }, []);
+  }, [userId]);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const now = new Date();

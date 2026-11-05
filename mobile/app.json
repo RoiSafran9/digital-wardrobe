@@ -46,7 +46,8 @@
           "cameraPermission": "KIPS uses the camera to photograph your clothes and turn them into catalog images."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      "expo-image"
     ],
     "extra": {
       "router": {},

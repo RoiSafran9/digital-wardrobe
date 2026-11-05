@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Image, Modal, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Icon } from "./Icon";
-import { deleteItem, imageUrl } from "../api/client";
+import { deleteItem } from "../api/client";
 import { useAddBack } from "../useAddBack";
 import { NO_SIDE_VIEWS, isFootwearItem } from "../footwear";
 import { TurnView } from "./TurnView";
@@ -86,9 +86,12 @@ type PagerProps = Omit<Props, "index"> & {
   setEditing: (editing: boolean) => void;
 };
 
-// Swiping the image pages through the items: a native horizontal paging list, so iOS settles it with
-// the sheet's vertical scroll and its swipe-down (a JS pan inside them is cancelled on a device).
-type Paging = { items: Item[]; index: number; onIndex: (index: number) => void };
+// Swiping anywhere on the item (image or details) pages through the items: a native horizontal paging
+// scroll view, so iOS settles it with each page's vertical scroll and the sheet's swipe-down (a JS pan
+// inside them is cancelled on a device). The current item and two on each side stay mounted as the same
+// component — only `live` moves — so a swipe never blanks or reloads a page; farther pages are empty.
+// Only the live page shows the controls and can start work.
+const MOUNTED = 2;
 
 function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setEditing }: PagerProps) {
   const toast = useToast();
@@ -101,19 +104,21 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
   const [removing, setRemoving] = useState<ClosetItem | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
+  const { width } = useWindowDimensions();
+  const [locked, setLocked] = useState(false);
+  const list = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const shown = useRef(index);  // the page the list rests on
   const step = (dir: 1 | -1) => {
     const next = index + dir;
     if (next >= 0 && next < items.length) setCurrent(next);
   };
-
-  // The neighbours' images load ahead, so a swipe lands on a picture, not a blank stage.
+  // A change that didn't come from a swipe (VoiceOver's counter) moves the list to it.
   useEffect(() => {
-    for (const neighbour of [items[index - 1], items[index + 1]]) {
-      const path = neighbour ? neighbour.cutout_url ?? neighbour.generated_url : null;
-      if (!path) continue;
-      try { Image.prefetch(imageUrl(path)).catch(() => {}); } catch { /* no image cache here (tests) */ }
-    }
-  }, [index, items]);
+    if (shown.current === index) return;
+    shown.current = index;
+    list.current?.scrollTo({ x: index * width, animated: false });
+  }, [index, width]);
+
 
   async function remove(item: ClosetItem) {
     setRemoveError(null);
@@ -159,14 +164,34 @@ function Pager({ items, startIndex, onClose, onUpdated, onDeleted, editing, setE
           />
         </Rise>
       ) : (
-        <SheetContent
-          key={keyOf(currentItem, index)}
-          item={currentItem}
-          chrome={chrome}
-          paging={{ items, index, onIndex: setCurrent }}
-          onRemove={onDeleted && isClosetItem(currentItem) ? () => { setRemoveError(null); setRemoving(currentItem); } : undefined}
-          onUpdated={onUpdated}
-        />
+        <ScrollView
+          ref={list}
+          testID="item-pager"
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEnabled={!locked && items.length > 1}
+          contentOffset={{ x: startIndex * width, y: 0 }}
+          onMomentumScrollEnd={(e) => {
+            const i = Math.round(e.nativeEvent.contentOffset.x / width);
+            if (i !== index && i >= 0 && i < items.length) { shown.current = i; setCurrent(i); }
+          }}
+        >
+          {items.map((it, i) => (
+            <View key={keyOf(it, i)} testID={i === index ? "item-live" : undefined} style={{ width, flex: 1 }}>
+              {Math.abs(i - index) <= MOUNTED ? (
+                <SheetContent
+                  item={it}
+                  live={i === index}
+                  chrome={i === index ? chrome : null}
+                  onLock={setLocked}
+                  onRemove={onDeleted && isClosetItem(it) ? () => { setRemoveError(null); setRemoving(it); } : undefined}
+                  onUpdated={onUpdated}
+                />
+              ) : null}
+            </View>
+          ))}
+        </ScrollView>
       )}
       <Sheet visible={!!removing} onClose={() => setRemoving(null)} title="Remove from closet?" floating>
         <Text style={{ ...type.subhead, color: colors.secondaryLabel, marginBottom: 18 }}>
@@ -218,6 +243,7 @@ type Side = "front" | "back" | "360";
 // The image stage: full width at the top of the screen, on the stone tile. Its controls float over it,
 // so the garment sits between the top row and the segmented control and is never covered.
 const STAGE_MAX = 480;
+const stageHeightFor = (screenHeight: number) => Math.min(STAGE_MAX, Math.round(screenHeight * 0.55));
 const STAGE_TOP = CHROME_TOP + 40 + 8;
 const SEGMENTED_SPACE = 16 + 38 + 12;
 
@@ -238,15 +264,16 @@ const withPrice = (label: string, price?: number) => (price ? `${label} · ${cre
 type SheetContentProps = {
   item: Item;
   chrome: React.ReactNode;
-  paging: Paging;
+  live: boolean;
+  onLock: (locked: boolean) => void;
   onRemove?: () => void;
   onUpdated?: (item: ClosetItem) => void;
 };
 
-function SheetContent({ item, chrome, paging, onRemove, onUpdated }: SheetContentProps) {
+function SheetContent({ item, chrome, live, onLock, onRemove, onUpdated }: SheetContentProps) {
   const { facts } = item;
   const toast = useToast();
-  const { height, width } = useWindowDimensions();
+  const { height } = useWindowDimensions();
   // A back uploading, or a finger turning the 360, holds the item where it is.
   const [busy, setBusy] = useState(false);
   const trims = asList(facts.trims.value).filter((t) => t.toLowerCase() !== "not visible");
@@ -268,8 +295,9 @@ function SheetContent({ item, chrome, paging, onRemove, onUpdated }: SheetConten
   const [side, setSide] = useState<Side>(turnViews ? "360" : "front");
   const [confirm, setConfirm] = useState<"back" | "turn" | null>(null);
   const [short, setShort] = useState<number | null>(null);  // credits needed, when the user can't afford it
+  // A neighbour page looks the same but can't start a back upload; only the live page acts.
   const backState = useAddBack(
-    closetItem,
+    live ? closetItem : null,
     onUpdated && ((updated) => {
       onUpdated(updated);
       setSide("back");
@@ -311,8 +339,12 @@ function SheetContent({ item, chrome, paging, onRemove, onUpdated }: SheetConten
     ...(back || sideViews ? [{ value: "back" as Side, label: "Back" }] : []),
     ...(turnViews || sideViews ? [{ value: "360" as Side, label: "360°" }] : []),
   ];
-  const stageHeight = Math.min(STAGE_MAX, Math.round(height * 0.55));
+  const stageHeight = stageHeightFor(height);
   const bottom = segments.length > 1 ? SEGMENTED_SPACE : 20;
+  // Holds the item swipe while a back uploads, a finger turns the 360, or the 360 is showing (there a
+  // sideways drag turns the garment; Front / Back first to change item).
+  const locked = busy || (side === "360" && !!turnViews);
+  useEffect(() => { if (live) onLock(locked); }, [live, locked, onLock]);
   // The area between the stage's controls.
   const area = { position: "absolute" as const, top: STAGE_TOP, bottom, left: 20, right: 20 };
 
@@ -375,33 +407,7 @@ function SheetContent({ item, chrome, paging, onRemove, onUpdated }: SheetConten
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 48 }}>
         <View style={{ height: stageHeight, backgroundColor: colors.tile, overflow: "hidden" }}>
-          <FlatList
-            testID="item-pager"
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            // On the 360 a sideways drag turns the garment; Front / Back first to change item.
-            scrollEnabled={!busy && !(side === "360" && turnViews)}
-            data={paging.items}
-            keyExtractor={(it, i) => keyOf(it, i)}
-            initialScrollIndex={paging.index}
-            getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
-            initialNumToRender={1}
-            windowSize={3}
-            onMomentumScrollEnd={(e) => {
-              const i = Math.round(e.nativeEvent.contentOffset.x / width);
-              if (i !== paging.index && i >= 0 && i < paging.items.length) paging.onIndex(i);
-            }}
-            renderItem={({ item: it, index: i }) => (
-              <View style={{ width, height: stageHeight }}>
-                {i === paging.index ? stage : (
-                  <View style={area}>
-                    <GarmentImage path={it.generated_url} cutoutPath={it.cutout_url} cropPath={it.crop_url} style={{ width: "100%", height: "100%", borderRadius: 0 }} />
-                  </View>
-                )}
-              </View>
-            )}
-          />
+          {stage}
           {chrome}
           {segments.length > 1 ? (
             <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 16, alignItems: "center" }}>

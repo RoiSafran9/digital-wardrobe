@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { forgetItems } from "../store/itemsCache";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { configureApi } from "../api/client";
 import { postEventBatch, type Account } from "../api/v1";
@@ -77,6 +78,7 @@ export function AuthProvider({ children, config = authConfig, client: injected }
   const signOut = useCallback(async () => {
     if (!client) return;
     await stopActivity();  // send this account's last events while its session still works
+    forgetItems();  // the closet in memory belongs to this account
     const { error } = await client.auth.signOut();
     // Offline or server trouble: still forget the session on this device.
     if (error) await client.auth.signOut({ scope: "local" });

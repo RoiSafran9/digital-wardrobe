@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react-native";
+import { render, screen, fireEvent, act, within } from "@testing-library/react-native";
 import { Dimensions } from "react-native";
 import { ItemSheet } from "../src/components/ItemSheet";
 import type { ClosetItem } from "../src/api/types";
@@ -61,7 +61,7 @@ const jacket: ClosetItem = {
   facts: { ...item.facts, category: { value: "jacket", confidence: 0.9, basis: "observed" } },
 };
 
-// The image is a native horizontal paging list: a swipe ends with the list resting on a page.
+// The whole item is a native horizontal paging scroll view: a swipe ends resting on a page.
 async function swipeTo(page: number) {
   const width = Dimensions.get("window").width;
   await fireEvent(screen.getByTestId("item-pager"), "momentumScrollEnd", { nativeEvent: { contentOffset: { x: page * width, y: 0 } } });
@@ -86,12 +86,23 @@ test("swiping the image moves through the list and updates the counter", async (
   expect(screen.getByText("2 / 3")).toBeTruthy();
 });
 
+test("the details swipe too: the whole item is one page, its neighbours a still preview", async () => {
+  await render(<ItemSheet items={[item, shorts, jacket]} index={0} onClose={() => {}} />);
+  // The live item's title and facts sit inside the paging list, not above it; the next item is already
+  // drawn beside it, so a swipe never shows a blank page.
+  const pager = screen.getByTestId("item-pager");
+  const live = within(pager).getByTestId("item-live");
+  expect(within(live).getByRole("header", { name: "Gray t-shirt" })).toBeTruthy();
+  expect(within(live).getByTestId("facts-card")).toBeTruthy();
+  expect(within(pager).getByRole("header", { name: "Gray shorts" })).toBeTruthy();
+});
+
 test("the pager opens on the tapped item and pages one item per screen width", async () => {
   await render(<ItemSheet items={[item, shorts, jacket]} index={1} onClose={() => {}} />);
   const list = screen.getByTestId("item-pager").props;
   expect(list.horizontal).toBe(true);
   expect(list.pagingEnabled).toBe(true);
-  expect(list.initialScrollIndex).toBe(1);
+  expect(list.contentOffset).toEqual({ x: Dimensions.get("window").width, y: 0 });
   expect(list.scrollEnabled).toBe(true);
   await swipeTo(1);  // came to rest on the same page: nothing changes
   expect(screen.getByText("2 / 3")).toBeTruthy();

@@ -3,6 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { FlatList, RefreshControl, ScrollView, Text, TextInput, View, useWindowDimensions, type TextInputInstance } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getItems } from "../../src/api/client";
+import { cachedItems, rememberItems } from "../../src/store/itemsCache";
 import { Icon } from "../../src/components/Icon";
 import { GarmentTile } from "../../src/components/GarmentTile";
 import { ItemSheet } from "../../src/components/ItemSheet";
@@ -33,8 +34,10 @@ export default function ClosetScreen() {
   useScreenViewed("closet");
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const [items, setItems] = useState<ClosetItem[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const { userId } = useAuth();
+  // The last closet fetched for this account draws at once; the fetch on focus refreshes it.
+  const [items, setItems] = useState<ClosetItem[]>(() => cachedItems(userId ?? null) ?? []);
+  const [loaded, setLoaded] = useState(() => cachedItems(userId ?? null) !== null);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [group, setGroup] = useState<string>(ALL);
@@ -57,17 +60,18 @@ export default function ClosetScreen() {
   const load = useCallback(async () => {
     setLoadError(null);
     try {
-      setItems((await getItems()).items);
+      const fresh = (await getItems()).items;
+      rememberItems(userId ?? null, fresh);
+      setItems(fresh);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Couldn't load your closet.");
     } finally {
       setLoaded(true);
     }
-  }, []);
+  }, [userId]);
 
   // First 3 Pieces' first success: once per account, over the closet, with the pieces just made — from a
   // round's finish (celebrate=1&ids=…) or a round that finished while the user was elsewhere.
-  const { userId } = useAuth();
   const firstPieces = useFirstPiecesMaybe();
   const settled = firstPieces?.summary?.settled && firstPieces.summary.made > 0 ? firstPieces.round : null;
   const wanted = useMemo(() => (params.celebrate ? parseIds(params.ids) : settled ? settled.jobs.flatMap((j) => j.itemIds ?? []) : []),

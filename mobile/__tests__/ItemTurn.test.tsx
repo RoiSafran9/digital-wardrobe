@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react-native";
+import { render, screen, fireEvent, act, within } from "@testing-library/react-native";
 import { ItemSheet } from "../src/components/ItemSheet";
 import { getTurn, startTurn } from "../src/api/client";
 import type { ClosetItem, Turn } from "../src/api/types";
@@ -116,7 +116,7 @@ test("on a finished 360 sideways drags turn the garment; Front frees the item sw
   await render(<ItemSheet items={[{ ...item, turn: done }, other]} index={0} onClose={() => {}} onUpdated={jest.fn()} onDeleted={() => {}} />);
   const pagerScrolls = () => screen.getByTestId("item-pager").props.scrollEnabled;
   expect(pagerScrolls()).toBe(false);  // the sheet opens on the 360
-  await fireEvent.press(screen.getByRole("tab", { name: "Front" }));
+  await fireEvent.press(within(screen.getByTestId("item-live")).getByRole("tab", { name: "Front" }));
   expect(pagerScrolls()).toBe(true);
   expect(screen.getByText("1 / 2")).toBeTruthy();
 });

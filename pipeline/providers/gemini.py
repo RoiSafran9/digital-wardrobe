@@ -76,8 +76,9 @@ async def image_content(client, contents):
 
 PROMPTS_DIR = __file__.rsplit("/providers/", 1)[0] + "/prompts"
 
-DETECT_PROMPT, DETECT_VERSION = "stage1_detect_facts_v5.txt", "v5"
-GENERATE_PROMPT, GENERATE_VERSION = "stage4_generate_v5.txt", "v5"
+# v6 = v5 plus unworn garments hanging on a hanger, hook, rail or door (v5 stays for comparison).
+DETECT_PROMPT, DETECT_VERSION = "stage1_detect_facts_v6.txt", "v6"
+GENERATE_PROMPT, GENERATE_VERSION = "stage4_generate_v6.txt", "v6"
 FOOTWEAR_GENERATE_PROMPT, FOOTWEAR_GENERATE_VERSION = "stage4_generate_footwear_v1.txt", "footwear_v1"
 
 

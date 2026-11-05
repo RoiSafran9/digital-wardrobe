@@ -5,6 +5,10 @@
 **Source inspected:** `main` at `04788789334038622bfbe2c1c66a795a72482230`. Claude must pull current `main` again before coding.  
 **Purpose:** Remove confusing/doubled Flat Lay / Worn / Garments / Outfit choices ahead of the first-five Friends & Family TestFlight pilot.
 
+## Status: hanging garments (2026-11-06)
+
+**Implemented in prompts, not yet verified.** Garment-photo detection and generation now use `pipeline/prompts/stage1_detect_facts_v6.txt` and `stage4_generate_v6.txt` (logged as `v6`): v5 plus unworn garments on a hanger, hook, rail or door, box on the garment only, hanger/clips removed in the catalog image, hidden parts never invented. Footwear (`stage4_generate_footwear_v1`) and outfit prompts are unchanged; no new model call, schema or migration. Automated tests (faked model calls) prove only prompt selection and logging. The real-photo QA (H01–H06 in [03-ACCEPTANCE-AND-QA.md](03-ACCEPTANCE-AND-QA.md) §D) has **not** run yet, so hanging support must not be called verified or advertised as proven until it passes. If a case fails, set `DETECT_PROMPT` / `GENERATE_PROMPT` in `pipeline/providers/gemini.py` back to v5.
+
 ## Approved UX decision
 
 - **One primary Add Clothes entry on Home.** The existing Add tab remains the canonical add hub, not another competing onboarding strategy.

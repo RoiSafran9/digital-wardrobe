@@ -74,16 +74,16 @@ async def test_a_shoe_at_the_photo_edge_is_completed_as_a_shoe_not_a_sleeve(monk
     assert footwear.EDGES_BLOCK in prompt and EDGES_BLOCK not in prompt
 
 
-async def test_garments_keep_the_v5_prompt_unchanged(monkeypatch, tmp_path):
+async def test_garments_use_the_v6_garment_prompt_not_the_footwear_one(monkeypatch, tmp_path):
     from pipeline.providers.gemini import EDGES_BLOCK
     facts = _facts("t-shirt", ["front"])
     prompt, entry = await _generate(monkeypatch, tmp_path, facts, complete_edges=True)
-    template = open(f"{PROMPTS}/stage4_generate_v5.txt").read()
+    template = open(f"{PROMPTS}/stage4_generate_v6.txt").read()
     assert prompt == template.format(facts_block=facts.model_dump_json(indent=2), violations_block="", edges_block=EDGES_BLOCK)
-    assert entry.prompt_version == "v5" and "SHOE COUNT" not in prompt
+    assert entry.prompt_version == "v6" and "SHOE COUNT" not in prompt
 
 
-async def test_detection_reads_the_footwear_aware_v5_prompt(monkeypatch, tmp_path):
+async def test_detection_reads_the_footwear_aware_v6_prompt(monkeypatch, tmp_path):
     monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
     from pipeline.providers.gemini import GeminiProvider
     img = tmp_path / "photo.jpg"
@@ -103,14 +103,15 @@ async def test_detection_reads_the_footwear_aware_v5_prompt(monkeypatch, tmp_pat
         MockClient.return_value.models.generate_content.return_value = response
         items = await GeminiProvider(logger).detect_items_with_facts(str(img))
         sent = MockClient.return_value.models.generate_content.call_args.kwargs["contents"][-1]
-    assert sent == open(f"{PROMPTS}/stage1_detect_facts_v5.txt").read()
+    assert sent == open(f"{PROMPTS}/stage1_detect_facts_v6.txt").read()
     assert "ONE item" in sent and "Never list the left and the right shoe as two items" in sent
     assert len(items) == 1 and footwear.shoe_count(items[0].visible_parts.value) == "pair"
-    assert logger.read_all()[0].prompt_version == "v5"
+    assert logger.read_all()[0].prompt_version == "v6"
 
 
-def test_detection_v5_still_excludes_accessories_and_worn_items():
-    prompt = open(f"{PROMPTS}/stage1_detect_facts_v5.txt").read()
+@pytest.mark.parametrize("version", ["v5", "v6"])
+def test_detection_still_excludes_accessories_and_worn_items(version):
+    prompt = open(f"{PROMPTS}/stage1_detect_facts_{version}.txt").read()
     assert "bags" in prompt and "sunglasses" in prompt and "shoes on feet" in prompt
 
 

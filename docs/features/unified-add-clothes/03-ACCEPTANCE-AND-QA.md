@@ -80,6 +80,8 @@ Explain any checks unavailable because local Supabase or device environment is n
 
 ## D. Real-photo prompt evaluation
 
+**Status (2026-11-06):** prompts v6 (`stage1_detect_facts_v6`, `stage4_generate_v6`) are in place and A16 passes with faked model calls; H01–H06 have **not** been run on real photos yet.
+
 Owner-consented fixture matrix with documented path outside Git (do not commit real user photos):
 - H01 clean shirt hanging on a hanger, fully visible;
 - H02 jacket hanging with sleeves visible, partly folded;

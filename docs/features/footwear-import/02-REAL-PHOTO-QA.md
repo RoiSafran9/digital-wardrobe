@@ -14,6 +14,8 @@
 
 `stage1_detect_facts_v5` also runs on **clothes-only** photos, so SH18 is a required regression check, not optional.
 
+**Later:** garment detection and garment generation moved to `stage1_detect_facts_v6.txt` / `stage4_generate_v6.txt` (v5 plus hanging garments, footwear rules kept verbatim; see [unified-add-clothes](../unified-add-clothes/README.md)). The footwear prompts above are unchanged; H05 and H06 in that QA re-check shoes and laid-flat clothes on v6.
+
 ## Setup (owner's Mac, nothing live touched)
 
 1. Use consented photos only: your own shoes, or synthetic/stock you may use. **Never commit them** (they go under `runs/`, which is git-ignored).

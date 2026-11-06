@@ -1,0 +1,612 @@
+{
+ "items": [
+  {
+   "id": "abd42b97-bf5e-5939-ac3f-820b4557e5d0",
+   "short": "abd42b97",
+   "job": "4a4b8930-eac4-4131-a598-f98433e3bc97",
+   "piece": 1,
+   "category": "t-shirt",
+   "colors": [
+    "blue"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-11-05T19:11:55.404921+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/abd42b97/generated.png",
+    "cutout": "garments/abd42b97/cutout.png",
+    "crop": "garments/abd42b97/crop.jpg"
+   }
+  },
+  {
+   "id": "0613d692-ec0b-5d8e-bc3f-b067e0370a1a",
+   "short": "0613d692",
+   "job": "5afef8c8-252f-48d2-971b-e08af037a744",
+   "piece": 0,
+   "category": "sandals",
+   "colors": [
+    "gray"
+   ],
+   "source_kind": "original",
+   "created_at": "2026-11-05T18:38:13.047301+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/0613d692/generated.png",
+    "cutout": "garments/0613d692/cutout.png",
+    "crop": "garments/0613d692/crop.jpg"
+   }
+  },
+  {
+   "id": "d11f2bde-048f-59dc-98f0-b66db836f5da",
+   "short": "d11f2bde",
+   "job": "0b5c7ecc-29ea-4d28-a9e9-778e9e8bb1ae",
+   "piece": 1,
+   "category": "t-shirt",
+   "colors": [
+    "blue"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-11-04T16:13:34.27638+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/d11f2bde/generated.png",
+    "cutout": "garments/d11f2bde/cutout.png",
+    "crop": "garments/d11f2bde/crop.jpg"
+   }
+  },
+  {
+   "id": "f96dff25-bba5-5465-b72c-d6b8134f4e34",
+   "short": "f96dff25",
+   "job": "0a3a66f7-0ce8-4a1a-963e-251ae533e969",
+   "piece": 1,
+   "category": "sneaker",
+   "colors": [
+    "brown",
+    "white"
+   ],
+   "source_kind": "original",
+   "created_at": "2026-11-03T14:24:59.56338+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/f96dff25/generated.png",
+    "cutout": "garments/f96dff25/cutout.png",
+    "crop": "garments/f96dff25/crop.jpg"
+   }
+  },
+  {
+   "id": "913a6de1-27e5-57b4-9b6a-102a2f5a7596",
+   "short": "913a6de1",
+   "job": "8425ee39-8b86-48fc-8ede-b985f57126d8",
+   "piece": 1,
+   "category": "top",
+   "colors": [
+    "red",
+    "black"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-11-02T18:01:41.801812+00:00",
+   "has_turn": true,
+   "files": {
+    "generated": "garments/913a6de1/generated.png",
+    "cutout": "garments/913a6de1/cutout.png",
+    "crop": "garments/913a6de1/crop.jpg",
+    "turn_front": "garments/913a6de1/turn_front.png",
+    "turn_right": "garments/913a6de1/turn_right.png",
+    "turn_back": "garments/913a6de1/turn_back.png",
+    "turn_left": "garments/913a6de1/turn_left.png"
+   }
+  },
+  {
+   "id": "9a6f97b2-6d81-50c9-a43b-8622a03895f8",
+   "short": "9a6f97b2",
+   "job": "7608cd15-3ef7-45df-9451-f70e08e72bfc",
+   "piece": 1,
+   "category": "top",
+   "colors": [
+    "black"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-11-02T13:56:58.047117+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/9a6f97b2/generated.png",
+    "cutout": "garments/9a6f97b2/cutout.png",
+    "crop": "garments/9a6f97b2/crop.jpg"
+   }
+  },
+  {
+   "id": "33b1974b-cf54-5f81-98fa-75c02fd53340",
+   "short": "33b1974b",
+   "job": "713b15e2-84de-4eef-8cb1-2fbddbc8329a",
+   "piece": 0,
+   "category": "shirt",
+   "colors": [
+    "blue",
+    "white"
+   ],
+   "source_kind": "original",
+   "created_at": "2026-11-01T15:11:31.315829+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/33b1974b/generated.png",
+    "cutout": "garments/33b1974b/cutout.png",
+    "crop": "garments/33b1974b/crop.jpg"
+   }
+  },
+  {
+   "id": "9317d066-1bac-577f-918b-70d38c2e7e8f",
+   "short": "9317d066",
+   "job": "fde018f5-b0e8-42bd-8726-5e8f19da6f1f",
+   "piece": 0,
+   "category": "shirt",
+   "colors": [
+    "white",
+    "black"
+   ],
+   "source_kind": "original",
+   "created_at": "2026-10-22T19:09:13.190441+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/9317d066/generated.png",
+    "cutout": "garments/9317d066/cutout.png",
+    "crop": "garments/9317d066/crop.jpg"
+   }
+  },
+  {
+   "id": "c1c44a69-0f63-5cce-a3ae-8ac1e921f1b9",
+   "short": "c1c44a69",
+   "job": "08e4bd57-40b4-489a-9faa-37bb4cc2cdb5",
+   "piece": 2,
+   "category": "trousers",
+   "colors": [
+    "black"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-20T21:02:57.915343+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/c1c44a69/generated.png",
+    "cutout": "garments/c1c44a69/cutout.png",
+    "crop": "garments/c1c44a69/crop.jpg"
+   }
+  },
+  {
+   "id": "2323ad9f-c6a0-512c-9b97-d92136bf91cf",
+   "short": "2323ad9f",
+   "job": "08e4bd57-40b4-489a-9faa-37bb4cc2cdb5",
+   "piece": 1,
+   "category": "t-shirt",
+   "colors": [
+    "navy",
+    "white"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-20T21:02:56.024555+00:00",
+   "has_turn": true,
+   "files": {
+    "generated": "garments/2323ad9f/generated.png",
+    "cutout": "garments/2323ad9f/cutout.png",
+    "crop": "garments/2323ad9f/crop.jpg",
+    "turn_front": "garments/2323ad9f/turn_front.png",
+    "turn_right": "garments/2323ad9f/turn_right.png",
+    "turn_back": "garments/2323ad9f/turn_back.png",
+    "turn_left": "garments/2323ad9f/turn_left.png"
+   }
+  },
+  {
+   "id": "009d44e7-1671-5227-93c3-ffbd495c07ad",
+   "short": "009d44e7",
+   "job": "ee1aa533-a611-42f3-8a3b-62005535abf7",
+   "piece": 0,
+   "category": "t-shirt",
+   "colors": [
+    "white",
+    "black",
+    "gray"
+   ],
+   "source_kind": "original",
+   "created_at": "2026-10-20T12:56:08.606578+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/009d44e7/generated.png",
+    "cutout": "garments/009d44e7/cutout.png",
+    "crop": "garments/009d44e7/crop.jpg"
+   }
+  },
+  {
+   "id": "d7b9819d-cb2d-577e-bd07-6e286e111507",
+   "short": "d7b9819d",
+   "job": "df6d4459-9595-463a-971f-6de00f533dc3",
+   "piece": 0,
+   "category": "shirt",
+   "colors": [
+    "blue"
+   ],
+   "source_kind": "original",
+   "created_at": "2026-10-20T12:54:40.601217+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/d7b9819d/generated.png",
+    "cutout": "garments/d7b9819d/cutout.png",
+    "crop": "garments/d7b9819d/crop.jpg"
+   }
+  },
+  {
+   "id": "224e173b-e87a-5107-b7bf-89c7f7dec167",
+   "short": "224e173b",
+   "job": "ff77396e-94f5-413f-ae46-87139883dd94",
+   "piece": 1,
+   "category": "pants",
+   "colors": [
+    "black",
+    "navy"
+   ],
+   "source_kind": "original",
+   "created_at": "2026-10-20T12:53:13.76143+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/224e173b/generated.png",
+    "cutout": "garments/224e173b/cutout.png",
+    "crop": "garments/224e173b/crop.jpg"
+   }
+  },
+  {
+   "id": "32f79407-9dae-5d28-9e6e-229c36749ada",
+   "short": "32f79407",
+   "job": "ff77396e-94f5-413f-ae46-87139883dd94",
+   "piece": 0,
+   "category": "t-shirt",
+   "colors": [
+    "gray"
+   ],
+   "source_kind": "original",
+   "created_at": "2026-10-20T12:53:12.096204+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/32f79407/generated.png",
+    "cutout": "garments/32f79407/cutout.png",
+    "crop": "garments/32f79407/crop.jpg"
+   }
+  },
+  {
+   "id": "3b41f435-7685-51fa-854b-99919811680d",
+   "short": "3b41f435",
+   "job": "3c59f1f0-af9b-4ac2-b16e-277b59e03469",
+   "piece": 2,
+   "category": "shorts",
+   "colors": [
+    "beige"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-19T19:45:16.164827+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/3b41f435/generated.png",
+    "cutout": "garments/3b41f435/cutout.png",
+    "crop": "garments/3b41f435/crop.jpg"
+   }
+  },
+  {
+   "id": "b3fc5e30-217d-59fc-b4d4-65a8b0ea5dba",
+   "short": "b3fc5e30",
+   "job": "3c59f1f0-af9b-4ac2-b16e-277b59e03469",
+   "piece": 1,
+   "category": "t-shirt",
+   "colors": [
+    "navy"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-19T19:45:13.534252+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/b3fc5e30/generated.png",
+    "cutout": "garments/b3fc5e30/cutout.png",
+    "crop": "garments/b3fc5e30/crop.jpg"
+   }
+  },
+  {
+   "id": "5595aa6d-6195-5744-b9c5-9878b421ac52",
+   "short": "5595aa6d",
+   "job": "0d259553-2c0a-47d0-9c50-6ef71e89933b",
+   "piece": 2,
+   "category": "jeans",
+   "colors": [
+    "black"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-19T13:38:05.03694+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/5595aa6d/generated.png",
+    "cutout": "garments/5595aa6d/cutout.png",
+    "crop": "garments/5595aa6d/crop.jpg"
+   }
+  },
+  {
+   "id": "bacd7962-d65d-5c2c-be89-9d2d0dfe21bb",
+   "short": "bacd7962",
+   "job": "0d259553-2c0a-47d0-9c50-6ef71e89933b",
+   "piece": 1,
+   "category": "t-shirt",
+   "colors": [
+    "red",
+    "white",
+    "pink"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-19T13:38:03.892255+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/bacd7962/generated.png",
+    "cutout": "garments/bacd7962/cutout.png",
+    "crop": "garments/bacd7962/crop.jpg"
+   }
+  },
+  {
+   "id": "5d2d2bff-8cc9-599d-af30-7a153e1ecf1b",
+   "short": "5d2d2bff",
+   "job": "951e4b0c-1364-4a2f-9c4f-0b59b54dea46",
+   "piece": 1,
+   "category": "t-shirt",
+   "colors": [
+    "black"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-19T12:44:15.496554+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/5d2d2bff/generated.png",
+    "cutout": "garments/5d2d2bff/cutout.png",
+    "crop": "garments/5d2d2bff/crop.jpg"
+   }
+  },
+  {
+   "id": "69403fd0-9d8a-5e5f-86a4-eed9b63fa567",
+   "short": "69403fd0",
+   "job": "64b3a193-92a9-4d71-9085-d6bc136020d6",
+   "piece": 3,
+   "category": "jeans",
+   "colors": [
+    "blue"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-19T10:38:31.322754+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/69403fd0/generated.png",
+    "cutout": "garments/69403fd0/cutout.png",
+    "crop": "garments/69403fd0/crop.jpg"
+   }
+  },
+  {
+   "id": "72c797de-3776-5d84-857b-555a41cb8c41",
+   "short": "72c797de",
+   "job": "64b3a193-92a9-4d71-9085-d6bc136020d6",
+   "piece": 1,
+   "category": "sweatshirt",
+   "colors": [
+    "blue"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-19T10:38:30.03863+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/72c797de/generated.png",
+    "cutout": "garments/72c797de/cutout.png",
+    "crop": "garments/72c797de/crop.jpg"
+   }
+  },
+  {
+   "id": "224b3daa-542c-5237-a9d3-bec60ce0e776",
+   "short": "224b3daa",
+   "job": "3626d851-522e-4485-8a3e-edfb1cb167a7",
+   "piece": 0,
+   "category": "shirt",
+   "colors": [
+    "white",
+    "black"
+   ],
+   "source_kind": "original",
+   "created_at": "2026-10-18T13:16:35.684023+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/224b3daa/generated.png",
+    "cutout": "garments/224b3daa/cutout.png",
+    "crop": "garments/224b3daa/crop.jpg"
+   }
+  },
+  {
+   "id": "53dd022e-14ad-5a88-8e8b-e817aa033248",
+   "short": "53dd022e",
+   "job": null,
+   "piece": null,
+   "category": "jeans",
+   "colors": [
+    "blue"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-17T15:13:04.977931+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/53dd022e/generated.png",
+    "cutout": "garments/53dd022e/cutout.png",
+    "crop": "garments/53dd022e/crop.png"
+   }
+  },
+  {
+   "id": "858632a0-910d-52ef-8511-5cbf72ce01f5",
+   "short": "858632a0",
+   "job": null,
+   "piece": null,
+   "category": "pants",
+   "colors": [
+    "brown"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-16T20:06:24.88521+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/858632a0/generated.png",
+    "cutout": "garments/858632a0/cutout.png",
+    "crop": "garments/858632a0/crop.png"
+   }
+  },
+  {
+   "id": "247440bb-5950-5199-b455-bba4613374e7",
+   "short": "247440bb",
+   "job": null,
+   "piece": null,
+   "category": "jacket",
+   "colors": [
+    "gray",
+    "navy",
+    "white"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-16T20:01:34.156959+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/247440bb/generated.png",
+    "cutout": "garments/247440bb/cutout.png",
+    "crop": "garments/247440bb/crop.png"
+   }
+  },
+  {
+   "id": "c74f7ce3-e183-5b40-ac6e-ffb598a23101",
+   "short": "c74f7ce3",
+   "job": null,
+   "piece": null,
+   "category": "t-shirt",
+   "colors": [
+    "white"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-16T12:08:23.859231+00:00",
+   "has_turn": true,
+   "files": {
+    "generated": "garments/c74f7ce3/generated.png",
+    "cutout": "garments/c74f7ce3/cutout.png",
+    "crop": "garments/c74f7ce3/crop.png",
+    "turn_front": "garments/c74f7ce3/turn_front.png",
+    "turn_right": "garments/c74f7ce3/turn_right.png",
+    "turn_back": "garments/c74f7ce3/turn_back.png",
+    "turn_left": "garments/c74f7ce3/turn_left.png"
+   }
+  },
+  {
+   "id": "93f9c85a-991d-5885-91e1-8dd5fb32d42c",
+   "short": "93f9c85a",
+   "job": null,
+   "piece": null,
+   "category": "t-shirt",
+   "colors": [
+    "navy"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-16T12:08:23.83347+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/93f9c85a/generated.png",
+    "cutout": "garments/93f9c85a/cutout.png",
+    "crop": "garments/93f9c85a/crop.png"
+   }
+  },
+  {
+   "id": "7b988d90-622f-5edd-964a-8d50137e77c4",
+   "short": "7b988d90",
+   "job": null,
+   "piece": null,
+   "category": "t-shirt",
+   "colors": [
+    "dusty pink",
+    "mint"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-16T07:45:52.448519+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/7b988d90/generated.png",
+    "cutout": "garments/7b988d90/cutout.png",
+    "crop": "garments/7b988d90/crop.png"
+   }
+  },
+  {
+   "id": "2ceb59df-4617-581c-b700-a20ea361fa23",
+   "short": "2ceb59df",
+   "job": null,
+   "piece": null,
+   "category": "shorts",
+   "colors": [
+    "navy"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-16T07:45:36.388743+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/2ceb59df/generated.png",
+    "cutout": "garments/2ceb59df/cutout.png",
+    "crop": "garments/2ceb59df/crop.png"
+   }
+  },
+  {
+   "id": "bcbb754e-0aeb-5e3e-8e44-f755cd2763f1",
+   "short": "bcbb754e",
+   "job": null,
+   "piece": null,
+   "category": "shorts",
+   "colors": [
+    "gray"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-16T07:05:53.111811+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/bcbb754e/generated.png",
+    "cutout": "garments/bcbb754e/cutout.png",
+    "crop": "garments/bcbb754e/crop.png"
+   }
+  },
+  {
+   "id": "1fdd262c-c166-5d26-8378-accd753f5fef",
+   "short": "1fdd262c",
+   "job": null,
+   "piece": null,
+   "category": "t-shirt",
+   "colors": [
+    "blue",
+    "white"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-15T22:13:18.817404+00:00",
+   "has_turn": true,
+   "files": {
+    "generated": "garments/1fdd262c/generated.png",
+    "cutout": "garments/1fdd262c/cutout.png",
+    "crop": "garments/1fdd262c/crop.png",
+    "turn_front": "garments/1fdd262c/turn_front.png",
+    "turn_right": "garments/1fdd262c/turn_right.png",
+    "turn_back": "garments/1fdd262c/turn_back.png",
+    "turn_left": "garments/1fdd262c/turn_left.png"
+   }
+  },
+  {
+   "id": "2182c9ac-3e96-5121-ab5b-1c7b24b49cf9",
+   "short": "2182c9ac",
+   "job": null,
+   "piece": null,
+   "category": "t-shirt",
+   "colors": [
+    "gray",
+    "black"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-10-15T18:46:04.633914+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/2182c9ac/generated.png",
+    "cutout": "garments/2182c9ac/cutout.png",
+    "crop": "garments/2182c9ac/crop.png"
+   }
+  }
+ ]
+}

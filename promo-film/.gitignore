@@ -1,0 +1,14 @@
+node_modules
+dist
+.DS_Store
+.env
+
+# Ignore the output video from Git but not videos you import into src/.
+out
+
+# Owner's closet images, photos, recordings and licensed music: fetched locally, never committed
+# (scripts/fetch_assets.py re-creates garments/ and photos/; recordings/ and music/ are added by hand).
+public/garments/
+public/photos/
+public/recordings/
+public/music/

@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Img, interpolate, useCurrentFrame } from "remotion";
 import { at, sceneLength, WIDTH } from "../config";
-import { WORN, wornPiece } from "../data";
+import { g, WORN } from "../data";
 import { DetectBox } from "../components/DetectBox";
 import { FlipCard } from "../components/FlipCard";
 import { StoneTile } from "../components/Garment";
@@ -11,52 +11,73 @@ import { ScanBand } from "../components/ScanBand";
 import { Sfx } from "../components/Sfx";
 import { appCurve, clamp, colors, snap } from "../theme";
 
-// S2 · OR JUST WEAR IT (bars 5–7). The owner's real mirror photo (face out of frame), the free scan and its two
-// real boxes; both pieces turn into their real catalog images, and Review decides: the tee is kept, the shorts
-// are not — exactly what happened with this photo.
+// S2 · OR JUST WEAR IT (bars 5–7). The worn photo the owner chose (face out of frame), the free scan and its
+// three real boxes; each piece lifts out of the photo and turns into its real catalog image, and Review keeps
+// all three — exactly what happened with this photo.
 
-const CARD_W = 640;
-const CARD_H = (CARD_W * WORN.window.height) / WORN.image.width;
-const CARD_LEFT = (WIDTH - CARD_W) / 2;
-const CARD_TOP = 580;
+type Box = { x: number; y: number; width: number; height: number };
+
+const CARD_W = 520;
 const s = CARD_W / WORN.image.width;
-const inCard = (b: { x: number; y: number; width: number; height: number }) =>
-  ({ x: b.x * s, y: (b.y - WORN.window.y) * s, width: b.width * s, height: b.height * s });
+const CARD_H = WORN.window.height * s;
+const CARD_LEFT = (WIDTH - CARD_W) / 2;
+const CARD_TOP = 560;
 
-const REST = {
-  tee: { cx: 330, cy: 1070, h: 520, rot: -3, flip: 3.25 },
-  shorts: { cx: 790, cy: 1120, h: 300, rot: 3, flip: 3.5 },
-} as const;
+/** A box clipped to the face-free window, in photo pixels. */
+const clip = (b: Box): Box => {
+  const top = Math.max(b.y, WORN.window.y);
+  return { x: b.x, y: top, width: b.width, height: b.y + b.height - top };
+};
+const inCard = (b: Box) => ({ x: b.x * s, y: (b.y - WORN.window.y) * s, width: b.width * s, height: b.height * s });
 
-const Piece: React.FC<{ which: "tee" | "shorts" }> = ({ which }) => {
+// Where each piece rests once lifted (center, height) and when it turns over (scene beats).
+const REST = [
+  { cx: 315, cy: 850, h: 430, rot: -3, box: 1.5, flip: 3.5 },
+  { cx: 770, cy: 1010, h: 640, rot: 2, box: 1.75, flip: 3.75 },
+  { cx: 330, cy: 1330, h: 200, rot: -2, box: 2, flip: 4 },
+] as const;
+const LIFT = [2.25, 3.25] as const;
+const REVIEW = 4.75;
+const AWAY = 5.75;
+
+/** The photo itself, showing only `box` (clipped), filling a card of the given size. */
+const PhotoRegion: React.FC<{ box: Box; width: number; height: number }> = ({ box, width, height }) => {
+  const k = width / box.width;
+  return (
+    <div style={{ width, height, overflow: "hidden", position: "relative" }}>
+      <Img src={WORN.photo} style={{ position: "absolute", width: WORN.image.width * k, height: WORN.image.height * k, left: -box.x * k, top: -box.y * k }} />
+    </div>
+  );
+};
+
+const Piece: React.FC<{ i: number }> = ({ i }) => {
   const frame = useCurrentFrame();
-  const piece = wornPiece(which);
-  const box = inCard(WORN[which].box);
-  const rest = REST[which];
-  const p = interpolate(frame, [at("outfit", 2), at("outfit", 3.25)], [0, 1], { ...clamp, easing: appCurve });
-  const w = rest.h * piece.cropAspect!;
-  const width = interpolate(p, [0, 1], [box.width, w]);
-  const height = interpolate(p, [0, 1], [box.height, rest.h]);
-  const cx = interpolate(p, [0, 1], [CARD_LEFT + box.x + box.width / 2, rest.cx]);
-  const cy = interpolate(p, [0, 1], [CARD_TOP + box.y + box.height / 2, rest.cy]);
-  // Review: the tee is kept and leaves for the closet; the shorts were not kept and drop away.
-  const review = at("outfit", 4.5);
-  const away = interpolate(frame, [review + 10, sceneLength("outfit")], [0, 1], { ...clamp, easing: appCurve });
-  const kept = WORN[which].kept;
-  const keepOn = interpolate(frame, [review, review + 5], [0, 1], clamp);
+  const piece = g(WORN.pieces[i].garment);
+  const box = clip(WORN.pieces[i].box);
+  const from = inCard(box);
+  const rest = REST[i];
+  const p = interpolate(frame, [at("outfit", LIFT[0]), at("outfit", LIFT[1])], [0, 1], { ...clamp, easing: appCurve });
+  const width = interpolate(p, [0, 1], [from.width, (rest.h * box.width) / box.height]);
+  const height = interpolate(p, [0, 1], [from.height, rest.h]);
+  const cx = interpolate(p, [0, 1], [CARD_LEFT + from.x + from.width / 2, rest.cx]);
+  const cy = interpolate(p, [0, 1], [CARD_TOP + from.y + from.height / 2, rest.cy]);
+  const keep = at("outfit", REVIEW + i * 0.25);
+  const keepOn = interpolate(frame, [keep, keep + 5], [0, 1], clamp);
+  const awayStart = at("outfit", AWAY) + i * 4;
+  const away = interpolate(frame, [awayStart, sceneLength("outfit")], [0, 1], { ...clamp, easing: appCurve });
   return (
     <div style={{ position: "absolute", left: cx - width / 2, top: cy - height / 2, rotate: `${rest.rot * p}deg`,
-      translate: kept ? `0px ${-900 * away}px` : `0px ${260 * away}px`, opacity: kept ? 1 : 1 - away, scale: kept ? String(1 - 0.3 * away) : "1",
+      translate: `0px ${-1100 * away}px`, scale: String(1 - 0.3 * away),
       filter: `drop-shadow(0 ${24 * p}px ${36 * p}px rgba(20,20,40,${0.2 * p}))` }}>
       <FlipCard width={width} height={height} at={at("outfit", rest.flip)} duration={12}
         front={<div style={{ width: "100%", height: "100%", borderRadius: 20 * p, overflow: "hidden" }}>
-          <Img src={piece.crop!} style={{ width: "100%", height: "100%", objectFit: "fill" }} /></div>}
+          <PhotoRegion box={box} width={width} height={height} /></div>}
         back={<StoneTile garment={piece} width={width} height={height} pad={0.08} />} />
-      <div style={{ position: "absolute", left: "50%", top: height + 22, translate: "-50% 0px", opacity: frame >= review ? 1 : 0 }}>
-        <Pill style={{ fontSize: 28, padding: "10px 20px" }}>
+      <div style={{ position: "absolute", left: "50%", top: height + 16, translate: "-50% 0px", opacity: frame >= keep ? 1 : 0 }}>
+        <Pill style={{ fontSize: 26, padding: "8px 18px" }}>
           <span>Keep</span>
-          <span style={{ width: 58, height: 34, borderRadius: 17, background: kept ? `rgba(35,165,90,${keepOn})` : "rgba(120,120,128,0.24)", position: "relative" }}>
-            <span style={{ position: "absolute", top: 3, left: kept ? 3 + 24 * keepOn : 3, width: 28, height: 28, borderRadius: 14, background: "#fff",
+          <span style={{ width: 52, height: 30, borderRadius: 15, background: `rgba(35,165,90,${keepOn})`, position: "relative" }}>
+            <span style={{ position: "absolute", top: 3, left: 3 + 22 * keepOn, width: 24, height: 24, borderRadius: 12, background: "#fff",
               boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }} />
           </span>
         </Pill>
@@ -68,9 +89,7 @@ const Piece: React.FC<{ which: "tee" | "shorts" }> = ({ which }) => {
 export const S2Outfit: React.FC = () => {
   const frame = useCurrentFrame();
   const enter = interpolate(frame, [0, 9], [0, 1], { ...clamp, easing: snap });
-  const out = interpolate(frame, [at("outfit", 2), at("outfit", 3)], [0, 1], { ...clamp, easing: appCurve });
-  const tee = inCard(WORN.tee.box);
-  const shorts = inCard(WORN.shorts.box);
+  const out = interpolate(frame, [at("outfit", LIFT[0]), at("outfit", LIFT[0] + 1)], [0, 1], { ...clamp, easing: appCurve });
   const pill = interpolate(frame, [at("outfit", 0.25), at("outfit", 0.75)], [0, 1], { ...clamp, easing: snap });
   return (
     <AbsoluteFill>
@@ -79,19 +98,20 @@ export const S2Outfit: React.FC = () => {
         backgroundColor: colors.tile }}>
         <Img src={WORN.photo} style={{ position: "absolute", left: 0, top: -WORN.window.y * s, width: CARD_W, height: WORN.image.height * s }} />
         <ScanBand from={at("outfit", 0.25)} to={at("outfit", 1.5)} />
-        <DetectBox n={1} x={tee.x} y={tee.y} width={tee.width} height={tee.height} at={at("outfit", 1.5)} />
-        <DetectBox n={2} x={shorts.x} y={shorts.y} width={shorts.width} height={shorts.height} at={at("outfit", 1.75)} />
+        {WORN.pieces.map((piece, i) => {
+          const b = inCard(clip(piece.box));
+          return <DetectBox key={piece.garment} n={i + 1} x={b.x} y={b.y} width={b.width} height={b.height} at={at("outfit", REST[i].box)} />;
+        })}
       </div>
-      <div style={{ position: "absolute", left: 0, right: 0, top: CARD_TOP + CARD_H + 28, display: "flex", justifyContent: "center",
+      <div style={{ position: "absolute", left: 0, right: 0, top: CARD_TOP + CARD_H + 24, display: "flex", justifyContent: "center",
         opacity: pill * (1 - out) }}>
         <Pill>Detection is free</Pill>
       </div>
-      {frame >= at("outfit", 2) ? (<><Piece which="shorts" /><Piece which="tee" /></>) : null}
+      {frame >= at("outfit", LIFT[0]) ? WORN.pieces.map((piece, i) => <Piece key={piece.garment} i={i} />).reverse() : null}
       <Headline lines={["Or just wear it."]} from={at("outfit", 0.2)} to={at("outfit", 7.6)} />
-      <Sfx name="tick" at={at("outfit", 1.5)} volume={0.3} />
-      <Sfx name="tick2" at={at("outfit", 1.75)} volume={0.3} />
-      <Sfx name="land" at={at("outfit", 3.5) + 8} volume={0.35} />
-      <Sfx name="click" at={at("outfit", 4.5)} volume={0.35} />
+      {REST.map((r, i) => <Sfx key={i} name={i % 2 ? "tick2" : "tick"} at={at("outfit", r.box)} volume={0.3} />)}
+      <Sfx name="land" at={at("outfit", 4) + 10} volume={0.35} />
+      <Sfx name="click" at={at("outfit", REVIEW)} volume={0.35} />
     </AbsoluteFill>
   );
 };

@@ -73,7 +73,7 @@ export const FLATLAY = {
 // The 360 shot: the blue-and-white striped tee's four AI views (V15 used the same piece).
 export const SPIN_GARMENT = "1fdd262c";
 
-// Build My Look for Everyday · Smart Casual · Relaxed · Hot · Dark (scripts/compute_looks.py).
+// Build My Look for Going Out · Streetwear · Bold · Hot · Colorful (scripts/compute_looks.py).
 export type Look = { title: string; reason: string; pieces: { slot: string; garment: Garment }[] };
 const SLOT_ORDER_TWO_PIECE = ["top", "outerwear", "bottom", "footwear"];
 const SLOT_ORDER_ONE_PIECE = ["one_piece", "outerwear", "footwear"];
@@ -92,30 +92,29 @@ export const SWAP = {
   current: gid(looksJson.swap.current),
   alternatives: looksJson.swap.alternatives.map((a) => ({ garment: gid(a.item_id), reason: a.reason })),
 };
-// The film's own graphics use only pieces whose source photo is plainly the owner's: laid on the bed, on a
-// hanger, or in the owner's mirror. Pieces imported from other people's photos (a game shot, street style, a
-// concert) or carrying third-party marks or faces stay out; they may still appear in a look the engine returns.
+// The film's own graphics use only pieces whose source photo is plainly the owner's (on the bed, on a hanger,
+// in the owner's mirror), plus the three pieces of the worn photo the owner chose for the film. Pieces imported
+// from other people's photos or carrying third-party marks or faces otherwise stay out; they may still appear in
+// a look the engine returns.
 export const OWN_PHOTO = new Set([
   "32f79407", "224e173b", "009d44e7", "d7b9819d", "858632a0", "7b988d90", "247440bb", "33b1974b", "3b41f435",
   "53dd022e", "2ceb59df", "1fdd262c", "224b3daa", "9317d066", "93f9c85a", "bcbb754e", "0613d692", "abd42b97", "b3fc5e30",
+  "8e60571e", "344468a5", "1b187a9d",
 ]);
 
-// The worn-outfit import (outfit scan 52e892eb → generate 4a4b8930): the owner's mirror photo, two candidates,
-// both generated; in Review the tee was kept and the shorts were not (discarded, not in the closet).
-// The window keeps the face out of frame.
-const discarded = (short: string, category: string): Garment => {
-  const path = `garments/${short}/cutout.png`;
-  const [w, h] = dims[path];
-  const crop = `garments/${short}/crop.jpg`;
-  return { id: short, short, category, src: staticFile(path), aspect: w / h, crop: staticFile(crop), cropAspect: dims[crop][0] / dims[crop][1] };
-};
+// The worn-outfit import the owner chose (outfit scan 1fc3d8bb → generate ff2bf8f7, 2026-11-06): three candidates,
+// all generated and kept. The photo carries its photographer's "@filmyboi" mark, left as it is; the window starts
+// below the chin so no face is shown, and each piece lifts out as the photo clipped to its box (the stored crops
+// are padded and would show the chin).
 export const WORN = {
-  photo: staticFile("photos/52e892eb.jpg"),
-  image: { width: 3024, height: 4032 },
-  window: { y: 880, height: 2420 },
-  tee: { box: { x: 849.744, y: 903.168, width: 1348.704, height: 1741.824 }, kept: true },
-  shorts: { box: { x: 1194.48, y: 2487.744, width: 913.248, height: 649.152 }, kept: false },
+  photo: staticFile("photos/1fc3d8bb.jpg"),
+  image: { width: 706, height: 1112 },
+  window: { y: 80, height: 1032 },
+  pieces: [
+    { garment: "8e60571e", box: { x: 181.4, y: 75.6, width: 367.8, height: 395.9 } },
+    { garment: "344468a5", box: { x: 116.5, y: 405.9, width: 345.9, height: 531.5 } },
+    { garment: "1b187a9d", box: { x: 305.7, y: 975.2, width: 137.7, height: 109.0 } },
+  ],
 } as const;
-export const wornPiece = (which: "tee" | "shorts"): Garment => (which === "tee" ? g("abd42b97") : discarded("6d10aaa8", "shorts"));
 
-export const ANSWERS = ["Everyday", "Smart Casual", "Relaxed", "Hot", "Dark"] as const;
+export const ANSWERS = ["Going Out", "Streetwear", "Bold", "Hot", "Colorful"] as const;

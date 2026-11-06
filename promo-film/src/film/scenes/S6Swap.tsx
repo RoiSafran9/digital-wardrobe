@@ -10,9 +10,9 @@ import { TapRipple } from "../components/TapRipple";
 import { appCurve, clamp, colors, fontFamily, snap } from "../theme";
 import { BOARD, BOARD_LEFT, boardPieceRect } from "./Deck";
 
-// S6 · SWAP (bars 16–18). The third look (shirt, the flat-lay trousers, sandals). "Swap Top" offers the
-// server's ranked owned alternatives; the first is the lilac tee from the very same photo. Only that one
-// piece changes — and the look is now the photo's own pair, which then gathers into the app icon.
+// S6 · SWAP (bars 15–17). The third look (a sweatshirt with the worn photo's jeans and sneakers). "Swap Top"
+// offers the server's ranked owned alternatives; the first is the tee from that same photo. Only that one piece
+// changes — the look becomes the photo's whole outfit — and then gathers into the app icon.
 
 const look = LOOKS[OPEN_LOOK];
 const pieces = look.pieces.map((p) => p.garment);

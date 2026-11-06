@@ -37,9 +37,9 @@ const burst = (i: number, n: number) => {
 // Three of the owner's pieces floating under the questions (the Home card's own motif, Float: −8pt over
 // 2.6 s, staggered), joining the gather when the looks are put together.
 const FLOAT = [
-  { short: "224b3daa", x: 250, y: 1130, h: 360 },
-  { short: "224e173b", x: 560, y: 1060, h: 470 },
-  { short: "0613d692", x: 845, y: 1220, h: 220 },
+  { short: "1fdd262c", x: 240, y: 1120, h: 330 },
+  { short: "344468a5", x: 560, y: 1060, h: 480 },
+  { short: "1b187a9d", x: 850, y: 1230, h: 170 },
 ];
 const Floating: React.FC<{ gather: number }> = ({ gather }) => {
   const frame = useCurrentFrame();

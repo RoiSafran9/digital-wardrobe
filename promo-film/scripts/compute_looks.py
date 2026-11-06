@@ -11,8 +11,8 @@ sys.path.insert(0, ".")
 from api.outfit_builder.engine import build_suggestions
 from api.outfit_builder.swap import swap_options
 
-FILTERS = {"occasion": "everyday", "style": "smart_casual", "vibe": "relaxed", "weather": "hot", "colors": "dark"}
-OPEN_LOOK = 2            # the look that holds the flat-lay trousers
+FILTERS = {"occasion": "going_out", "style": "streetwear", "vibe": "bold", "weather": "hot", "colors": "colorful"}
+OPEN_LOOK = 2            # the look with the worn photo's jeans and sneakers; its top swaps to that photo's tee
 SWAP_SLOT = "top"
 
 rows = json.load(open(sys.argv[1]))

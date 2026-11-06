@@ -1,6 +1,61 @@
 {
  "items": [
   {
+   "id": "1b187a9d-7320-5d92-9a3b-cdf3626f1f74",
+   "short": "1b187a9d",
+   "job": "ff2bf8f7-b677-43d6-bf4b-cb932a25a372",
+   "piece": 3,
+   "category": "shoes",
+   "colors": [
+    "red",
+    "white"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-11-06T17:09:37.932316+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/1b187a9d/generated.png",
+    "cutout": "garments/1b187a9d/cutout.png",
+    "crop": "garments/1b187a9d/crop.jpg"
+   }
+  },
+  {
+   "id": "344468a5-19da-58fc-924e-cc293d278e55",
+   "short": "344468a5",
+   "job": "ff2bf8f7-b677-43d6-bf4b-cb932a25a372",
+   "piece": 2,
+   "category": "jeans",
+   "colors": [
+    "blue"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-11-06T17:09:36.673724+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/344468a5/generated.png",
+    "cutout": "garments/344468a5/cutout.png",
+    "crop": "garments/344468a5/crop.jpg"
+   }
+  },
+  {
+   "id": "8e60571e-65a0-5e7f-8306-22645d1de53c",
+   "short": "8e60571e",
+   "job": "ff2bf8f7-b677-43d6-bf4b-cb932a25a372",
+   "piece": 1,
+   "category": "t-shirt",
+   "colors": [
+    "red"
+   ],
+   "source_kind": "crop",
+   "created_at": "2026-11-06T17:09:35.398018+00:00",
+   "has_turn": false,
+   "files": {
+    "generated": "garments/8e60571e/generated.png",
+    "cutout": "garments/8e60571e/cutout.png",
+    "crop": "garments/8e60571e/crop.jpg"
+   }
+  },
+  {
    "id": "abd42b97-bf5e-5939-ac3f-820b4557e5d0",
    "short": "abd42b97",
    "job": "4a4b8930-eac4-4131-a598-f98433e3bc97",

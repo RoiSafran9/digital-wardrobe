@@ -1,90 +1,90 @@
 {
  "filters": {
-  "occasion": "everyday",
-  "style": "smart_casual",
-  "vibe": "relaxed",
+  "occasion": "going_out",
+  "style": "streetwear",
+  "vibe": "bold",
   "weather": "hot",
-  "colors": "dark"
+  "colors": "colorful"
  },
  "looks": [
   {
    "title": "T-Shirt & Shorts & Sandals",
-   "reason": "A pairing for an everyday day and hot weather.",
+   "reason": "A pairing for going out and hot weather.",
    "item_ids": [
-    "2182c9ac-3e96-5121-ab5b-1c7b24b49cf9",
+    "8e60571e-65a0-5e7f-8306-22645d1de53c",
+    "3b41f435-7685-51fa-854b-99919811680d",
+    "0613d692-ec0b-5d8e-bc3f-b067e0370a1a"
+   ],
+   "slots": {
+    "top": "8e60571e-65a0-5e7f-8306-22645d1de53c",
+    "bottom": "3b41f435-7685-51fa-854b-99919811680d",
+    "footwear": "0613d692-ec0b-5d8e-bc3f-b067e0370a1a"
+   }
+  },
+  {
+   "title": "T-Shirt & Shorts & Sneaker",
+   "reason": "A pairing for going out and hot weather.",
+   "item_ids": [
+    "1fdd262c-c166-5d26-8378-accd753f5fef",
     "bcbb754e-0aeb-5e3e-8e44-f755cd2763f1",
-    "0613d692-ec0b-5d8e-bc3f-b067e0370a1a"
+    "f96dff25-bba5-5465-b72c-d6b8134f4e34"
    ],
    "slots": {
-    "top": "2182c9ac-3e96-5121-ab5b-1c7b24b49cf9",
+    "top": "1fdd262c-c166-5d26-8378-accd753f5fef",
     "bottom": "bcbb754e-0aeb-5e3e-8e44-f755cd2763f1",
-    "footwear": "0613d692-ec0b-5d8e-bc3f-b067e0370a1a"
+    "footwear": "f96dff25-bba5-5465-b72c-d6b8134f4e34"
    }
   },
   {
-   "title": "T-Shirt & Trousers & Sandals",
-   "reason": "A pairing for an everyday day and hot weather.",
+   "title": "Sweatshirt & Jeans & Shoes",
+   "reason": "A pairing for going out and hot weather.",
    "item_ids": [
-    "2323ad9f-c6a0-512c-9b97-d92136bf91cf",
-    "c1c44a69-0f63-5cce-a3ae-8ac1e921f1b9",
-    "0613d692-ec0b-5d8e-bc3f-b067e0370a1a"
+    "72c797de-3776-5d84-857b-555a41cb8c41",
+    "344468a5-19da-58fc-924e-cc293d278e55",
+    "1b187a9d-7320-5d92-9a3b-cdf3626f1f74"
    ],
    "slots": {
-    "top": "2323ad9f-c6a0-512c-9b97-d92136bf91cf",
-    "bottom": "c1c44a69-0f63-5cce-a3ae-8ac1e921f1b9",
-    "footwear": "0613d692-ec0b-5d8e-bc3f-b067e0370a1a"
-   }
-  },
-  {
-   "title": "Shirt & Pants & Sandals",
-   "reason": "A pairing for an everyday day and hot weather.",
-   "item_ids": [
-    "224b3daa-542c-5237-a9d3-bec60ce0e776",
-    "224e173b-e87a-5107-b7bf-89c7f7dec167",
-    "0613d692-ec0b-5d8e-bc3f-b067e0370a1a"
-   ],
-   "slots": {
-    "top": "224b3daa-542c-5237-a9d3-bec60ce0e776",
-    "bottom": "224e173b-e87a-5107-b7bf-89c7f7dec167",
-    "footwear": "0613d692-ec0b-5d8e-bc3f-b067e0370a1a"
+    "top": "72c797de-3776-5d84-857b-555a41cb8c41",
+    "bottom": "344468a5-19da-58fc-924e-cc293d278e55",
+    "footwear": "1b187a9d-7320-5d92-9a3b-cdf3626f1f74"
    }
   }
  ],
  "open_look": 2,
  "swap": {
   "slot": "top",
-  "current": "224b3daa-542c-5237-a9d3-bec60ce0e776",
+  "current": "72c797de-3776-5d84-857b-555a41cb8c41",
   "alternatives": [
    {
+    "item_id": "8e60571e-65a0-5e7f-8306-22645d1de53c",
+    "reason": "A similarly styled option."
+   },
+   {
+    "item_id": "abd42b97-bf5e-5939-ac3f-820b4557e5d0",
+    "reason": "A similarly styled option."
+   },
+   {
+    "item_id": "d11f2bde-048f-59dc-98f0-b66db836f5da",
+    "reason": "A similarly styled option."
+   },
+   {
+    "item_id": "1fdd262c-c166-5d26-8378-accd753f5fef",
+    "reason": "A similarly styled option."
+   },
+   {
     "item_id": "32f79407-9dae-5d28-9e6e-229c36749ada",
-    "reason": "A more casual alternative."
+    "reason": "A similarly styled option."
    },
    {
     "item_id": "b3fc5e30-217d-59fc-b4d4-65a8b0ea5dba",
-    "reason": "A more casual alternative."
+    "reason": "A similarly styled option."
    },
    {
     "item_id": "5d2d2bff-8cc9-599d-af30-7a153e1ecf1b",
-    "reason": "A more casual alternative."
+    "reason": "A similarly styled option."
    },
    {
-    "item_id": "93f9c85a-991d-5885-91e1-8dd5fb32d42c",
-    "reason": "A more casual alternative."
-   },
-   {
-    "item_id": "2182c9ac-3e96-5121-ab5b-1c7b24b49cf9",
-    "reason": "A more casual alternative."
-   },
-   {
-    "item_id": "009d44e7-1671-5227-93c3-ffbd495c07ad",
-    "reason": "A more casual alternative."
-   },
-   {
-    "item_id": "2323ad9f-c6a0-512c-9b97-d92136bf91cf",
-    "reason": "A more casual alternative."
-   },
-   {
-    "item_id": "9317d066-1bac-577f-918b-70d38c2e7e8f",
+    "item_id": "c74f7ce3-e183-5b40-ac6e-ffb598a23101",
     "reason": "A similarly styled option."
    }
   ]

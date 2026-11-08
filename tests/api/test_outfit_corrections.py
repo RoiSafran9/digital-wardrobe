@@ -17,9 +17,9 @@ class SpyImageGen(FakeImageGen):
         super().__init__(**kw)
         self.scans = []
 
-    async def generate_outfit(self, image_path, scan, candidate_ids, out_dir):
+    async def generate_outfit(self, image_path, scan, candidate_ids, out_dir, on_progress=None):
         self.scans.append(scan)
-        return await super().generate_outfit(image_path, scan, candidate_ids, out_dir)
+        return await super().generate_outfit(image_path, scan, candidate_ids, out_dir, on_progress)
 
 
 # --- corrections ---------------------------------------------------------------------------------

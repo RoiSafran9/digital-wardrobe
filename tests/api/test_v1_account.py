@@ -55,5 +55,7 @@ def test_delete_account_needs_sign_in(client):
 def test_job_progress_is_visible_to_its_owner_only(client, store):
     job, _ = store.create_job(A, "garment", "k1", None)
     store.set_job_progress(job["id"], 1, 3)
-    assert client.get(f"/v1/jobs/{job['id']}", headers=as_user(A)).json()["progress"] == {"done": 1, "total": 3}
+    assert client.get(f"/v1/jobs/{job['id']}", headers=as_user(A)).json()["progress"] == {"done": 1, "total": 3, "made": None}
+    store.set_job_progress(job["id"], 2, 3, 1)
+    assert client.get(f"/v1/jobs/{job['id']}", headers=as_user(A)).json()["progress"] == {"done": 2, "total": 3, "made": 1}
     assert client.get(f"/v1/jobs/{job['id']}", headers=as_user(B)).status_code == 404

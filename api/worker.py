@@ -210,7 +210,7 @@ async def _garment(store, job, providers, tmp, uploads):
         picked = _picked_detection(store, job)
         outcome = await run_photo(photo, output_dir, Providers(vision=vision, imagegen=given.imagegen), logger,
                                   max_items=None if picked is not None else job.get("max_items"), detected_items=picked,
-                                  on_progress=lambda done, total: store.set_job_progress(job["id"], done, total))
+                                  on_progress=lambda done, total, made: store.set_job_progress(job["id"], done, total, made))
     except ValueError as e:
         raise JobRejected(_sentence(str(e)), "photo_quality") from e
 
@@ -376,7 +376,10 @@ async def _outfit_generate(store, job, providers, tmp, uploads):
     out_dir = os.path.join(tmp, "out")
     imagegen = providers(RunLogger(os.path.join(tmp, "outfit_log.jsonl"))).imagegen
     try:
-        results = await imagegen.generate_outfit(photo, scan, list(job["candidate_ids"]), out_dir)
+        # Per-pick progress for the app (done = processed, made = has an image); no extra model calls.
+        results = await imagegen.generate_outfit(
+            photo, scan, list(job["candidate_ids"]), out_dir,
+            on_progress=lambda done, total, made: store.set_job_progress(job["id"], done, total, made))
     except ValueError as e:  # unknown candidate IDs or an unreadable photo
         raise JobRejected(_sentence(str(e)), "photo_quality") from e
     by_id = {c.id: c for c in scan.candidates}

@@ -271,8 +271,8 @@ async def test_a_garment_job_reports_progress_per_piece():
     store = MemoryStore()
     seen = []
     original = store.set_job_progress
-    store.set_job_progress = lambda job_id, done, total: (seen.append((done, total)), original(job_id, done, total))
+    store.set_job_progress = lambda job_id, done, total, made=None: (seen.append((done, total, made)), original(job_id, done, total, made))
     job_id = garment_job(store)
     await run_once(store, factory())
-    assert seen[0] == (0, 2) and seen[-1] == (2, 2)
-    assert store.jobs[job_id]["progress"] == {"done": 2, "total": 2}
+    assert seen[0] == (0, 2, 0) and seen[-1] == (2, 2, 2)
+    assert store.jobs[job_id]["progress"] == {"done": 2, "total": 2, "made": 2}

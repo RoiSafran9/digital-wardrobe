@@ -85,8 +85,9 @@ class ItemPatch(BaseModel):
 
 
 class JobProgress(BaseModel):
-    done: int
-    total: int
+    done: int  # pieces processed so far (made or failed)
+    total: int  # pieces being made
+    made: int | None = None  # of those processed, how many got a catalog image (None from older workers)
 
 
 class ProfileOut(BaseModel):
@@ -142,7 +143,7 @@ class JobOut(BaseModel):
     cost_credits: int | None = None  # AI Credits one action of this job costs; None while billing is off
     max_fronts: int | None = None  # garment jobs with billing on: the fronts the user approved paying for
     over_limit: int = 0  # pieces found in the photo but not made because of max_fronts
-    progress: JobProgress | None = None  # garment jobs: pieces finished so far, once detection is done
+    progress: JobProgress | None = None  # garment and outfit_generate jobs: pieces finished so far, once known
 
 
 class PricesOut(BaseModel):

@@ -10,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTT
 from fastapi.responses import JSONResponse
 from api.auth import User, current_user
 from api.credits import CreditError
-from api.controls import BUDGET_USED, PAID_KINDS, WELCOME_KEY, daily_ai_jobs, start_of_day, free_scans_per_hour, generation_on, invited, require_generation, welcome_credits
+from api.controls import BUDGET_USED, PAID_KINDS, WELCOME_KEY, daily_ai_jobs, start_of_day, free_scans_per_hour, generation_on, invited, known_job, PAUSED, welcome_credits
 from api.credits import MAX_FRONTS, InsufficientCredits, action_for, get_gate, get_prices, hold_amount, job_cost
 from api.facts_edit import apply_patch, patch_error
 from api.activity import EVENTS_PER_HOUR, record, validate as validate_event
@@ -28,6 +28,15 @@ log = logging.getLogger("wardrobe.v1")
 PHOTO_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".heic": "image/heic",
                ".heif": "image/heif", ".webp": "image/webp"}
 NOT_FOUND = HTTPException(404, "not found")
+
+
+def generation_or_known(user: User = Depends(current_user), key: str | None = Header(None, alias="Idempotency-Key"),
+                        store=Depends(get_store)):
+    """controls.require_generation for /v1: while new AI work is paused (503), a resend of a job this user already
+    started still reaches the route, which answers with that job — so the app never mistakes a running, billed job
+    for a refused request."""
+    if not generation_on() and not known_job(user, key, store):
+        raise HTTPException(503, PAUSED)
 
 
 def idempotency_key(key: str | None = Header(None, alias="Idempotency-Key")) -> str:
@@ -70,6 +79,11 @@ def queue_job(store, user: User, kind: str, key: str, photo: UploadFile | None, 
     try:
         gate.reserve(user.id, job_id, action_for(kind), hold_amount(cost, max_items))  # AI Credits: hold the cost before any work
     except InsufficientCredits:
+        # Two sends of one key at once: the first may have made the job (and its hold) meanwhile. Answer with it.
+        existing = store.job_by_key(user.id, key)
+        if existing:
+            _log_job("job reused", existing)
+            return JSONResponse(status_code=200, content=out(existing).model_dump())
         raise HTTPException(402, "not enough AI credits")
 
     uploaded, created = None, False
@@ -93,14 +107,16 @@ def _log_job(msg: str, job: dict) -> None:
     log.info(msg, extra={"fields": {"job_id": job["id"], "user_id": job["user_id"], "kind": job["kind"], "status": job["status"]}})
 
 
-@router.post("/jobs", response_model=JobOut, status_code=202, dependencies=[Depends(require_generation)])
+@router.post("/jobs", response_model=JobOut, status_code=202, dependencies=[Depends(generation_or_known)])
 def create_garment_job(user: User = Depends(current_user), photo: UploadFile | None = File(None),
                        max_fronts: str | None = Form(None), key: str = Depends(idempotency_key),
                        store=Depends(get_store), gate=Depends(get_gate), prices=Depends(get_prices)):
     """max_fronts: how many front images (one per garment in the photo) the user approved paying for;
     default 1. Only used while billing is on: then the job holds price × max_fronts, makes at most that
     many fronts (largest pieces first) and is charged only for the fronts it made."""
-    if photo is None:
+    if photo is None and not store.job_by_key(user.id, key):
+        # Without a photo only a resend of a job this user already started is allowed (the app reconnecting
+        # after a restart, when the picked photo may be gone); queue_job answers it with that job.
         raise HTTPException(400, "no photo provided")
     fronts = _whole(max_fronts, "max_fronts", 1, MAX_FRONTS) or 1
     return queue_job(store, user, "garment", key, photo, gate, prices, max_items=fronts if prices else None)
@@ -253,7 +269,7 @@ def _no_shoe_side_views(store, user: User, item: dict, key: str) -> None:
         raise HTTPException(409, footwear.NO_SIDE_VIEWS)
 
 
-@router.post("/items/{item_id}/back", response_model=JobOut, status_code=202, dependencies=[Depends(require_generation)])
+@router.post("/items/{item_id}/back", response_model=JobOut, status_code=202, dependencies=[Depends(generation_or_known)])
 def add_back(item_id: str, user: User = Depends(current_user), photo: UploadFile | None = File(None),
              key: str = Depends(idempotency_key), store=Depends(get_store),
              gate=Depends(get_gate), prices=Depends(get_prices)):
@@ -263,7 +279,7 @@ def add_back(item_id: str, user: User = Depends(current_user), photo: UploadFile
     return queue_job(store, user, "back", key, photo, gate, prices, item_id=item_id)
 
 
-@router.post("/items/{item_id}/turn", response_model=JobOut, status_code=202, dependencies=[Depends(require_generation)])
+@router.post("/items/{item_id}/turn", response_model=JobOut, status_code=202, dependencies=[Depends(generation_or_known)])
 def start_turn(item_id: str, user: User = Depends(current_user), key: str = Depends(idempotency_key),
                store=Depends(get_store), gate=Depends(get_gate), prices=Depends(get_prices)):
     _no_shoe_side_views(store, user, _own_item(store, user, item_id), key)
@@ -282,8 +298,10 @@ def _outfit_enabled() -> bool:
     return os.environ.get("WARDROBE_OUTFIT", "").strip().lower() == "on"
 
 
-def outfit_on():
-    if not _outfit_enabled():
+def outfit_on(user: User = Depends(current_user), key: str | None = Header(None, alias="Idempotency-Key"),
+              store=Depends(get_store)):
+    # A resend of an outfit job this user already started still finds it after the flag is switched off.
+    if not _outfit_enabled() and not known_job(user, key, store):
         raise NOT_FOUND
 
 
@@ -304,7 +322,7 @@ def scan_out(job: dict, store) -> OutfitScanOut:
                     for c in candidates])
 
 
-@router.post("/outfit-scans", response_model=OutfitScanOut, status_code=202, dependencies=[Depends(outfit_on), Depends(require_generation)])
+@router.post("/outfit-scans", response_model=OutfitScanOut, status_code=202, dependencies=[Depends(outfit_on), Depends(generation_or_known)])
 def create_outfit_scan(user: User = Depends(current_user), photo: UploadFile | None = File(None),
                        key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
                        prices=Depends(get_prices)):
@@ -338,7 +356,7 @@ def get_outfit_scan(scan_id: str, user: User = Depends(current_user), store=Depe
 MAX_PICKS = 8
 
 
-@router.post("/outfit-scans/{scan_id}/generate", response_model=JobOut, status_code=202, dependencies=[Depends(outfit_on), Depends(require_generation)])
+@router.post("/outfit-scans/{scan_id}/generate", response_model=JobOut, status_code=202, dependencies=[Depends(outfit_on), Depends(generation_or_known)])
 def generate_from_scan(scan_id: str, body: OutfitGenerateIn, user: User = Depends(current_user),
                        key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
                        prices=Depends(get_prices)):
@@ -430,7 +448,7 @@ def mark_region(scan_id: str, body: RegionIn, background: BackgroundTasks, user:
     return scan_out(store.get_job(user.id, scan["id"]), store)
 
 
-@router.post("/items/{item_id}/regenerate", response_model=JobOut, status_code=202, dependencies=[Depends(outfit_on), Depends(require_generation)])
+@router.post("/items/{item_id}/regenerate", response_model=JobOut, status_code=202, dependencies=[Depends(outfit_on), Depends(generation_or_known)])
 def regenerate_item(item_id: str, body: RegenerateIn, user: User = Depends(current_user),
                     key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
                     prices=Depends(get_prices)):
@@ -599,7 +617,7 @@ def _own_garment_scan(store, user: User, scan_id: str) -> dict:
     return job
 
 
-@router.post("/garment-scans", response_model=GarmentScanOut, status_code=202, dependencies=[Depends(require_generation)])
+@router.post("/garment-scans", response_model=GarmentScanOut, status_code=202, dependencies=[Depends(generation_or_known)])
 def create_garment_scan(user: User = Depends(current_user), photo: UploadFile | None = File(None),
                         key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
                         prices=Depends(get_prices)):
@@ -619,7 +637,7 @@ def get_garment_scan(scan_id: str, user: User = Depends(current_user), store=Dep
     return garment_scan_out(_own_garment_scan(store, user, scan_id))
 
 
-@router.post("/garment-scans/{scan_id}/generate", response_model=JobOut, status_code=202, dependencies=[Depends(require_generation)])
+@router.post("/garment-scans/{scan_id}/generate", response_model=JobOut, status_code=202, dependencies=[Depends(generation_or_known)])
 def generate_from_garment_scan(scan_id: str, body: GarmentGenerateIn, user: User = Depends(current_user),
                                key: str = Depends(idempotency_key), store=Depends(get_store), gate=Depends(get_gate),
                                prices=Depends(get_prices)):

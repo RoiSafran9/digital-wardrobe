@@ -22,9 +22,17 @@ def generation_on() -> bool:
     return os.environ.get("WARDROBE_GENERATION", "on").strip().lower() not in ("off", "0", "false")
 
 
+def known_job(user: User, key: str | None, store) -> bool:
+    """A resend of a job this user already started (same Idempotency-Key): the route answers it with that job,
+    so switches that refuse NEW work must let it through — otherwise the app can't tell a refused request
+    from one whose job exists and is running (and billed)."""
+    return bool(key) and store.job_by_key(user.id, key) is not None
+
+
 def require_generation(user: User = Depends(current_user)):
     """Dependency for every route that starts paid or costly AI work. Signed in first, so a refusal is
-    recorded for its account (api/activity.refusal_recorder)."""
+    recorded for its account (api/activity.refusal_recorder). The /v1 routes use their store-aware twin
+    (routes/v1.generation_or_known), which still answers a resend of an existing job."""
     if not generation_on():
         raise HTTPException(503, PAUSED)
 

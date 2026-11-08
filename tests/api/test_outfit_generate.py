@@ -17,18 +17,23 @@ class FakeImageGen:
     def __init__(self, fail=()):
         self.fail, self.calls = set(fail), []
 
-    async def generate_outfit(self, image_path, scan, candidate_ids, out_dir):
+    async def generate_outfit(self, image_path, scan, candidate_ids, out_dir, on_progress=None):
         self.calls.append(list(candidate_ids))
-        results = {}
-        for cid in candidate_ids:
+        results, made = {}, 0
+        if on_progress:
+            on_progress(0, len(candidate_ids), 0)
+        for done, cid in enumerate(candidate_ids, start=1):
             if cid in self.fail:
                 results[cid] = {"status": "failed", "error": "model refused"}
-                continue
-            d = os.path.join(out_dir, cid)
-            os.makedirs(d, exist_ok=True)
-            cv2.imwrite(os.path.join(d, "crop.png"), np.full((50, 40, 3), 90, np.uint8))
-            cv2.imwrite(os.path.join(d, "generated.png"), np.full((64, 64, 3), 255, np.uint8))
-            results[cid] = {"status": "generated", "attempts": 1}
+            else:
+                d = os.path.join(out_dir, cid)
+                os.makedirs(d, exist_ok=True)
+                cv2.imwrite(os.path.join(d, "crop.png"), np.full((50, 40, 3), 90, np.uint8))
+                cv2.imwrite(os.path.join(d, "generated.png"), np.full((64, 64, 3), 255, np.uint8))
+                results[cid] = {"status": "generated", "attempts": 1}
+                made += 1
+            if on_progress:
+                on_progress(done, len(candidate_ids), made)
         return results
 
 
@@ -82,6 +87,21 @@ async def test_only_the_picked_garment_is_generated_and_waits_for_review():
     assert client.get("/v1/items", headers=as_user(A)).json()["items"] == []  # not in the closet until kept
     pending = client.get(f"/v1/items/{item['id']}", headers=as_user(A)).json()
     assert pending["review_state"] == "pending" and pending["origin"] == "outfit_photo"
+
+
+async def test_the_job_reports_processed_and_made_per_pick_to_its_owner_only():
+    store = MemoryStore()
+    client = client_for(store)
+    scan_id = await scanned(store, client)
+    job_id = generate(client, scan_id, ["c1", "c2"]).json()["id"]
+    seen = []
+    original = store.set_job_progress
+    store.set_job_progress = lambda jid, done, total, made=None: (seen.append((done, total, made)), original(jid, done, total, made))
+    await run_once(store, providers(FakeImageGen(fail={"c1"})))
+    assert seen == [(0, 2, 0), (1, 2, 0), (2, 2, 1)]  # c1 processed but not made; c2 made
+    job = client.get(f"/v1/jobs/{job_id}", headers=as_user(A)).json()
+    assert job["progress"] == {"done": 2, "total": 2, "made": 1} and job["failed"] == ["c1"]
+    assert client.get(f"/v1/jobs/{job_id}", headers=as_user(B)).status_code == 404
 
 
 async def test_keep_puts_it_in_the_closet_and_delete_discards_it():
@@ -212,3 +232,56 @@ async def test_pending_results_can_be_listed_after_a_restart_and_prices_say_outf
 async def test_prices_say_outfit_is_off_by_default(monkeypatch):
     monkeypatch.delenv("WARDROBE_OUTFIT")
     assert v1_client(MemoryStore()).get("/v1/prices", headers=as_user(A)).json()["outfit"] is False
+
+
+# --- resends of a job that already exists (the app reconnecting) -----------------------------------
+
+async def test_a_resend_of_an_existing_job_is_answered_even_while_generation_is_paused(monkeypatch):
+    store = MemoryStore()
+    client = client_for(store)
+    scan_id = await scanned(store, client)
+    first = generate(client, scan_id, ["c1"]).json()
+    monkeypatch.setenv("WARDROBE_GENERATION", "off")
+    again = generate(client, scan_id, ["c1"])
+    assert again.status_code == 200 and again.json()["id"] == first["id"]  # not a 503 the app would take as "refused"
+    assert generate(client, scan_id, ["c1"], key="gen-new").status_code == 503  # new work is still paused
+    assert generate(client, scan_id, ["c1"], user=B).status_code == 503  # another account's key is not a job
+
+
+async def test_a_resend_of_an_existing_outfit_job_is_answered_after_the_flag_is_switched_off(monkeypatch):
+    store = MemoryStore()
+    client = client_for(store)
+    scan_id = await scanned(store, client)
+    first = generate(client, scan_id, ["c1"]).json()
+    monkeypatch.setenv("WARDROBE_OUTFIT", "off")
+    assert generate(client, scan_id, ["c1"]).json()["id"] == first["id"]
+    assert generate(client, scan_id, ["c1"], key="gen-new").status_code == 404
+
+
+async def test_two_sends_of_one_key_at_once_never_answer_not_enough_credits_for_a_job_that_exists():
+    from api.credits import InsufficientCredits
+    store = MemoryStore()
+
+    class TightGate(Gate):
+        """The first send's hold used the whole balance; the second send's hold is refused."""
+        def reserve(self, user, job_id, action, amount):
+            if any(c[0] == "reserve" for c in self.calls):
+                raise InsufficientCredits()
+            super().reserve(user, job_id, action, amount)
+    gate = TightGate()
+    client = client_for(store, PRICES, gate)
+    scan_id = await scanned(store, client)
+    gate.calls.clear()
+    first = generate(client, scan_id, ["c1"], price=1).json()
+    # The second send passed the "already exists?" check before the first send's row was written.
+    real = store.job_by_key
+    seen = {"n": 0}
+
+    def late(user, key):  # the route's and queue_job's checks both ran before the first row existed
+        seen["n"] += 1
+        return None if seen["n"] <= 2 else real(user, key)
+    store.job_by_key = late
+    again = generate(client, scan_id, ["c1"], price=1)
+    assert seen["n"] == 3 and [c[0] for c in gate.calls].count("reserve") == 1  # the refused hold, then the lookup
+    assert again.status_code == 200 and again.json()["id"] == first["id"]
+    assert sum(j["kind"] == "outfit_generate" for j in store.jobs.values()) == 1

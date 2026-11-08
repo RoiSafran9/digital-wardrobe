@@ -1,5 +1,6 @@
 """The experimental Outfit Photo PoC module (pipeline/outfit.py). Providers faked, no network."""
 import json
+import os
 from types import SimpleNamespace
 import cv2
 import numpy as np
@@ -180,3 +181,162 @@ def test_whiten_bars_paints_letterbox_bars_white_and_keeps_the_garment(tmp_path)
     assert out[:, :15].min() == 255 and out[:, -15:].min() == 255
     assert out[50, 60].max() == 20
     assert not outfit.whiten_bars(path)  # nothing left to fix
+
+
+# --- bounded concurrency (at most 2 image calls at once) -------------------------------------------
+
+class _SlowModels:
+    """Image calls that take a little while, so overlap is measurable. Records the most calls in flight,
+    the candidate each call was for (from its crop path) and the prompt it used; fail_ids always fail."""
+    def __init__(self, fail_ids=(), delays=None):
+        self.in_flight = self.most = 0
+        self.calls, self.fail_ids, self.delays = [], set(fail_ids), delays or {}
+
+    async def generate_content(self, model, contents, config=None):
+        import asyncio
+        crop = next(p for p in contents if isinstance(p, dict))
+        cid = self._cid_of(crop)
+        self.calls.append((cid, contents[-1]))
+        self.in_flight += 1
+        self.most = max(self.most, self.in_flight)
+        try:
+            await asyncio.sleep(self.delays.get(cid, 0.02))
+            if cid in self.fail_ids:
+                raise RuntimeError("model refused")
+            ok, png = cv2.imencode(".png", np.full((64, 64, 3), 255, np.uint8))
+            part = SimpleNamespace(inline_data=SimpleNamespace(data=png.tobytes()))
+            return SimpleNamespace(candidates=[SimpleNamespace(content=SimpleNamespace(parts=[part]))],
+                                   usage_metadata=SimpleNamespace(prompt_token_count=10, candidates_token_count=0))
+        finally:
+            self.in_flight -= 1
+
+    crops: dict = {}
+
+    def _cid_of(self, part):
+        return self.crops[part["inline_data"]["data"]]
+
+
+@pytest.fixture
+def four(tmp_path, monkeypatch):
+    """Four candidates, each with a distinct crop (so a fake call can tell which one it is for)."""
+    async def passing(crop, generated, facts, attempt):
+        return VerificationResult(status="pass", violations=[], attempt=attempt)
+    monkeypatch.setattr(outfit.stage5_verify, "run", passing)
+    monkeypatch.setattr(outfit.cutout, "run", lambda src, dst: None)
+    photo = tmp_path / "photo.jpg"
+    image = np.zeros((1000, 800, 3), np.uint8)
+    for i, shade in enumerate((40, 90, 140, 190)):
+        image[i * 250:(i + 1) * 250] = shade
+    cv2.imwrite(str(photo), image)
+    scan = outfit.parse_scan(_scan(*[_cand([i * 250 + 20, 100, i * 250 + 230, 700], cat)
+                                     for i, cat in enumerate(("jacket", "t-shirt", "jeans", "sneakers"))]), 800, 1000)
+    return str(photo), scan, tmp_path / "out"
+
+
+def _models_for(out, scan, **kw):
+    models = _SlowModels(**kw)
+
+    class Lookup(dict):
+        def __missing__(self, data):
+            for c in scan.candidates:
+                path = out / c.id / "crop.png"
+                if path.exists() and path.read_bytes() == data:
+                    return c.id
+            raise KeyError("unknown crop")
+    models.crops = Lookup()
+    return models
+
+
+async def test_at_most_two_image_calls_run_at_once_and_results_keep_the_pick_order(four):
+    photo, scan, out = four
+    models = _models_for(out, scan, delays={"c1": 0.08, "c2": 0.01, "c3": 0.03, "c4": 0.01})
+    usage = outfit.Usage()
+    results = await outfit.generate_selected(_client(models), photo, scan, ["c3", "c1", "c4", "c2"], str(out), usage)
+    assert models.most == 2  # overlapped, never more than two
+    assert list(results) == ["c3", "c1", "c4", "c2"]  # the caller's order, not the finishing order
+    assert all(r["status"] == "generated" for r in results.values())
+    assert sorted(cid for cid, _ in models.calls) == ["c1", "c2", "c3", "c4"]  # one call each, no duplicates
+    for cid in ("c1", "c2", "c3", "c4"):  # each candidate wrote only its own folder
+        assert (out / cid / "generated.png").exists() and (out / cid / "crop.png").exists()
+    assert len(usage.calls) == 4
+
+
+async def test_concurrency_one_runs_them_one_at_a_time(four, monkeypatch):
+    photo, scan, out = four
+    models = _models_for(out, scan)
+    monkeypatch.setenv("WARDROBE_OUTFIT_CONCURRENCY", "1")
+    await outfit.generate_selected(_client(models), photo, scan, ["c1", "c2", "c3"], str(out), outfit.Usage())
+    assert models.most == 1
+
+
+@pytest.mark.parametrize("value,expected", [("", 2), ("1", 1), ("2", 2), ("8", 2), ("0", 1), ("lots", 2)])
+def test_the_concurrency_setting_is_clamped_to_one_or_two(monkeypatch, value, expected):
+    monkeypatch.setenv("WARDROBE_OUTFIT_CONCURRENCY", value)
+    assert outfit.image_concurrency() == expected
+
+
+async def test_a_failed_pick_is_reported_alone_and_progress_separates_processed_from_made(four):
+    photo, scan, out = four
+    models = _models_for(out, scan, fail_ids={"c2"})
+    seen = []
+    results = await outfit.generate_selected(_client(models), photo, scan, ["c1", "c2", "c3"], str(out), outfit.Usage(),
+                                             on_progress=lambda done, total, made: seen.append((done, total, made)))
+    assert [results[c]["status"] for c in ("c1", "c2", "c3")] == ["generated", "failed", "generated"]
+    assert not (out / "c2" / "generated.png").exists()
+    assert seen[0] == (0, 3, 0) and seen[-1] == (3, 3, 2)
+    assert [d for d, _, _ in seen] == [0, 1, 2, 3]  # one report per finished pick
+    assert sum(cid == "c2" for cid, _ in models.calls) == 1  # a model error is not retried (as before)
+
+
+async def test_each_pick_keeps_its_own_retry_with_its_own_violations(four, monkeypatch):
+    photo, scan, out = four
+    attempts = {}
+
+    async def verify(crop, generated, facts, attempt):
+        cid = os.path.basename(os.path.dirname(generated))
+        attempts.setdefault(cid, []).append(attempt)
+        if cid == "c1" and attempt == 1:
+            return VerificationResult(status="fail", violations=["color shift detected (Lab distance 31.0)"], attempt=attempt)
+        return VerificationResult(status="pass", violations=[], attempt=attempt)
+    monkeypatch.setattr(outfit.stage5_verify, "run", verify)
+    models = _models_for(out, scan)
+    results = await outfit.generate_selected(_client(models), photo, scan, ["c1", "c2"], str(out), outfit.Usage())
+    assert attempts == {"c1": [1, 2], "c2": [1]}
+    assert results["c1"]["attempts"] == 2 and results["c2"]["attempts"] == 1
+    prompts = [p for cid, p in models.calls if cid == "c1"]
+    assert "color shift" not in prompts[0] and "color shift" in prompts[1]  # only c1's retry carries c1's violation
+    assert all("color shift" not in p for cid, p in models.calls if cid == "c2")
+    assert models.most <= 2
+
+
+async def test_worn_shoes_keep_their_own_prompt_when_run_side_by_side(four):
+    photo, scan, out = four
+    models = _models_for(out, scan)
+    await outfit.generate_selected(_client(models), photo, scan, ["c1", "c4"], str(out), outfit.Usage())
+    shoe = _read_prompt(outfit.FOOTWEAR_GENERATE_PROMPT).split("{")[0][:60]
+    garment = _read_prompt(outfit.GENERATE_PROMPT).split("{")[0][:60]
+    by_id = dict(models.calls)
+    assert by_id["c4"].startswith(shoe) and by_id["c1"].startswith(garment)
+
+
+async def test_an_unreadable_photo_is_refused_before_any_paid_call(four, tmp_path):
+    _, scan, out = four
+    models = _models_for(out, scan)
+    with pytest.raises(ValueError):
+        await outfit.generate_selected(_client(models), str(tmp_path / "missing.jpg"), scan, ["c1", "c2"], str(out), outfit.Usage())
+    assert models.calls == []
+
+
+async def test_an_unexpected_error_stops_the_other_picks(four, monkeypatch):
+    photo, scan, out = four
+    models = _models_for(out, scan, delays={"c1": 0.01, "c2": 0.2, "c3": 0.2})
+
+    def broken_cutout(src, dst):
+        if "/c1/" in src:
+            raise OSError("disk full")
+    monkeypatch.setattr(outfit.cutout, "run", broken_cutout)
+    with pytest.raises(OSError):
+        await outfit.generate_selected(_client(models), photo, scan, ["c1", "c2", "c3"], str(out), outfit.Usage())
+    # The slow picks were cancelled mid-call: nothing of theirs was saved and no call is still running.
+    assert models.in_flight == 0
+    assert not (out / "c2" / "generated.png").exists() and not (out / "c3" / "generated.png").exists()

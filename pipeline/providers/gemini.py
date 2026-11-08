@@ -240,12 +240,15 @@ class GeminiProvider:
         finally:
             self._log_usage("outfit", outfit.DETECT_PROMPT, usage)
 
-    async def generate_outfit(self, image_path: str, scan, candidate_ids: list[str], out_dir: str) -> dict[str, dict]:
-        """Outfit Photo Stage 2: catalog images for the picked candidates only (pipeline/outfit.py)."""
+    async def generate_outfit(self, image_path: str, scan, candidate_ids: list[str], out_dir: str,
+                              on_progress=None) -> dict[str, dict]:
+        """Outfit Photo Stage 2: catalog images for the picked candidates only (pipeline/outfit.py), at most
+        WARDROBE_OUTFIT_CONCURRENCY image calls at once; on_progress(done, total, made) as each one finishes."""
         from pipeline import outfit
         usage = outfit.Usage()
         try:
-            return await outfit.generate_selected(self.client, image_path, scan, candidate_ids, out_dir, usage)
+            return await outfit.generate_selected(self.client, image_path, scan, candidate_ids, out_dir, usage,
+                                                  on_progress=on_progress)
         finally:
             self._log_usage("outfit", outfit.GENERATE_PROMPT, usage)
 

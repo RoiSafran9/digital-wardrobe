@@ -25,6 +25,12 @@ def _parse_time(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def _progress(done: int, total: int, made: int | None) -> dict:
+    """A job's progress as stored in generation_jobs.progress: pieces processed (done) out of total, and,
+    when the worker knows it, how many of those got a catalog image (made). done - made failed."""
+    return {"done": done, "total": total} if made is None else {"done": done, "total": total, "made": made}
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -248,8 +254,8 @@ class MemoryStore:
     def retry_job(self, job_id, error):
         self.jobs[job_id].update(status="queued", error=error, locked_until=None)
 
-    def set_job_progress(self, job_id, done, total):
-        self.jobs[job_id]["progress"] = {"done": done, "total": total}
+    def set_job_progress(self, job_id, done, total, made=None):
+        self.jobs[job_id]["progress"] = _progress(done, total, made)
 
     def count_recent_jobs(self, user_id, kinds, seconds):
         since = _now() - timedelta(seconds=seconds)
@@ -666,8 +672,8 @@ class SupabaseStore:
     def find_legacy(self, user_id, legacy_key):
         return self._one("wardrobe_items", {"user_id": f"eq.{user_id}", "legacy_key": f"eq.{legacy_key}"})
 
-    def set_job_progress(self, job_id, done, total):
-        self._patch("generation_jobs", {"id": f"eq.{job_id}"}, {"progress": {"done": done, "total": total}})
+    def set_job_progress(self, job_id, done, total, made=None):
+        self._patch("generation_jobs", {"id": f"eq.{job_id}"}, {"progress": _progress(done, total, made)})
 
     def count_recent_jobs(self, user_id, kinds, seconds):
         since = (datetime.now(timezone.utc) - timedelta(seconds=seconds)).isoformat()

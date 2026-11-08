@@ -39,6 +39,18 @@ def test_a_race_on_the_same_key_keeps_one_upload(client, store, monkeypatch):
     assert list(store.files) == [store.jobs[first["id"]]["input_path"]]
 
 
+def test_a_resend_without_the_photo_reconnects_to_the_users_own_job_only(client, store):
+    # The app restarted mid-send and its photo is gone: the same key finds the job; nothing new is made.
+    first = client.post("/v1/jobs", files={"photo": PHOTO}, headers=as_user(A, "k1")).json()
+    again = client.post("/v1/jobs", headers=as_user(A, "k1"))
+    assert again.status_code == 200 and again.json()["id"] == first["id"]
+    assert len(store.jobs) == 1 and len(store.files) == 1
+    # Another account's key, or a key never sent, is not a job: still "no photo provided".
+    assert client.post("/v1/jobs", headers=as_user(B, "k1")).json() == {"error": "no photo provided"}
+    assert client.post("/v1/jobs", headers=as_user(A, "k2")).status_code == 400
+    assert len(store.jobs) == 1
+
+
 def test_another_user_cannot_see_the_job(client):
     job = client.post("/v1/jobs", files={"photo": PHOTO}, headers=as_user(A, "k1")).json()
     assert client.get(f"/v1/jobs/{job['id']}", headers=as_user(A)).status_code == 200
@@ -80,3 +92,11 @@ def test_a_finished_job_reports_its_items_and_quality(client, store):
     store.finish_job(job["id"], "succeeded", {"item_ids": ["i1"], "quality": {"status": "ok", "reason": None}, "failed": []})
     body = client.get(f"/v1/jobs/{job['id']}", headers=as_user(A)).json()
     assert body["status"] == "succeeded" and body["item_ids"] == ["i1"] and body["quality"]["status"] == "ok"
+
+
+def test_a_reconnect_without_the_photo_works_while_generation_is_paused(client, store, monkeypatch):
+    first = client.post("/v1/jobs", files={"photo": PHOTO}, headers=as_user(A, "k1")).json()
+    monkeypatch.setenv("WARDROBE_GENERATION", "off")
+    again = client.post("/v1/jobs", headers=as_user(A, "k1"))
+    assert again.status_code == 200 and again.json()["id"] == first["id"]
+    assert client.post("/v1/jobs", files={"photo": PHOTO}, headers=as_user(A, "k2")).status_code == 503

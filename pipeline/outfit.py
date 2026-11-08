@@ -1,9 +1,9 @@
-"""EXPERIMENTAL (M0 proof of concept): garments from a photo of a person wearing them.
+"""Outfit Photo: garments from a photo of a person wearing them.
 
-Not wired into the app, the API or the worker. Used only by scripts/outfit_poc.py so the two-stage
-Outfit Photo flow (docs/superpowers/specs/2026-10-19-outfit-photo-two-step-design.md) can be measured
-before anything is built. The garment-photo flow (orchestrator.run_photo and its v4/v5 prompts) is
-untouched.
+Began as the M0 proof of concept (scripts/outfit_poc.py still uses it); the worker's outfit_scan,
+outfit_generate and outfit_regenerate jobs call it through GeminiProvider.detect_outfit / generate_outfit.
+Design: docs/superpowers/specs/2026-10-19-outfit-photo-two-step-design.md. The garment-photo flow
+(orchestrator.run_photo) is separate.
 
 Stage 1: detect_candidates — one cheap vision call → candidates with stable IDs, boxes, and preview
 crops cut from the real photo (no image generation). Stage 2: generate_selected — the image model
@@ -14,7 +14,7 @@ import json
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Callable, Literal
 import cv2
 from pydantic import BaseModel
 from pipeline.providers.gemini import _first_image as gemini_first_image
@@ -278,43 +278,112 @@ async def generate_flatlay(client, crop_path: str, context_path: str | None, can
                   prompt=prompt_name)
 
 
+# At most this many image-generation calls run at once for one outfit job (WARDROBE_OUTFIT_CONCURRENCY,
+# 1–2, default 2). Each call is network-bound, so two overlap well; more would mostly add Gemini rate-limit
+# risk on the shared key. 1 restores the old one-at-a-time behavior without a code change.
+OUTFIT_CONCURRENCY_DEFAULT, OUTFIT_CONCURRENCY_MAX = 2, 2
+
+
+def image_concurrency() -> int:
+    try:
+        value = int(os.environ.get("WARDROBE_OUTFIT_CONCURRENCY", "").strip() or OUTFIT_CONCURRENCY_DEFAULT)
+    except ValueError:
+        value = OUTFIT_CONCURRENCY_DEFAULT
+    return min(OUTFIT_CONCURRENCY_MAX, max(1, value))
+
+
 async def generate_selected(client, image_path: str, scan: OutfitScan, selected: list[str], out_dir: str,
                             usage: Usage, with_context: bool = True, max_attempts: int = 2,
-                            prompt_name: str = GENERATE_PROMPT, model: str | None = None) -> dict[str, dict]:
+                            prompt_name: str = GENERATE_PROMPT, model: str | None = None,
+                            concurrency: int | None = None,
+                            on_progress: Callable[[int, int, int], None] | None = None) -> dict[str, dict]:
     """Stage 2: generate ONLY the selected candidate IDs; one failure never stops the others.
-    Unknown IDs are refused before any paid call."""
+    Unknown IDs are refused before any paid call, and so is a photo whose crops can't be cut.
+
+    Candidates run side by side, but at most `concurrency` image-generation calls are in flight at any
+    moment (an asyncio.Semaphore around each call, so a candidate's retry waits its turn too). Each
+    candidate keeps its own folder (out_dir/<id>), its own crop, its own attempts and violations, and the
+    footwear prompt choice in generate_flatlay; a repeated ID is generated once, so no two tasks ever
+    write the same file. The local verify, whiten and cutout steps stay on the event loop (no worker
+    threads: onnxruntime in a thread has crashed next to another item's color math, see orchestrator).
+    The returned dict keeps the order of `selected`.
+
+    on_progress(done, total, made) is told the count after the crops are cut and again as each candidate
+    finishes: done = processed (made or failed), made = has a catalog image. It only reports; a failing
+    callback never fails the job."""
     by_id = {c.id: c for c in scan.candidates}
     unknown = [cid for cid in selected if cid not in by_id]
     if unknown:
         raise ValueError(f"unknown candidate ids: {unknown}")
-    results: dict[str, dict] = {}
-    for cid in dict.fromkeys(selected):  # a repeated ID is generated once
+    ids = list(dict.fromkeys(selected))  # a repeated ID is generated once
+    # Local and free: every crop and context image is cut before the first paid call, so a photo that
+    # can't be read or cropped is refused without spending anything.
+    inputs: dict[str, tuple[str, str, str | None]] = {}
+    for cid in ids:
         c = by_id[cid]
         item_dir = os.path.join(out_dir, cid)
         os.makedirs(item_dir, exist_ok=True)
         crop = preview_crop(image_path, c, os.path.join(item_dir, "crop.png"), padding=0.03)
         context = outlined(image_path, [c], os.path.join(item_dir, "context.jpg"), labels=False) if with_context else None
-        violations, verification, generated = None, None, None
+        inputs[cid] = (item_dir, crop, context)
+
+    slots = asyncio.Semaphore(max(1, concurrency or image_concurrency()))
+    total, done, made = len(ids), 0, 0
+
+    def report():
+        if on_progress:
+            try:
+                on_progress(done, total, made)
+            except Exception:
+                pass  # progress is a nicety; never let it fail the job
+
+    async def one(cid: str) -> dict:
+        c = by_id[cid]
+        item_dir, crop, context = inputs[cid]
+        violations, verification, generated, attempt = None, None, None, 0
         for attempt in range(1, max_attempts + 1):
             try:
-                generated = await generate_flatlay(client, crop, context, c, violations,
-                                                   os.path.join(item_dir, f"generated_{attempt}.png"), usage, prompt_name, model)
+                async with slots:
+                    generated = await generate_flatlay(client, crop, context, c, violations,
+                                                       os.path.join(item_dir, f"generated_{attempt}.png"), usage,
+                                                       prompt_name, model)
             except Exception as e:
-                results[cid] = {"status": "failed", "error": str(e)[:200]}
-                generated = None
-                break
+                return {"status": "failed", "error": str(e)[:200]}
             verification = await stage5_verify.run(crop, generated, facts_for(c), attempt)
             if verification.status == "pass":
                 break
             violations = verification.violations
-        if generated:
-            final = os.path.join(item_dir, "generated.png")
-            os.replace(generated, final)
-            whiten_bars(final)
-            cutout.run(final, os.path.join(item_dir, "cutout.png"))
-            results[cid] = {"status": "generated", "attempts": attempt,
-                            "verification": verification.model_dump() if verification else None}
-    return results
+        if generated is None:  # max_attempts < 1: nothing was asked of the model
+            return {"status": "failed", "error": "no attempt made"}
+        final = os.path.join(item_dir, "generated.png")
+        os.replace(generated, final)
+        whiten_bars(final)
+        cutout.run(final, os.path.join(item_dir, "cutout.png"))
+        return {"status": "generated", "attempts": attempt,
+                "verification": verification.model_dump() if verification else None}
+
+    async def tracked(cid: str) -> dict:
+        nonlocal done, made
+        result = await one(cid)
+        done += 1
+        made += result["status"] == "generated"
+        report()
+        return result
+
+    report()
+    tasks = [asyncio.ensure_future(tracked(cid)) for cid in ids]
+    try:
+        # An unexpected error in one candidate (not a model failure, which is reported per candidate) fails
+        # the job as before; the others are cancelled first so no paid call outlives the job.
+        finished, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+        for task in finished:
+            if task.exception() is not None:
+                raise task.exception()
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+    return {cid: task.result() for cid, task in zip(ids, tasks)}
 
 
 class Review(BaseModel):

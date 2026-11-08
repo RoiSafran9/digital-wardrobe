@@ -75,12 +75,12 @@ def _largest(items, max_items: int | None):
 
 async def run_photo(image_path: str, output_dir: str, providers: Providers,
                      logger: RunLogger, max_attempts: int = 2, max_items: int | None = None,
-                     on_progress: Callable[[int, int], None] | None = None,
+                     on_progress: Callable[[int, int, int], None] | None = None,
                      detected_items: list | None = None) -> dict:
     """max_items caps how many front images are made (the fronts the user approved paying for);
     pieces past the cap are counted in over_limit and not generated. None = no cap.
-    on_progress(done, total) is told the piece count after detection and again as each piece finishes
-    (no extra model calls; it only reports)."""
+    on_progress(done, total, made) is told the piece count after detection and again as each piece finishes:
+    done = pieces processed, made = those with a catalog image (no extra model calls; it only reports)."""
     quality = stage0_quality.run(image_path)
     if quality.status == "retake":
         return {"quality": quality, "items": [], "failed": [], "over_limit": 0}
@@ -93,19 +93,19 @@ async def run_photo(image_path: str, output_dir: str, providers: Providers,
     included_items = _largest(detected_items, max_items)
 
     os.makedirs(output_dir, exist_ok=True)
-    total, done = len(included_items), 0
+    total, done, made = len(included_items), 0, 0
 
     def report():
         if on_progress:
             try:
-                on_progress(done, total)
+                on_progress(done, total, made)
             except Exception:
                 pass  # progress is a nicety; never let it fail the photo
 
     report()
 
     async def _safe_run_item(i, item):
-        nonlocal done
+        nonlocal done, made
         item_dir = os.path.join(output_dir, f"item_{i}")
         try:
             return await _run_item(image_path, item, item_dir, providers, logger, max_attempts)
@@ -115,6 +115,7 @@ async def run_photo(image_path: str, output_dir: str, providers: Providers,
             return None
         finally:
             done += 1
+            made += os.path.exists(os.path.join(item_dir, "generated.png"))
             report()
 
     outcomes = await asyncio.gather(*[

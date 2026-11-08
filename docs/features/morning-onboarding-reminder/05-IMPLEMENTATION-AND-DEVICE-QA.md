@@ -74,5 +74,5 @@ To avoid waiting overnight, temporarily change `nextReminderDate` in a **local, 
 
 - **Activation (done 2026-11-08, owner decision):** `mobile/eas.json` → `build.production.env.EXPO_PUBLIC_MORNING_REMINDER = "on"`, so every `production` EAS build (TestFlight) has it. To turn it off again, remove that line and ship a new build; the next launch of that build cancels any pending reminder of this kind.
 - Run §5 on a real iPhone (the TestFlight build) and record results here.
-- Restart the Mac API on the latest `main` so the server accepts the new `onboarding_nudge_*` events and `entry=reminder`; until then those events are dropped by the old allow-list (the app keeps working).
+- Mac API restarted on latest `main` 2026-11-08: the server accepts the new `onboarding_nudge_*` events and `entry=reminder`.
 - Optional: mention the reminder (a local notification; nothing leaves the phone) on the privacy page / App Store Connect notes if you want it disclosed beyond "usage records".

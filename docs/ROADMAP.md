@@ -79,7 +79,7 @@ Done: hosted Supabase SMTP (Resend, `kipscloset.com`) and code templates, all mi
 
 - [x] Local notification at the next eligible 08:45, Home card + Account switch, cancellation on the third saved piece / opt-out / sign-out / account switch / delete / permission off / outfit off, cold- and warm-start tap routing, bounded events (client + `api/activity.py`), Jest + pytest coverage (2026-11-08)
 - [x] Owner decision: on for EAS `production` builds (`mobile/eas.json`), 2026-11-08
-- [ ] Owner: iPhone QA on the TestFlight build ([05-IMPLEMENTATION-AND-DEVICE-QA.md](features/morning-onboarding-reminder/05-IMPLEMENTATION-AND-DEVICE-QA.md)); Mac API restart on latest `main` so the new events are accepted
+- [ ] Owner: iPhone QA on the TestFlight build ([05-IMPLEMENTATION-AND-DEVICE-QA.md](features/morning-onboarding-reminder/05-IMPLEMENTATION-AND-DEVICE-QA.md))
 
 ## Activity and operations logging — BUILT ([spec](superpowers/specs/2026-10-22-activity-logging-design.md), [plan](superpowers/plans/2026-10-22-activity-logging.md))
 

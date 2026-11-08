@@ -468,7 +468,8 @@ class MemoryStore:
 
 # Columns the usage report reads (scripts/usage_report.py): ids, kinds, numbers and times — no facts, paths or text.
 REPORT_ITEM_FIELDS = ("id", "user_id", "job_id", "created_at", "deleted_at", "origin", "review_state")
-REPORT_JOB_FIELDS = ("id", "user_id", "kind", "status", "failure_code", "attempts", "cost_credits", "created_at", "finished_at")
+REPORT_JOB_FIELDS = ("id", "user_id", "kind", "status", "failure_code", "attempts", "cost_credits", "created_at", "started_at",
+                     "finished_at")
 REPORT_LEDGER_FIELDS = ("user_id", "kind", "amount", "action", "job_id", "created_at")
 REPORT_EVENT_FIELDS = ("user_id", "event", "props", "source", "job_id", "item_id", "session_id", "app_version", "created_at")
 REPORT_CALL_FIELDS = ("user_id", "job_id", "job_kind", "stage", "model", "status", "attempt", "fallback", "latency_ms",
@@ -834,7 +835,7 @@ class SupabaseStore:
             if len(batch) < page:
                 break
         for r in rows:
-            for key in ("created_at", "finished_at", "deleted_at"):
+            for key in ("created_at", "started_at", "finished_at", "deleted_at"):
                 if r.get(key):
                     r[key] = _parse_time(r[key])
         return rows

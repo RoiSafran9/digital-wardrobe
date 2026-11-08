@@ -12,10 +12,11 @@ def at(minutes=0, days=0):
     return T0 + timedelta(days=days, minutes=minutes)
 
 
-def job(user, kind, minutes, status="succeeded", failure=None, seconds=30, cost=None, days=0, jid=None):
+def job(user, kind, minutes, status="succeeded", failure=None, seconds=30, cost=None, days=0, jid=None, wait=None):
     created = at(minutes, days)
     return {"id": jid or f"{user}-{kind}-{days}-{minutes}", "user_id": user, "kind": kind, "status": status,
             "failure_code": failure, "attempts": 1, "cost_credits": cost, "created_at": created,
+            "started_at": None if wait is None else created + timedelta(seconds=wait),
             "finished_at": created + timedelta(seconds=seconds)}
 
 
@@ -104,6 +105,23 @@ def test_reliability(rows):
     assert r["jobs"]["garment_scan"]["failed"] == 1 and r["jobs"]["garment_scan"]["failures"] == {"photo_quality": 1}
     assert r["jobs"]["outfit_generate"]["p50_seconds"] == 60
     assert r["refusals"] == {"no_credits": 1} and r["client_errors"] == {"network": 1}
+
+
+def test_job_time_splits_queue_wait_from_run():
+    rows = {"jobs": [job("u", "garment", 0, seconds=20, wait=2), job("u", "garment", 1, seconds=40, wait=10),
+                     job("u", "garment", 2, seconds=30, wait=4),
+                     job("u", "turn", 3, seconds=50)],  # never claimed (started_at missing): total only
+            "events": []}
+    from scripts.usage_report import _reliability
+    g, t = _reliability(rows)["jobs"]["garment"], _reliability(rows)["jobs"]["turn"]
+    assert g["p50_seconds"] == 30 and g["wait_p50_seconds"] == 4 and g["run_p50_seconds"] == 26
+    assert t["p50_seconds"] == 50 and t["wait_p50_seconds"] is None and t["run_p50_seconds"] is None
+
+
+def test_report_shows_the_split_under_each_kind(rows):
+    rows["jobs"] = [job("u1", "garment", 0, seconds=20, wait=2)]
+    text = report(metrics(rows))
+    assert "wait p50 2s · p95 2s · run p50 18s · p95 18s" in text
 
 
 def test_server_errors_are_counted_by_http_status(rows):

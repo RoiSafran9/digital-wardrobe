@@ -15,7 +15,8 @@ in the reports.* views for the Supabase SQL editor.
   Retention     accounts active (any event, a job or a credit hold/charge — app opens count) on day 1, on
                 days 6–8 and 8–14 after their sign-up day (UTC), among those old enough; weekly active accounts
   Features      accounts and counts per feature; cost-sheet cancel rate per action
-  Reliability   jobs per kind: success, failure codes, p50/p95 queued→finished seconds; refusals; app errors (http_5xx by HTTP status)
+  Reliability   jobs per kind: success, failure codes, p50/p95 queued→finished seconds (and split: queue wait,
+                run); refusals; app errors (http_5xx by HTTP status)
   AI cost       estimated USD (pipeline/costs.py): total, per job kind, per account, per credit charged,
                 share on the fallback image model, share spent on retries
   Credits       granted, charged and released (credit_ledger)
@@ -131,6 +132,11 @@ def _reliability(rows: dict) -> dict:
     for kind in sorted({j["kind"] for j in rows["jobs"]}):
         mine = [j for j in rows["jobs"] if j["kind"] == kind]
         secs = [(j["finished_at"] - j["created_at"]).total_seconds() for j in mine if j.get("finished_at")]
+        # Split: waiting in the queue (created → first claimed) and running (first claimed → finished; a retried
+        # job's run includes its earlier attempts and the backoff between them).
+        waits = [(j["started_at"] - j["created_at"]).total_seconds() for j in mine if j.get("started_at")]
+        runs = [(j["finished_at"] - j["started_at"]).total_seconds() for j in mine
+                if j.get("started_at") and j.get("finished_at")]
         failures: dict[str, int] = {}
         for j in mine:
             if j["status"] == "failed":
@@ -139,7 +145,9 @@ def _reliability(rows: dict) -> dict:
         jobs[kind] = {"jobs": len(mine), "succeeded": sum(1 for j in mine if j["status"] == "succeeded"),
                       "failed": sum(1 for j in mine if j["status"] == "failed"),
                       "success_rate": _rate(sum(1 for j in done if j["status"] == "succeeded"), len(done)),
-                      "failures": failures, "p50_seconds": median(secs) if secs else None, "p95_seconds": _pct(secs, 0.95)}
+                      "failures": failures, "p50_seconds": median(secs) if secs else None, "p95_seconds": _pct(secs, 0.95),
+                      "wait_p50_seconds": median(waits) if waits else None, "wait_p95_seconds": _pct(waits, 0.95),
+                      "run_p50_seconds": median(runs) if runs else None, "run_p95_seconds": _pct(runs, 0.95)}
 
     def count(event: str, prop: str) -> dict:
         out: dict[str, int] = {}
@@ -293,6 +301,9 @@ def report(m: dict) -> str:
 
     def usd(v):
         return "—" if v is None else f"${v:.4f}"
+
+    def secs(v):
+        return "—" if v is None else f"{v:.0f}s"
     r, c = m["retention"], m["ai_cost"]
     funnel_labels = {"came_back_with_a_piece": f"came_back_with_a_piece (≥{SECOND_IMPORT_GAP_MINUTES} min later, same day counts)"}
     retention_labels = {"d1": "d1 (any activity on day 1)", "d7": "d7 (any activity, days 6–8)",
@@ -313,6 +324,9 @@ def report(m: dict) -> str:
         p50 = "—" if j["p50_seconds"] is None else f"{j['p50_seconds']:.0f}s"
         p95 = "—" if j["p95_seconds"] is None else f"{j['p95_seconds']:.0f}s"
         lines.append(f"  {kind:<18} {j['jobs']} jobs · {rate(j['success_rate'])} ok · p50 {p50} · p95 {p95} · {fails}")
+        if j.get("run_p50_seconds") is not None:
+            lines.append(f"  {'':<18} wait p50 {secs(j['wait_p50_seconds'])} · p95 {secs(j['wait_p95_seconds'])}"
+                         f" · run p50 {secs(j['run_p50_seconds'])} · p95 {secs(j['run_p95_seconds'])}")
     lines += [f"  refused: " + (", ".join(f"{k} {n}" for k, n in sorted(m["reliability"]["refusals"].items())) or "—"),
               f"  app errors: " + (", ".join(f"{k} {n}" for k, n in sorted(m["reliability"]["client_errors"].items())) or "—"),
               *([f"  http_5xx by status: " + ", ".join(f"{k} {n}" for k, n in sorted(m["reliability"]["http_5xx_statuses"].items()))

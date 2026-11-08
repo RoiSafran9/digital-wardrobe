@@ -159,6 +159,14 @@ details.tableview summary { cursor: pointer; color: var(--ink-2); font-size: 12p
 .alert { display: flex; gap: 10px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-inline-start: 3px solid var(--warn); border-radius: 12px; padding: 10px 14px; font-size: 13px; }
 .alert.bad { border-inline-start-color: var(--bad); }
 .alerts { display: grid; gap: 8px; margin-bottom: 22px; }
+a.btn { text-decoration: none; display: inline-block; }
+.paylinks { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; justify-content: space-between; }
+.paylinks .sub { margin-bottom: 0; max-width: 520px; }
+.paylinks .links { display: flex; flex-wrap: wrap; gap: 8px; }
+.paylinks a { display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: var(--ink); background: var(--tile); border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px; min-width: 170px; }
+.paylinks a:hover { border-color: var(--tint); background: var(--tint-wash); }
+.paylinks a b { color: var(--tint); font-weight: 600; font-size: 13.5px; }
+.paylinks a span { color: var(--ink-2); font-size: 12px; }
 @media (max-width: 640px) {
   .wrap { padding: 16px 16px 48px; }
   .feed .row { grid-template-columns: 90px 14px 1fr; }
@@ -182,6 +190,7 @@ details.tableview summary { cursor: pointer; color: var(--ink-2); font-size: 12p
       <button data-days="90">90 ימים</button>
       <button data-days="0">הכל</button>
     </div>
+    <a class="btn" href="https://aistudio.google.com/billing" target="_blank" rel="noopener noreferrer" title="חשבון Google AI Studio שמשלם על קריאות Gemini">תשלום ל-Gemini ↗</a>
     <button class="btn" id="refresh" title="משיכה מחדש מ-Supabase">רענון</button>
     <button class="btn" id="theme" title="מצב תצוגה">◐</button>
   </header>
@@ -240,6 +249,14 @@ details.tableview summary { cursor: pointer; color: var(--ink-2); font-size: 12p
     <h2>חיובים והוצאות</h2>
     <div class="sub">עלות AI היא הערכה (pipeline/costs.py לפי מחירון Gemini), לא חשבונית. קרדיטים — מתוך credit_ledger. אין רכישות.</div>
     <div class="grid">
+      <div class="card w12 paylinks">
+        <div><h3>החשבון שמשלם על היצירות</h3><div class="sub">Google AI Studio (Prepay) — כאן רואים את החיוב בפועל. כשהיתרה מגיעה ל-$0, Gemini עונה 402 והיצירה נעצרת עד טעינה.</div></div>
+        <div class="links">
+          <a href="https://aistudio.google.com/billing" target="_blank" rel="noopener noreferrer"><b>חיוב ויתרה ↗</b><span>יתרת קרדיטים, קנייה, טעינה אוטומטית</span></a>
+          <a href="https://aistudio.google.com/spend" target="_blank" rel="noopener noreferrer"><b>הוצאה בפועל ↗</b><span>עלות לפי פרויקט ותקרת הוצאה חודשית</span></a>
+          <a href="https://aistudio.google.com/usage" target="_blank" rel="noopener noreferrer"><b>שימוש ומכסות ↗</b><span>קריאות, טוקנים ו-rate limits</span></a>
+        </div>
+      </div>
       <div class="card w8"><h3>עלות AI משוערת ליום</h3><div class="sub">דולר, לפי סוג משימה</div><div id="c-cost"></div></div>
       <div class="card w4"><h3>כלכלת יחידה</h3><div class="sub">בתקופה</div><div id="c-unit"></div></div>
       <div class="card w8"><h3>קרדיטים ליום</h3><div class="sub">חויבו מול הוענקו</div><div id="c-credits"></div></div>

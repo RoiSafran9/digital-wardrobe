@@ -445,6 +445,14 @@ class MemoryStore:
         mine["signups"] = [{"user_id": user_id, "created_at": self.signups[user_id]}] if user_id in self.signups else []
         return {**mine, "now": rows["now"]}
 
+    def accounts_overview(self):
+        """Admin view for scripts/dashboard.py: every account with its email, name, sign-up time and wallet."""
+        by_user = {u: e for e, u in self.emails.items()}
+        users = set(self.signups) | set(by_user) | set(self.wallets)
+        return [{"id": u, "email": by_user.get(u), "display_name": self.names.get(u), "created_at": self.signups.get(u),
+                 **{k: self.wallets.get(u, {}).get(k, 0) for k in ("balance", "held")}}
+                for u in sorted(users) if u not in self.deleted_users]
+
     def find_user(self, email_or_id):
         key = (email_or_id or "").strip().lower()
         if key in self.emails:
@@ -848,6 +856,11 @@ class SupabaseStore:
 
     def user_rows(self, user_id):
         return self.usage_rows(datetime(2000, 1, 1, tzinfo=timezone.utc), user_id=user_id)
+
+    def accounts_overview(self):
+        wallets = {w["user_id"]: w for w in self._rows("credit_wallets", {"select": "user_id,balance,held"})}
+        return [{**p, **{k: wallets.get(p["id"], {}).get(k, 0) for k in ("balance", "held")}}
+                for p in self._report("profiles", ("id", "email", "display_name", "created_at"), {})]
 
     def find_user(self, email_or_id):
         key = (email_or_id or "").strip()

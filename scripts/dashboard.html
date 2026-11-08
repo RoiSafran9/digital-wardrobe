@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KIPS Metrics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Rubik:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #F2F2F6; --card: #FFFFFF; --tile: #F3F2EF;
+  --ink: #131315; --ink-2: #6E6E73; --ink-3: #A1A1A6;
+  --line: #E5E5EA; --line-strong: #C7C7CC; --grid: #EDEDF0;
+  --tint: #0B5EFF; --tint-wash: rgba(11, 94, 255, .08);
+  --good: #23A55A; --good-text: #1B7F45; --warn: #E8A33D; --warn-text: #98610E; --bad: #D61E24;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300;
+  --seq-0: #F3F2EF; --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #5598e7; --seq-4: #256abf; --seq-5: #104281;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #000000; --card: #1C1C1E; --tile: #1B1B1D;
+    --ink: #F5F5F7; --ink-2: #98989F; --ink-3: #636366;
+    --line: #2C2C2E; --line-strong: #48484A; --grid: #262628;
+    --tint: #3D86FF; --tint-wash: rgba(61, 134, 255, .14);
+    --good: #30C26B; --good-text: #4CD483; --warn: #F0B85A; --warn-text: #F0B85A; --bad: #FF5A5F;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+    --seq-0: #1B1B1D; --seq-1: #104281; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #9ec5f4;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #000000; --card: #1C1C1E; --tile: #1B1B1D;
+  --ink: #F5F5F7; --ink-2: #98989F; --ink-3: #636366;
+  --line: #2C2C2E; --line-strong: #48484A; --grid: #262628;
+  --tint: #3D86FF; --tint-wash: rgba(61, 134, 255, .14);
+  --good: #30C26B; --good-text: #4CD483; --warn: #F0B85A; --warn-text: #F0B85A; --bad: #FF5A5F;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+  --seq-0: #1B1B1D; --seq-1: #104281; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #9ec5f4;
+  --shadow: none;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body { font: 14px/1.45 Rubik, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+.num, .mono { font-variant-numeric: tabular-nums; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+h1, h2, .display { font-family: "Bricolage Grotesque", Rubik, sans-serif; letter-spacing: -.01em; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 24px 24px 64px; }
+
+header.top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+header.top h1 { margin: 0; font-size: 30px; font-weight: 800; }
+header.top h1 span { color: var(--tint); }
+.sub { color: var(--ink-2); font-size: 13px; }
+.spacer { flex: 1; }
+.seg { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; color: var(--ink-2); font: 500 13px Rubik, sans-serif; padding: 7px 12px; border-radius: 9px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--tint); color: #fff; }
+.seg button:hover:not([aria-pressed="true"]) { background: var(--tint-wash); color: var(--ink); }
+.btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); font: 500 13px Rubik, sans-serif; padding: 8px 12px; border-radius: 10px; cursor: pointer; }
+.btn:hover { border-color: var(--line-strong); }
+
+.health { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.pill { display: inline-flex; align-items: center; gap: 7px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; color: var(--ink-2); }
+.pill b { color: var(--ink); font-weight: 600; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
+.dot.good { background: var(--good); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
+
+nav.toc { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 18px; }
+nav.toc a { color: var(--ink-2); text-decoration: none; font-size: 13px; padding: 5px 10px; border-radius: 8px; }
+nav.toc a:hover { background: var(--card); color: var(--ink); }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-bottom: 28px; }
+.kpi { background: var(--card); border-radius: 16px; padding: 14px 16px 10px; box-shadow: var(--shadow); border: 1px solid var(--line); min-height: 128px; display: flex; flex-direction: column; }
+.kpi .label { color: var(--ink-2); font-size: 12.5px; }
+.kpi .value { font: 800 30px/1.1 "Bricolage Grotesque", Rubik, sans-serif; margin-top: 4px; }
+.kpi .note { color: var(--ink-2); font-size: 12px; margin-top: 2px; }
+.kpi .note .good { color: var(--good-text); } .kpi .note .bad { color: var(--bad); }
+.kpi svg { margin-top: auto; }
+
+section.block { margin-top: 34px; scroll-margin-top: 12px; }
+section.block > h2 { font-size: 21px; font-weight: 800; margin: 0 0 4px; }
+section.block > .sub { margin-bottom: 14px; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(12, 1fr); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); min-width: 0; grid-column: span 6; }
+.card.w4 { grid-column: span 4; } .card.w8 { grid-column: span 8; } .card.w12 { grid-column: span 12; } .card.w3 { grid-column: span 3; }
+.card h3 { margin: 0; font: 600 15px Rubik, sans-serif; }
+.card .sub { margin: 2px 0 12px; font-size: 12.5px; }
+@media (max-width: 980px) { .card, .card.w4, .card.w8, .card.w3 { grid-column: span 12; } }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 8px; font-size: 12px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.legend i.line { height: 2px; width: 14px; border-radius: 2px; }
+
+.chart { position: relative; direction: ltr; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { fill: var(--ink-2); font: 11px Rubik, sans-serif; }
+.tip { position: fixed; pointer-events: none; z-index: 20; background: var(--card); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 10px; padding: 8px 10px; font-size: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.14); min-width: 140px; opacity: 0; transition: opacity .08s; direction: rtl; }
+.tip .t { color: var(--ink-2); margin-bottom: 4px; }
+.tip .r { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.tip .r b { font-variant-numeric: tabular-nums; direction: ltr; }
+.tip .k { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.tip .k i { width: 12px; height: 2px; border-radius: 2px; display: inline-block; }
+
+.hbars { display: grid; gap: 7px; }
+.hbar { display: grid; grid-template-columns: minmax(90px, 34%) 1fr auto; gap: 10px; align-items: center; font-size: 13px; }
+.hbar .n { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hbar .track { height: 14px; background: var(--tile); border-radius: 4px; overflow: hidden; display: flex; direction: rtl; }
+.hbar .fill { height: 100%; background: var(--tint); border-radius: 4px; min-width: 2px; }
+.hbar .v { font-variant-numeric: tabular-nums; min-width: 44px; text-align: left; white-space: nowrap; }
+.hbar:hover .fill { filter: brightness(1.12); }
+
+.stat3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.mini { background: var(--tile); border-radius: 12px; padding: 10px 12px; }
+.mini .label { color: var(--ink-2); font-size: 12px; }
+.mini .value { font: 700 22px "Bricolage Grotesque", Rubik, sans-serif; }
+.mini .note { color: var(--ink-2); font-size: 11.5px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: right; color: var(--ink-2); font-weight: 500; font-size: 12px; padding: 8px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; cursor: default; }
+th.sort { cursor: pointer; } th.sort:hover { color: var(--ink); }
+td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: left; direction: ltr; font-variant-numeric: tabular-nums; }
+.tablewrap { overflow-x: auto; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: var(--tile); color: var(--ink-2); white-space: nowrap; }
+.chip.good { color: var(--good-text); } .chip.bad { color: var(--bad); } .chip.warn { color: var(--warn-text); }
+.rate { display: inline-flex; align-items: center; gap: 8px; }
+.rate .track { width: 70px; height: 6px; border-radius: 3px; background: var(--tile); overflow: hidden; display: flex; direction: rtl; }
+.rate .fill { height: 100%; background: var(--good); }
+
+.feedctl { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.feedctl button { border: 1px solid var(--line); background: var(--card); color: var(--ink-2); font: 500 12px Rubik, sans-serif; padding: 5px 10px; border-radius: 999px; cursor: pointer; }
+.feedctl button[aria-pressed="true"] { border-color: var(--tint); color: var(--tint); background: var(--tint-wash); }
+.feed { max-height: 520px; overflow: auto; }
+.feed .row { display: grid; grid-template-columns: 112px 18px 110px 1fr; gap: 8px; padding: 7px 4px; border-bottom: 1px solid var(--line); align-items: baseline; font-size: 13px; }
+.feed .row:last-child { border-bottom: 0; }
+.feed .when { color: var(--ink-2); font-size: 12px; font-variant-numeric: tabular-nums; direction: ltr; text-align: right; }
+.feed .who { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.feed .det { color: var(--ink-2); font-size: 12px; direction: ltr; text-align: right; }
+.kind-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; align-self: center; }
+
+.heat { direction: ltr; }
+.heat .row { display: grid; grid-template-columns: 34px repeat(24, 1fr); gap: 2px; margin-bottom: 2px; }
+.heat .cell { aspect-ratio: 1.6; border-radius: 3px; background: var(--seq-0); }
+.heat .cell:hover { outline: 2px solid var(--ink); outline-offset: -1px; }
+.heat .lab { font-size: 11px; color: var(--ink-2); align-self: center; text-align: right; padding-right: 4px; }
+.heat .hours { display: grid; grid-template-columns: 34px repeat(24, 1fr); gap: 2px; font-size: 10px; color: var(--ink-3); }
+.scale { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--ink-2); margin-top: 8px; direction: rtl; }
+.scale i { width: 16px; height: 10px; border-radius: 2px; display: inline-block; }
+
+.empty { color: var(--ink-3); font-size: 13px; padding: 18px 0; text-align: center; }
+.error { background: var(--card); border: 1px solid var(--bad); color: var(--bad); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; display: none; }
+.loading .kpis, .loading .grid { opacity: .55; transition: opacity .2s; }
+details.tableview summary { cursor: pointer; color: var(--ink-2); font-size: 12px; margin-top: 10px; }
+.alert { display: flex; gap: 10px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-inline-start: 3px solid var(--warn); border-radius: 12px; padding: 10px 14px; font-size: 13px; }
+.alert.bad { border-inline-start-color: var(--bad); }
+.alerts { display: grid; gap: 8px; margin-bottom: 22px; }
+@media (max-width: 640px) {
+  .wrap { padding: 16px 16px 48px; }
+  .feed .row { grid-template-columns: 90px 14px 1fr; }
+  .feed .det { grid-column: 3; }
+  .stat3 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header class="top">
+    <div>
+      <h1>KIPS <span>·</span> מטריקות</h1>
+      <div class="sub" id="updated">טוען…</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="seg" role="group" aria-label="תקופה" id="period">
+      <button data-days="1">היום</button>
+      <button data-days="7">7 ימים</button>
+      <button data-days="30">30 ימים</button>
+      <button data-days="90">90 ימים</button>
+      <button data-days="0">הכל</button>
+    </div>
+    <button class="btn" id="refresh" title="משיכה מחדש מ-Supabase">רענון</button>
+    <button class="btn" id="theme" title="מצב תצוגה">◐</button>
+  </header>
+  <div class="error" id="error"></div>
+  <div class="health" id="health"></div>
+  <div class="alerts" id="alerts"></div>
+  <nav class="toc">
+    <a href="#usage">שימוש</a><a href="#processes">תהליכים</a><a href="#reliability">אמינות</a>
+    <a href="#events">אירועים</a><a href="#money">חיובים והוצאות</a><a href="#users">משתמשים</a><a href="#feed">פיד</a>
+  </nav>
+  <div class="kpis" id="kpis"></div>
+
+  <section class="block" id="usage">
+    <h2>שימוש</h2>
+    <div class="sub">פעילות יומית (ימי UTC). חשבון פעיל = אירוע, משימה או חיוב/החזקת קרדיט באותו יום.</div>
+    <div class="grid">
+      <div class="card w8"><h3>חשבונות פעילים ופתיחות אפליקציה</h3><div class="sub">ליום</div><div id="c-active"></div></div>
+      <div class="card w4"><h3>שמירה (Retention)</h3><div class="sub">מי שחזר אחרי ההרשמה, מתוך מי שכבר מספיק ותיק</div><div id="c-retention"></div></div>
+      <div class="card w8"><h3>משימות AI ליום, לפי סוג</h3><div class="sub">סריקות חינם, חזיתות, בגדים מתמונת לבוש, גב ו-360</div><div id="c-jobs"></div></div>
+      <div class="card w4"><h3>שימוש בפיצ'רים</h3><div class="sub">חשבונות · פעמים בתקופה</div><div id="c-features"></div></div>
+    </div>
+  </section>
+
+  <section class="block" id="processes">
+    <h2>תהליכים</h2>
+    <div class="sub">המשפך מהרשמה ועד ארון חי, ומדדי ההשקה של בטא חמשת הראשונים — חשבונות שנרשמו בתקופה.</div>
+    <div class="grid">
+      <div class="card"><h3>משפך</h3><div class="sub">חשבונות שהגיעו לכל שלב</div><div id="c-funnel"></div></div>
+      <div class="card"><h3>מדדי השקה</h3><div class="sub">"פתוח" = עדיין בתוך החלון; פעולה משמעותית = פריט נשמר, פריט נפתח או לוק הוצג/נפתח</div><div id="c-launch"></div></div>
+      <div class="card"><h3>3 הפריטים הראשונים (Onboarding)</h3><div class="sub">חשבונות שהגיעו לכל צעד</div><div id="c-onboarding"></div></div>
+      <div class="card"><h3>זמן עד פריט ראשון</h3><div class="sub">מהרשמה ועד פריט שנשמר בארון</div><div id="c-ttfp"></div></div>
+    </div>
+  </section>
+
+  <section class="block" id="reliability">
+    <h2>אמינות</h2>
+    <div class="sub">הצלחה, זמני ריצה (מהתור ועד סיום) וסיבות כשל לפי סוג משימה; שגיאות שהאפליקציה דיווחה.</div>
+    <div class="grid">
+      <div class="card w8"><h3>משימות לפי סוג</h3><div class="sub">p50 / p95 בשניות</div><div class="tablewrap" id="t-jobs"></div></div>
+      <div class="card w4"><h3>שגיאות וסירובים</h3><div class="sub">502/530 = Cloudflare ענה כי ה-Mac או המנהרה לא היו זמינים</div><div id="c-errors"></div></div>
+      <div class="card w12"><h3>קריאות למודל לפי שלב</h3><div class="sub">קריאות, כשלים, זמן תגובה ועלות משוערת</div><div class="tablewrap" id="t-stages"></div></div>
+    </div>
+  </section>
+
+  <section class="block" id="events">
+    <h2>אירועים</h2>
+    <div class="sub">אירועי האפליקציה והשרת (activity_events) בתקופה.</div>
+    <div class="grid">
+      <div class="card"><h3>האירועים הנפוצים</h3><div class="sub" id="ev-sub"></div><div id="c-events"></div></div>
+      <div class="card"><h3>מסכים שנצפו</h3><div class="sub">screen_viewed</div><div id="c-screens"></div></div>
+      <div class="card w12"><h3>מתי משתמשים באפליקציה</h3><div class="sub">אירועים לפי יום בשבוע ושעה (שעון ישראל)</div><div id="c-heat"></div></div>
+    </div>
+  </section>
+
+  <section class="block" id="money">
+    <h2>חיובים והוצאות</h2>
+    <div class="sub">עלות AI היא הערכה (pipeline/costs.py לפי מחירון Gemini), לא חשבונית. קרדיטים — מתוך credit_ledger. אין רכישות.</div>
+    <div class="grid">
+      <div class="card w8"><h3>עלות AI משוערת ליום</h3><div class="sub">דולר, לפי סוג משימה</div><div id="c-cost"></div></div>
+      <div class="card w4"><h3>כלכלת יחידה</h3><div class="sub">בתקופה</div><div id="c-unit"></div></div>
+      <div class="card w8"><h3>קרדיטים ליום</h3><div class="sub">חויבו מול הוענקו</div><div id="c-credits"></div></div>
+      <div class="card w4"><h3>ארנק</h3><div class="sub">כל החשבונות, עכשיו</div><div id="c-wallet"></div></div>
+      <div class="card w12"><h3>עלות לפי מודל</h3><div class="sub">בתקופה</div><div class="tablewrap" id="t-models"></div></div>
+    </div>
+  </section>
+
+  <section class="block" id="users">
+    <h2>משתמשים</h2>
+    <div class="sub">כל החשבונות. ארון, קרדיטים ועלות — מכל הזמנים; "בתקופה" — לפי הבחירה למעלה. מייל מוסתר.</div>
+    <div class="card w12"><div class="tablewrap" id="t-users"></div></div>
+  </section>
+
+  <section class="block" id="feed">
+    <h2>פיד אירועים</h2>
+    <div class="sub">200 הדברים האחרונים שקרו בתקופה, מכל החשבונות. מזהה משימה/בקשה מאפשר לחפש בלוג השרת.</div>
+    <div class="card w12">
+      <div class="feedctl" id="feedctl"></div>
+      <div class="feed" id="c-feed"></div>
+    </div>
+  </section>
+</div>
+<div class="tip" id="tip" role="status"></div>
+
+<script>
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const NS = "http://www.w3.org/2000/svg";
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const nf = new Intl.NumberFormat("en-US");
+const fmt = {
+  n: v => v == null ? "—" : nf.format(v),
+  pct: v => v == null ? "—" : Math.round(v * 100) + "%",
+  usd: v => v == null ? "—" : "$" + (v >= 100 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v.toFixed(v === 0 ? 2 : 4)),
+  sec: v => v == null ? "—" : v >= 90 ? (v / 60).toFixed(1) + "m" : Math.round(v) + "s",
+  ms: v => v == null ? "—" : v >= 1000 ? (v / 1000).toFixed(1) + "s" : Math.round(v) + "ms",
+  min: v => v == null ? "—" : v >= 120 ? (v / 60).toFixed(1) + " שע'" : Math.round(v) + " דק'",
+};
+const dayLabel = d => { const [y, m, dd] = d.split("-"); return `${+dd}/${+m}`; };
+const timeLabel = iso => {
+  const d = new Date(iso);
+  return d.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+};
+const ago = iso => {
+  if (!iso) return "—";
+  const s = (Date.now() - new Date(iso)) / 1000;
+  if (s < 90) return "עכשיו";
+  if (s < 3600) return `לפני ${Math.round(s / 60)} דק'`;
+  if (s < 86400) return `לפני ${Math.round(s / 3600)} שע'`;
+  return `לפני ${Math.round(s / 86400)} ימים`;
+};
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null) continue;
+    if (k === "class") e.className = v; else if (k === "style") e.style.cssText = v; else e.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null) e.append(k instanceof Node ? k : document.createTextNode(String(k)));
+  return e;
+}
+function svg(tag, attrs = {}) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) if (v != null) e.setAttribute(k, v);
+  return e;
+}
+
+// Hebrew names for what the data calls things. Unknown names show as they are.
+const KIND = { garment: "חזית (תמונת בגד)", garment_scan: "סריקת בגד", outfit_scan: "סריקת לבוש", outfit_generate: "בגד מתמונת לבוש",
+  outfit_regenerate: "יצירה מחדש", back: "גב", turn: "360", unknown: "לא ידוע" };
+const JOB_GROUPS = [
+  { key: "scan", label: "סריקות חינם", kinds: ["garment_scan", "outfit_scan"], color: "--s1" },
+  { key: "front", label: "חזית", kinds: ["garment"], color: "--s2" },
+  { key: "outfit", label: "מתמונת לבוש", kinds: ["outfit_generate", "outfit_regenerate"], color: "--s3" },
+  { key: "back", label: "גב", kinds: ["back"], color: "--s4" },
+  { key: "turn", label: "360", kinds: ["turn"], color: "--s5" },
+];
+const COST_GROUPS = JOB_GROUPS.concat([{ key: "other", label: "אחר", kinds: ["unknown"], color: "--s6" }]);
+const EVENT = { screen_viewed: "צפייה במסך", client_error: "שגיאת אפליקציה", app_opened: "פתיחת אפליקציה", job_finished: "משימה הסתיימה",
+  signed_in: "התחברות", item_opened: "פריט נפתח", permission: "הרשאה", capture_source: "מקור צילום", look_generation_requested: "בקשת לוקים",
+  look_opened: "לוק נפתח", item_kept: "פריט נשמר (לבוש)", cost_sheet: "מסך עלות", item_deleted: "פריט נמחק", item_edited: "פריט נערך",
+  swap_options_requested: "חלופות בלוק", swap_applied: "החלפה בלוק", refused: "בקשה סורבה", region_added: "סומן בגד שפוספס",
+  welcome_granted: "מענק פתיחה", push_enabled: "התראות הופעלו", push_disabled: "התראות כובו", out_of_credits_shown: "נגמרו קרדיטים",
+  onboarding_started: "Onboarding התחיל", path_selected: "בחירת מסלול", photos_collected: "תמונות נאספו", detection_completed: "זיהוי הושלם",
+  generation_started: "יצירה התחילה", first_garment_saved: "פריט ראשון", first_3_saved: "3 פריטים", popup_shown: "חלון הוצג",
+  popup_add_more: "הוסף עוד", onboarding_abandoned: "Onboarding ננטש", add_photo_type_corrected: "תיקון סוג תמונה",
+  onboarding_nudge_choice: "תזכורת בוקר — בחירה", onboarding_nudge_scheduled: "תזכורת בוקר — תוזמנה",
+  onboarding_nudge_cancelled: "תזכורת בוקר — בוטלה", onboarding_nudge_tapped: "תזכורת בוקר — נלחצה" };
+const SCREEN = { home: "בית", closet: "ארון", add: "הוספה", account: "חשבון", camera: "מצלמה", preview: "תצוגה מקדימה", processing: "עיבוד",
+  results: "תוצאות", outfit_detect: "לבוש — זיהוי", outfit_pick: "לבוש — בחירה", outfit_review: "לבוש — סקירה", item: "פריט",
+  price_list: "מחירון", credits_activity: "פעילות קרדיטים", help: "עזרה", global: "כללי", build_my_look: "בנה לי לוק", look_detail: "פרטי לוק" };
+const FUNNEL = { signed_up: "נרשמו", signed_in: "התחברו", onboarding_started: "התחילו Onboarding", first_scan: "סריקה ראשונה",
+  first_generate: "יצירה בתשלום ראשונה", first_piece: "פריט ראשון בארון", three_pieces: "3 פריטים", came_back_with_a_piece: "חזרו עם פריט נוסף" };
+const FEATURE = { garment_photo: "תמונת בגד", outfit_photo: "תמונת לבוש", outfit_regenerate: "יצירה מחדש", back: "גב", turn: "360",
+  edits: "עריכות", outfit_kept: "נשמרו מלבוש", missed_garments_marked: "בגד שפוספס", outfit_discarded: "נזרקו מלבוש", removed_from_closet: "הוסרו מהארון" };
+const LAUNCH = { first_piece_24h: "פריט ראשון תוך 24 שעות", three_pieces_7d: "3 פריטים תוך 7 ימים",
+  second_import_other_day_7d: "ייבוא שני ביום אחר (תוך 7 ימים)", meaningful_return_7d: "חזרה משמעותית ביום אחר (תוך 7 ימים)" };
+const FAILURE = { photo_quality: "איכות תמונה", no_garment: "אין בגד", item_gone: "פריט נמחק", scan_expired: "סריקה פגה", model_timeout: "המודל לא ענה בזמן",
+  model_refused: "המודל סירב", model_error: "שגיאת מודל", all_pieces_failed: "כל הפריטים נכשלו", internal: "פנימי", unknown: "לא ידוע" };
+const FEED_KIND = { app: ["אפליקציה", "--s1"], server: ["שרת", "--s3"], job: ["משימה", "--s2"], credits: ["קרדיטים", "--s4"],
+  piece: ["פריט", "--s6"], account: ["חשבון", "--s5"], error: ["שגיאה", "--bad"] };
+
+// ---- tooltip -------------------------------------------------------------------------------
+const tip = $("#tip");
+function showTip(evt, title, rows) {
+  tip.replaceChildren(el("div", { class: "t" }, title),
+    ...rows.map(([label, value, color]) => el("div", { class: "r" },
+      el("span", { class: "k" }, color ? el("i", { style: `background:${css(color) || color}` }) : null, label), el("b", {}, value))));
+  const x = evt.clientX, y = evt.clientY, w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(window.innerWidth - w - 8, Math.max(8, x + 14)) + "px";
+  tip.style.top = Math.max(8, y - h - 12 < 8 ? y + 16 : y - h - 12) + "px";
+  tip.style.opacity = 1;
+}
+function hideTip() { tip.style.opacity = 0; }
+
+// ---- charts ---------------------------------------------------------------------------------
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+}
+function legend(items) {
+  return el("div", { class: "legend" }, items.map(it => el("span", {},
+    el("i", { class: it.line ? "line" : null, style: `background:${css(it.color)}` }), it.label)));
+}
+function frame(host, height, yMax, yFmt) {
+  const W = Math.max(280, host.clientWidth || 600), H = height, m = { l: 44, r: 8, t: 8, b: 22 };
+  const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img" });
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  for (let i = 0; i <= 4; i++) {
+    const y = m.t + ih - (ih * i) / 4;
+    s.append(svg("line", { x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: css(i ? "--grid" : "--line-strong"), "stroke-width": 1 }));
+    const t = svg("text", { x: m.l - 6, y: y + 3.5, "text-anchor": "end" }); t.textContent = yFmt((yMax * i) / 4); s.append(t);
+  }
+  return { s, W, H, m, iw, ih };
+}
+function xLabels(f, days, xOf) {
+  const every = Math.max(1, Math.ceil(days.length / Math.max(2, Math.floor(f.iw / 56))));
+  days.forEach((d, i) => {
+    if (i % every && i !== days.length - 1) return;
+    const t = svg("text", { x: xOf(i), y: f.H - 6, "text-anchor": "middle" }); t.textContent = dayLabel(d); f.s.append(t);
+  });
+}
+// Lines with a crosshair; series: [{label, color, values, fmt}]
+function lineChart(host, days, series, { height = 220, yFmt = fmt.n, area = true } = {}) {
+  host.replaceChildren();
+  if (!days.length) return host.append(el("div", { class: "empty" }, "אין נתונים בתקופה"));
+  if (series.length > 1) host.append(legend(series.map(s => ({ ...s, line: true }))));
+  const box = el("div", { class: "chart" }); host.append(box);
+  const max = niceMax(Math.max(1, ...series.flatMap(s => s.values)));
+  const f = frame(box, height, max, yFmt);
+  const xOf = i => f.m.l + (days.length === 1 ? f.iw / 2 : (f.iw * i) / (days.length - 1));
+  const yOf = v => f.m.t + f.ih - (f.ih * v) / max;
+  series.forEach((s, si) => {
+    const pts = s.values.map((v, i) => [xOf(i), yOf(v)]);
+    if (area && si === 0) {
+      const d = `M${pts[0][0]},${yOf(0)} ` + pts.map(p => `L${p[0]},${p[1]}`).join(" ") + ` L${pts.at(-1)[0]},${yOf(0)} Z`;
+      f.s.append(svg("path", { d, fill: css(s.color), opacity: .1 }));
+    }
+    f.s.append(svg("path", { d: pts.map((p, i) => (i ? "L" : "M") + p[0] + "," + p[1]).join(" "), fill: "none",
+      stroke: css(s.color), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    if (days.length <= 2) pts.forEach(p => f.s.append(svg("circle", { cx: p[0], cy: p[1], r: 4, fill: css(s.color), stroke: css("--card"), "stroke-width": 2 })));
+  });
+  xLabels(f, days, xOf);
+  const hair = svg("line", { y1: f.m.t, y2: f.m.t + f.ih, stroke: css("--ink-3"), "stroke-width": 1, opacity: 0 });
+  const dots = series.map(s => svg("circle", { r: 4.5, fill: css(s.color), stroke: css("--card"), "stroke-width": 2, opacity: 0 }));
+  f.s.append(hair, ...dots);
+  const hit = svg("rect", { x: f.m.l, y: f.m.t, width: f.iw, height: f.ih, fill: "transparent" });
+  hit.addEventListener("pointermove", e => {
+    const r = f.s.getBoundingClientRect(), x = (e.clientX - r.left) * (f.W / r.width);
+    const i = Math.max(0, Math.min(days.length - 1, Math.round(((x - f.m.l) / f.iw) * (days.length - 1))));
+    hair.setAttribute("x1", xOf(i)); hair.setAttribute("x2", xOf(i)); hair.setAttribute("opacity", 1);
+    dots.forEach((d, si) => { d.setAttribute("cx", xOf(i)); d.setAttribute("cy", yOf(series[si].values[i])); d.setAttribute("opacity", 1); });
+    showTip(e, dayLabel(days[i]), series.map(s => [s.label, (s.fmt || yFmt)(s.values[i]), s.color]));
+  });
+  hit.addEventListener("pointerleave", () => { hideTip(); hair.setAttribute("opacity", 0); dots.forEach(d => d.setAttribute("opacity", 0)); });
+  f.s.append(hit); box.append(f.s);
+}
+// Stacked columns per day; groups: [{label,color}], values[g][i]
+function stackedBars(host, days, groups, values, { height = 220, yFmt = fmt.n, total = "סה\"כ" } = {}) {
+  host.replaceChildren();
+  if (!days.length) return host.append(el("div", { class: "empty" }, "אין נתונים בתקופה"));
+  const used = groups.map((g, gi) => ({ ...g, gi })).filter(g => values[g.gi].some(v => v > 0));
+  if (!used.length) return host.append(el("div", { class: "empty" }, "אין נתונים בתקופה"));
+  host.append(legend(used));
+  const box = el("div", { class: "chart" }); host.append(box);
+  const totals = days.map((_, i) => used.reduce((a, g) => a + values[g.gi][i], 0));
+  const max = niceMax(Math.max(...totals));
+  const f = frame(box, height, max, yFmt);
+  const step = f.iw / days.length, bw = Math.max(3, Math.min(28, step * .64));
+  const xOf = i => f.m.l + step * i + step / 2;
+  const yOf = v => f.m.t + f.ih - (f.ih * v) / max;
+  days.forEach((d, i) => {
+    let acc = 0;
+    const g = svg("g", {});
+    used.forEach((grp, k) => {
+      const v = values[grp.gi][i]; if (!v) return;
+      const y0 = yOf(acc), y1 = yOf(acc + v); acc += v;
+      const top = used.slice(k + 1).every(o => !values[o.gi][i]);
+      const h = Math.max(1, y0 - y1 - (top ? 0 : 2));
+      const r = top ? Math.min(4, bw / 2, h) : 0;
+      const x = xOf(i) - bw / 2, y = y1 + (top ? 0 : 2);
+      const path = r ? `M${x},${y + h} V${y + r} Q${x},${y} ${x + r},${y} H${x + bw - r} Q${x + bw},${y} ${x + bw},${y + r} V${y + h} Z`
+                     : `M${x},${y} H${x + bw} V${y + h} H${x} Z`;
+      g.append(svg("path", { d: path, fill: css(grp.color) }));
+    });
+    const hit = svg("rect", { x: f.m.l + step * i, y: f.m.t, width: step, height: f.ih, fill: "transparent" });
+    hit.addEventListener("pointermove", e => {
+      g.setAttribute("opacity", .82);
+      showTip(e, dayLabel(d), [...used.filter(grp => values[grp.gi][i]).reverse().map(grp => [grp.label, yFmt(values[grp.gi][i]), grp.color]),
+        [total, yFmt(totals[i])]]);
+    });
+    hit.addEventListener("pointerleave", () => { g.setAttribute("opacity", 1); hideTip(); });
+    f.s.append(g, hit);
+  });
+  xLabels(f, days, xOf);
+  box.append(f.s);
+}
+function sparkline(values, color = "--tint") {
+  const W = 160, H = 30, s = svg("svg", { viewBox: `0 0 ${W} ${H}`, height: H, preserveAspectRatio: "none", "aria-hidden": "true", style: "direction:ltr" });
+  if (values.length < 2) return s;
+  const max = Math.max(1, ...values);
+  const pts = values.map((v, i) => [(W * i) / (values.length - 1), H - 2 - ((H - 4) * v) / max]);
+  s.append(svg("path", { d: `M0,${H} ` + pts.map(p => `L${p[0]},${p[1]}`).join(" ") + ` L${W},${H} Z`, fill: css(color), opacity: .1 }));
+  s.append(svg("path", { d: pts.map((p, i) => (i ? "L" : "M") + p[0] + "," + p[1]).join(" "), fill: "none", stroke: css(color),
+    "stroke-width": 1.6, "vector-effect": "non-scaling-stroke", "stroke-linejoin": "round" }));
+  return s;
+}
+function hbars(host, entries, { max, valueFmt = fmt.n, color = "--tint", limit = 12, sub } = {}) {
+  host.replaceChildren();
+  if (!entries.length) return host.append(el("div", { class: "empty" }, "אין נתונים בתקופה"));
+  const top = entries.slice(0, limit), m = max ?? Math.max(1, ...top.map(e => e[1]));
+  host.append(el("div", { class: "hbars" }, top.map(([label, v, extra]) => {
+    const row = el("div", { class: "hbar" }, el("span", { class: "n", title: label }, label),
+      el("span", { class: "track" }, el("span", { class: "fill", style: `width:${Math.max(0.5, (100 * v) / m)}%;background:${css(color)}` })),
+      el("span", { class: "v" }, valueFmt(v)));
+    row.addEventListener("pointermove", e => showTip(e, label, [["", valueFmt(v)], ...(extra || [])]));
+    row.addEventListener("pointerleave", hideTip);
+    return row;
+  })));
+  if (entries.length > limit) host.append(el("div", { class: "sub", style: "margin-top:8px" }, `ועוד ${entries.length - limit}`));
+}
+function table(host, cols, rows, { sortable = false } = {}) {
+  host.replaceChildren();
+  if (!rows.length) return host.append(el("div", { class: "empty" }, "אין נתונים בתקופה"));
+  let sortKey = null, dir = -1;
+  const t = el("table");
+  const draw = () => {
+    const sorted = sortKey == null ? rows : [...rows].sort((a, b) => {
+      const c = cols[sortKey], x = c.sort ? c.sort(a) : a[c.key], y = c.sort ? c.sort(b) : b[c.key];
+      return (x == null) - (y == null) || (x < y ? -dir : x > y ? dir : 0);
+    });
+    t.replaceChildren(el("thead", {}, el("tr", {}, cols.map((c, i) => {
+      const th = el("th", { class: [c.num ? "num" : "", sortable ? "sort" : ""].join(" ") }, c.label + (sortKey === i ? (dir < 0 ? " ↓" : " ↑") : ""));
+      if (sortable) th.addEventListener("click", () => { dir = sortKey === i ? -dir : -1; sortKey = i; draw(); });
+      return th;
+    }))), el("tbody", {}, sorted.map(r => el("tr", {}, cols.map(c => {
+      const v = c.render ? c.render(r) : r[c.key];
+      return el("td", { class: c.num ? "num" : null }, v instanceof Node ? v : (v ?? "—"));
+    })))));
+  };
+  draw(); host.append(t);
+}
+function rateCell(v) {
+  if (v == null) return "—";
+  const cls = v >= .95 ? "good" : v >= .8 ? "warn" : "bad";
+  return el("span", { class: "rate" }, el("span", { class: "track" }, el("span", { class: "fill", style: `width:${v * 100}%;background:${css(cls === "good" ? "--good" : cls === "warn" ? "--warn" : "--bad")}` })),
+    el("span", { class: "num" }, fmt.pct(v)));
+}
+
+// ---- sections -------------------------------------------------------------------------------
+let state = { days: 30, data: null, feedFilter: "all" };
+try { const d = +localStorage.getItem("kips.dash.days"); if ([1, 7, 30, 90, 0].includes(d) && localStorage.getItem("kips.dash.days") !== null) state.days = d; } catch {}
+
+function renderHealth(h, k) {
+  const host = $("#health"); host.replaceChildren();
+  const pill = (cls, label, value) => el("span", { class: "pill" }, el("span", { class: "dot " + cls }), label, value != null ? el("b", {}, value) : null);
+  if (!h) { host.append(pill("", "בדיקת בריאות כבויה")); return; }
+  if (!h.reachable) { host.append(pill("bad", "API", "לא זמין"), pill("", "השרת על ה-Mac לא ענה ל-/healthz")); return; }
+  const beat = h.worker_seconds_since_beat;
+  host.append(
+    pill(h.status === "ok" ? "good" : "bad", "API", h.status === "ok" ? "תקין" : "בעיה"),
+    pill(beat == null ? "bad" : beat < 30 ? "good" : beat < 120 ? "warn" : "bad", "Worker", beat == null ? "לא רץ" : `דופק לפני ${Math.round(beat)}s`),
+    pill(h.generation ? "good" : "warn", "יצירה", h.generation ? "פעילה" : "מושהית"),
+    pill(h.queued ? (h.oldest_queued_seconds > 120 ? "bad" : "warn") : "good", "בתור", `${h.queued}` + (h.queued ? ` · הוותיקה ${fmt.sec(h.oldest_queued_seconds)}` : "")),
+    pill(h.jobs_running ? "warn" : "good", "רצות עכשיו", h.jobs_running),
+    pill(h.failed_jobs_last_hour ? "bad" : "good", "כשלים בשעה האחרונה", h.failed_jobs_last_hour),
+    pill("", "משימות AI היום", h.daily_ai_jobs_cap ? `${h.ai_jobs_today} / ${h.daily_ai_jobs_cap}` : h.ai_jobs_today),
+    pill("", "מודל תמונה", h.image_model),
+  );
+}
+function renderAlerts(d) {
+  const host = $("#alerts"); host.replaceChildren();
+  const add = (cls, text) => host.append(el("div", { class: "alert " + cls }, el("span", {}, cls === "bad" ? "●" : "▲"), el("span", {}, text)));
+  for (const [stage, s] of Object.entries(d.ai.by_stage)) {
+    if (s.calls >= 5 && s.failed / s.calls >= .2) add("bad", `${s.failed} מתוך ${s.calls} קריאות בשלב ${stage} נכשלו (${fmt.pct(s.failed / s.calls)}).`);
+  }
+  const http = d.metrics.reliability.http_5xx_statuses || {};
+  const n5 = Object.values(http).reduce((a, b) => a + b, 0);
+  if (n5) add("bad", `${n5} שגיאות שרת (5xx) שהאפליקציה דיווחה בתקופה` + (http.unknown ? " — חלקן מגרסה שלא שולחת סטטוס." : "."));
+  for (const [kind, j] of Object.entries(d.metrics.reliability.jobs)) {
+    if (j.jobs >= 3 && j.success_rate != null && j.success_rate < .85) add("warn", `משימות ${KIND[kind] || kind}: ${fmt.pct(j.success_rate)} הצלחה (${j.failed} כשלים מתוך ${j.jobs}).`);
+  }
+  if (d.health && d.health.reachable && d.health.worker_seconds_since_beat == null) add("bad", "ה-Worker לא רץ — משימות לא יתבצעו.");
+}
+function renderKpis(d) {
+  const k = d.kpis, days = d.daily, series = key => days.map(x => typeof key === "function" ? key(x) : x[key]);
+  const tiles = [
+    ["חשבונות", fmt.n(k.accounts), `${fmt.n(k.new_accounts)} חדשים בתקופה`, series("signups")],
+    ["פעילים", fmt.n(k.active_7d), `היום ${k.active_today} · 30 ימים ${k.active_30d}`, series("active")],
+    ["פריטים שנשמרו", fmt.n(k.pieces), "בארון, בתקופה", series("pieces")],
+    ["משימות AI", fmt.n(k.jobs), el("span", {}, `${fmt.n(k.paid_jobs)} בתשלום · `, el("span", { class: k.success_rate >= .95 ? "good" : k.success_rate < .85 ? "bad" : "" }, `${fmt.pct(k.success_rate)} הצלחה`)), series(x => x.jobs_ok + x.jobs_failed)],
+    ["הוצאת AI משוערת", fmt.usd(k.ai_usd), `${fmt.n(k.ai_calls)} קריאות למודל`, series("ai_usd"), "--s2"],
+    ["קרדיטים שחויבו", fmt.n(k.credits_charged), `${fmt.n(k.credits_granted)} הוענקו בתקופה`, series("credits_charged"), "--s4"],
+    ["יתרת קרדיטים", fmt.n(k.credits_outstanding), k.credits_held ? `${k.credits_held} מוחזקים` : "בכל הארנקים", null],
+    ["שגיאות אפליקציה", fmt.n(k.app_errors), el("span", { class: k.app_errors ? "bad" : "good" }, k.app_errors ? "client_error בתקופה" : "אין"), series("app_errors"), "--bad"],
+  ];
+  $("#kpis").replaceChildren(...tiles.map(([label, value, note, sp, color]) => el("div", { class: "kpi" },
+    el("div", { class: "label" }, label), el("div", { class: "value num" }, value), el("div", { class: "note" }, note),
+    sp && sp.length > 1 ? sparkline(sp, color) : null)));
+}
+function renderUsage(d) {
+  const days = d.daily.map(x => x.day);
+  lineChart($("#c-active"), days, [
+    { label: "חשבונות פעילים", color: "--s1", values: d.daily.map(x => x.active) },
+    { label: "פתיחות אפליקציה", color: "--s2", values: d.daily.map(x => x.app_opens) },
+  ]);
+  stackedBars($("#c-jobs"), days, JOB_GROUPS, JOB_GROUPS.map(g => d.daily.map(x => g.kinds.reduce((a, k) => a + (x.jobs_by_kind[k] || 0), 0))));
+  const r = d.metrics.retention, host = $("#c-retention");
+  host.replaceChildren(el("div", { class: "stat3" }, [["d1", "יום 1"], ["d7", "ימים 6–8"], ["w2", "ימים 8–14"]].map(([key, label]) =>
+    el("div", { class: "mini" }, el("div", { class: "label" }, label), el("div", { class: "value" }, fmt.pct(r[key].rate)),
+      el("div", { class: "note" }, `${r[key].returned} מתוך ${r[key].eligible}`)))),
+    el("div", { class: "sub", style: "margin-top:12px" }, `פעילים בשבוע האחרון: ${r.weekly_active}. כל פעילות נספרת, גם פתיחת אפליקציה.`));
+  const feats = Object.entries(d.metrics.features).filter(([, v]) => v && v.count != null).map(([k, v]) => [FEATURE[k] || k, v.count,
+    [["חשבונות", fmt.n(v.accounts)]]]).sort((a, b) => b[1] - a[1]);
+  hbars($("#c-features"), feats, { valueFmt: fmt.n, color: "--s3" });
+  const cancel = d.metrics.features.cost_sheet_cancel_rate || {};
+  if (Object.keys(cancel).length) $("#c-features").append(el("div", { class: "sub", style: "margin-top:10px" },
+    "ביטול במסך עלות: " + Object.entries(cancel).map(([a, v]) => `${KIND[a] || a} ${fmt.pct(v)}`).join(" · ")));
+}
+function renderProcesses(d) {
+  const f = d.metrics.funnel, top = f.signed_up || 1;
+  hbars($("#c-funnel"), Object.entries(f).map(([k, v]) => [FUNNEL[k] || k, v, [["מתוך הנרשמים", fmt.pct(v / top)]]]),
+    { max: top, valueFmt: v => `${v} · ${fmt.pct(v / top)}`, limit: 20 });
+  const L = d.metrics.launch, host = $("#c-launch");
+  host.replaceChildren(el("div", { class: "hbars" }, Object.keys(LAUNCH).map(key => {
+    const x = L[key];
+    return el("div", { class: "hbar" }, el("span", { class: "n", title: LAUNCH[key] }, LAUNCH[key]),
+      el("span", { class: "track" }, el("span", { class: "fill", style: `width:${x.eligible ? (100 * x.reached) / x.eligible : 0}%;background:${css("--good")}` })),
+      el("span", { class: "v" }, `${x.reached}/${x.eligible}` + (x.still_in_window ? ` · ${x.still_in_window} פתוח` : "")));
+  })), el("div", { class: "sub", style: "margin-top:10px" }, `קוהורט: ${L.cohort} חשבונות. אלה אנשים, לא סטטיסטיקה.`));
+  const a = d.metrics.activation, steps = a.funnel || {};
+  const ob = Object.entries(steps).map(([k, v]) => [EVENT[k] || k, v]);
+  hbars($("#c-onboarding"), ob, { max: Math.max(1, ...ob.map(x => x[1])), color: "--s1", limit: 20 });
+  if (a.abandoned_by_step && Object.keys(a.abandoned_by_step).length) $("#c-onboarding").append(el("div", { class: "sub", style: "margin-top:10px" },
+    "ננטש ב: " + Object.entries(a.abandoned_by_step).map(([k, v]) => `${k} ${v}`).join(" · ")));
+  const t = L.minutes_to_first_piece, t3 = a.time_to_first_3_min || {};
+  $("#c-ttfp").replaceChildren(el("div", { class: "stat3" },
+    el("div", { class: "mini" }, el("div", { class: "label" }, "חציון"), el("div", { class: "value" }, fmt.min(t.median)), el("div", { class: "note" }, `n=${t.n}`)),
+    el("div", { class: "mini" }, el("div", { class: "label" }, "p75"), el("div", { class: "value" }, fmt.min(t.p75)), el("div", { class: "note" }, `3 פריטים: חציון ${fmt.min(t3.median)}`)),
+    el("div", { class: "mini" }, el("div", { class: "label" }, "הפעלה בסשן ראשון"), el("div", { class: "value" }, fmt.pct(a.first_session_activation_rate)),
+      el("div", { class: "note" }, `ייבוא שני: ${fmt.pct(a.second_import_rate)}`))));
+}
+function renderReliability(d) {
+  const rel = d.metrics.reliability;
+  table($("#t-jobs"), [
+    { label: "סוג", render: r => KIND[r.kind] || r.kind },
+    { label: "משימות", key: "jobs", num: true },
+    { label: "הצלחה", render: r => rateCell(r.success_rate) },
+    { label: "p50", render: r => fmt.sec(r.p50_seconds), num: true },
+    { label: "p95", render: r => fmt.sec(r.p95_seconds), num: true },
+    { label: "סיבות כשל", render: r => Object.keys(r.failures).length ? el("span", {}, Object.entries(r.failures).map(([c, n]) =>
+        el("span", { class: "chip bad", style: "margin-inline-end:4px" }, `${FAILURE[c] || c} ${n}`))) : el("span", { class: "chip good" }, "ללא") },
+  ], Object.entries(rel.jobs).map(([kind, j]) => ({ kind, ...j })).sort((a, b) => b.jobs - a.jobs));
+  const errs = [
+    ...Object.entries(rel.client_errors).map(([k, v]) => [`שגיאת אפליקציה: ${k}`, v]),
+    ...Object.entries(rel.http_5xx_statuses || {}).map(([k, v]) => [`HTTP ${k === "unknown" ? "לא ידוע" : k}`, v]),
+    ...Object.entries(rel.refusals).map(([k, v]) => [`סירוב: ${k}`, v]),
+  ];
+  hbars($("#c-errors"), errs, { color: "--bad" });
+  table($("#t-stages"), stageCols(), Object.entries(d.ai.by_stage).map(([name, s]) => ({ name, ...s })), { sortable: true });
+}
+function stageCols() {
+  return [
+    { label: "שם", key: "name", render: r => el("span", { class: "mono" }, r.name) },
+    { label: "קריאות", key: "calls", num: true },
+    { label: "כשלים", key: "failed", num: true, render: r => r.failed ? el("span", { class: "chip " + (r.failed / r.calls >= .2 ? "bad" : "warn") }, `${r.failed} · ${fmt.pct(r.failed / r.calls)}`) : "0" },
+    { label: "Fallback", key: "fallback", num: true },
+    { label: "p50", key: "p50_ms", num: true, render: r => fmt.ms(r.p50_ms) },
+    { label: "p95", key: "p95_ms", num: true, render: r => fmt.ms(r.p95_ms) },
+    { label: "עלות", key: "usd", num: true, render: r => fmt.usd(r.usd) },
+    { label: "לקריאה", num: true, sort: r => r.calls ? r.usd / r.calls : null, render: r => r.calls ? fmt.usd(r.usd / r.calls) : "—" },
+  ];
+}
+function renderEvents(d) {
+  const ev = d.events, total = Object.values(ev.by_name).reduce((a, b) => a + b, 0);
+  $("#ev-sub").textContent = `${fmt.n(total)} אירועים · ${fmt.n(ev.sessions)} סשנים · ` +
+    Object.entries(ev.by_source).map(([k, v]) => `${k === "app" ? "אפליקציה" : "שרת"} ${v}`).join(" · ") +
+    (Object.keys(ev.app_versions).length ? " · גרסאות: " + Object.entries(ev.app_versions).map(([k, v]) => `${k} (${v})`).join(", ") : "");
+  hbars($("#c-events"), Object.entries(ev.by_name).map(([k, v]) => [EVENT[k] || k, v, [["שם", k]]]), { limit: 14 });
+  hbars($("#c-screens"), Object.entries(ev.screens).map(([k, v]) => [SCREEN[k] || k, v]), { color: "--s3", limit: 14 });
+  const host = $("#c-heat"); host.replaceChildren();
+  const max = Math.max(0, ...ev.heatmap.flat());
+  if (!max) return host.append(el("div", { class: "empty" }, "אין נתונים בתקופה"));
+  const names = ["ב'", "ג'", "ד'", "ה'", "ו'", "ש'", "א'"], order = [6, 0, 1, 2, 3, 4, 5];
+  const step = v => v === 0 ? 0 : Math.min(5, 1 + Math.floor((4 * v) / max) + (v === max ? 1 : 0));
+  const wrap = el("div", { class: "heat" });
+  wrap.append(el("div", { class: "hours" }, el("span"), Array.from({ length: 24 }, (_, h) => el("span", { style: "text-align:center" }, h % 3 ? "" : String(h)))));
+  order.forEach(di => {
+    wrap.append(el("div", { class: "row" }, el("span", { class: "lab" }, names[di]), ev.heatmap[di].map((v, h) => {
+      const c = el("span", { class: "cell", style: `background:${css("--seq-" + step(v))}`, tabindex: "0" });
+      const show = e => showTip(e, `יום ${names[di]} · ${String(h).padStart(2, "0")}:00`, [["אירועים", fmt.n(v)]]);
+      c.addEventListener("pointermove", show); c.addEventListener("pointerleave", hideTip);
+      return c;
+    })));
+  });
+  host.append(wrap, el("div", { class: "scale" }, "פחות", [0, 1, 2, 3, 4, 5].map(i => el("i", { style: `background:${css("--seq-" + i)}` })), "יותר"));
+}
+function renderMoney(d) {
+  const days = d.daily.map(x => x.day);
+  const groupOf = kind => COST_GROUPS.findIndex(g => g.kinds.includes(kind));
+  const vals = COST_GROUPS.map(() => d.daily.map(() => 0));
+  d.daily.forEach((x, i) => Object.entries(x.ai_usd_by_kind).forEach(([k, v]) => { const g = groupOf(k); vals[g < 0 ? COST_GROUPS.length - 1 : g][i] += v; }));
+  stackedBars($("#c-cost"), days, COST_GROUPS, vals, { yFmt: fmt.usd });
+  lineChart($("#c-credits"), days, [
+    { label: "חויבו", color: "--s4", values: d.daily.map(x => x.credits_charged) },
+    { label: "הוענקו", color: "--s1", values: d.daily.map(x => x.credits_granted) },
+  ], { area: false });
+  const c = d.metrics.ai_cost, k = d.kpis;
+  const unit = [
+    ["לקרדיט שחויב", fmt.usd(c.per_credit_charged)],
+    ["לפריט שנשמר", k.pieces ? fmt.usd(c.total_usd / k.pieces) : "—"],
+    ["לחשבון (חציון)", fmt.usd(c.per_account.median)],
+    ["לחשבון (מקס')", fmt.usd(c.per_account.max)],
+    ["על מודל גיבוי", fmt.pct(c.fallback_share)],
+    ["על ניסיונות חוזרים", fmt.pct(c.retry_share)],
+  ];
+  $("#c-unit").replaceChildren(el("div", { class: "stat3", style: "grid-template-columns:1fr 1fr" },
+    unit.map(([l, v]) => el("div", { class: "mini" }, el("div", { class: "label" }, l), el("div", { class: "value" }, v)))));
+  const cr = d.metrics.credits;
+  $("#c-wallet").replaceChildren(el("div", { class: "stat3", style: "grid-template-columns:1fr 1fr" },
+    [["יתרה", k.credits_outstanding, "בכל הארנקים"], ["מוחזקים", k.credits_held, "משימות פתוחות"],
+     ["חויבו בתקופה", cr.charged, ""], ["הוחזרו בתקופה", cr.released, "כשלים/ביטולים"]].map(([l, v, n]) =>
+      el("div", { class: "mini" }, el("div", { class: "label" }, l), el("div", { class: "value" }, fmt.n(v)), n ? el("div", { class: "note" }, n) : null))),
+    el("div", { class: "sub", style: "margin-top:10px" }, `הוענקו בתקופה: ${fmt.n(cr.granted)}. אין רכישות — כל הקרדיטים הם מענקים.`));
+  table($("#t-models"), stageCols(), Object.entries(d.ai.by_model).map(([name, s]) => ({ name, ...s })), { sortable: true });
+}
+function renderUsers(d) {
+  table($("#t-users"), [
+    { label: "חשבון", key: "name", render: r => el("div", {}, el("div", { style: "font-weight:500" }, r.name || r.email || r.short_id),
+        el("div", { class: "mono", style: "color:var(--ink-2)" }, [r.email, r.short_id].filter(Boolean).join(" · "))) },
+    { label: "נרשם", key: "signed_up", render: r => r.signed_up ? timeLabel(r.signed_up) : "—" },
+    { label: "פעיל לאחרונה", key: "last_active", render: r => ago(r.last_active) },
+    { label: "ימי פעילות", key: "active_days", num: true },
+    { label: "בארון", key: "pieces", num: true },
+    { label: "משימות", key: "jobs", num: true, render: r => r.failed_jobs ? el("span", {}, `${r.jobs} `, el("span", { class: "chip bad" }, `${r.failed_jobs} נכשלו`)) : String(r.jobs) },
+    { label: "בתקופה", key: "period_events", render: r => el("span", { class: "num", style: "color:var(--ink-2)" }, `${r.period_jobs} משימות · ${r.period_events} אירועים`) },
+    { label: "שגיאות", key: "app_errors", num: true, render: r => r.app_errors ? el("span", { class: "chip bad" }, r.app_errors) : "0" },
+    { label: "יתרה", key: "balance", num: true },
+    { label: "חויב / הוענק", key: "charged", num: true, render: r => `${r.charged} / ${r.granted}` },
+    { label: "עלות AI", key: "ai_usd", num: true, render: r => fmt.usd(r.ai_usd) },
+    { label: "גרסה", key: "app_version", render: r => r.app_version ? el("span", { class: "chip" }, r.app_version) : "—" },
+  ], d.accounts, { sortable: true });
+}
+function renderFeed(d) {
+  const kinds = ["all", ...Object.keys(FEED_KIND).filter(k => d.feed.some(e => e.kind === k))];
+  $("#feedctl").replaceChildren(...kinds.map(k => {
+    const n = k === "all" ? d.feed.length : d.feed.filter(e => e.kind === k).length;
+    const b = el("button", { "aria-pressed": String(state.feedFilter === k) }, `${k === "all" ? "הכל" : FEED_KIND[k][0]} ${n}`);
+    b.addEventListener("click", () => { state.feedFilter = k; renderFeed(d); });
+    return b;
+  }));
+  const rows = d.feed.filter(e => state.feedFilter === "all" || e.kind === state.feedFilter);
+  const host = $("#c-feed"); host.replaceChildren();
+  if (!rows.length) return host.append(el("div", { class: "empty" }, "אין אירועים בתקופה"));
+  host.append(...rows.map(e => {
+    const [label, color] = FEED_KIND[e.kind] || [e.kind, "--ink-3"];
+    const name = e.what.replace(/^([a-z_]+)( (started|succeeded|failed))$/, (m, k, s) => `${KIND[k] || k} — ${{ " started": "התחילה", " succeeded": "הצליחה", " failed": "נכשלה" }[s]}`);
+    const det = Object.entries(e.detail || {}).map(([k, v]) => `${k}=${v}`).join("  ");
+    return el("div", { class: "row" }, el("span", { class: "when" }, timeLabel(e.at)),
+      el("span", { class: "kind-dot", title: label, style: `background:${css(color)}` }),
+      el("span", { class: "who" }, e.who), el("span", {}, el("span", {}, EVENT[e.what] || name), " ", el("span", { class: "det" }, det)));
+  }));
+}
+
+function render(d) {
+  $("#updated").textContent = `עודכן ${timeLabel(d.generated_at)} · ${d.days ? `${d.days} ימים אחרונים` : "מכל הזמנים"} · נתונים חיים מ-Supabase`;
+  renderHealth(d.health, d.kpis); renderAlerts(d); renderKpis(d); renderUsage(d); renderProcesses(d);
+  renderReliability(d); renderEvents(d); renderMoney(d); renderUsers(d); renderFeed(d);
+}
+async function load(fresh = false) {
+  document.body.classList.add("loading");
+  $("#period").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.days === state.days)));
+  try {
+    const r = await fetch(`/api/dashboard?days=${state.days}${fresh ? "&fresh=1" : ""}`);
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.detail || body.error || r.status);
+    state.data = body; $("#error").style.display = "none"; render(body);
+  } catch (e) {
+    $("#error").textContent = "לא הצלחתי לטעון נתונים: " + e.message; $("#error").style.display = "block";
+  } finally { document.body.classList.remove("loading"); }
+}
+$("#period").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  state.days = +b.dataset.days;
+  try { localStorage.setItem("kips.dash.days", String(state.days)); } catch {}
+  load();
+});
+$("#refresh").addEventListener("click", () => load(true));
+$("#theme").addEventListener("click", () => {
+  const root = document.documentElement, dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+  try { localStorage.setItem("kips.dash.theme", root.dataset.theme); } catch {}
+  if (state.data) render(state.data);
+});
+try { const t = localStorage.getItem("kips.dash.theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+let resizeT; addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => state.data && render(state.data), 150); });
+setInterval(() => { if (!document.hidden) load(); }, 60000);
+load();
+</script>
+</body>
+</html>

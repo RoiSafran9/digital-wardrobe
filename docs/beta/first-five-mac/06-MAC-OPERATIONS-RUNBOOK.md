@@ -73,6 +73,9 @@ date
 
 # Existing read-only usage summary; run only on your authorized configured server environment.
 python -m scripts.usage_report --days 7
+
+# The same numbers as a live visual page on this Mac only (loopback): open http://127.0.0.1:8050
+python -m scripts.dashboard
 ```
 
 **Interpretation:** `status: ok` alone is insufficient. Inspect `generation`, `queued`, `oldest_queued_seconds`, `worker_seconds_since_beat`, `failed_jobs_last_hour` and `daily_ai_jobs_cap` if present. If worker heartbeat is null, check whether worker has started; if queue >0 and heartbeat stale, classify unhealthy even when HTTP endpoint responds.

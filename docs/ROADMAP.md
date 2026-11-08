@@ -75,10 +75,11 @@ Done: hosted Supabase SMTP (Resend, `kipscloset.com`) and code templates, all mi
 - [ ] Hosted migration (`activation_events`), `WARDROBE_WORKER_CONCURRENCY=2` on the beta server, owner phone check
 - [ ] Reconcile with `docs/features/first-3-pieces-onboarding/` once those docs are committed (M0)
 
-## One-time morning outfit reminder — BUILT, off ([spec](features/morning-onboarding-reminder/README.md))
+## One-time morning outfit reminder — BUILT, on in `production` builds since 2026-11-08 ([spec](features/morning-onboarding-reminder/README.md))
 
 - [x] Local notification at the next eligible 08:45, Home card + Account switch, cancellation on the third saved piece / opt-out / sign-out / account switch / delete / permission off / outfit off, cold- and warm-start tap routing, bounded events (client + `api/activity.py`), Jest + pytest coverage (2026-11-08)
-- [ ] Owner: signed-build iPhone QA ([05-IMPLEMENTATION-AND-DEVICE-QA.md](features/morning-onboarding-reminder/05-IMPLEMENTATION-AND-DEVICE-QA.md)), then decide whether a beta build sets `EXPO_PUBLIC_MORNING_REMINDER=on`
+- [x] Owner decision: on for EAS `production` builds (`mobile/eas.json`), 2026-11-08
+- [ ] Owner: iPhone QA on the TestFlight build ([05-IMPLEMENTATION-AND-DEVICE-QA.md](features/morning-onboarding-reminder/05-IMPLEMENTATION-AND-DEVICE-QA.md)); Mac API restart on latest `main` so the new events are accepted
 
 ## Activity and operations logging — BUILT ([spec](superpowers/specs/2026-10-22-activity-logging-design.md), [plan](superpowers/plans/2026-10-22-activity-logging.md))
 

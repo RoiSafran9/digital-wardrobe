@@ -1,6 +1,6 @@
 # KIPS — One-Time Morning Outfit Reminder (First-Five Beta)
 
-**Status:** **implemented behind an app flag that is off** (`EXPO_PUBLIC_MORNING_REMINDER`, unset = off), 2026-11-08; automated tests pass; **real-iPhone QA NOT RUN**. No reminder has been enabled for beta users, scheduled for a tester or sent. See [05-IMPLEMENTATION-AND-DEVICE-QA.md](05-IMPLEMENTATION-AND-DEVICE-QA.md).
+**Status:** implemented behind `EXPO_PUBLIC_MORNING_REMINDER` (unset = off). **Turned on for EAS `production` builds by the owner on 2026-11-08** (`mobile/eas.json`); development builds and Expo Go stay off unless `mobile/.env` sets it. Automated tests pass; **real-iPhone QA NOT RUN** before activation (owner's decision). No reminder has been enabled for beta users, scheduled for a tester or sent. See [05-IMPLEMENTATION-AND-DEVICE-QA.md](05-IMPLEMENTATION-AND-DEVICE-QA.md).
 **Prepared:** 2026-11-08.
 **Baseline inspected:** GitHub `main` at `3577a0462b258ff8df3065ed68be00eaeea3856c`; Claude must pull latest safe `main` before implementing.
 **Product goal:** help a new KIPS user resume building their wardrobe by attaching one small action to an existing morning habit: photographing what they are already wearing.

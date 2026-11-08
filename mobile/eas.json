@@ -17,6 +17,9 @@
       "autoIncrement": true,
       "ios": {
         "resourceClass": "default"
+      },
+      "env": {
+        "EXPO_PUBLIC_MORNING_REMINDER": "on"
       }
     }
   },

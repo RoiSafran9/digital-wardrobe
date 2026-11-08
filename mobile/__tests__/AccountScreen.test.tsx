@@ -6,6 +6,10 @@ import { deleteAccount } from "../src/api/client";
 import { AuthContext, type AuthContextValue } from "../src/auth/AuthProvider";
 import { CreditsContext, type CreditsValue } from "../src/credits/CreditsProvider";
 import type { Credits } from "../src/api/types";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as N from "expo-notifications";
+import { MorningReminderProvider } from "../src/morningReminder/MorningReminderProvider";
+import { recordKey, REMINDER_KIND } from "../src/morningReminder/schedule";
 
 jest.mock("../src/api/client", () => ({ ...jest.requireActual("../src/api/client"), deleteAccount: jest.fn() }));
 const mockPush = jest.fn();
@@ -178,4 +182,67 @@ test("Help and Privacy open from Settings", async () => {
   expect(mockPush).toHaveBeenCalledWith("/help");
   await fireEvent.press(screen.getByRole("button", { name: "Privacy" }));
   expect(mockPush).toHaveBeenCalledWith("/privacy");
+});
+
+// The one-time morning reminder's row: its own switch, apart from Notify when ready.
+describe("morning reminder", () => {
+  const Notifications = N as unknown as Record<string, jest.Mock>;
+  const LOADED: Credits = { ...CREDITS, entries: [] };
+
+  async function renderWithReminder(record: object | null) {
+    await AsyncStorage.clear();
+    if (record) await AsyncStorage.setItem(recordKey("u1"), JSON.stringify({ at: 1, ...record }));
+    Notifications.getAllScheduledNotificationsAsync.mockResolvedValue([{ identifier: "local-1", content: { data: { kind: REMINDER_KIND } } }]);
+    Notifications.getPermissionsAsync.mockResolvedValue({ granted: true, status: "granted", ios: { status: 2 } });
+    const value: AuthContextValue = { status: "signedIn", email: "me@example.com", userId: "u1",
+      sendCode: jest.fn(), verifyCode: jest.fn(), signInWithPassword: jest.fn(), signOut: jest.fn(async () => {}) };
+    const creditsValue: CreditsValue = { billing: false, prices: {}, credits: LOADED, outfit: true, refresh: jest.fn(async () => {}) };
+    await render(
+      <AuthContext.Provider value={value}>
+        <CreditsContext.Provider value={creditsValue}>
+          <MorningReminderProvider enabled><AccountScreen /></MorningReminderProvider>
+        </CreditsContext.Provider>
+      </AuthContext.Provider>,
+    );
+    for (let i = 0; i < 6; i++) await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    return value;
+  }
+
+  beforeEach(() => jest.clearAllMocks());
+
+  test("a pending reminder shows when it's set and turns off by itself, leaving Notify when ready alone", async () => {
+    await renderWithReminder({ status: "scheduled", id: "local-1", fireAt: Date.now() + 3600_000 });
+    const sw = screen.getByLabelText("Morning reminder");
+    expect(sw.props.value).toBe(true);
+    expect(screen.getByLabelText("Notify when ready").props.value).toBe(false);
+    expect(screen.getByText(/One reminder only\./)).toBeTruthy();
+    await act(async () => fireEvent(sw, "valueChange", false));
+    for (let i = 0; i < 4; i++) await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("local-1");
+    expect(Notifications.cancelAllScheduledNotificationsAsync).not.toHaveBeenCalled();
+    expect(Notifications.getExpoPushTokenAsync).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Notify when ready").props.value).toBe(false);
+  });
+
+  test("never answered or already used: no row; declined: a deliberate way back", async () => {
+    await renderWithReminder(null);
+    expect(screen.queryByLabelText("Morning reminder")).toBeNull();
+    await screen.unmount();
+    await renderWithReminder({ status: "opened", id: "local-1" });
+    expect(screen.queryByLabelText("Morning reminder")).toBeNull();
+    await screen.unmount();
+    await renderWithReminder({ status: "declined" });
+    expect(screen.getByLabelText("Morning reminder").props.value).toBe(false);
+  });
+
+  test("deleting the account cancels its reminder and forgets it before signing out", async () => {
+    (deleteAccount as jest.Mock).mockResolvedValue(undefined);
+    const auth = await renderWithReminder({ status: "scheduled", id: "local-1", fireAt: Date.now() + 3600_000 });
+    await fireEvent.press(screen.getByRole("button", { name: "Delete Account" }));
+    const buttons = screen.getAllByRole("button", { name: "Delete Account" });
+    await act(async () => fireEvent.press(buttons[buttons.length - 1]));
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("local-1");
+    expect(await AsyncStorage.getItem(recordKey("u1"))).toBeNull();
+    expect(auth.signOut).toHaveBeenCalled();
+  });
 });

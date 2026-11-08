@@ -17,7 +17,7 @@ export type OutfitSlot = "top" | "bottom" | "one_piece" | "outerwear" | "footwea
 
 export type Events = {
   // First 3 Pieces onboarding
-  onboarding_started: { entry?: "auto" | "starter" | "home" };
+  onboarding_started: { entry?: "auto" | "starter" | "home" | "reminder" };
   path_selected: { path: Path };
   photos_collected: { count: number; camera: number; library: number };
   detection_completed: { photos: number; found: number; unusable: number; limited: number };
@@ -27,6 +27,12 @@ export type Events = {
   popup_shown: { saved: number };
   popup_add_more: Record<string, never>;
   onboarding_abandoned: { step: "start" | "photos" | "pick" | "processing" | "outfit" };
+  // The one-time morning outfit reminder (src/morningReminder). choice = the answer on the card, not iOS
+  // permission; scheduled = iOS accepted the schedule, not that it was shown; tapped = an actual tap.
+  onboarding_nudge_choice: { choice: "accepted" | "declined" };
+  onboarding_nudge_scheduled: { slot: "morning" };
+  onboarding_nudge_cancelled: { reason: "three_saved" | "opt_out" | "sign_out" | "permission_off" | "outfit_off" };
+  onboarding_nudge_tapped: { entry: "notification" };
   // App use
   app_opened: { cold: boolean };
   screen_viewed: { screen: Screen };

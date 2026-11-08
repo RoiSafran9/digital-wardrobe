@@ -6,6 +6,7 @@ import { Icon, type IconName } from "../../src/components/Icon";
 import { GlyphTile } from "../../src/components/onboarding/GlyphTile";
 import { PressScale } from "../../src/motion/PressScale";
 import { useCredits } from "../../src/credits/CreditsProvider";
+import { useMorningReminder } from "../../src/morningReminder/MorningReminderProvider";
 import { haptics } from "../../src/haptics";
 import { Rise } from "../../src/motion/Rise";
 import { pickPhoto } from "../../src/photoPicker";
@@ -58,12 +59,14 @@ function TypeCard({ icon, title, caption, selected, onPress }: { icon: IconName;
 // the photo tray (Path A); someone wearing them → an outfit photo (Path B, only when the server offers it).
 export default function FirstPiecesStart() {
   const router = useRouter();
-  const { entry } = useLocalSearchParams<{ entry?: string }>();
+  // photoType=worn (the morning reminder's tap): "Someone wearing them" is already chosen, nothing else starts.
+  const { entry, photoType } = useLocalSearchParams<{ entry?: string; photoType?: string }>();
   const { outfit, generation } = useCredits();
-  const [away, setAway] = useState(false);
+  const { noteIntroSeen } = useMorningReminder();
+  const [away, setAway] = useState(photoType === "worn");
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { track("onboarding_started", { entry: entryOf(entry) }); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { track("onboarding_started", { entry: entryOf(entry) }); noteIntroSeen(); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
   const close = () => {
     track("onboarding_abandoned", { step: "start" });
     if (router.canGoBack()) router.back(); else router.replace("/");

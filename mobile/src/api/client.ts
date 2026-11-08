@@ -2,6 +2,7 @@ import { File } from "expo-file-system";
 import { API_BASE_URL, UNREACHABLE, parseJsonOrThrow } from "./http";
 import type { GarmentScan, RunResponse, ItemsResponse, ClosetItem, Credits, ItemPatch, OutfitFilters, OutfitResult, OutfitScan, OutfitSuggestions, Prices, SwapOptions, Turn } from "./types";
 import * as v1 from "./v1";
+import { reportSavedCount } from "../morningReminder/closetSignal";
 
 export { API_BASE_URL };
 
@@ -56,7 +57,13 @@ export async function generateFromGarmentScan(scanId: string, indexes: number[],
 }
 
 export async function getItems(): Promise<ItemsResponse> {
-  if (account) return v1.getItems(account);
+  if (account) {
+    const asked = account;
+    const response = await v1.getItems(asked);
+    // The saved closet's size, for the one-time morning reminder (only if the account didn't change meanwhile).
+    if (account === asked) reportSavedCount(response.items.length);
+    return response;
+  }
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}/items`);

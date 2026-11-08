@@ -11,7 +11,9 @@ import { useAuth } from "../../src/auth/AuthProvider";
 import { Icon, type IconName } from "../../src/components/Icon";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { NAME_MAX, useProfile, validName } from "../../src/profile";
-import { useNotify } from "../../src/notifications";
+import { DENIED, useNotify } from "../../src/notifications";
+import { useMorningReminder } from "../../src/morningReminder/MorningReminderProvider";
+import { whenLabel } from "../../src/morningReminder/schedule";
 import { BILLING_OFF, creditsLabel, entryLabel, entrySign, visibleEntries } from "../../src/credits/credits";
 import { EASE_OUT, Rise } from "../../src/motion/Rise";
 import { colors, hitSlopFor, radius, TAB_BAR_HEIGHT, type, weight } from "../../src/theme";
@@ -121,6 +123,9 @@ export default function AccountScreen() {
   const { billing, prices, credits, outfit, refresh } = useCredits();
   const { mode, setMode } = useAppearance();
   const notify = useNotify();
+  const reminder = useMorningReminder();
+  const reminderOn = reminder.record?.status === "scheduled";
+  const reminderDenied = reminder.notice === "denied" || (reminder.record?.status === "denied" && !reminderOn);
   const [how, setHow] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -146,6 +151,7 @@ export default function AccountScreen() {
     try {
       await deleteAccount();
       setConfirmDelete(false);
+      await reminder.forgetAccount();  // its pending morning reminder and this phone's record of it
       await signOut();
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : "Couldn't delete your account. Try again.");
@@ -189,6 +195,20 @@ export default function AccountScreen() {
         } />
       ) : null}
       {notify.error ? <Text style={{ ...type.footnote, color: colors.destructive, paddingHorizontal: 16, paddingBottom: 10 }}>{notify.error}</Text> : null}
+      {/* The one-time morning reminder: its own consent, separate from Notify when ready. */}
+      {status === "signedIn" && reminder.enabled && (reminderOn || reminder.armable) ? (
+        <>
+          <Row label="Morning reminder" accessory={
+            <Switch accessibilityLabel="Morning reminder" value={reminderOn} disabled={reminder.busy}
+              onValueChange={(on) => void (on ? reminder.accept() : reminder.turnOff())} />
+          } />
+          <Text style={{ ...type.footnote, color: reminder.error ? colors.destructive : colors.secondaryLabel, paddingHorizontal: 16, paddingBottom: 10 }}>
+            {reminder.error ?? (reminderOn && reminder.record?.fireAt
+              ? `Set for ${whenLabel(reminder.record.fireAt, new Date())}. One reminder only.`
+              : reminderDenied ? DENIED : "One reminder at 8:45 AM to add what you're wearing. Separate from Notify when ready.")}
+          </Text>
+        </>
+      ) : null}
       <Row label="Help & Support" accessory="chevron" onPress={() => router.push("/help")} />
       <Row label="Privacy" accessory="chevron" onPress={() => router.push("/privacy")} />
     </GroupedList>

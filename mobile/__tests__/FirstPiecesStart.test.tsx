@@ -7,13 +7,16 @@ import { getItems, getPendingItems } from "../src/api/client";
 import { CreditsContext, type CreditsValue } from "../src/credits/CreditsProvider";
 import { offeredKey, useFirstPiecesOffer } from "../src/firstPieces/offer";
 import { pickPhoto } from "../src/photoPicker";
+import { track } from "../src/activity/track";
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, back: mockBack, replace: jest.fn(), canGoBack: () => true }),
-  useLocalSearchParams: () => ({ entry: "auto" }),
+  useLocalSearchParams: () => mockParams,
 }));
+let mockParams: Record<string, string> = { entry: "auto" };
+jest.mock("../src/activity/track", () => ({ track: jest.fn(), trackPermission: jest.fn() }));
 jest.mock("../src/photoPicker", () => ({ pickPhoto: jest.fn() }));
 jest.mock("../src/api/client", () => ({ getItems: jest.fn(), getPendingItems: jest.fn() }));
 
@@ -22,7 +25,7 @@ function renderStart(value: Partial<CreditsValue> = {}) {
   return render(<CreditsContext.Provider value={full}><FirstPiecesStart /></CreditsContext.Provider>);
 }
 
-beforeEach(async () => { jest.clearAllMocks(); await AsyncStorage.clear(); });
+beforeEach(async () => { jest.clearAllMocks(); await AsyncStorage.clear(); mockParams = { entry: "auto" }; });
 
 test("asks what the photo shows; clothes by themselves goes to the photo tray", async () => {
   await renderStart();
@@ -41,6 +44,27 @@ test("someone wearing them: Take Photo or Choose from Library, in onboarding mod
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/capture/camera", params: { mode: "outfit", onboarding: "1" } });
   await act(async () => fireEvent.press(screen.getByRole("button", { name: "Choose from Library" })));
   expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/outfit/detect", params: { uri: "file:///outfit.jpg", flow: "outfit", onboarding: "1" } });
+});
+
+test("from the morning reminder: Someone wearing them is already chosen, with Take Photo and Choose from Library; nothing starts by itself", async () => {
+  mockParams = { entry: "reminder", photoType: "worn" };
+  await renderStart();
+  expect(screen.getByRole("button", { name: "Someone wearing them. A person wearing the clothes or shoes." }).props.accessibilityState).toMatchObject({ selected: true });
+  expect(screen.getByRole("button", { name: "Take Photo" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Choose from Library" })).toBeTruthy();
+  expect(mockPush).not.toHaveBeenCalled();
+  expect(pickPhoto).not.toHaveBeenCalled();
+  expect(track).toHaveBeenCalledWith("onboarding_started", { entry: "reminder" });
+  // Clothes by themselves is still there for a laid-out photo.
+  await fireEvent.press(screen.getByRole("button", { name: "Clothes by themselves. Laid out, hanging, or shoes together." }));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/first-pieces/photos", params: { entry: "reminder" } });
+});
+
+test("photoType=worn without outfit photos falls back to the garment path", async () => {
+  mockParams = { entry: "reminder", photoType: "worn" };
+  await renderStart({ outfit: false });
+  expect(screen.queryByRole("button", { name: "Take Photo" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Get Started" })).toBeTruthy();
 });
 
 test("without the outfit feature there is no question, only the garment path", async () => {

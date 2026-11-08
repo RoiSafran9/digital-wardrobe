@@ -6,6 +6,8 @@ import { NotConfigured } from "./components/NotConfigured";
 import { CaptureJobsProvider } from "./store/captureJobs";
 import { FirstPiecesProvider } from "./firstPieces/FirstPiecesProvider";
 import { OnboardingProvider } from "./onboarding";
+import { MorningReminderProvider } from "./morningReminder/MorningReminderProvider";
+import { MorningReminderTaps } from "./morningReminder/MorningReminderTaps";
 import { colors } from "./theme";
 
 // Signed-in (or local-mode) people see the tabs; everyone else only Sign In.
@@ -50,15 +52,19 @@ export function RootNavigator() {
 }
 
 // Per-user app state (the capture in progress, the First 3 Pieces round) starts fresh whenever the signed-in person changes.
+// The morning reminder is not keyed: it has to see the account change to cancel the previous one's reminder.
 export function AppShell() {
   const { userId } = useAuth();
   return (
     <OnboardingProvider>
-      <CaptureJobsProvider key={userId ?? "local"}>
-        <FirstPiecesProvider key={userId ?? "local"} userId={userId}>
-          <RootNavigator />
-        </FirstPiecesProvider>
-      </CaptureJobsProvider>
+      <MorningReminderProvider>
+        <MorningReminderTaps />
+        <CaptureJobsProvider key={userId ?? "local"}>
+          <FirstPiecesProvider key={userId ?? "local"} userId={userId}>
+            <RootNavigator />
+          </FirstPiecesProvider>
+        </CaptureJobsProvider>
+      </MorningReminderProvider>
     </OnboardingProvider>
   );
 }

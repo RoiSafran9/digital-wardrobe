@@ -18,7 +18,19 @@ require("react-native").Image.getSize = jest.fn((uri, success) => { if (success)
 jest.mock("expo-notifications", () => ({
   setNotificationHandler: jest.fn(),
   requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  getPermissionsAsync: jest.fn(async () => ({ granted: false })),
   getExpoPushTokenAsync: jest.fn(async () => ({ data: "ExponentPushToken[test]" })),
+  // Local scheduling (the morning reminder): nothing pending unless a test schedules it.
+  scheduleNotificationAsync: jest.fn(async () => "local-1"),
+  cancelScheduledNotificationAsync: jest.fn(async () => {}),
+  cancelAllScheduledNotificationsAsync: jest.fn(async () => {}),
+  getAllScheduledNotificationsAsync: jest.fn(async () => []),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  getLastNotificationResponse: jest.fn(() => null),
+  clearLastNotificationResponse: jest.fn(),
+  DEFAULT_ACTION_IDENTIFIER: "expo.modules.notifications.actions.DEFAULT",
+  SchedulableTriggerInputTypes: { DATE: "date", TIME_INTERVAL: "timeInterval", CALENDAR: "calendar", DAILY: "daily" },
+  IosAuthorizationStatus: { NOT_DETERMINED: 0, DENIED: 1, AUTHORIZED: 2, PROVISIONAL: 3, EPHEMERAL: 4 },
 }));
 // expo-image has no native view under Jest: draw a plain Image with the same source and error callback.
 jest.mock("expo-image", () => {

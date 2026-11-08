@@ -70,3 +70,26 @@ def test_photo_type_correction_takes_only_the_listed_types_and_stages():
     for bad in ({"from": "file:///photo.jpg"}, {"to": "outfit"}, {"stage": "camera"}, {"uri": "file:///photo.jpg"}):
         with pytest.raises(ValueError):
             activity.validate("add_photo_type_corrected", {**props, **bad})
+
+
+def test_morning_reminder_events_take_only_fixed_choices():
+    """The one-time morning reminder (mobile/src/morningReminder): closed vocabularies, no ids, times or text."""
+    assert activity.validate("onboarding_nudge_choice", {"choice": "accepted"}) == {"choice": "accepted"}
+    assert activity.validate("onboarding_nudge_choice", {"choice": "declined"}) == {"choice": "declined"}
+    assert activity.validate("onboarding_nudge_scheduled", {"slot": "morning"}) == {"slot": "morning"}
+    for reason in ("three_saved", "opt_out", "sign_out", "permission_off", "outfit_off"):
+        assert activity.validate("onboarding_nudge_cancelled", {"reason": reason}) == {"reason": reason}
+    assert activity.validate("onboarding_nudge_tapped", {"entry": "notification"}) == {"entry": "notification"}
+    assert activity.validate("onboarding_started", {"entry": "reminder"}) == {"entry": "reminder"}
+    for event, props in [
+        ("onboarding_nudge_choice", {"choice": "maybe"}),
+        ("onboarding_nudge_scheduled", {"slot": "08:45"}),                    # never the time
+        ("onboarding_nudge_scheduled", {"slot": "morning", "at": 1731055500}),
+        ("onboarding_nudge_cancelled", {"reason": "user typed text"}),
+        ("onboarding_nudge_tapped", {"entry": "notification", "notification_id": "local-1"}),
+        ("onboarding_nudge_tapped", {"entry": "push"}),
+    ]:
+        with pytest.raises(ValueError):
+            activity.validate(event, props)
+    assert {activity.PRIVACY_CATEGORIES[e] for e in ("onboarding_nudge_choice", "onboarding_nudge_scheduled",
+                                                     "onboarding_nudge_cancelled", "onboarding_nudge_tapped")} == {"onboarding"}

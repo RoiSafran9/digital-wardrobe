@@ -3,5 +3,6 @@ export { track } from "../activity/track";
 export type { Events, Path } from "../activity/track";
 import type { Path } from "../activity/track";
 
-export const entryOf = (raw: string | undefined) => (raw === "auto" || raw === "starter" || raw === "home" ? raw : undefined);
+export const entryOf = (raw: string | undefined) =>
+  (raw === "auto" || raw === "starter" || raw === "home" || raw === "reminder" ? raw : undefined);
 export const pathOf = (raw: string | undefined): Path | undefined => (raw === "near" || raw === "not_near" ? raw : undefined);

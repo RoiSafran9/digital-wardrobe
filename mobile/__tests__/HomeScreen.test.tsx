@@ -190,3 +190,31 @@ test("the Build My Look entry is hidden when the server has it off, or in local 
   await screen.findByText("Your closet starts here");
   expect(screen.queryByText("Build My Look")).toBeNull();
 });
+
+test("the one-time morning reminder card sits under Add clothes for a signed-in account with fewer than 3 pieces", async () => {
+  const AsyncStorage = jest.requireMock("@react-native-async-storage/async-storage");
+  const { act } = require("@testing-library/react-native");
+  const { AuthContext } = require("../src/auth/AuthProvider");
+  const { MorningReminderProvider } = require("../src/morningReminder/MorningReminderProvider");
+  const { OFFER_TITLE } = require("../src/morningReminder/MorningReminderCard");
+  const { reportSavedCount } = require("../src/morningReminder/closetSignal");
+  const { offeredKey } = require("../src/firstPieces/offer");
+  await AsyncStorage.clear();
+  await AsyncStorage.setItem(offeredKey("u1"), "1");
+  (getItems as jest.Mock).mockResolvedValue({ items: [item("item_0", "shirt", [])] });
+  const auth = { status: "signedIn", email: null, userId: "u1", sendCode: jest.fn(), verifyCode: jest.fn(), signInWithPassword: jest.fn(), signOut: jest.fn() };
+  const credits: CreditsValue = { billing: false, prices: {}, outfit: true, refresh: jest.fn(async () => {}),
+    credits: { balance: 1, held: 0, available: 1, granted: 1, used: 0, next_before: null, entries: [] } };
+  await render(
+    <AuthContext.Provider value={auth}>
+      <CreditsContext.Provider value={credits}>
+        <MorningReminderProvider enabled><CaptureJobsProvider><HomeScreen /></CaptureJobsProvider></MorningReminderProvider>
+      </CreditsContext.Provider>
+    </AuthContext.Provider>,
+  );
+  expect(await screen.findByText("Add clothes")).toBeTruthy();
+  await act(async () => { reportSavedCount(1); await new Promise((r) => setTimeout(r, 0)); });
+  expect(await screen.findByText(OFFER_TITLE)).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Remind Me" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Not Now" })).toBeTruthy();
+});

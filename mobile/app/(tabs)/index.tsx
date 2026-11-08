@@ -20,6 +20,9 @@ import { pickPhoto } from "../../src/photoPicker";
 import { colors, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
 import { Backdrop, Button, Glass } from "../../src/ui";
 import { track, useScreenViewed } from "../../src/activity/track";
+import { MorningReminderCard } from "../../src/morningReminder/MorningReminderCard";
+import { useCaptureJobs } from "../../src/store/captureJobs";
+import { useFirstPiecesMaybe } from "../../src/firstPieces/FirstPiecesProvider";
 
 export type CategoryRow = { name: string; count: number; first: ClosetItem; items: ClosetItem[] };
 
@@ -70,6 +73,10 @@ export default function HomeScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pickError, setPickError] = useState<string | null>(null);
   const [open, setOpen] = useState<{ list: ClosetItem[]; index: number } | null>(null);
+  // The morning reminder card waits while pieces are being made.
+  const { current: capture } = useCaptureJobs();
+  const firstPieces = useFirstPiecesMaybe();
+  const making = capture?.status === "running" || !!firstPieces?.round;
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -132,11 +139,15 @@ export default function HomeScreen() {
           {empty ? (
             <View style={{ marginTop: 12 }}>
               <HomeEmpty outfit={!!outfitOn}
-                onFirstPieces={status === "signedIn" ? () => router.push({ pathname: "/first-pieces", params: { entry: "home" } }) : undefined}><AddRows {...actions} /></HomeEmpty>
+                onFirstPieces={status === "signedIn" ? () => router.push({ pathname: "/first-pieces", params: { entry: "home" } }) : undefined}>
+                <MorningReminderCard hidden={making} />
+                <AddRows {...actions} />
+              </HomeEmpty>
             </View>
           ) : (
             <>
               <AddHero caption={caption} onFlat={camera("garments")} onWorn={outfitOn ? camera("outfit") : undefined} />
+              <MorningReminderCard hidden={making} style={{ marginTop: 10 }} />
               {status === "signedIn" && outfitBuilder && items.length ? (
                 <LookHero count={items.length} pieces={lookPieces(rows)} onPress={() => router.push("/build-my-look")} />
               ) : null}

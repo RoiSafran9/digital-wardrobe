@@ -1,6 +1,6 @@
 # KIPS — One-Time Morning Outfit Reminder (First-Five Beta)
 
-**Status:** implementation-ready proposal, **documentation only**. No reminder has been enabled, scheduled, or sent by this documentation commit.
+**Status:** **implemented behind an app flag that is off** (`EXPO_PUBLIC_MORNING_REMINDER`, unset = off), 2026-11-08; automated tests pass; **real-iPhone QA NOT RUN**. No reminder has been enabled for beta users, scheduled for a tester or sent. See [05-IMPLEMENTATION-AND-DEVICE-QA.md](05-IMPLEMENTATION-AND-DEVICE-QA.md).
 **Prepared:** 2026-11-08.
 **Baseline inspected:** GitHub `main` at `3577a0462b258ff8df3065ed68be00eaeea3856c`; Claude must pull latest safe `main` before implementing.
 **Product goal:** help a new KIPS user resume building their wardrobe by attaching one small action to an existing morning habit: photographing what they are already wearing.
@@ -24,6 +24,7 @@
 2. [02-TECHNICAL-IMPLEMENTATION.md](02-TECHNICAL-IMPLEMENTATION.md) — actual repo surfaces, implementation order, device-bound lifecycle, navigation and analytics.
 3. [03-ACCEPTANCE-QA-AND-PILOT.md](03-ACCEPTANCE-QA-AND-PILOT.md) — tests, privacy and first-five learning.
 4. [04-CLAUDE-CODE-IMPLEMENTATION-PROMPT.md](04-CLAUDE-CODE-IMPLEMENTATION-PROMPT.md) — copy/paste instructions to implement with Claude Code.
+5. [05-IMPLEMENTATION-AND-DEVICE-QA.md](05-IMPLEMENTATION-AND-DEVICE-QA.md) — what was built, where, the test map and the signed-iPhone QA script.
 
 ## Current implementation verified in repo
 

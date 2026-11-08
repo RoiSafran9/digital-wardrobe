@@ -3,6 +3,7 @@ import { generateFromGarmentScan, postRun } from "../api/client";
 import { NO_CREDITS } from "../api/v1";
 import type { ClosetItem, RunResponse } from "../api/types";
 import { useCredits } from "../credits/CreditsProvider";
+import { noteItemsSaved } from "../morningReminder/closetSignal";
 
 export type CaptureJob = {
   id: number;
@@ -54,7 +55,10 @@ export function CaptureJobsProvider({ children }: { children: React.ReactNode })
     (fromScan
       ? generateFromGarmentScan(fromScan.scanId, fromScan.indexes, fromScan.unitPrice, onProgress)
       : postRun(photoUri, maxFronts, onProgress))
-      .then((result) => { if (latest.current === id) setCurrent((c) => (c?.id === id ? { ...c, status: "done", result } : c)); })
+      .then((result) => {
+        noteItemsSaved();  // the server saved this photo's pieces
+        if (latest.current === id) setCurrent((c) => (c?.id === id ? { ...c, status: "done", result } : c));
+      })
       .catch((e) => {
         if (latest.current !== id) return;
         const error = e instanceof Error ? e.message : "Upload failed. Try again.";

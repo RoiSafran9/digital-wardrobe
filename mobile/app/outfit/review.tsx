@@ -18,6 +18,7 @@ import { haptics } from "../../src/haptics";
 import { AI_NOTE } from "../../src/outfit/outfit";
 import { useCaptureJobs } from "../../src/store/captureJobs";
 import { idsParam } from "../../src/firstPieces/celebrate";
+import { noteItemsSaved } from "../../src/morningReminder/closetSignal";
 import { colors, hitSlopFor, radius, type, weight } from "../../src/theme";
 import { Button, CostSheet, GlassScreen, GroupedList, InsufficientCreditsSheet, Row } from "../../src/ui";
 import { useScreenViewed } from "../../src/activity/track";
@@ -84,6 +85,7 @@ export default function ReviewScreen() {
       }
       haptics.success();
       void refresh();
+      if (kept.length) noteItemsSaved();  // kept pieces are now in the closet
       // First 3 Pieces: the kept pieces open the closet with the first-success popup instead of Saved.
       if (onboarding === "1" && kept.length) {
         router.replace({ pathname: "/closet", params: { celebrate: "1", ids: idsParam(kept.map((i) => i.item_id)), path: "not_near", at: String(Date.now()) } });

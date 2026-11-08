@@ -5,6 +5,7 @@ import { pollJob, scanGarments, startGarmentGenerate } from "../api/client";
 import { NO_CREDITS, SIGNED_OUT } from "../api/v1";
 import { useCredits } from "../credits/CreditsProvider";
 import { track } from "./analytics";
+import { noteItemsSaved } from "../morningReminder/closetSignal";
 import {
   allPieces, defaultSelection, jobKey, jobsFor, photoStateFor, summarize, toggle as toggleRule,
   type JobPlan, type RoundJob, type RoundPhoto, type RoundPiece, type RoundSummary,
@@ -102,6 +103,7 @@ export function FirstPiecesProvider({ userId, children }: { userId: string | nul
     try {
       const job = await pollJob(jobId, (progress) => { void updateJob(key, { progress }); });
       await updateJob(key, { status: "succeeded", itemIds: job.item_ids, error: undefined });
+      noteItemsSaved();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong — try again";
       if (message === SIGNED_OUT) return;  // another account now; the record stays with its owner

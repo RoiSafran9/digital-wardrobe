@@ -53,7 +53,7 @@ REFUSAL_REASONS = {402: "no_credits", 409: "conflict", 429: "rate_limited", 503:
 # event -> {prop: COUNT, BOOL or the set of allowed values}
 APP_EVENTS: dict[str, dict[str, object]] = {
     # First 3 Pieces onboarding (unchanged from api/events.py)
-    "onboarding_started": {"entry": {"auto", "starter", "home"}},
+    "onboarding_started": {"entry": {"auto", "starter", "home", "reminder"}},
     "path_selected": {"path": PATH},
     "photos_collected": {"count": COUNT, "camera": COUNT, "library": COUNT},
     "detection_completed": {"photos": COUNT, "found": COUNT, "unusable": COUNT, "limited": COUNT},
@@ -63,6 +63,12 @@ APP_EVENTS: dict[str, dict[str, object]] = {
     "popup_shown": {"saved": COUNT},
     "popup_add_more": {},
     "onboarding_abandoned": {"step": {"start", "photos", "pick", "processing", "outfit"}},
+    # The one-time morning outfit reminder (mobile/src/morningReminder): the card's answer, iOS accepting the
+    # schedule (not that it was shown), its cancellation and an actual tap. Fixed choices only.
+    "onboarding_nudge_choice": {"choice": {"accepted", "declined"}},
+    "onboarding_nudge_scheduled": {"slot": {"morning"}},
+    "onboarding_nudge_cancelled": {"reason": {"three_saved", "opt_out", "sign_out", "permission_off", "outfit_off"}},
+    "onboarding_nudge_tapped": {"entry": {"notification"}},
     # App use
     "app_opened": {"cold": BOOL},
     "screen_viewed": {"screen": SCREENS},
@@ -100,7 +106,8 @@ EVENTS = {**APP_EVENTS, **SERVER_EVENTS}
 PRIVACY_CATEGORIES = {
     **{e: "onboarding" for e in ("onboarding_started", "path_selected", "photos_collected", "detection_completed",
                                  "generation_started", "first_garment_saved", "first_3_saved", "popup_shown",
-                                 "popup_add_more", "onboarding_abandoned")},
+                                 "popup_add_more", "onboarding_abandoned", "onboarding_nudge_choice",
+                                 "onboarding_nudge_scheduled", "onboarding_nudge_cancelled", "onboarding_nudge_tapped")},
     **{e: "app use" for e in ("app_opened", "screen_viewed", "cost_sheet", "out_of_credits_shown", "permission",
                               "capture_source", "add_photo_type_corrected", "item_opened", "push_enabled", "push_disabled",
                               "look_opened", "swap_applied", "look_generation_requested", "swap_options_requested")},

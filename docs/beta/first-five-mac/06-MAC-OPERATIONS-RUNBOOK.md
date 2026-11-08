@@ -47,7 +47,7 @@ With both URLs, "local ok, public down" prints `→ … Cloudflare Tunnel, DNS o
 ### Following one failure (request → job → model calls)
 
 1. From the tester (with consent): approximate time. From `python -m scripts.usage_report --user <email or id>`: the `client_error … request_id=<32 hex>` line and/or the `[job <id>]` on the job lines.
-2. Server log for the request: `grep <request_id> logs/server.jsonl*` → the `request` line (route template, status, ms) and, if it queued work, `job queued` / `job reused` with `job_id`. A `request_id` from the phone that is **not** in the log means the call never reached the Mac (network, tunnel or Mac down) — record it as such.
+2. Server log for the request: `grep <request_id> logs/server.jsonl*` → the `request` line (route template, status, ms) and, if it queued work, `job queued` / `job reused` with `job_id`. A `request_id` from the phone that is **not** in the log means the call never reached the Mac (network, tunnel or Mac down) — record it as such. Its `status` tells which: 502/530 (and the usage report's `http_5xx by status` line) mean Cloudflare answered because the Mac was asleep or the tunnel was reconnecting; a 500 the server log doesn't have is unexpected.
 3. Worker for the job: `grep <job_id> logs/server.jsonl*` → `job claimed` (attempt, seconds since created), `job will retry` (failure code, ms), `job finished` (outcome, failure code, ms, `ai_calls`, `est_cost_usd`), plus any traceback (redacted).
 4. Cost per model call: the `ai_calls` rows with that `job_id` (Supabase SQL editor, or the timeline's AI cost line).
 5. Never paste raw log lines into a public issue: they carry the account id. Summarise operation, build, failure code, timings and redacted ids.

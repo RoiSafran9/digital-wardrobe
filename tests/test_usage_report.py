@@ -2,7 +2,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 import pytest
-from scripts.usage_report import main, metrics, timeline
+from scripts.usage_report import main, metrics, report, timeline
 
 NOW = datetime(2026, 11, 1, 12, 0, tzinfo=timezone.utc)
 T0 = datetime(2026, 10, 20, 9, 0, tzinfo=timezone.utc)
@@ -104,6 +104,20 @@ def test_reliability(rows):
     assert r["jobs"]["garment_scan"]["failed"] == 1 and r["jobs"]["garment_scan"]["failures"] == {"photo_quality": 1}
     assert r["jobs"]["outfit_generate"]["p50_seconds"] == 60
     assert r["refusals"] == {"no_credits": 1} and r["client_errors"] == {"network": 1}
+
+
+def test_server_errors_are_counted_by_http_status(rows):
+    rows["events"] += [event("u1", "client_error", 5, where="global", kind="http_5xx", request_id="ab" * 16, status=530),
+                       event("u1", "client_error", 6, where="global", kind="http_5xx", request_id="cd" * 16, status=530),
+                       event("u2", "client_error", 7, where="global", kind="http_5xx", status=502),
+                       event("u2", "client_error", 8, where="global", kind="http_5xx")]  # an older app: no status
+    m = metrics(rows)
+    assert m["reliability"]["http_5xx_statuses"] == {"530": 2, "502": 1, "unknown": 1}
+    assert "  http_5xx by status: 502 1, 530 2, unknown 1" in report(m)
+
+
+def test_no_server_errors_no_status_line(rows):
+    assert "http_5xx by status" not in report(metrics(rows))
 
 
 def test_ai_cost(rows):

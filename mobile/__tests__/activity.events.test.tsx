@@ -61,13 +61,13 @@ test("the cost sheet records confirm and cancel with the action and piece count"
 const HEX32 = /^[0-9a-f]{32}$/;
 const sentId = (i = 0) => ((global.fetch as jest.Mock).mock.calls[i][1].headers as Record<string, string>)["X-Request-ID"];
 
-test("a server error answer is reported once, with the request id; event sends never report themselves", async () => {
+test("a server error answer is reported once, with the request id and status; event sends never report themselves", async () => {
   const account = { getToken: async () => "t", onUnauthorized: jest.fn() };
   global.fetch = jest.fn(async () => ({ status: 503, ok: false, json: async () => ({ error: "paused" }) })) as never;
   await expect(v1.getProfile(account)).rejects.toThrow();
   await expect(v1.postEventBatch(account, { app_version: "1", events: [] })).rejects.toThrow();
   expect(sentId()).toMatch(HEX32);
-  expect(tracked()).toEqual([["client_error", { where: "global", kind: "http_5xx", request_id: sentId() }]]);
+  expect(tracked()).toEqual([["client_error", { where: "global", kind: "http_5xx", request_id: sentId(), status: 503 }]]);
 });
 
 test("an unreachable server is reported as a network error, with the id the request would have had", async () => {

@@ -15,7 +15,7 @@ in the reports.* views for the Supabase SQL editor.
   Retention     accounts active (any event, a job or a credit hold/charge — app opens count) on day 1, on
                 days 6–8 and 8–14 after their sign-up day (UTC), among those old enough; weekly active accounts
   Features      accounts and counts per feature; cost-sheet cancel rate per action
-  Reliability   jobs per kind: success, failure codes, p50/p95 queued→finished seconds; refusals; app errors
+  Reliability   jobs per kind: success, failure codes, p50/p95 queued→finished seconds; refusals; app errors (http_5xx by HTTP status)
   AI cost       estimated USD (pipeline/costs.py): total, per job kind, per account, per credit charged,
                 share on the fallback image model, share spent on retries
   Credits       granted, charged and released (credit_ledger)
@@ -148,7 +148,14 @@ def _reliability(rows: dict) -> dict:
                 key = (e["props"] or {}).get(prop, "unknown")
                 out[key] = out.get(key, 0) + 1
         return out
-    return {"jobs": jobs, "refusals": count("refused", "reason"), "client_errors": count("client_error", "kind")}
+    statuses: dict[str, int] = {}  # http_5xx by status: 502/530 came from Cloudflare (Mac or tunnel away)
+    for e in rows["events"]:
+        props = e["props"] or {}
+        if e["event"] == "client_error" and props.get("kind") == "http_5xx":
+            key = str(props.get("status", "unknown"))
+            statuses[key] = statuses.get(key, 0) + 1
+    return {"jobs": jobs, "refusals": count("refused", "reason"), "client_errors": count("client_error", "kind"),
+            "http_5xx_statuses": statuses}
 
 
 def _ai_cost(rows: dict) -> dict:
@@ -308,6 +315,9 @@ def report(m: dict) -> str:
         lines.append(f"  {kind:<18} {j['jobs']} jobs · {rate(j['success_rate'])} ok · p50 {p50} · p95 {p95} · {fails}")
     lines += [f"  refused: " + (", ".join(f"{k} {n}" for k, n in sorted(m["reliability"]["refusals"].items())) or "—"),
               f"  app errors: " + (", ".join(f"{k} {n}" for k, n in sorted(m["reliability"]["client_errors"].items())) or "—"),
+              *([f"  http_5xx by status: " + ", ".join(f"{k} {n}" for k, n in sorted(m["reliability"]["http_5xx_statuses"].items()))
+                 + "  (502/530 = Cloudflare: the Mac or tunnel was away; not in the server log)"]
+                if m["reliability"].get("http_5xx_statuses") else []),
               "", "AI cost (estimated):",
               f"  total {usd(c['total_usd'])} over {c['calls']} calls ({c['failed_calls']} failed)",
               *[f"  {k:<18} {usd(v)}" for k, v in sorted(c["by_kind"].items())],

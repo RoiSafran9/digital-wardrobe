@@ -7,7 +7,7 @@ records.
 
 Privacy: only the account id (already the owner of every row), the event name, allow-listed counts, booleans
 and fixed choices, the account's own job/item ids, the app version, a per-session random id and, on an app
-error, the random request id of the call that failed. No photos,
+error, the random request id of the call that failed and, for a server error answer, its HTTP status. No photos,
 free text, garment details, emails, device ids or IP addresses. The server stamps the time. Rows go with the
 account and are purged after RETENTION_DAYS. Keep the privacy page's "Usage records" in step with this list.
 """
@@ -18,6 +18,7 @@ log = logging.getLogger("wardrobe.activity")
 COUNT = "count"  # a whole number 0..MAX_COUNT
 BOOL = "bool"
 REQUEST_ID = "request_id"  # the random X-Request-ID the app sent (32 lowercase hex): links an error to a log line
+HTTP_5XX = "http_5xx"  # the HTTP status of a server error answer, 500..599 (502/530 from Cloudflare, not FastAPI)
 MAX_COUNT = 1000
 
 PATH = {"near", "not_near"}
@@ -79,7 +80,8 @@ APP_EVENTS: dict[str, dict[str, object]] = {
     "add_photo_type_corrected": {"from": PHOTO_TYPES, "to": PHOTO_TYPES,
                                  "stage": {"garment_preview", "outfit_detect", "outfit_pick"}},
     "item_opened": {"has_back": BOOL, "has_turn": BOOL},
-    "client_error": {"where": SCREENS, "kind": {"render", "unhandled", "network", "http_5xx"}, "request_id": REQUEST_ID},
+    "client_error": {"where": SCREENS, "kind": {"render", "unhandled", "network", "http_5xx"}, "request_id": REQUEST_ID,
+                     "status": HTTP_5XX},
     "look_opened": {"position": COUNT},
     "swap_applied": {"slot": OUTFIT_SLOTS},
 }
@@ -139,6 +141,9 @@ def validate(event: str, props: dict | None, source: str = "app") -> dict:
         elif rule == BOOL:
             if type(value) is not bool:
                 raise ValueError(f"{name} must be true or false")
+        elif rule == HTTP_5XX:
+            if type(value) is not int or not 500 <= value <= 599:
+                raise ValueError(f"{name} must be an HTTP status from 500 to 599")
         elif rule == REQUEST_ID:
             if not isinstance(value, str) or len(value) != 32 or not set(value) <= set("0123456789abcdef"):
                 raise ValueError(f"{name} must be 32 lowercase hex characters")

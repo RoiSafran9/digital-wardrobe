@@ -105,7 +105,8 @@ async function send(account: Account, path: string, init: RequestInit = {}, requ
   }
   const echoed = response.headers?.get?.("X-Request-ID");
   const id = echoed && /^[0-9a-f]{32}$/.test(echoed) ? echoed : requestId;
-  if (response.status >= 500 && !quiet) track("client_error", { where: "global", kind: "http_5xx", request_id: id });
+  // status tells a Cloudflare answer (502/530: the Mac or tunnel was away) from a FastAPI 500.
+  if (response.status >= 500 && !quiet) track("client_error", { where: "global", kind: "http_5xx", request_id: id, status: response.status });
   if (response.status === 401) {
     account.onUnauthorized();
     throw new ApiError(SESSION_EXPIRED, id, operation, 401);

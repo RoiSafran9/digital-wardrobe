@@ -43,8 +43,9 @@ export type Events = {
   // Change Photo Type before paid generation (src/photoType.ts): the two photo types and where it happened.
   add_photo_type_corrected: { from: "laid_out" | "worn"; to: "laid_out" | "worn"; stage: "garment_preview" | "outfit_detect" | "outfit_pick" };
   item_opened: { has_back: boolean; has_turn: boolean };
-  // request_id: the X-Request-ID of the call that failed (src/api/v1.ts), to find it in the server log.
-  client_error: { where: Screen | "global"; kind: "render" | "unhandled" | "network" | "http_5xx"; request_id?: string };
+  // request_id: the X-Request-ID of the call that failed (src/api/v1.ts), to find it in the server log;
+  // status: the HTTP status of an http_5xx answer (500..599).
+  client_error: { where: Screen | "global"; kind: "render" | "unhandled" | "network" | "http_5xx"; request_id?: string; status?: number };
   // Build My Look
   look_opened: { position: number };
   swap_applied: { slot: OutfitSlot };

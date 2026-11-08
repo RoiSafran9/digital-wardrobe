@@ -102,15 +102,23 @@ def test_client_errors_may_carry_only_a_well_formed_request_id():
         activity.validate("item_opened", {"has_back": True, "has_turn": False, "request_id": RID})
 
 
+def test_a_server_error_may_carry_its_http_status():
+    props = {"where": "global", "kind": "http_5xx", "request_id": RID, "status": 530}
+    assert activity.validate("client_error", props) == props
+    for bad in (499, 600, 200, "530", 530.0, True):
+        with pytest.raises(ValueError):
+            activity.validate("client_error", {**props, "status": bad})
+
+
 def test_an_app_error_with_its_request_id_is_stored(capture):  # noqa: F811
     store = MemoryStore()
     client = v1_client(store)
     body = {"app_version": "1.0.4", "events": [{"event": "client_error", "client_event_id": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e",
                                                 "client_at": "2026-11-02T10:00:00Z", "session_id": None,
-                                                "props": {"where": "global", "kind": "http_5xx", "request_id": RID}}]}
+                                                "props": {"where": "global", "kind": "http_5xx", "request_id": RID, "status": 502}}]}
     assert client.post("/v1/events/batch", json=body, headers=as_user(A)).json()["stored"] == 1
     [row] = [e for e in store.events if e["event"] == "client_error"]
-    assert row["props"]["request_id"] == RID
+    assert row["props"]["request_id"] == RID and row["props"]["status"] == 502
 
 
 def test_health_says_how_many_jobs_are_running():

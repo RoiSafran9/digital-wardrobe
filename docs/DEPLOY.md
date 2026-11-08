@@ -33,6 +33,7 @@ It needs ~2 GB RAM for the background-removal model; one instance is enough for 
 | `WARDROBE_FREE_SCANS_PER_HOUR` | free scans per account per hour (default 30) |
 | `WARDROBE_SWEEP_EVERY_HOURS` | `6` — Storage cleanup inside the worker |
 | `WARDROBE_WORKER_CONCURRENCY` | `2` — jobs the worker runs at once (1–4, default 1); lets the photos of one round overlap |
+| `WARDROBE_OUTFIT_CONCURRENCY` | leave unset (default `2`) — image calls one outfit job makes at once (1–2); set `1` to go back to one at a time without a code change |
 | `PORT` | whatever the host gives (default 8000) |
 
 **Health check:** `GET /healthz` (no sign-in) — queue depth, oldest queued job, worker heartbeat, AI jobs today, jobs failed in the last hour, the image model in use.

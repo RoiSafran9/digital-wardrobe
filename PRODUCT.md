@@ -23,7 +23,7 @@ Fidelity to the owner's actual garment, not an idealized product shot. Each piec
 ## Operating Context
 
 - Clothes are laid out at home (bed, floor), shot from above with the phone camera or picked from the photo library; one piece or a few side by side.
-- Processing takes roughly 15–60 seconds per photo; the user waits in the app.
+- Processing takes roughly 15–60 seconds per photo; the user can wait in the app or keep browsing while the server works (a banner shows the job's real status).
 - Optional extra photo of an item's back, added right after capture or later from the closet.
 - Items can be corrected by hand (type, colors, pattern, details, printed text) or removed.
 

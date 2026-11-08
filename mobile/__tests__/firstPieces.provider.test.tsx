@@ -83,14 +83,29 @@ test("a confirmed round is written down before each job is sent, one job per pho
 test("when every job finishes the round is settled and the record removed", async () => {
   await scannedRound([[10, 20]]);
   startMock.mockResolvedValue(job("job-1"));
-  pollMock.mockImplementation(async (_id: string, onProgress: (p: object) => void) => {
-    onProgress({ done: 1, total: 2 });
+  pollMock.mockImplementation(async (_id: string, watch: { onJob: (j: object) => void }) => {
+    watch.onJob({ ...job("job-1", "running"), progress: { done: 1, total: 2, made: 1 } });
     return job("job-1", "succeeded", ["i1"]);
   });
   await act(() => fp.submitRound(null));
   await flush();
   expect(fp.summary).toEqual({ requested: 2, made: 1, notMade: 1, running: 0, unsent: 0, settled: true });
   expect(await stored()).toBeNull();
+});
+
+test("a running job shows the server's own phase and count; a lost connection keeps it running, not failed", async () => {
+  await scannedRound([[10, 20]]);
+  startMock.mockResolvedValue(job("job-1"));
+  let watch: { onJob: (j: object) => void; onOffline: (o: boolean) => void } | null = null;
+  pollMock.mockImplementation((_id: string, w: typeof watch) => { watch = w; return new Promise(() => {}); });
+  await act(() => fp.submitRound(null));
+  await act(async () => watch!.onJob({ ...job("job-1", "queued") }));
+  expect(fp.round?.jobs[0]).toMatchObject({ status: "running", phase: "queued" });
+  await act(async () => watch!.onJob({ ...job("job-1", "running"), progress: { done: 1, total: 2, made: 0 } }));
+  expect(fp.round?.jobs[0]).toMatchObject({ status: "running", phase: "running", progress: { done: 1, total: 2, made: 0 } });
+  await act(async () => watch!.onOffline(true));
+  expect(fp.round?.jobs[0]).toMatchObject({ status: "running", offline: true });
+  expect(fp.summary?.settled).toBe(false);
 });
 
 test("not enough credits on the second job: the first keeps going, the rest wait unsent", async () => {
@@ -127,7 +142,7 @@ test("after a restart, sent jobs are followed again and unsent ones sent under t
   startMock.mockResolvedValue(job("job-b"));
   await mount();
   await flush();
-  expect(pollMock).toHaveBeenCalledWith("job-a", expect.any(Function));
+  expect(pollMock).toHaveBeenCalledWith("job-a", expect.objectContaining({ alive: expect.any(Function) }));
   expect(startMock).toHaveBeenCalledTimes(1);
   expect(startMock).toHaveBeenCalledWith("s1", [0, 1], 1, "fp:r9:s1");
   expect(fp.round?.jobs.map((j) => j.status)).toEqual(["running", "running"]);

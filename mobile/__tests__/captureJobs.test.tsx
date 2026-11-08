@@ -14,8 +14,8 @@ function Probe() {
     <>
       <Text>{current ? `${current.status}${current.insufficient ? " insufficient" : ""}${current.result ? ` ${current.result.run_id}` : ""}${current.error ? ` ${current.error}` : ""}` : "idle"}</Text>
       <Pressable onPress={() => start("file:///a.jpg", 2)}><Text>start</Text></Pressable>
-      <Pressable onPress={retry}><Text>retry</Text></Pressable>
-      <Pressable onPress={clear}><Text>clear</Text></Pressable>
+      <Pressable onPress={() => retry()}><Text>retry</Text></Pressable>
+      <Pressable onPress={() => clear()}><Text>clear</Text></Pressable>
     </>
   );
 }

@@ -21,6 +21,7 @@ import { markCelebrated, parseIds, wasCelebrated } from "../../src/firstPieces/c
 import { FIRST_GOAL } from "../../src/firstPieces/round";
 import { pathOf, track } from "../../src/firstPieces/analytics";
 import { useScreenViewed } from "../../src/activity/track";
+import { JobsBanner } from "../../src/components/jobs/JobsBanner";
 
 // Closet grid: 16pt sides like Home, 12pt between the two columns.
 const SIDE = 16;
@@ -144,6 +145,7 @@ export default function ClosetScreen() {
           {items.length === 1 ? "1 piece" : `${items.length} pieces`}
         </Text>
       </View>
+      <JobsBanner style={{ marginTop: 0 }} />
       {loadError ? (
         <Glass radius={radius.list} style={{ padding: 16, gap: 10 }}>
           <Text style={{ ...type.subhead, color: colors.destructive }}>{loadError}</Text>

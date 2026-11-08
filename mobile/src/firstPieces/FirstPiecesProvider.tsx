@@ -2,7 +2,9 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { randomUUID } from "expo-crypto";
 import { pollJob, scanGarments, startGarmentGenerate } from "../api/client";
-import { NO_CREDITS, SIGNED_OUT } from "../api/v1";
+import { NO_CREDITS } from "../api/v1";
+import { useOnForeground } from "../api/wake";
+import { isInterruption, stateOf } from "../jobs/jobState";
 import { useCredits } from "../credits/CreditsProvider";
 import { track } from "./analytics";
 import { noteItemsSaved } from "../morningReminder/closetSignal";
@@ -99,21 +101,38 @@ export function FirstPiecesProvider({ userId, children }: { userId: string | nul
     return commit({ ...r, jobs: r.jobs.map((j) => (j.key === key ? { ...j, ...change } : j)) });
   }, [commit]);
 
+  // Followed until the server says the job is over: a lost connection or a slow job keeps it "running"
+  // (marked offline while unreachable), never "failed", so Try Again can't start a second paid job for it.
+  const following = useRef(new Set<string>());
   const follow = useCallback(async (key: string, jobId: string) => {
+    if (following.current.has(jobId)) return;
+    following.current.add(jobId);
     try {
-      const job = await pollJob(jobId, (progress) => { void updateJob(key, { progress }); });
-      await updateJob(key, { status: "succeeded", itemIds: job.item_ids, error: undefined });
+      const job = await pollJob(jobId, {
+        alive: () => alive.current,
+        onJob: (j) => {
+          const phase = stateOf(j);
+          if (phase === "queued" || phase === "running") void updateJob(key, { phase, offline: false, ...(j.progress ? { progress: j.progress } : {}) });
+        },
+        onOffline: (offline) => { void updateJob(key, { offline }); },
+      });
+      await updateJob(key, { status: "succeeded", itemIds: job.item_ids, error: undefined, offline: false,
+                             ...(job.progress ? { progress: job.progress } : {}) });
       noteItemsSaved();
     } catch (e) {
+      if (isInterruption(e)) return;  // signed out or session expired: the record stays with its owner, unchanged
       const message = e instanceof Error ? e.message : "Something went wrong — try again";
-      if (message === SIGNED_OUT) return;  // another account now; the record stays with its owner
-      // Still running after the poll limit: keep it "running"; the record lets a later resume pick it up.
-      if (/still working/i.test(message)) return void updateJob(key, { error: message });
-      await updateJob(key, { status: "failed", error: message });
+      await updateJob(key, { status: "failed", error: message, offline: false });  // the server's own answer
     } finally {
-      void refresh();
+      following.current.delete(jobId);
+      if (alive.current) void refresh();
     }
   }, [updateJob, refresh]);
+
+  // Back in the app: follow again any sent job that stopped being followed.
+  useOnForeground(() => {
+    for (const j of roundRef.current?.jobs ?? []) if (j.jobId && j.status === "running") void follow(j.key, j.jobId);
+  });
 
   // Sends the round's unsent jobs one by one, in order, each under its own kept key.
   const send = useCallback(async () => {
@@ -121,7 +140,8 @@ export function FirstPiecesProvider({ userId, children }: { userId: string | nul
       if (job.status !== "unsent") continue;
       try {
         const started = await startGarmentGenerate(job.plan.scanId, job.plan.indexes, job.unitPrice, job.key);
-        await updateJob(job.key, { jobId: started.id, status: "running", error: undefined });
+        const phase = stateOf(started);
+        await updateJob(job.key, { jobId: started.id, status: "running", error: undefined, phase: phase === "queued" ? "queued" : "running" });
         void follow(job.key, started.id);
       } catch (e) {
         const message = e instanceof Error ? e.message : "Something went wrong — try again";

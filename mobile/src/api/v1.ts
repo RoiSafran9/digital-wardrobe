@@ -4,7 +4,8 @@ import { randomUUID } from "expo-crypto";
 import { File } from "expo-file-system";
 import { API_BASE_URL, UNREACHABLE, sentence } from "./http";
 import { track } from "../activity/track";
-import type { BackView, ClosetItem, Credits, GarmentScan, ItemFacts, ItemPatch, ItemsResponse, OutfitFilters, OutfitResult, OutfitScan, OutfitSuggestions, Prices, RunItem, RunResponse, SwapOptions, Tier, Turn } from "./types";
+import { nap } from "./wake";
+import type { BackView, ClosetItem, Credits, GarmentScan, ItemFacts, ItemPatch, ItemsResponse, OutfitFilters, OutfitScan, OutfitSuggestions, Prices, RunItem, RunResponse, SwapOptions, Tier, Turn } from "./types";
 
 export type Account = {
   getToken: () => Promise<string | null>;
@@ -18,6 +19,13 @@ export const NOT_ACCOUNT_MODE = "Your wardrobe server isn't in account mode. Res
 export const SIGNED_OUT = "You signed out.";
 export const STILL_WORKING = "Still working on it — check your closet in a minute.";
 export const NO_CREDITS = "Not enough AI credits. Ask the app owner for more.";
+export const JOB_GONE = "This job isn't available any more.";
+export const STOPPED = "Stopped following this job.";
+
+// How a started job is followed (pollJob). There is no time limit: a job is over only when the server says
+// so. After slowAfterMs the checks slow down; while the server can't be reached they back off to
+// maxBackoffMs. Coming back to the app wakes every follower at once (src/api/wake.ts).
+export const followTiming = { pollMs: POLL_MS, slowAfterMs: POLL_LIMIT_MS, slowPollMs: 10_000, maxBackoffMs: 30_000 };
 
 type V1Item = {
   id: string;
@@ -35,6 +43,7 @@ type V1Item = {
 
 export type Job = {
   id: string;
+  kind?: string;
   status: "queued" | "running" | "succeeded" | "failed" | "canceled";
   error: string | null;
   item_ids: string[];
@@ -45,7 +54,18 @@ export type Job = {
   progress?: JobProgress | null;
 };
 
-export type JobProgress = { done: number; total: number };
+// done: pieces processed (made or failed) of total; made: of those, how many got a catalog image (null from
+// an older server). Written by the worker as each piece finishes; never estimated on the phone.
+export type JobProgress = { done: number; total: number; made?: number | null };
+
+// What a follower is told: every answer (onJob, onProgress) and whether the server can be reached (onOffline).
+// alive() false stops it (the provider that started it went away).
+export type JobWatch = {
+  onJob?: (job: Job) => void;
+  onProgress?: (p: JobProgress) => void;
+  onOffline?: (offline: boolean) => void;
+  alive?: () => boolean;
+};
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -76,8 +96,10 @@ export function operationOf(method: string | undefined, path: string): string {
 
 // A failed call: the friendly message the screens show, plus what diagnosis needs and nothing more — the
 // request id, the operation and the HTTP status (0: no answer). Never the body, the token or the full URL.
+// answered: the wardrobe server itself answered (a JSON body, or its 402), not Cloudflare or a crash page.
 export class ApiError extends Error {
-  constructor(message: string, readonly requestId: string, readonly operation: string, readonly status: number) {
+  constructor(message: string, readonly requestId: string, readonly operation: string, readonly status: number,
+              readonly answered: boolean = false) {
     super(message);
     this.name = "ApiError";
   }
@@ -118,9 +140,16 @@ async function send(account: Account, path: string, init: RequestInit = {}, requ
 async function read<T>(response: Response): Promise<T> {
   if (response.status === 204) return undefined as T;
   const { requestId, operation } = sent.get(response) ?? { requestId: "", operation: "" };
-  const fail = (message: string) => new ApiError(message, requestId, operation, response.status);
+  const fail = (message: string, answered = true) => new ApiError(message, requestId, operation, response.status, answered);
   if (response.status === 402) throw fail(NO_CREDITS);
-  const body = await response.json();
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    // Not JSON: Cloudflare's HTML page (502/530/524 while the Mac or tunnel is away) or a crash's plain text.
+    // An ApiError with its status, so followers treat it as "no answer yet", never as the job failing.
+    throw fail(`Something went wrong (error ${response.status}). Try again.`, false);
+  }
   if (!response.ok) {
     const error = (body as { error?: string } | null)?.error;
     if (error) throw fail(sentence(error));
@@ -184,7 +213,7 @@ export async function postRun(account: Account, current: () => Account | null, p
 }
 
 // A finished garment job as the run the Results screen shows: its new pieces, what failed, what was left out.
-async function runFromJob(account: Account, job: Job): Promise<RunResponse> {
+export async function runFromJob(account: Account, job: Job): Promise<RunResponse> {
   const { items } = await getItems(account);
   const byId = new Map(items.map((i) => [i.item_id, i]));
   const pieces: RunItem[] = job.item_ids.flatMap((id) => {
@@ -233,10 +262,61 @@ export async function startGarmentGenerate(account: Account, scanId: string, ind
   }
 }
 
-// Waits for a job started earlier (also one from before an app restart) until it succeeds; throws its sentence if not.
+export async function getJob(account: Account, jobId: string): Promise<Job> {
+  return call<Job>(account, `/v1/jobs/${encodeURIComponent(jobId)}`);
+}
+
+// Follows a job started earlier (also one from before an app restart) until the server says it is over.
+// Resolves with the succeeded job; throws the job's own sentence if it failed, JOB_GONE if the server
+// doesn't know it (for this account), SIGNED_OUT if the account changed and STOPPED if watch.alive() went
+// false. Lost connections, server errors and long waits are never failures: it keeps checking, slower,
+// and tells watch.onOffline.
 export async function pollJob(account: Account, current: () => Account | null, jobId: string,
-                              onProgress?: (p: JobProgress) => void): Promise<Job> {
-  return waitFor(account, current, await call<Job>(account, `/v1/jobs/${encodeURIComponent(jobId)}`), onProgress);
+                              watch: JobWatch = {}): Promise<Job> {
+  const started = Date.now();
+  let backoff = followTiming.pollMs;
+  let offline = false;
+  const setOffline = (value: boolean) => {
+    if (value !== offline) { offline = value; watch.onOffline?.(value); }
+  };
+  for (let first = true; ; first = false) {
+    if (!first) {
+      const slow = Date.now() - started >= followTiming.slowAfterMs;
+      await nap(offline ? backoff : slow ? followTiming.slowPollMs : followTiming.pollMs);
+    }
+    if (watch.alive && !watch.alive()) throw new Error(STOPPED);
+    if (current() !== account) throw new Error(SIGNED_OUT);
+    let job: Job;
+    try {
+      job = await getJob(account, jobId);
+    } catch (e) {
+      if (watch.alive && !watch.alive()) throw new Error(STOPPED);
+      if (e instanceof ApiError && e.status === 404 && e.answered) throw new ApiError(JOB_GONE, e.requestId, e.operation, 404, true);
+      if (e instanceof Error && (e.message === SESSION_EXPIRED || e.message === SIGNED_OUT)) throw e;
+      // Anything else (no answer, Cloudflare, a server error, an unreadable answer) says nothing about the job.
+      backoff = offline ? Math.min(backoff * 2, followTiming.maxBackoffMs) : followTiming.pollMs;
+      setOffline(true);
+      continue;
+    }
+    if (watch.alive && !watch.alive()) throw new Error(STOPPED);
+    setOffline(false);
+    watch.onJob?.(job);
+    if (job.progress) watch.onProgress?.(job.progress);
+    if (job.status === "succeeded") return job;
+    if (job.status === "failed" || job.status === "canceled") throw new Error(sentence(job.error ?? "Something went wrong — try again"));
+  }
+}
+
+// A garment job from a photo, under a key the caller keeps (written down before this is sent).
+export async function startGarmentJob(account: Account, photoUri: string, maxFronts: number | undefined, key: string): Promise<Job> {
+  const fields: Record<string, string> = maxFronts ? { max_fronts: String(maxFronts) } : {};
+  return startJob(account, "/v1/jobs", photoUri, fields, key);
+}
+
+// After an app restart that interrupted a send: the same key without the photo finds the job if the server
+// got it. A 400 ("no photo provided") means it never arrived, so nothing was made or held.
+export async function reconnectGarmentJob(account: Account, key: string): Promise<Job> {
+  return call<Job>(account, "/v1/jobs", { method: "POST", headers: { "Idempotency-Key": key } });
 }
 
 // Front images for the picked pieces of a pre-scan, at the per-front price the user saw.
@@ -362,27 +442,22 @@ export async function scanOutfit(account: Account, current: () => Account | null
   }
 }
 
-// Stage 2: make images for the picked garments only. unitPrice is the per-image price the user saw
-// (null while billing is off); the server refuses with 409 if it changed. Results wait for review.
-export async function generateOutfit(account: Account, current: () => Account | null, scanId: string,
-                                     candidateIds: string[], unitPrice: number | null,
-                                     corrections: Record<string, string> = {}): Promise<OutfitResult> {
-  const key = randomUUID();
+// Stage 2: start images for the picked garments only, under a key the caller wrote down first (the same key
+// sent again returns the same job, never a second one or a second hold). unitPrice is the per-image price the
+// user saw (null while billing is off); the server refuses with 409 if it changed. Results wait for review.
+export async function startOutfitGenerate(account: Account, scanId: string, candidateIds: string[], unitPrice: number | null,
+                                          corrections: Record<string, string>, key: string): Promise<Job> {
   const attempt = () => call<Job>(account, `${scanPath(scanId)}/generate`, {
     method: "POST", headers: { "Idempotency-Key": key, "Content-Type": "application/json" },
     body: JSON.stringify({ candidate_ids: candidateIds, expected_unit_price: unitPrice,
                            ...(Object.keys(corrections).length ? { corrections } : {}) }),
   });
-  let started: Job;
   try {
-    started = await attempt();
+    return await attempt();
   } catch (e) {
     if (!(e instanceof Error && e.message === UNREACHABLE)) throw e;
-    started = await attempt();
+    return attempt();
   }
-  const job = await waitFor(account, current, started);
-  const items = await Promise.all(job.item_ids.map((id) => call<V1Item>(account, `/v1/items/${encodeURIComponent(id)}`)));
-  return { items: items.map(toClosetItem), failed: job.failed };
 }
 
 // A garment the scan missed: the area the user marked (photo pixels) and its type. Free; returns the scan.

@@ -89,7 +89,9 @@ export type RoundJob = {
   status: "unsent" | "running" | "succeeded" | "failed";
   itemIds?: string[];
   error?: string;
-  progress?: { done: number; total: number };
+  progress?: { done: number; total: number; made?: number | null };  // the server's count, never estimated
+  phase?: "queued" | "running";  // while running: the server's own status
+  offline?: boolean;             // the last check got no answer; it keeps trying
 };
 
 export type RoundSummary = {

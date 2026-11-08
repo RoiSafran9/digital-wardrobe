@@ -17,6 +17,7 @@ import { garmentName } from "../../src/garmentName";
 import { haptics } from "../../src/haptics";
 import { AI_NOTE } from "../../src/outfit/outfit";
 import { useCaptureJobs } from "../../src/store/captureJobs";
+import { useOutfitJobsMaybe } from "../../src/jobs/OutfitJobsProvider";
 import { idsParam } from "../../src/firstPieces/celebrate";
 import { noteItemsSaved } from "../../src/morningReminder/closetSignal";
 import { colors, hitSlopFor, radius, type, weight } from "../../src/theme";
@@ -32,6 +33,9 @@ export default function ReviewScreen() {
   const router = useRouter();
   const { billing, prices, refresh } = useCredits();
   const { setSaved } = useCaptureJobs();
+  // The finished outfit jobs' results are listed here now: they leave the jobs banner.
+  const outfitJobs = useOutfitJobsMaybe();
+  useEffect(() => { outfitJobs?.reviewed(); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
   const [items, setItems] = useState<ClosetItem[] | null>(null);
   const [off, setOff] = useState<Set<string>>(new Set());
   const [at, setAt] = useState(0);

@@ -1,6 +1,6 @@
 import { File } from "expo-file-system";
 import { API_BASE_URL, UNREACHABLE, parseJsonOrThrow } from "./http";
-import type { GarmentScan, RunResponse, ItemsResponse, ClosetItem, Credits, ItemPatch, OutfitFilters, OutfitResult, OutfitScan, OutfitSuggestions, Prices, SwapOptions, Turn } from "./types";
+import type { GarmentScan, RunResponse, ItemsResponse, ClosetItem, Credits, ItemPatch, OutfitFilters, OutfitScan, OutfitSuggestions, Prices, SwapOptions, Turn } from "./types";
 import * as v1 from "./v1";
 import { reportSavedCount } from "../morningReminder/closetSignal";
 
@@ -15,6 +15,9 @@ export function configureApi(config: v1.Account | null): void {
 }
 
 const current = () => account;
+
+// Signed in to the account API: AI work is a server job the app can follow, resume and reconnect to.
+export const isAccountMode = (): boolean => account !== null;
 
 export async function postRun(photoUri: string, maxFronts?: number, onProgress?: (p: v1.JobProgress) => void): Promise<RunResponse> {
   if (account) return v1.postRun(account, current, photoUri, maxFronts, onProgress);
@@ -45,9 +48,27 @@ export async function startGarmentGenerate(scanId: string, indexes: number[], un
   return v1.startGarmentGenerate(account, scanId, indexes, unitPrice, key);
 }
 
-export async function pollJob(jobId: string, onProgress?: (p: v1.JobProgress) => void): Promise<v1.Job> {
+// Follows a job until the server says it is over (no time limit; lost connections are retried). See v1.pollJob.
+export async function pollJob(jobId: string, watch?: v1.JobWatch): Promise<v1.Job> {
   if (!account) throw new Error(PICKING_NEEDS_ACCOUNT);
-  return v1.pollJob(account, current, jobId, onProgress);
+  return v1.pollJob(account, current, jobId, watch);
+}
+
+// A garment photo as a job under a key the caller keeps; reconnect finds it again after a restart.
+export async function startGarmentJob(photoUri: string, maxFronts: number | undefined, key: string): Promise<v1.Job> {
+  if (!account) throw new Error(PICKING_NEEDS_ACCOUNT);
+  return v1.startGarmentJob(account, photoUri, maxFronts, key);
+}
+
+export async function reconnectGarmentJob(key: string): Promise<v1.Job> {
+  if (!account) throw new Error(PICKING_NEEDS_ACCOUNT);
+  return v1.reconnectGarmentJob(account, key);
+}
+
+// A finished garment job as the run the Results screen shows.
+export async function runFromJob(job: v1.Job): Promise<RunResponse> {
+  if (!account) throw new Error(PICKING_NEEDS_ACCOUNT);
+  return v1.runFromJob(account, job);
 }
 
 export async function generateFromGarmentScan(scanId: string, indexes: number[], unitPrice: number | null,
@@ -207,9 +228,10 @@ export async function getOutfitScan(scanId: string): Promise<OutfitScan> {
   return v1.getOutfitScan(signedIn(), scanId);
 }
 
-export async function generateOutfit(scanId: string, candidateIds: string[], unitPrice: number | null,
-                                     corrections: Record<string, string> = {}): Promise<OutfitResult> {
-  return v1.generateOutfit(signedIn(), current, scanId, candidateIds, unitPrice, corrections);
+// Starts images for the picked garments under a key the caller wrote down first; follow it with pollJob.
+export async function startOutfitGenerate(scanId: string, candidateIds: string[], unitPrice: number | null,
+                                          corrections: Record<string, string>, key: string): Promise<v1.Job> {
+  return v1.startOutfitGenerate(signedIn(), scanId, candidateIds, unitPrice, corrections, key);
 }
 
 export async function markRegion(scanId: string, box: { x: number; y: number; width: number; height: number }, category: string): Promise<OutfitScan> {

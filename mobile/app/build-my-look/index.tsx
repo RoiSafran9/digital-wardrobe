@@ -22,6 +22,7 @@ import { track, useScreenViewed } from "../../src/activity/track";
 import { colors, radius, shadow, type, weight } from "../../src/theme";
 import { Button, Glass, GlassScreen, IconButton } from "../../src/ui";
 import { useReducedMotion } from "../../src/useReducedMotion";
+import { JobsBanner } from "../../src/components/jobs/JobsBanner";
 
 // The server takes at most 30 shown looks (api/schemas.OutfitSuggestionsIn); keep the latest.
 const MAX_SHOWN = 30;
@@ -225,6 +226,9 @@ export default function BuildMyLookScreen() {
             <Text numberOfLines={1} accessibilityLabel={`Your choices: ${summary}`} style={{ ...type.footnote, ...weight(600), color: colors.label }}>{summary}</Text>
           </Glass>
         ) : undefined} />
+        <View style={{ paddingHorizontal: 20 }}>
+          <JobsBanner style={{ marginTop: 4 }} />
+        </View>
 
         {phase === "loading_closet" ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>

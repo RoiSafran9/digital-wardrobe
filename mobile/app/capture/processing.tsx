@@ -1,9 +1,9 @@
 import React, { useEffect } from "react";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlowBar, PHOTO_BG } from "../../src/components/capture/FlowChrome";
-import { GARMENT_STAGES, ProcessingCard } from "../../src/components/capture/ProcessingCard";
+import { ProcessingCard } from "../../src/components/capture/ProcessingCard";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { TRY_AS_OUTFIT, isWornRejection } from "../../src/outfit/outfit";
 import { useCaptureJobs } from "../../src/store/captureJobs";
@@ -18,13 +18,17 @@ export const LEAVE_NOTE_NOTIFY = "You can leave this screen. We'll notify you wh
 export default function ProcessingScreen() {
   useScreenViewed("processing");
   const router = useRouter();
-  const { current, retry, clear } = useCaptureJobs();
+  // The newest capture, or an older one still followed (opened from the jobs banner by its id).
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { current: newest, jobs, retry, clear } = useCaptureJobs();
+  const current = id ? jobs.find((j) => String(j.id) === id) ?? null : newest;
   const { billing, outfit: outfitOn, prices } = useCredits();
   const { enabled: notifying } = useNotify();
 
+  // Watching this screen when it finishes: on to the results (an older capture's pieces are in the closet).
   useEffect(() => {
-    if (current?.status === "done") router.replace("/capture/results");
-  }, [current?.status]);
+    if (current?.status === "done") router.replace(current === newest ? "/capture/results" : "/closet");
+  }, [current?.status]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!current) {
     return (
@@ -57,11 +61,11 @@ export default function ProcessingScreen() {
             </Text>
             <View style={{ gap: 6, marginTop: 22 }}>
               {worn ? (
-                <Button title={TRY_AS_OUTFIT} onPress={() => { const uri = current.photoUri; clear(); router.replace({ pathname: "/outfit/detect", params: { uri } }); }} />
+                <Button title={TRY_AS_OUTFIT} onPress={() => { const uri = current.photoUri; clear(current.id); router.replace({ pathname: "/outfit/detect", params: { uri } }); }} />
               ) : (
-                <Button title="Try Again" onPress={retry} />
+                <Button title="Try Again" onPress={() => retry(current.id)} />
               )}
-              <Button title="Back to Preview" variant="text" onPress={() => { const uri = current.photoUri; clear(); router.replace({ pathname: "/capture/preview", params: { uri } }); }} />
+              <Button title="Back to Preview" variant="text" onPress={() => { const uri = current.photoUri; clear(current.id); router.replace({ pathname: "/capture/preview", params: { uri } }); }} />
             </View>
           </ScrollView>
         </SafeAreaView>
@@ -77,18 +81,16 @@ export default function ProcessingScreen() {
         <ScrollView contentContainerStyle={{ paddingTop: 6, paddingBottom: 24 }}>
           <ProcessingCard
             photoUri={current.photoUri}
-            stages={GARMENT_STAGES}
-            startedAt={current.startedAt}
+            view={{ state: current.phase ?? "running", progress: current.progress, offline: current.offline }}
             title={fronts ? `Creating up to ${fronts} catalog ${fronts === 1 ? "image" : "images"}` : "Creating catalog images"}
             note={notifying ? LEAVE_NOTE_NOTIFY : LEAVE_NOTE}
-            count={current.progress}
           />
         </ScrollView>
       </SafeAreaView>
       <InsufficientCreditsSheet
         visible={!!current.insufficient}
         needed={(fronts ?? 1) * (prices.garment ?? 0)}
-        onClose={() => { const uri = current.photoUri; clear(); router.replace({ pathname: "/capture/preview", params: { uri } }); }}
+        onClose={() => { const uri = current.photoUri; clear(current.id); router.replace({ pathname: "/capture/preview", params: { uri } }); }}
       />
     </GlassScreen>
   );

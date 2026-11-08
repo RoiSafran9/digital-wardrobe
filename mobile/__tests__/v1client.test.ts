@@ -1,5 +1,5 @@
-import { API_BASE_URL, BUILD_MY_LOOK_NEEDS_ACCOUNT, DELETE_NEEDS_ACCOUNT, PICKING_NEEDS_ACCOUNT, pollJob, postEvent, scanGarments, startGarmentGenerate, getProfile, setDisplayName, getOutfitSuggestions, getSwapOptions, OUTFIT_NEEDS_ACCOUNT, addBack, configureApi, deleteAccount, deleteItem, generateOutfit, getCredits, getItems, getOutfitScan, getPendingItems, getPrices, getTurn, imageUrl, keepItem, postRun, scanOutfit, startTurn, updateItem } from "../src/api/client";
-import { ApiError, NO_CREDITS, SCAN_EXPIRED, operationOf } from "../src/api/v1";
+import { API_BASE_URL, BUILD_MY_LOOK_NEEDS_ACCOUNT, DELETE_NEEDS_ACCOUNT, PICKING_NEEDS_ACCOUNT, pollJob, postEvent, scanGarments, startGarmentGenerate, getProfile, setDisplayName, getOutfitSuggestions, getSwapOptions, OUTFIT_NEEDS_ACCOUNT, addBack, configureApi, deleteAccount, deleteItem, startOutfitGenerate, startGarmentJob, reconnectGarmentJob, getCredits, getItems, getOutfitScan, getPendingItems, getPrices, getTurn, imageUrl, keepItem, postRun, scanOutfit, startTurn, updateItem } from "../src/api/client";
+import { ApiError, JOB_GONE, NO_CREDITS, SCAN_EXPIRED, SIGNED_OUT, operationOf } from "../src/api/v1";
 import { addedLabel } from "../src/theme";
 
 jest.mock("expo-file-system", () => ({ File: jest.fn().mockImplementation((uri: string) => ({ uri })) }));
@@ -276,21 +276,26 @@ test("an expired scan says so", async () => {
   await expect(getOutfitScan("scan-1")).rejects.toThrow(SCAN_EXPIRED);
 });
 
-test("generating sends the picks and the price the user saw, once per key, and returns the pending items", async () => {
-  jest.useFakeTimers();
+test("generating sends the picks and the price the user saw under the caller's key, again with it when there was no answer", async () => {
   signIn();
   on("POST", "/v1/outfit-scans/scan-1/generate", () => Promise.reject(new TypeError("Network request failed")),
      reply(job("queued", { kind: "outfit_generate" }), 202));
-  on("GET", "/v1/jobs/job-1", reply(job("succeeded", { item_ids: ["i1"], failed: ["c3"] })));
-  on("GET", "/v1/items/i1", reply(v1Item("i1", { origin: "outfit_photo", review_state: "pending" })));
-  const pending = generateOutfit("scan-1", ["c1", "c3"], 1);
-  await jest.advanceTimersByTimeAsync(2000);
-  const result = await pending;
+  const started = await startOutfitGenerate("scan-1", ["c1", "c3"], 1, { c1: "coat" }, "og:k1");
+  expect(started).toMatchObject({ id: "job-1", status: "queued" });
   const posts = calls.filter((c) => c.init.method === "POST");
-  expect(posts.map((c) => (c.init.headers as Record<string, string>)["Idempotency-Key"])).toEqual(["key-1", "key-1"]);
-  expect(JSON.parse(posts[0].init.body as string)).toEqual({ candidate_ids: ["c1", "c3"], expected_unit_price: 1 });
-  expect(result.items[0]).toMatchObject({ item_id: "i1", review_state: "pending" });
-  expect(result.failed).toEqual(["c3"]);
+  expect(posts.map((c) => (c.init.headers as Record<string, string>)["Idempotency-Key"])).toEqual(["og:k1", "og:k1"]);
+  expect(JSON.parse(posts[0].init.body as string)).toEqual({ candidate_ids: ["c1", "c3"], expected_unit_price: 1, corrections: { c1: "coat" } });
+  expect(calls.some((c) => c.url.includes("/v1/jobs/"))).toBe(false);  // starting never waits for the images
+});
+
+test("a garment photo starts under the caller's key; reconnecting sends only the key, no photo", async () => {
+  signIn();
+  on("POST", "/v1/jobs", reply(job("queued"), 202), reply(job("running"), 200));
+  await startGarmentJob("file:///p.jpg", 2, "cap:k1");
+  await reconnectGarmentJob("cap:k1");
+  expect(calls.map((c) => (c.init.headers as Record<string, string>)["Idempotency-Key"])).toEqual(["cap:k1", "cap:k1"]);
+  expect(calls[0].init.body).toBeInstanceOf(FormData);
+  expect(calls[1].init.body).toBeUndefined();
 });
 
 test("pending results and keep go to /v1; outfit needs an account", async () => {
@@ -354,11 +359,85 @@ test("a job started earlier is polled by id with progress until it finishes", as
   on("GET", "/v1/jobs/job-1", reply(job("running", { progress: { done: 1, total: 2 } })),
      reply(job("succeeded", { item_ids: ["i1", "i2"], progress: { done: 2, total: 2 } })));
   const seen: { done: number; total: number }[] = [];
-  const pending = pollJob("job-1", (p) => seen.push(p));
+  const statuses: string[] = [];
+  const pending = pollJob("job-1", { onProgress: (p) => seen.push(p), onJob: (j) => statuses.push(j.status) });
   await jest.advanceTimersByTimeAsync(2000);
   const done = await pending;
   expect(done.item_ids).toEqual(["i1", "i2"]);
   expect(seen).toEqual([{ done: 1, total: 2 }, { done: 2, total: 2 }]);
+  expect(statuses).toEqual(["running", "succeeded"]);
+});
+
+test("following a job has no five-minute limit: a slow job is still followed, never called failed", async () => {
+  jest.useFakeTimers();
+  signIn();
+  const long = Array.from({ length: 200 }, () => reply(job("running", { progress: { done: 0, total: 2 } })));
+  on("GET", "/v1/jobs/job-1", ...long, reply(job("succeeded", { item_ids: ["i1"] })));
+  routes["GET /v1/jobs/job-1"].push(reply(job("succeeded", { item_ids: ["i1"] })));
+  let outcome: string | null = null;
+  pollJob("job-1").then(() => { outcome = "succeeded"; }, (e) => { outcome = `threw ${e.message}`; });
+  await jest.advanceTimersByTimeAsync(6 * 60_000);
+  expect(outcome).toBeNull();  // past the old limit: still following
+  await jest.advanceTimersByTimeAsync(30 * 60_000);
+  expect(outcome).toBe("succeeded");
+  expect(calls.every((c) => (c.init.method ?? "GET") === "GET")).toBe(true);  // never started anything again
+});
+
+test("a lost connection or a Cloudflare error while following is waited out, not reported as a failure", async () => {
+  jest.useFakeTimers();
+  signIn();
+  on("GET", "/v1/jobs/job-1", reply(job("running")), () => Promise.reject(new TypeError("Network request failed")),
+     reply({ error: "origin unreachable" }, 530), reply(job("running", { progress: { done: 1, total: 1, made: 1 } })),
+     reply(job("succeeded", { item_ids: ["i1"] })));
+  const offline: boolean[] = [];
+  const pending = pollJob("job-1", { onOffline: (o) => offline.push(o) });
+  await jest.advanceTimersByTimeAsync(60_000);
+  expect((await pending).item_ids).toEqual(["i1"]);
+  expect(offline).toEqual([true, false]);
+});
+
+test("Cloudflare's HTML page and a crash's plain text while following are waited out, never a failure", async () => {
+  jest.useFakeTimers();
+  signIn();
+  const html = (status: number): Route => () => ({ status, body: undefined });  // json() below throws for these
+  on("GET", "/v1/jobs/job-1", html(530), html(500), html(524), reply(job("succeeded", { item_ids: ["i1"] })));
+  const realFetch = global.fetch as jest.Mock;
+  global.fetch = jest.fn(async (url: string, init: RequestInit = {}) => {
+    const r = await realFetch(url, init);
+    return r.status >= 500 ? { ...r, ok: false, json: async () => { throw new SyntaxError("Unexpected token <"); } } : r;
+  }) as jest.Mock;
+  const offline: boolean[] = [];
+  const pending = pollJob("job-1", { onOffline: (o) => offline.push(o) });
+  await jest.advanceTimersByTimeAsync(60_000);
+  expect((await pending).item_ids).toEqual(["i1"]);
+  expect(offline).toEqual([true, false]);
+});
+
+test("a server's own error is answered=true; an unreadable answer is not", async () => {
+  signIn();
+  on("POST", "/v1/outfit-scans/scan-1/generate", reply({ error: "AI generation is paused for now — your closet still works. Try again later" }, 503));
+  const paused = await startOutfitGenerate("scan-1", ["c1"], null, {}, "og:k").catch((e) => e);
+  expect(paused).toMatchObject({ status: 503, answered: true });
+  const realFetch = global.fetch as jest.Mock;
+  global.fetch = jest.fn(async () => ({ ok: false, status: 502, json: async () => { throw new SyntaxError("<html>"); } })) as jest.Mock;
+  const cloudflare = await startOutfitGenerate("scan-1", ["c1"], null, {}, "og:k").catch((e) => e);
+  expect(cloudflare).toMatchObject({ status: 502, answered: false });
+  global.fetch = realFetch;
+});
+
+test("following stops with JOB_GONE for a job the server doesn't know, and SIGNED_OUT when the account changes", async () => {
+  jest.useFakeTimers();
+  signIn();
+  on("GET", "/v1/jobs/job-1", reply({ error: "not found" }, 404));
+  await expect(pollJob("job-1")).rejects.toThrow(JOB_GONE);
+  on("GET", "/v1/jobs/job-2", reply({ ...job("running"), id: "job-2" }));
+  const pending = pollJob("job-2");
+  const settled = expect(pending).rejects.toThrow(SIGNED_OUT);
+  signIn("tok-b");  // another account now: the old account's job is never asked for with the new token
+  await jest.advanceTimersByTimeAsync(2000);
+  await settled;
+  expect(calls.filter((c) => c.url.endsWith("/v1/jobs/job-2")).map((_, i) => auth(calls.findIndex((c) => c.url.endsWith("/v1/jobs/job-2")) + i)))
+    .toEqual(["Bearer tok-a"]);
 });
 
 test("polling a failed job throws its sentence", async () => {

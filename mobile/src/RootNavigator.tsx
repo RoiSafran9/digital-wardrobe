@@ -5,6 +5,8 @@ import { useAuth } from "./auth/AuthProvider";
 import { NotConfigured } from "./components/NotConfigured";
 import { CaptureJobsProvider } from "./store/captureJobs";
 import { FirstPiecesProvider } from "./firstPieces/FirstPiecesProvider";
+import { OutfitJobsProvider } from "./jobs/OutfitJobsProvider";
+import { useWakeOnForeground } from "./api/wake";
 import { OnboardingProvider } from "./onboarding";
 import { MorningReminderProvider } from "./morningReminder/MorningReminderProvider";
 import { MorningReminderTaps } from "./morningReminder/MorningReminderTaps";
@@ -33,7 +35,9 @@ export function RootNavigator() {
         <Stack.Screen name="first-pieces/processing" options={{ gestureEnabled: false }} />
         <Stack.Screen name="outfit/detect" />
         <Stack.Screen name="outfit/pick" />
+        <Stack.Screen name="outfit/progress" options={{ gestureEnabled: false }} />
         <Stack.Screen name="outfit/review" />
+        <Stack.Screen name="jobs" />
         <Stack.Screen name="help" />
         <Stack.Screen name="privacy" />
         <Stack.Screen name="your-name" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
@@ -51,17 +55,22 @@ export function RootNavigator() {
   );
 }
 
-// Per-user app state (the capture in progress, the First 3 Pieces round) starts fresh whenever the signed-in person changes.
+// Per-user app state (captures, the First 3 Pieces round, outfit photo jobs) starts fresh whenever the signed-in
+// person changes: each provider is keyed by user and reads only that account's stored jobs, so signing out or
+// switching accounts clears the previous account's jobs from view (they stay stored for that account only).
 // The morning reminder is not keyed: it has to see the account change to cancel the previous one's reminder.
 export function AppShell() {
   const { userId } = useAuth();
+  useWakeOnForeground();  // back in the app: every job follower checks the server at once
   return (
     <OnboardingProvider>
       <MorningReminderProvider>
         <MorningReminderTaps />
-        <CaptureJobsProvider key={userId ?? "local"}>
+        <CaptureJobsProvider key={userId ?? "local"} userId={userId}>
           <FirstPiecesProvider key={userId ?? "local"} userId={userId}>
-            <RootNavigator />
+            <OutfitJobsProvider key={userId ?? "local"} userId={userId}>
+              <RootNavigator />
+            </OutfitJobsProvider>
           </FirstPiecesProvider>
         </CaptureJobsProvider>
       </MorningReminderProvider>

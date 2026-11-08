@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { forgetItems } from "../store/itemsCache";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { configureApi } from "../api/client";
-import { postEventBatch, type Account } from "../api/v1";
+import { SIGNED_OUT, postEventBatch, type Account } from "../api/v1";
 import { startActivity, stopActivity } from "../activity/track";
 import { authConfig, type AuthConfig } from "./config";
 import { authErrorMessage, normalizeEmail } from "./messages";
@@ -91,8 +91,15 @@ export function AuthProvider({ children, config = authConfig, client: injected }
       configureApi(null);
       return;
     }
+    const signedIn = state.userId;
     const account: Account = {
-      getToken: async () => (await client.auth.getSession()).data.session?.access_token ?? null,
+      // Only this account's token: a call started for one account (a job being followed or re-sent) never goes
+      // out with the next account's session after a switch.
+      getToken: async () => {
+        const session = (await client.auth.getSession()).data.session;
+        if (session?.user?.id && signedIn && session.user.id !== signedIn) throw new Error(SIGNED_OUT);
+        return session?.access_token ?? null;
+      },
       onUnauthorized: () => { void signOut(); },
     };
     configureApi(account);

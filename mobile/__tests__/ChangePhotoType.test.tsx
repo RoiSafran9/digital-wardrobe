@@ -5,15 +5,17 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-
 import PreviewScreen from "../app/capture/preview";
 import DetectScreen from "../app/outfit/detect";
 import PickScreen from "../app/outfit/pick";
-import { generateFromGarmentScan, generateOutfit, getOutfitScan, scanGarments, scanOutfit } from "../src/api/client";
+import { generateFromGarmentScan, getOutfitScan, scanGarments, scanOutfit, startOutfitGenerate } from "../src/api/client";
 import type { GarmentScan, OutfitCandidate, OutfitScan } from "../src/api/types";
 import { track } from "../src/activity/track";
 import { CreditsContext, type CreditsValue } from "../src/credits/CreditsProvider";
 import { CaptureJobsProvider } from "../src/store/captureJobs";
+import { OutfitJobsProvider } from "../src/jobs/OutfitJobsProvider";
 
 jest.mock("../src/api/client", () => ({ ...jest.requireActual("../src/api/client"),
   scanGarments: jest.fn(), generateFromGarmentScan: jest.fn(), postRun: jest.fn(),
-  scanOutfit: jest.fn(), getOutfitScan: jest.fn(), generateOutfit: jest.fn() }));
+  scanOutfit: jest.fn(), getOutfitScan: jest.fn(), startOutfitGenerate: jest.fn(), pollJob: jest.fn() }));
+const generateOutfit = startOutfitGenerate as jest.Mock;
 jest.mock("../src/activity/track", () => ({ ...jest.requireActual("../src/activity/track"), track: jest.fn() }));
 const mockReplace = jest.fn();
 let mockParams: Record<string, string> = {};
@@ -38,7 +40,7 @@ const FLAT: OutfitScan = { ...WORN, id: "scan-2", scene_kind: "flat" };
 
 function renderWith(ui: React.ReactElement, credits: Partial<CreditsValue> = {}) {
   const value: CreditsValue = { billing: false, prices: {}, credits: null, outfit: true, refresh: jest.fn(async () => {}), ...credits };
-  return render(<CreditsContext.Provider value={value}><CaptureJobsProvider>{ui}</CaptureJobsProvider></CreditsContext.Provider>);
+  return render(<CreditsContext.Provider value={value}><CaptureJobsProvider><OutfitJobsProvider userId="u1">{ui}</OutfitJobsProvider></CaptureJobsProvider></CreditsContext.Provider>);
 }
 const wallet = (available: number) => ({ balance: available, held: 0, available, granted: 10, used: 0, entries: [], next_before: null });
 const CHANGE = { name: "Change Photo Type" };
@@ -197,7 +199,7 @@ describe("outfit scan → clothes by themselves", () => {
   test("gone once the cost is being confirmed or images are being made", async () => {
     mockParams = { scanId: "scan-1", uri: PHOTO };
     (getOutfitScan as jest.Mock).mockResolvedValue(WORN);
-    (generateOutfit as jest.Mock).mockReturnValue(new Promise(() => {}));
+    generateOutfit.mockReturnValue(new Promise(() => {}));
     const view = await renderWith(<PickScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(5) });
     await screen.findByText("Blazer");
     await fireEvent.press(screen.getByRole("button", { name: "Generate" }));

@@ -173,6 +173,15 @@ describe("account API wiring", () => {
     await expect(config.getToken()).resolves.toBe("fresh");
   });
 
+  test("a call still running for one account never gets the next account's token", async () => {
+    const client = fakeClient(session("a@b.com"));
+    await renderWith({ config: URL_CONFIG, client: client as never });
+    await screen.findByText("signedIn|a@b.com|id-a@b.com");
+    const forA = (configureApi as jest.Mock).mock.calls.at(-1)[0];
+    client.auth.getSession.mockResolvedValueOnce({ data: { session: { ...session("b@c.com"), access_token: "b-token" } }, error: null } as never);
+    await expect(forA.getToken()).rejects.toThrow("You signed out.");
+  });
+
   test("an expired session reported by the API signs out", async () => {
     const client = fakeClient(session("a@b.com"));
     await renderWith({ config: URL_CONFIG, client: client as never });

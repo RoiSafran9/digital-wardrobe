@@ -1,14 +1,13 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { generateOutfit, getOutfitScan, markRegion } from "../../src/api/client";
+import { getOutfitScan, markRegion } from "../../src/api/client";
 import { NO_CREDITS } from "../../src/api/v1";
 import type { OutfitCandidate, OutfitScan } from "../../src/api/types";
 import { groupFor } from "../../src/categoryGroups";
 import { ChangePhotoType } from "../../src/components/capture/ChangePhotoType";
 import { FlowBar, FlowFooter } from "../../src/components/capture/FlowChrome";
-import { ProcessingCard, type Stage } from "../../src/components/capture/ProcessingCard";
 import { Icon } from "../../src/components/Icon";
 import { PhotoWithBoxes } from "../../src/components/outfit/PhotoWithBoxes";
 import { creditsLabel } from "../../src/credits/credits";
@@ -23,12 +22,7 @@ import { Button, Chip, CostSheet, Glass, GlassScreen, InsufficientCreditsSheet, 
 import { CAP_TOAST, ROUND_CAP } from "../../src/firstPieces/round";
 import { track } from "../../src/firstPieces/analytics";
 import { useScreenViewed } from "../../src/activity/track";
-
-export const OUTFIT_STAGES: Stage[] = [
-  { label: "Taking them off the photo", at: 0 },
-  { label: "Laying them flat", at: 8 },
-  { label: "Adding final details", at: 20 },
-];
+import { useOutfitJobs } from "../../src/jobs/OutfitJobsProvider";
 
 // Quick types for correcting or marking a garment; the free text takes anything else.
 const TYPE_SHORTCUTS = ["shirt", "t-shirt", "sweater", "jacket", "coat", "jeans", "pants", "skirt", "dress", "shorts", "shoes", "belt", "bag"];
@@ -39,8 +33,10 @@ export function unsure(c: OutfitCandidate): boolean {
 }
 
 // Outfit Photo, between the stages: the garments found on the person. The user picks which to add,
-// confirms the exact price, and only then are images made. Until then Change Photo Type sends the same
-// photo to the garment preview's own free scan (prominent when the scan says the clothes are laid out).
+// confirms the exact price, and only then are images made — as an app-level job (src/jobs), so once the
+// server has it the user is free to leave: its progress screen, Home and the jobs banner follow it. Until
+// then Change Photo Type sends the same photo to the garment preview's own free scan (prominent when the
+// scan says the clothes are laid out).
 export default function PickScreen() {
   useScreenViewed("outfit_pick");
   const { scanId, uri, onboarding } = useLocalSearchParams<{ scanId: string; uri?: string; onboarding?: string }>();
@@ -49,10 +45,12 @@ export default function PickScreen() {
   const toast = useToast();
   const router = useRouter();
   const { billing, prices, credits, refresh } = useCredits();
+  const outfitJobs = useOutfitJobs();
   const [scan, setScan] = useState<OutfitScan | null>(() => (scanId ? cachedScan(scanId) ?? null : null));
   const [picks, setPicks] = useState<string[] | null>(null);
   const [removed, setRemoved] = useState<string[]>([]);
-  const [busy, setBusy] = useState<number | null>(null);  // start time while images are being made
+  const [busy, setBusy] = useState(false);  // while the request is being handed to the server
+  const sending = useRef(false);  // a second tap before the re-render must not start a second paid job
   const [confirming, setConfirming] = useState(false);
   const [short, setShort] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,19 +110,22 @@ export default function PickScreen() {
   };
 
   async function create() {
-    if (!scan) return;
+    if (!scan || sending.current) return;
+    sending.current = true;
     setConfirming(false);
-    setBusy(Date.now());
+    setBusy(true);
     setError(null);
     try {
       const ordered = candidates.map((c) => c.id).filter((id) => selected.includes(id));
       const fixes = Object.fromEntries(Object.entries(corrections).filter(([id]) => ordered.includes(id)));
+      const names = Object.fromEntries(candidates.filter((c) => ordered.includes(c.id))
+        .map((c) => [c.id, candidateTitle(corrections[c.id] ? { ...c, category: corrections[c.id] } : c)]));
       if (cap) track("generation_started", { pieces: ordered.length, photos: 1, round: 1, path: "not_near" });
-      const result = await generateOutfit(scan.id, ordered, unitPrice ?? null, fixes);
+      // Written down before it is sent and sent under one key: leaving now can't lose or repeat it.
+      const job = await outfitJobs.start({ scanId: scan.id, candidateIds: ordered, unitPrice: unitPrice ?? null, corrections: fixes,
+                                           names, photoUri: uri ?? candidates[0]?.preview_url ?? undefined, onboarding: cap !== undefined });
       haptics.success();
-      const failed = result.failed.map((id) => scan.candidates.find((c) => c.id === id)).filter(Boolean)
-        .map((c) => candidateTitle(c as OutfitCandidate).toLowerCase());
-      router.replace({ pathname: "/outfit/review", params: { ...(failed.length ? { failed: failed.join(", ") } : {}), ...(cap ? { onboarding: "1" } : {}) } });
+      router.replace({ pathname: "/outfit/progress", params: { key: job.key } });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong. Try again.";
       if (message === NO_CREDITS) setShort(true);
@@ -133,30 +134,16 @@ export default function PickScreen() {
         setError("The price changed. Check it and confirm again.");
         setConfirming(true);
       } else setError(message);
-      setBusy(null);
     } finally {
+      sending.current = false;
+      setBusy(false);
       void refresh();
     }
   }
 
-  if (busy !== null) {
-    const photo = uri ?? candidates[0]?.preview_url ?? "";
-    return (
-      <GlassScreen>
-        <SafeAreaView style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}>
-            <ProcessingCard photoUri={photo} stages={OUTFIT_STAGES} startedAt={busy} estimateSeconds={12 + selected.length * 10}
-              title={selected.length === 1 ? "Creating 1 catalog image" : `Creating ${selected.length} catalog images`}
-              note="Keep the app open — this takes about half a minute per piece." />
-          </ScrollView>
-        </SafeAreaView>
-      </GlassScreen>
-    );
-  }
-
   // Gone once the cost is being confirmed or images are being made: no type change after paying starts.
   const changeType = (suggested: boolean) => (
-    <ChangePhotoType from="worn" stage="outfit_pick" uri={uri} onboarding={cap !== undefined} suggested={suggested} disabled={confirming || busy !== null} />
+    <ChangePhotoType from="worn" stage="outfit_pick" uri={uri} onboarding={cap !== undefined} suggested={suggested} disabled={confirming || busy} />
   );
   const deselectCount = unitPrice ? Math.max(0, selected.length - Math.floor(available / unitPrice)) : 0;
   return (
@@ -204,7 +191,7 @@ export default function PickScreen() {
               ) : null}
             </View>
             <View style={{ minWidth: 128 }}>
-              <Button title="Generate" size="medium" onPress={request} disabled={!scan || selected.length === 0} />
+              <Button title="Generate" size="medium" onPress={request} loading={busy} disabled={!scan || selected.length === 0 || busy} />
             </View>
           </View>
         </FlowFooter>

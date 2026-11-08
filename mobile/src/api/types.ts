@@ -130,7 +130,6 @@ export type OutfitScan = {
   expires_at: string | null;
 };
 
-export type OutfitResult = { items: ClosetItem[]; failed: string[] };
 
 export type ItemsResponse = {
   items: ClosetItem[];

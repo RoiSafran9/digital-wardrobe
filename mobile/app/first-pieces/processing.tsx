@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { Image, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Image, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { GARMENT_STAGES } from "../../src/components/capture/ProcessingCard";
 import { creditsLabel } from "../../src/credits/credits";
 import { useCredits } from "../../src/credits/CreditsProvider";
 import { useFirstPieces, type Round } from "../../src/firstPieces/FirstPiecesProvider";
 import { idsParam } from "../../src/firstPieces/celebrate";
 import { useNotify } from "../../src/notifications";
 import { colors, radius, type, weight } from "../../src/theme";
-import { Button, CostSheet, Glass, GlassScreen, IconButton, InsufficientCreditsSheet, Shimmer } from "../../src/ui";
+import { Button, CostSheet, Glass, GlassScreen, IconButton, InsufficientCreditsSheet, ProgressBar, Shimmer } from "../../src/ui";
 import { LEAVE_NOTE, LEAVE_NOTE_NOTIFY } from "../capture/processing";
 
 export const ROUND_TITLE = "Creating your first pieces…";
@@ -18,26 +17,31 @@ export const madeIds = (round: Round) => round.jobs.flatMap((j) => j.itemIds ?? 
 
 type Job = Round["jobs"][number];
 
-// Server work with nothing to show yet eases toward 90% on a timer, faster once the server reports
-// pieces done; it never claims to be finished until the job is.
-function jobProgress(job: Job, elapsed: number): number {
-  if (job.status === "succeeded") return 1;
-  if (job.status !== "running") return 0;
-  const timed = 0.9 * (1 - Math.exp(-3 * elapsed / (30 + job.plan.indexes.length * 8)));
-  return job.progress && job.progress.total > 0 ? Math.max(timed, 0.9 * (job.progress.done / job.progress.total)) : timed;
+// What the server says about one photo's job: never a stage or a percentage made up from time.
+export function jobStatusText(job: Job): string {
+  const n = job.plan.indexes.length;
+  if (job.status === "succeeded") return `${Math.min(n, job.itemIds?.length ?? 0)} of ${n} made`;
+  if (job.status === "failed") return "Couldn't be made";
+  if (job.status === "unsent") return "Not started";
+  if (job.offline) return "Reconnecting — still being made";
+  if (!job.jobId) return "Sending…";
+  const p = job.progress;
+  if (p && p.total > 0) {
+    if (p.done >= p.total) return "Saving to your closet…";
+    const failed = p.made !== null && p.made !== undefined ? p.done - p.made : 0;
+    return `${p.done} of ${p.total} done${failed > 0 ? ` · ${failed} couldn't be made` : ""}`;
+  }
+  return job.phase === "queued" ? "Waiting for a free spot…" : "Working on it…";
 }
 
 // One glass row per photo: its thumbnail (blurred under a shimmer until the job is done), the piece
-// count, where the job is, and a thin bar (green once done).
-function JobRow({ job, index, elapsed }: { job: Job; index: number; elapsed: number }) {
+// count, where the job is, and a thin bar only when the server has counted its pieces (green once done);
+// otherwise a spinner.
+function JobRow({ job, index }: { job: Job; index: number }) {
   const n = job.plan.indexes.length;
   const done = job.status === "succeeded";
-  const stage = GARMENT_STAGES.reduce((label, s) => (elapsed >= s.at ? s.label : label), GARMENT_STAGES[0].label);
-  const status = done ? `${Math.min(n, job.itemIds?.length ?? 0)} of ${n} made`
-    : job.status === "failed" ? "Couldn't be made"
-    : job.status === "unsent" ? "Not started"
-    : job.progress ? `${job.progress.done} of ${job.progress.total}` : `${stage}…`;
-  const value = jobProgress(job, elapsed);
+  const status = jobStatusText(job);
+  const counted = job.progress && job.progress.total > 0 ? Math.min(job.progress.done, job.progress.total) / job.progress.total : null;
   return (
     <Glass radius={radius.tile} style={{ padding: 10 }}>
       <View accessible accessibilityLabel={`Photo ${index + 1}, ${status}`} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -49,11 +53,13 @@ function JobRow({ job, index, elapsed }: { job: Job; index: number; elapsed: num
           <Text style={{ ...type.callout, ...weight(600), color: colors.label }}>{`${n} ${n === 1 ? "piece" : "pieces"}`}</Text>
           <Text style={{ ...type.footnote, ...weight(done || job.status === "failed" ? 600 : 400),
                          color: done ? colors.successText : job.status === "failed" ? colors.destructive : colors.secondaryLabel }}>{status}</Text>
-          {job.status === "failed" ? null : (
-            <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.fill, marginTop: 6, overflow: "hidden" }}>
-              <View style={{ width: `${value * 100}%`, height: 6, borderRadius: 3, backgroundColor: done ? colors.success : colors.tint }} />
-            </View>
-          )}
+          {done ? (
+            <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.success, marginTop: 6 }} />
+          ) : job.status === "running" ? (
+            counted !== null
+              ? <View style={{ marginTop: 6 }}><ProgressBar value={counted} height={6} accessibilityLabel={status} /></View>
+              : <ActivityIndicator size="small" color={colors.tint} style={{ alignSelf: "flex-start", marginTop: 4 }} />
+          ) : null}
         </View>
       </View>
     </Glass>
@@ -69,13 +75,6 @@ export default function FirstPiecesProcessing() {
   const { round, summary, sendUnsent, retryFailed, finishRound } = useFirstPieces();
   const [shortSeen, setShortSeen] = useState(false);
   const [confirmPrice, setConfirmPrice] = useState(false);
-  const running = !!round?.jobs.some((j) => j.status === "running");
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    if (!running) return;
-    const timer = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(timer);
-  }, [running]);
 
   const toCloset = () => {
     if (!round) return;
@@ -101,10 +100,9 @@ export default function FirstPiecesProcessing() {
   const errors = [...new Set(round.jobs.filter((j) => j.status === "failed" && j.error).map((j) => j.error as string))];
   const refundNote = billing ? "Credits for pieces that weren't made were returned." : null;
 
-  const elapsed = Math.max(0, (now - round.startedAt) / 1000);
   const rows = (
-    <View style={{ gap: 10, paddingHorizontal: 20 }}>
-      {round.jobs.map((j, i) => <JobRow key={j.key} job={j} index={i} elapsed={elapsed} />)}
+    <View accessibilityLiveRegion="polite" style={{ gap: 10, paddingHorizontal: 20 }}>
+      {round.jobs.map((j, i) => <JobRow key={j.key} job={j} index={i} />)}
     </View>
   );
 

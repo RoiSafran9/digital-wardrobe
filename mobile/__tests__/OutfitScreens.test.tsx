@@ -4,13 +4,19 @@ import * as ImagePicker from "expo-image-picker";
 import PickScreen from "../app/outfit/pick";
 import DetectScreen from "../app/outfit/detect";
 import ReviewScreen from "../app/outfit/review";
-import { deleteItem, generateOutfit, getOutfitScan, getPendingItems, keepItem, markRegion, postRun, regenerateItem, scanOutfit } from "../src/api/client";
+import { deleteItem, getOutfitScan, getPendingItems, keepItem, markRegion, pollJob, postRun, regenerateItem, scanOutfit, startOutfitGenerate } from "../src/api/client";
 import type { ClosetItem, OutfitCandidate, OutfitScan } from "../src/api/types";
+import { ApiError } from "../src/api/v1";
 import { CreditsContext, type CreditsValue } from "../src/credits/CreditsProvider";
 import { CaptureJobsProvider } from "../src/store/captureJobs";
+import { OutfitJobsProvider } from "../src/jobs/OutfitJobsProvider";
 
 jest.mock("expo-image-picker");
 jest.mock("../src/api/client");
+let mockUuid = 0;
+jest.mock("expo-crypto", () => ({ randomUUID: () => `u${++mockUuid}` }));
+const generateOutfit = startOutfitGenerate as jest.Mock;  // the request the pick screen hands to the jobs provider
+const started = (status = "queued") => ({ id: "job-1", status, error: null, item_ids: [], quality: null, failed: [] });
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
@@ -38,14 +44,17 @@ const item = (id: string, category: string): ClosetItem => ({
 
 function withCredits(ui: React.ReactElement, credits: Partial<CreditsValue> = {}) {
   const value: CreditsValue = { billing: false, prices: {}, credits: null, outfit: true, refresh: jest.fn(async () => {}), ...credits };
-  return render(<CreditsContext.Provider value={value}><CaptureJobsProvider>{ui}</CaptureJobsProvider></CreditsContext.Provider>);
+  return render(<CreditsContext.Provider value={value}><CaptureJobsProvider><OutfitJobsProvider userId="u1">{ui}</OutfitJobsProvider></CaptureJobsProvider></CreditsContext.Provider>);
 }
 const wallet = (available: number) => ({ balance: available, held: 0, available, granted: 10, used: 0, entries: [], next_before: null });
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockParams = {};
+  mockUuid = 0;
   (getPendingItems as jest.Mock).mockResolvedValue([]);
+  generateOutfit.mockResolvedValue(started());
+  (pollJob as jest.Mock).mockReturnValue(new Promise(() => {}));
 });
 
 test("the pick screen offers a worn pair of shoes as one piece, leaves mostly hidden pieces unselected and shows the server's price", async () => {
@@ -80,7 +89,7 @@ test("Not a garment takes a detection off the list", async () => {
 test("creating confirms the cost first, then sends only the picks and the price shown", async () => {
   mockParams = { scanId: "scan-1" };
   (getOutfitScan as jest.Mock).mockResolvedValue(SCAN);
-  (generateOutfit as jest.Mock).mockResolvedValue({ items: [item("i1", "blazer")], failed: ["c3"] });
+  generateOutfit.mockResolvedValue(started());
   await withCredits(<PickScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(5) });
   await screen.findByText("Blazer");
   await fireEvent.press(screen.getByRole("button", { name: "Generate" }));
@@ -88,8 +97,9 @@ test("creating confirms the cost first, then sends only the picks and the price 
   expect(screen.getByText("Balance 5 → 3")).toBeTruthy();
   expect(screen.getByText("Detection was free")).toBeTruthy();
   await fireEvent.press(screen.getByRole("button", { name: "Generate · 2 credits" }));
-  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/review", params: { failed: "trousers" } }));
-  expect(generateOutfit).toHaveBeenCalledWith("scan-1", ["c1", "c3"], 1, {});
+  // Accepted by the server: the pick screen hands over to the job's progress screen; the user is free to leave.
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/progress", params: { key: "og:u1" } }));
+  expect(generateOutfit).toHaveBeenCalledWith("scan-1", ["c1", "c3"], 1, {}, "og:u1");
 });
 
 test("too few credits: says how many to deselect; billing off sends no price and asks nothing", async () => {
@@ -103,18 +113,19 @@ test("too few credits: says how many to deselect; billing off sends no price and
   await fireEvent.press(screen.getByRole("button", { name: "Adjust Selection" }));
   await view.unmount();
 
-  (generateOutfit as jest.Mock).mockResolvedValue({ items: [], failed: [] });
+  generateOutfit.mockResolvedValue(started());
   await withCredits(<PickScreen />);
   await screen.findByText("Blazer");
   expect(screen.queryByText(/credit/)).toBeNull();
   await fireEvent.press(screen.getByRole("button", { name: "Generate" }));
-  await waitFor(() => expect(generateOutfit).toHaveBeenCalledWith("scan-1", ["c1", "c3"], null, {}));
+  await waitFor(() => expect(generateOutfit).toHaveBeenCalledWith("scan-1", ["c1", "c3"], null, {}, expect.stringMatching(/^og:/)));
 });
 
 test("a changed price re-opens the cost sheet instead of charging", async () => {
   mockParams = { scanId: "scan-1" };
   (getOutfitScan as jest.Mock).mockResolvedValue(SCAN);
-  (generateOutfit as jest.Mock).mockRejectedValue(new Error("The price changed — check it and confirm again."));
+  // The server's 409: a refusal, so nothing was created and the request is forgotten.
+  generateOutfit.mockRejectedValue(new ApiError("The price changed — check it and confirm again.", "r1", "POST /v1/outfit-scans/{id}/generate", 409, true));
   const value = await withCredits(<PickScreen />, { billing: true, prices: { garment: 1 }, credits: wallet(5) });
   await screen.findByText("Blazer");
   await fireEvent.press(screen.getByRole("button", { name: "Generate" }));
@@ -174,7 +185,7 @@ test("a failed scan offers another photo", async () => {
 test("a corrected type shows on the row and goes with the generate request", async () => {
   mockParams = { scanId: "scan-1" };
   (getOutfitScan as jest.Mock).mockResolvedValue(SCAN);
-  (generateOutfit as jest.Mock).mockResolvedValue({ items: [], failed: [] });
+  generateOutfit.mockResolvedValue(started());
   await withCredits(<PickScreen />);
   await screen.findByText("Blazer");
   await fireEvent.press(screen.getByRole("button", { name: "Edit Blazer" }));
@@ -182,7 +193,7 @@ test("a corrected type shows on the row and goes with the generate request", asy
   await fireEvent.press(screen.getByRole("button", { name: "Done" }));
   expect(screen.getByText("Coat")).toBeTruthy();
   await fireEvent.press(screen.getByRole("button", { name: "Generate" }));
-  await waitFor(() => expect(generateOutfit).toHaveBeenCalledWith("scan-1", ["c1", "c3"], null, { c1: "coat" }));
+  await waitFor(() => expect(generateOutfit).toHaveBeenCalledWith("scan-1", ["c1", "c3"], null, { c1: "coat" }, expect.stringMatching(/^og:/)));
 });
 
 test("marking a missed garment adds it to the list, selected", async () => {
@@ -236,15 +247,15 @@ test("onboarding mode: the detect step carries the mode to the pick screen", asy
 test("onboarding mode picks at most five and carries the mode to review", async () => {
   mockParams = { scanId: "scan-6", onboarding: "1" };
   (getOutfitScan as jest.Mock).mockResolvedValue(SIX);
-  (generateOutfit as jest.Mock).mockResolvedValue({ items: [], failed: [] });
+  generateOutfit.mockResolvedValue(started());
   await withCredits(<PickScreen />);
   await screen.findByText("Blazer");
   expect(screen.getAllByRole("checkbox").map((c) => c.props.accessibilityState.checked)).toEqual([true, true, true, true, true, false]);
   await fireEvent.press(screen.getByLabelText(/^Skirt\./));
   expect(screen.getAllByRole("checkbox")[5].props.accessibilityState.checked).toBe(false);  // the sixth is refused
   await act(async () => fireEvent.press(screen.getByRole("button", { name: "Generate" })));
-  expect(generateOutfit).toHaveBeenCalledWith("scan-6", ["c1", "c2", "c3", "c4", "c5"], null, {});
-  expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/review", params: { onboarding: "1" } });
+  expect(generateOutfit).toHaveBeenCalledWith("scan-6", ["c1", "c2", "c3", "c4", "c5"], null, {}, expect.stringMatching(/^og:/));
+  expect(mockReplace).toHaveBeenCalledWith({ pathname: "/outfit/progress", params: { key: expect.stringMatching(/^og:/) } });
 });
 
 test("outside onboarding the outfit flow keeps its own limits", async () => {

@@ -209,10 +209,30 @@ describe("results and saved", () => {
   });
 });
 
-test("the processing card shows the server's piece count when it has one", async () => {
-  const { ProcessingCard, GARMENT_STAGES } = require("../src/components/capture/ProcessingCard");
-  await render(<ProcessingCard photoUri="file:///p.jpg" stages={GARMENT_STAGES} startedAt={Date.now()} title="t" note="n" count={{ done: 1, total: 3 }} />);
-  expect(screen.getByText("2 of 3")).toBeTruthy();
+test("the processing card shows the server's own count, processed apart from made, and no timed stages", async () => {
+  const { ProcessingCard } = require("../src/components/capture/ProcessingCard");
+  await render(<ProcessingCard photoUri="file:///p.jpg" title="t" note="n" view={{ state: "running", progress: { done: 2, total: 3, made: 1 } }} />);
+  expect(screen.getAllByText("2 of 3 done").length).toBeGreaterThan(0);
+  expect(screen.getByText("1 image made · 1 couldn't be made")).toBeTruthy();
+  expect(screen.getByRole("progressbar").props.accessibilityValue).toEqual({ min: 0, max: 100, now: 67 });
+  expect(screen.getByText("Making catalog images…")).toBeTruthy();
+  expect(screen.queryByText(/Finding each garment|Separating the pieces|Laying them flat/)).toBeNull();
+});
+
+test("without a server count the processing card shows a spinner and the server's status, not a percentage", async () => {
+  const { ProcessingCard } = require("../src/components/capture/ProcessingCard");
+  await render(<ProcessingCard photoUri="file:///p.jpg" title="t" note="n" view={{ state: "queued" }} />);
+  expect(screen.queryByRole("progressbar")).toBeNull();
+  expect(screen.getByText("Waiting for a free spot…")).toBeTruthy();
+  expect(screen.getByLabelText("Sending your request, done")).toBeTruthy();
+  expect(screen.getByLabelText("Waiting for a free spot, in progress")).toBeTruthy();
+});
+
+test("a lost connection says so without calling the job failed", async () => {
+  const { ProcessingCard } = require("../src/components/capture/ProcessingCard");
+  await render(<ProcessingCard photoUri="file:///p.jpg" title="t" note="n" view={{ state: "running", offline: true, progress: { done: 1, total: 2 } }} />);
+  expect(screen.getByText("Reconnecting to KIPS…")).toBeTruthy();
+  expect(screen.getByText(/won't be sent or charged twice/)).toBeTruthy();
 });
 
 describe("preview with the free pre-scan", () => {

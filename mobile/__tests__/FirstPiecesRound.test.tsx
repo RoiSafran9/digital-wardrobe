@@ -183,14 +183,14 @@ test("out of credits mid-round: what started keeps going, the rest is explained"
 });
 
 test("Home's banner shows a round resumed after a restart and opens its progress", async () => {
-  const { CaptureBanner } = require("../src/components/home/CaptureBanner");
+  const { JobsBanner } = require("../src/components/jobs/JobsBanner");
   const { CaptureJobsProvider } = require("../src/store/captureJobs");
   const { inflightKey } = require("../src/firstPieces/FirstPiecesProvider");
   await AsyncStorage.setItem(inflightKey("u1"), JSON.stringify({ id: "r9", startedAt: 1, jobs: [
     { plan: { photoId: "ph1", scanId: "s0", indexes: [0] }, key: "fp:r9:s0", jobId: "job-a", photoUri: "file:///a.jpg", unitPrice: 1 },
   ] }));
   pollMock.mockReturnValue(new Promise(() => {}));
-  await renderFlow(<CaptureJobsProvider><CaptureBanner /></CaptureJobsProvider>);
+  await renderFlow(<CaptureJobsProvider><JobsBanner /></CaptureJobsProvider>);
   await act(async () => {});
   await fireEvent.press(screen.getByRole("button", { name: "Creating your first pieces…" }));
   expect(mockPush).toHaveBeenCalledWith("/first-pieces/processing");

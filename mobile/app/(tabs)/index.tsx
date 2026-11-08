@@ -7,7 +7,8 @@ import { cachedItems, rememberItems } from "../../src/store/itemsCache";
 import type { ClosetItem } from "../../src/api/types";
 import { CATEGORY_GROUPS, groupOf } from "../../src/categoryGroups";
 import { AddRows, type PhotoActions } from "../../src/components/home/AddToCloset";
-import { CaptureBanner } from "../../src/components/home/CaptureBanner";
+import { JobsBanner } from "../../src/components/jobs/JobsBanner";
+import { useActiveJobs } from "../../src/jobs/activeJobs";
 import { AddHero, CategoryTile, LookHero, NewThisWeek } from "../../src/components/home/HomeCards";
 import { Greeting } from "../../src/components/home/Greeting";
 import { HomeEmpty } from "../../src/components/home/HomeEmpty";
@@ -21,7 +22,6 @@ import { colors, radius, TAB_BAR_HEIGHT, type } from "../../src/theme";
 import { Backdrop, Button, Glass } from "../../src/ui";
 import { track, useScreenViewed } from "../../src/activity/track";
 import { MorningReminderCard } from "../../src/morningReminder/MorningReminderCard";
-import { useCaptureJobs } from "../../src/store/captureJobs";
 import { useFirstPiecesMaybe } from "../../src/firstPieces/FirstPiecesProvider";
 
 export type CategoryRow = { name: string; count: number; first: ClosetItem; items: ClosetItem[] };
@@ -74,9 +74,8 @@ export default function HomeScreen() {
   const [pickError, setPickError] = useState<string | null>(null);
   const [open, setOpen] = useState<{ list: ClosetItem[]; index: number } | null>(null);
   // The morning reminder card waits while pieces are being made.
-  const { current: capture } = useCaptureJobs();
   const firstPieces = useFirstPiecesMaybe();
-  const making = capture?.status === "running" || !!firstPieces?.round;
+  const making = useActiveJobs().some((j) => j.state === "working") || !!firstPieces?.round;
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -127,7 +126,7 @@ export default function HomeScreen() {
       <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: TAB_BAR_HEIGHT + 28 }}>
           <Greeting now={now} name={profile?.display_name} count={loaded && !empty ? items.length : null} onCredits={() => router.push("/account")} />
-          <CaptureBanner />
+          <JobsBanner />
 
           {loadError ? (
             <Glass radius={radius.list} style={{ marginTop: 12, padding: 16, gap: 10 }}>

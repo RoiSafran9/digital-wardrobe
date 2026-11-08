@@ -20,6 +20,7 @@ import { colors, hitSlopFor, radius, TAB_BAR_HEIGHT, type, weight } from "../../
 import { Button, Glass, GlassScreen, GroupedList, Row, Segmented, Sheet } from "../../src/ui";
 import { useReducedMotion } from "../../src/useReducedMotion";
 import { useScreenViewed } from "../../src/activity/track";
+import { JobsBanner } from "../../src/components/jobs/JobsBanner";
 
 export const LOW_CREDITS = 3;
 // The price list: a short label for the grid, the full name for VoiceOver.
@@ -260,6 +261,7 @@ export default function AccountScreen() {
               <Text style={{ ...type.body, color: colors.tint }}>Edit</Text>
             </Pressable>
           </Glass>
+          <JobsBanner style={{ marginTop: -12 }} />
 
           {credits ? (
             <View style={{ gap: 8 }}>

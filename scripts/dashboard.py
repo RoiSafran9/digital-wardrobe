@@ -8,6 +8,7 @@ scripts/usage_report.py (ids, kinds, numbers and times — no photos, piece deta
 email (shown masked), display name and wallet. The numbers in the funnel, launch, retention, reliability, AI cost
 and credits sections are usage_report.metrics() over the chosen period, so the page and the report agree.
 Daily buckets are UTC days, like the report; the hour-of-week heatmap is in Israel time.
+Pick one account (?user=<id>) and every number on the page is that account's alone; the health strip stays global.
 """
 import argparse
 import json
@@ -48,6 +49,19 @@ def window(rows: dict, since: datetime) -> dict:
     out["removed"] = [r for r in rows["removed"] if r.get("deleted_at") and r["deleted_at"] >= since]
     out["now"] = rows["now"]
     return out
+
+
+class UnknownAccount(Exception):
+    """The ?user= id is not one of the accounts."""
+
+
+def only_user(rows: dict, user: str) -> dict:
+    """The rows of one account only: every kind is cut to rows whose user_id is `user`."""
+    return {**{k: [r for r in rows[k] if r.get("user_id") == user] for k in ROW_KINDS}, "now": rows["now"]}
+
+
+def account_label(a: dict) -> str:
+    return a.get("display_name") or mask_email(a.get("email")) or a["id"][:8]
 
 
 def _days(since: datetime, now: datetime) -> list:
@@ -207,8 +221,15 @@ def feed(rows: dict, labels: dict[str, str]) -> list[dict]:
     return sorted(entries, key=lambda e: e["at"], reverse=True)[:FEED_LIMIT]
 
 
-def build(all_rows: dict, accounts: list[dict], days: int, health: dict | None = None) -> dict:
-    """Everything the page draws, for the last `days` days (0 = all time)."""
+def build(all_rows: dict, accounts: list[dict], days: int, health: dict | None = None,
+          user: str | None = None) -> dict:
+    """Everything the page draws, for the last `days` days (0 = all time), for every account or just `user`."""
+    options = [{"id": a["id"], "label": account_label(a), "email": mask_email(a.get("email"))}
+               for a in sorted(accounts, key=lambda a: account_label(a).lower())]
+    if user is not None:
+        if user not in {a["id"] for a in accounts}:
+            raise UnknownAccount(user)
+        all_rows, accounts = only_user(all_rows, user), [a for a in accounts if a["id"] == user]
     now = all_rows["now"]
     since = now - timedelta(days=days) if days else min(
         [r["created_at"] for k in ("signups", "events", "jobs") for r in all_rows[k]] or [now])
@@ -219,12 +240,13 @@ def build(all_rows: dict, accounts: list[dict], days: int, health: dict | None =
 
     def active_within(n: int) -> int:
         return len(set().union(*[users for day, users in active.items() if day > now.date() - timedelta(days=n)] or [set()]))
-    labels = {a["id"]: a.get("display_name") or mask_email(a.get("email")) or a["id"][:8] for a in accounts}
+    labels = {a["id"]: account_label(a) for a in accounts}
     jobs = period["jobs"]
     done = [j for j in jobs if j["status"] in ("succeeded", "failed")]
     live = [j for j in all_rows["jobs"] if j["status"] in ("queued", "running")]
     return {
         "generated_at": now.isoformat(), "days": days, "since": since.isoformat(),
+        "user": user, "account_options": options,
         "kpis": {
             "accounts": len(accounts), "new_accounts": len(period["signups"]),
             "active_today": active_within(1), "active_7d": active_within(7), "active_30d": active_within(30),
@@ -267,12 +289,12 @@ class Source:
         self.store, self.health_url, self.lock = store, health_url, threading.Lock()
         self.cached: tuple[float, dict, list] | None = None
 
-    def data(self, days: int, fresh: bool = False) -> dict:
+    def data(self, days: int, fresh: bool = False, user: str | None = None) -> dict:
         with self.lock:
             if fresh or not self.cached or time.monotonic() - self.cached[0] > CACHE_SECONDS:
                 self.cached = (time.monotonic(), self.store.usage_rows(EPOCH), self.store.accounts_overview())
             _, rows, accounts = self.cached
-        return build(rows, accounts, days, fetch_health(self.health_url))
+        return build(rows, accounts, days, fetch_health(self.health_url), user=user)
 
 
 def handler_for(source: Source):
@@ -297,8 +319,11 @@ def handler_for(source: Source):
                     days = -1
                 if days not in PERIODS:
                     return self._send(400, b'{"error": "days must be 1, 7, 30, 90 or 0"}', "application/json")
+                user = q.get("user", [""])[0] or None
                 try:
-                    data = source.data(days, fresh=q.get("fresh") == ["1"])
+                    data = source.data(days, fresh=q.get("fresh") == ["1"], user=user)
+                except UnknownAccount:
+                    return self._send(404, b'{"error": "no such account"}', "application/json")
                 except Exception as e:  # show why on the page; never echo the store's headers
                     body = json.dumps({"error": type(e).__name__, "detail": str(e)[:300]}).encode()
                     return self._send(502, body, "application/json")

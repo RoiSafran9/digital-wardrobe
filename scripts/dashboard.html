@@ -160,6 +160,14 @@ details.tableview summary { cursor: pointer; color: var(--ink-2); font-size: 12p
 .alert.bad { border-inline-start-color: var(--bad); }
 .alerts { display: grid; gap: 8px; margin-bottom: 22px; }
 a.btn { text-decoration: none; display: inline-block; }
+select.btn { max-width: 220px; appearance: auto; }
+select.btn.on { border-color: var(--tint); box-shadow: 0 0 0 1px var(--tint); }
+.filterbar { display: none; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--tint-wash); border: 1px solid var(--tint);
+  border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; font-size: 14px; }
+.filterbar.on { display: flex; }
+.filterbar .mono { color: var(--ink-2); }
+button.linklike { border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: start; }
+button.linklike:hover b { color: var(--tint); text-decoration: underline; }
 .paylinks { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; justify-content: space-between; }
 .paylinks .sub { margin-bottom: 0; max-width: 520px; }
 .paylinks .links { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -183,6 +191,9 @@ a.btn { text-decoration: none; display: inline-block; }
       <div class="sub" id="updated">טוען…</div>
     </div>
     <div class="spacer"></div>
+    <select class="btn" id="who" aria-label="משתמש" title="הצגת המטריקות של משתמש אחד בלבד">
+      <option value="">כל המשתמשים</option>
+    </select>
     <div class="seg" role="group" aria-label="תקופה" id="period">
       <button data-days="1">היום</button>
       <button data-days="7">7 ימים</button>
@@ -195,6 +206,7 @@ a.btn { text-decoration: none; display: inline-block; }
     <button class="btn" id="theme" title="מצב תצוגה">◐</button>
   </header>
   <div class="error" id="error"></div>
+  <div class="filterbar" id="filterbar"></div>
   <div class="health" id="health"></div>
   <div class="alerts" id="alerts"></div>
   <nav class="toc">
@@ -528,7 +540,7 @@ function rateCell(v) {
 }
 
 // ---- sections -------------------------------------------------------------------------------
-let state = { days: 30, data: null, feedFilter: "all" };
+let state = { days: 30, data: null, feedFilter: "all", user: new URLSearchParams(location.search).get("user") || "" };
 try { const d = +localStorage.getItem("kips.dash.days"); if ([1, 7, 30, 90, 0].includes(d) && localStorage.getItem("kips.dash.days") !== null) state.days = d; } catch {}
 
 function renderHealth(h, k) {
@@ -571,7 +583,7 @@ function renderKpis(d) {
     ["משימות AI", fmt.n(k.jobs), el("span", {}, `${fmt.n(k.paid_jobs)} בתשלום · `, el("span", { class: k.success_rate >= .95 ? "good" : k.success_rate < .85 ? "bad" : "" }, `${fmt.pct(k.success_rate)} הצלחה`)), series(x => x.jobs_ok + x.jobs_failed)],
     ["הוצאת AI משוערת", fmt.usd(k.ai_usd), `${fmt.n(k.ai_calls)} קריאות למודל`, series("ai_usd"), "--s2"],
     ["קרדיטים שחויבו", fmt.n(k.credits_charged), `${fmt.n(k.credits_granted)} הוענקו בתקופה`, series("credits_charged"), "--s4"],
-    ["יתרת קרדיטים", fmt.n(k.credits_outstanding), k.credits_held ? `${k.credits_held} מוחזקים` : "בכל הארנקים", null],
+    ["יתרת קרדיטים", fmt.n(k.credits_outstanding), k.credits_held ? `${k.credits_held} מוחזקים` : (state.data?.user ? "בארנק של המשתמש" : "בכל הארנקים"), null],
     ["שגיאות אפליקציה", fmt.n(k.app_errors), el("span", { class: k.app_errors ? "bad" : "good" }, k.app_errors ? "client_error בתקופה" : "אין"), series("app_errors"), "--bad"],
   ];
   $("#kpis").replaceChildren(...tiles.map(([label, value, note, sp, color]) => el("div", { class: "kpi" },
@@ -698,7 +710,7 @@ function renderMoney(d) {
     unit.map(([l, v]) => el("div", { class: "mini" }, el("div", { class: "label" }, l), el("div", { class: "value" }, v)))));
   const cr = d.metrics.credits;
   $("#c-wallet").replaceChildren(el("div", { class: "stat3", style: "grid-template-columns:1fr 1fr" },
-    [["יתרה", k.credits_outstanding, "בכל הארנקים"], ["מוחזקים", k.credits_held, "משימות פתוחות"],
+    [["יתרה", k.credits_outstanding, (state.data?.user ? "בארנק של המשתמש" : "בכל הארנקים")], ["מוחזקים", k.credits_held, "משימות פתוחות"],
      ["חויבו בתקופה", cr.charged, ""], ["הוחזרו בתקופה", cr.released, "כשלים/ביטולים"]].map(([l, v, n]) =>
       el("div", { class: "mini" }, el("div", { class: "label" }, l), el("div", { class: "value" }, fmt.n(v)), n ? el("div", { class: "note" }, n) : null))),
     el("div", { class: "sub", style: "margin-top:10px" }, `הוענקו בתקופה: ${fmt.n(cr.granted)}. אין רכישות — כל הקרדיטים הם מענקים.`));
@@ -706,8 +718,12 @@ function renderMoney(d) {
 }
 function renderUsers(d) {
   table($("#t-users"), [
-    { label: "חשבון", key: "name", render: r => el("div", {}, el("div", { style: "font-weight:500" }, r.name || r.email || r.short_id),
-        el("div", { class: "mono", style: "color:var(--ink-2)" }, [r.email, r.short_id].filter(Boolean).join(" · "))) },
+    { label: "חשבון", key: "name", render: r => {
+        const b = el("button", { class: "linklike", title: "הצג רק את המשתמש הזה" }, el("b", { style: "font-weight:500" }, r.name || r.email || r.short_id),
+          el("div", { class: "mono", style: "color:var(--ink-2)" }, [r.email, r.short_id].filter(Boolean).join(" · ")));
+        b.addEventListener("click", () => pickUser(r.id));
+        return b;
+      } },
     { label: "נרשם", key: "signed_up", render: r => r.signed_up ? timeLabel(r.signed_up) : "—" },
     { label: "פעיל לאחרונה", key: "last_active", render: r => ago(r.last_active) },
     { label: "ימי פעילות", key: "active_days", num: true },
@@ -742,8 +758,31 @@ function renderFeed(d) {
   }));
 }
 
+function renderWho(d) {
+  const sel = $("#who"), opts = d.account_options || [];
+  sel.replaceChildren(el("option", { value: "" }, `כל המשתמשים (${opts.length})`),
+    ...opts.map(o => el("option", { value: o.id }, o.email && o.email !== o.label ? `${o.label} · ${o.email}` : o.label)));
+  sel.value = d.user || ""; sel.classList.toggle("on", !!d.user);
+  const bar = $("#filterbar"), me = opts.find(o => o.id === d.user);
+  bar.classList.toggle("on", !!me); bar.replaceChildren();
+  if (!me) return;
+  const all = el("button", { class: "btn" }, "הצג את כל המשתמשים");
+  all.addEventListener("click", () => pickUser(""));
+  bar.append(el("span", {}, "מציג רק את ", el("b", {}, me.label)), el("span", { class: "mono" }, [me.email, me.id.slice(0, 8)].filter(Boolean).join(" · ")),
+    el("span", { class: "sub" }, "כל המספרים, הגרפים והפיד הם של המשתמש הזה בלבד. סטטוס השרת למעלה הוא של כל המערכת."),
+    el("div", { class: "spacer" }), all);
+}
+function pickUser(id) {
+  state.user = id || ""; state.feedFilter = "all";
+  const u = new URL(location.href);
+  if (state.user) u.searchParams.set("user", state.user); else u.searchParams.delete("user");
+  history.replaceState(null, "", u);
+  load(); scrollTo({ top: 0, behavior: "smooth" });
+}
 function render(d) {
-  $("#updated").textContent = `עודכן ${timeLabel(d.generated_at)} · ${d.days ? `${d.days} ימים אחרונים` : "מכל הזמנים"} · נתונים חיים מ-Supabase`;
+  const who = (d.account_options || []).find(o => o.id === d.user);
+  $("#updated").textContent = `עודכן ${timeLabel(d.generated_at)} · ${d.days ? `${d.days} ימים אחרונים` : "מכל הזמנים"}${who ? ` · ${who.label} בלבד` : ""} · נתונים חיים מ-Supabase`;
+  renderWho(d);
   renderHealth(d.health, d.kpis); renderAlerts(d); renderKpis(d); renderUsage(d); renderProcesses(d);
   renderReliability(d); renderEvents(d); renderMoney(d); renderUsers(d); renderFeed(d);
 }
@@ -751,8 +790,12 @@ async function load(fresh = false) {
   document.body.classList.add("loading");
   $("#period").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.days === state.days)));
   try {
-    const r = await fetch(`/api/dashboard?days=${state.days}${fresh ? "&fresh=1" : ""}`);
+    const q = new URLSearchParams({ days: state.days });
+    if (state.user) q.set("user", state.user);
+    if (fresh) q.set("fresh", "1");
+    const r = await fetch(`/api/dashboard?${q}`);
     const body = await r.json();
+    if (r.status === 404 && state.user) { pickUser(""); return; }  // that account is gone: back to everyone
     if (!r.ok) throw new Error(body.detail || body.error || r.status);
     state.data = body; $("#error").style.display = "none"; render(body);
   } catch (e) {
@@ -766,6 +809,7 @@ $("#period").addEventListener("click", e => {
   load();
 });
 $("#refresh").addEventListener("click", () => load(true));
+$("#who").addEventListener("change", e => pickUser(e.target.value));
 $("#theme").addEventListener("click", () => {
   const root = document.documentElement, dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
   root.dataset.theme = dark ? "light" : "dark";

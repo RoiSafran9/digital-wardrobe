@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from api.store import MemoryStore
-from scripts.dashboard import Source, build, handler_for, mask_email, window
+from scripts.dashboard import Source, UnknownAccount, build, handler_for, mask_email, only_user, window
 from scripts.usage_report import metrics
 
 NOW = datetime(2026, 11, 8, 12, 0, tzinfo=timezone.utc)
@@ -121,6 +121,26 @@ def test_feed_is_newest_first_and_labels_accounts(rows):
     assert any(e["kind"] == "error" and e["what"] == "outfit_generate failed" for e in feed)
 
 
+def test_one_account_sees_only_its_own_numbers(rows):
+    data = build(rows, accounts_for(rows), days=0, user="u2")
+    assert data["user"] == "u2"
+    assert data["metrics"] == metrics(only_user(rows, "u2"))
+    k = data["kpis"]
+    assert k["accounts"] == 1 and k["jobs"] == 3 and k["ai_usd"] == pytest.approx(0.051)
+    assert k["credits_charged"] == 2 and k["credits_outstanding"] == 38 and k["app_errors"] == 1
+    assert [a["id"] for a in data["accounts"]] == ["u2"]
+    assert {e["who"] for e in data["feed"]} == {"se•••@example.com"}
+    # the picker still lists everyone, masked
+    assert [o["label"] for o in data["account_options"]] == ["Dana", "se•••@example.com"]
+    assert "first.tester@example.com" not in json.dumps(data, default=str)
+
+
+def test_unknown_account_is_refused(rows):
+    with pytest.raises(UnknownAccount):
+        build(rows, accounts_for(rows), days=7, user="nobody")
+    assert build(rows, accounts_for(rows), days=7)["user"] is None
+
+
 def test_memory_store_accounts_overview():
     store = MemoryStore()
     store.signups["u1"] = ago(1)
@@ -164,9 +184,12 @@ def test_server_serves_the_page_and_the_data(served):
     assert store.reads == 1  # cached between period switches
     urllib.request.urlopen(base + "/api/dashboard?days=30&fresh=1").read()
     assert store.reads == 2
+    one = json.loads(urllib.request.urlopen(base + "/api/dashboard?days=0&user=u1").read())
+    assert one["user"] == "u1" and one["kpis"]["accounts"] == 1 and one["kpis"]["jobs"] == 1
 
 
-@pytest.mark.parametrize("path", ["/api/dashboard?days=5", "/api/dashboard?days=x", "/../.env", "/nope"])
+@pytest.mark.parametrize("path", ["/api/dashboard?days=5", "/api/dashboard?days=x", "/api/dashboard?days=7&user=nobody",
+                                  "/../.env", "/nope"])
 def test_server_refuses_other_requests(served, path):
     base, _ = served
     with pytest.raises(urllib.error.HTTPError) as e:
